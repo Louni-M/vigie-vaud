@@ -10,7 +10,9 @@ l'ancien nom du site, désigne désormais sa couche Permis.
 
 **Couche** :
 Ensemble d'éléments d'un même domaine, affiché sur la carte et activable depuis le panneau des couches (Permis,
-Hôtels de ville, Routes, Trains, Incidents, Météo, Presse…).
+Hôtels de ville, Routes, Trains, Incidents, Météo, Presse…). Une couche s'appuie sur une ou plusieurs sources ; la
+fiche commune a un onglet par couche, qu'elle soit activée ou non. La couche Hôtels de ville est **permanente** :
+on ne peut pas la désactiver.
 _À éviter_ : calque, layer, module
 
 **Hôtel de ville** :
@@ -40,7 +42,8 @@ Une commune **non couverte** est grisée sur la carte.
 ### Données
 
 **Source** :
-Un service ou un site d'où provient une donnée : API, flux RSS ou site scrapé.
+Un service ou un site d'où provient une donnée : API, flux RSS ou site scrapé. C'est à la source, pas à la couche,
+que tiennent l'attribution, la voie d'accès, la fraîcheur et la Couverture.
 
 **Voie d'accès** :
 La manière dont le site obtient une source : **Direct** (le navigateur appelle la source), **Cron** (la source

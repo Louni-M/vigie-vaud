@@ -34,8 +34,8 @@ accidents.
 
 | Jalon | Contenu |
 |---|---|
-| **J0 Socle** | Renommage, licence, registre des couches, fiche commune à onglets, hôtels de ville, dépôt de données et cron, page Couverture, badges de fraîcheur, permis migrés en couche |
-| **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée |
+| **J0 Socle** | Renommage, licence, registre des couches, fiche commune à onglets (seulement ceux des couches présentes), hôtels de ville, dépôt de données et cron (qui surveille les sources pour la Couverture), page Couverture, badges de fraîcheur, permis migrés en couche, suppression du code de la version hébergée ; à la fin, dépôt rendu public sous le nom `vigie-vaud` et GitHub Pages activé. Décisions : carte [#1](https://github.com/Louni-M/CyberSwissNews/issues/1) |
+| **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal |
 | **J2 Routes** | Restrictions de circulation DGMR en cours et à venir |
 | **J3 Trains** | Panneau des perturbations CFF filtré sur Vaud ; gares sur la carte, départs et retards au clic |
 | **J4 Presse et incidents** | Flux RSS via le cron ; couche « Incidents » tirée des communiqués de police et rattachée aux communes |
@@ -70,7 +70,7 @@ accidents.
 - **Un flux RSS par commune** généré par le cron, en remplacement des comptes et des alertes.
 - **Résumés IA** et **mode dense**.
 - **Nom de domaine** (par exemple `vigievaud.ch`), après J4, acheté par Loulou. En attendant, le site garde
-  l'adresse GitHub Pages actuelle.
+  l'adresse GitHub Pages ouverte à la fin de J0.
 
 ## Actions de Loulou
 
