@@ -1,48 +1,86 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import Map from '#lib/components/Map.svelte';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
-	import { getCommuneDossiers } from '#lib/data.js';
+	import {
+		ErreurApi,
+		getActive,
+		getChiffresCommune,
+		getDossiers,
+		SOURCE,
+		type ChiffresCommune
+	} from '#lib/data.js';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
-	import { dateLongue } from '#lib/dates.js';
 	import { lienCarteCommune } from '#lib/etat.js';
 	import type { Dossier } from '#lib/types.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	const c = $derived(data.commune);
-	const enquetes = $derived(data.actifs.filter((d) => d.statut === 'enquete'));
-	const attente = $derived(data.actifs.filter((d) => d.statut === 'procedure'));
 
-	let tout: Dossier[] | null = $state(null);
+	const RECENTS = 60;
+	const c = $derived(data.commune);
+
+	// Tout est lu en direct sur le service du canton, dans le navigateur.
+	let actifs = $state<Dossier[] | null>(null);
+	let chiffres = $state<ChiffresCommune | null>(null);
+	let recents = $state<Dossier[] | null>(null);
+	let echec = $state('');
+
+	const enquetes = $derived(actifs?.filter((d) => d.statut === 'enquete') ?? []);
+	const attente = $derived(actifs?.filter((d) => d.statut === 'procedure') ?? []);
+
+	const message = (e: unknown) =>
+		`${e instanceof ErreurApi ? e.message : 'Les données n’ont pas pu être chargées.'} Les dossiers sont lus en direct sur ogc.vd.ch : réessayez dans un instant.`;
+
+	function charger() {
+		echec = '';
+		const commune = c;
+		getActive(fetch).then(
+			(ds) => (actifs = ds.filter((d) => d.slug === commune.slug)),
+			(e) => (echec = message(e))
+		);
+		getChiffresCommune(fetch, commune)
+			.then((r) => {
+				chiffres = r;
+				return getDossiers(fetch, r.historique.slice(0, RECENTS).map((d) => d.id));
+			})
+			.then(
+				(r) => (recents = r),
+				(e) => (echec = message(e))
+			);
+	}
+	onMount(charger);
+
+	let tout = $state<Dossier[] | null>(null);
 	let chargement = $state(false);
-	let echec = $state(false);
+	let echecTout = $state(false);
+
 	async function chargerTout() {
 		chargement = true;
-		echec = false;
+		echecTout = false;
 		try {
-			// Les dossiers en cours sont déjà listés plus haut.
-			const enCours = new Set(data.actifs.map((d) => d.id));
-			tout = (await getCommuneDossiers(fetch, c.slug)).filter((d) => !enCours.has(d.id));
+			tout = await getDossiers(fetch, chiffres?.historique.map((d) => d.id) ?? []);
 		} catch {
-			echec = true;
+			echecTout = true;
 		} finally {
 			chargement = false;
 		}
 	}
 
-	const annees = $derived(Object.entries(data.parAnnee).sort().slice(-12));
+	const annees = $derived(Object.entries(chiffres?.parAnnee ?? {}).sort().slice(-12));
 	const maxAnnee = $derived(Math.max(1, ...annees.map(([, n]) => n)));
 	const lienDossier = (d: Dossier) => resolve('/dossier/[id]', { id: String(d.id) });
 	const resumeAnnees = $derived(annees.map(([a, n]) => `${a} : ${n}`).join(', '));
+	const totalHisto = $derived(chiffres?.historique.length ?? 0);
 </script>
 
 <svelte:head>
 	<title>Mises à l’enquête à {c.nom} – Chantiers Vaud</title>
 	<meta
 		name="description"
-		content="{c.statuts.enquete} demande{c.statuts.enquete > 1 ? 's' : ''} de permis de construire à l’enquête publique à {c.nom} (VD), et {c.total} dossiers depuis 1999."
+		content="Demandes de permis de construire à l’enquête publique à {c.nom} (VD) : dossiers en cours, chiffres et historique depuis 1999."
 	/>
 </svelte:head>
 
@@ -53,24 +91,38 @@
 
 	<div class="mini-carte">
 		<Map
-			dossiers={data.actifs}
+			dossiers={actifs ?? []}
 			bounds={c.bbox}
 			statuts={['enquete', 'procedure']}
 			onselect={(id) => goto(resolve('/dossier/[id]', { id: String(id) }))}
 		/>
 	</div>
 
-	<div class="chiffres">
+	{#if echec}
+		<p class="erreur" role="alert">
+			{echec}
+			<button class="bouton secondaire petit" type="button" onclick={charger}>Réessayer</button>
+		</p>
+	{/if}
+
+	<div class="chiffres" aria-busy={!chiffres || !actifs}>
 		{#each STATUTS_ORDRE as s (s)}
 			<div style:--c={STATUTS[s].couleur}>
-				<strong>{s === 'procedure' ? attente.length : (c.statuts[s] ?? 0)}</strong>
+				<strong>
+					<!-- En cours : comptés sur les listes ci-dessous (dossiers rattachés à la commune, procédures récentes). -->
+					{#if s === 'enquete'}{actifs ? enquetes.length : '…'}
+					{:else if s === 'procedure'}{actifs ? attente.length : '…'}
+					{:else}{chiffres ? chiffres.statuts[s] : '…'}{/if}
+				</strong>
 				<span>{STATUTS[s].court}</span>
 			</div>
 		{/each}
 	</div>
 
-	<h2>À l’enquête en ce moment ({enquetes.length})</h2>
-	{#if enquetes.length}
+	<h2>À l’enquête en ce moment{actifs ? ` (${enquetes.length})` : ''}</h2>
+	{#if !actifs}
+		<ul class="grille" aria-busy="true"><li class="attente"></li><li class="attente"></li></ul>
+	{:else if enquetes.length}
 		<ul class="grille">
 			{#each enquetes as d (d.id)}<li><DossierCarte {d} href={lienDossier(d)} /></li>{/each}
 		</ul>
@@ -86,14 +138,18 @@
 	{/if}
 
 	<h2>Demandes par année</h2>
-	<div class="barres" role="img" aria-label="Demandes de permis par année – {resumeAnnees}">
-		{#each annees as [annee, n] (annee)}
-			<div class="barre" title="{n} demandes en {annee}">
-				<span style:height="{(n / maxAnnee) * 100}%"></span>
-				<small>{annee.slice(2)}</small>
-			</div>
-		{/each}
-	</div>
+	{#if chiffres}
+		<div class="barres" role="img" aria-label="Demandes de permis par année – {resumeAnnees}">
+			{#each annees as [annee, n] (annee)}
+				<div class="barre" title="{n} demandes en {annee}">
+					<span style:height="{(n / maxAnnee) * 100}%"></span>
+					<small>{annee.slice(2)}</small>
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<div class="barres attente" aria-busy="true"></div>
+	{/if}
 
 	<h2>Historique</h2>
 	{#if tout}
@@ -101,24 +157,28 @@
 		<ul class="grille">
 			{#each tout as d (d.id)}<li><DossierCarte {d} href={lienDossier(d)} /></li>{/each}
 		</ul>
+	{:else if !recents || !actifs}
+		<ul class="grille" aria-busy="true"><li class="attente"></li><li class="attente"></li><li class="attente"></li></ul>
 	{:else}
 		<ul class="grille">
-			{#each data.recents as d (d.id)}<li><DossierCarte {d} href={lienDossier(d)} /></li>{/each}
+			{#each recents as d (d.id)}<li><DossierCarte {d} href={lienDossier(d)} /></li>{/each}
 		</ul>
-		{#if c.total > data.actifs.length + data.recents.length}
+		{#if totalHisto > recents.length}
 			<p>
 				<button class="bouton secondaire" type="button" onclick={chargerTout} disabled={chargement}>
-					{chargement ? 'Chargement…' : `Afficher tout l’historique (${c.total - data.actifs.length} dossiers depuis 1999)`}
+					{chargement
+						? 'Chargement…'
+						: `Afficher tout l’historique (${totalHisto} dossiers depuis 1999)`}
 				</button>
 			</p>
-			{#if echec}
+			{#if echecTout}
 				<p class="erreur" role="alert">L’historique n’a pas pu être chargé. Réessayez dans un instant.</p>
 			{/if}
 		{/if}
 	{/if}
 
 	<p class="source">
-		{data.meta.source}. Mis à jour le {dateLongue(data.meta.mise_a_jour)}. Sans foi publique : seule la FAO fait foi.
+		{SOURCE} depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la FAO fait foi.
 		Rattachement aux communes actuelles (limites swisstopo).
 		<a href={resolve('/infos-legales')}>Informations légales</a>
 	</p>
@@ -210,5 +270,14 @@
 	}
 	.source {
 		margin-top: 32px;
+	}
+	.attente {
+		min-height: 92px;
+		border-radius: 10px;
+		background: var(--line);
+		opacity: 0.6;
+	}
+	.barres.attente {
+		min-height: 0;
 	}
 </style>

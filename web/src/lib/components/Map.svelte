@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { asset } from '$app/paths';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	// MapLibre 6 calcule l'URL de son worker à l'exécution : Vite ne le copie pas dans le build.
 	// On l'importe explicitement comme fichier, sinon les cartes restent vides en production.
@@ -14,12 +13,14 @@
 		MapMouseEvent
 	} from 'maplibre-gl';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
-	import type { Centre, Dossier, Statut } from '#lib/types.js';
+	import type { Centre, Dossier, PointHisto, Statut } from '#lib/types.js';
 
 	interface Props {
 		dossiers: Dossier[];
-		/** Affiche aussi tout l'historique (tuiles PMTiles). */
+		/** Affiche aussi l'historique (`histo`). */
 		historique?: boolean;
+		/** Points de l'historique chargés jusqu'ici ; la liste ne fait que s'allonger (ajouts incrémentaux). */
+		histo?: PointHisto[];
 		statuts?: Statut[];
 		nature?: string;
 		anneeMin?: number;
@@ -38,6 +39,7 @@
 	let {
 		dossiers,
 		historique = false,
+		histo = [],
 		statuts = STATUTS_ORDRE,
 		nature = '',
 		anneeMin = 1999,
@@ -80,6 +82,13 @@
 			}))
 		};
 	}
+
+	const versHisto = (d: PointHisto) => ({
+		type: 'Feature' as const,
+		id: d.id,
+		geometry: { type: 'Point' as const, coordinates: [d.lon, d.lat] },
+		properties: { id: d.id, s: d.statut, n: d.nature, y: Number(d.debut?.slice(0, 4) ?? 0) }
+	});
 
 	function unPoint(p: [number, number] | null): GeoJSONSourceSpecification['data'] {
 		return {
@@ -131,11 +140,8 @@
 		let disposed = false;
 		(async () => {
 			const maplibregl = await import('maplibre-gl');
-			const { Protocol } = await import('pmtiles');
 			if (disposed) return;
 			maplibregl.setWorkerUrl(workerUrl);
-			const protocol = new Protocol();
-			maplibregl.addProtocol('pmtiles', protocol.tile);
 
 			const m = new maplibregl.Map({
 				container,
@@ -156,7 +162,7 @@
 			m.addControl(
 				new maplibregl.AttributionControl({
 					compact: true,
-					customAttribution: 'Source : Géodonnées Etat de Vaud (CAMAC)'
+					customAttribution: 'Source : Géodonnées Etat de Vaud (CAMAC), en direct'
 				})
 			);
 			if (interactive) m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -170,13 +176,13 @@
 					premierSymbole
 				);
 
-				const pmUrl = new URL(asset('data/permits.pmtiles'), location.href).href;
-				m.addSource('historique', { type: 'vector', url: `pmtiles://${pmUrl}` });
+				// Historique lu en direct sur le service du canton, une année après l'autre (voir `histo`).
+				m.addSource('historique', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+				envoyes = 0;
 				m.addLayer({
 					id: 'historique',
 					type: 'circle',
 					source: 'historique',
-					'source-layer': 'permits',
 					layout: { visibility: 'none' },
 					paint: {
 						'circle-color': couleur('s'),
@@ -273,6 +279,19 @@
 	$effect(() => {
 		if (!pret || !map) return;
 		(map.getSource('actifs') as GeoJSONSource).setData(toGeoJSON(dossiers));
+	});
+
+	/** Points d'historique déjà transmis à la carte : seuls les nouveaux sont ajoutés. */
+	let envoyes = 0;
+	let premierEnvoye: number | undefined;
+	$effect(() => {
+		if (!pret || !map) return;
+		const source = map.getSource('historique') as GeoJSONSource;
+		if (histo.length >= envoyes && envoyes > 0 && histo[0]?.id === premierEnvoye) {
+			if (histo.length > envoyes) source.updateData({ add: histo.slice(envoyes).map(versHisto) });
+		} else source.setData({ type: 'FeatureCollection', features: histo.map(versHisto) });
+		envoyes = histo.length;
+		premierEnvoye = histo[0]?.id;
 	});
 
 	$effect(() => {

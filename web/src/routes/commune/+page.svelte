@@ -1,9 +1,24 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { getActive, SOURCE } from '#lib/data.js';
 	import { normaliser } from '#lib/labels.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	/** Enquêtes en cours par commune, lues en direct sur le service du canton. */
+	let enquetes: Record<string, number> = $state({});
+	onMount(() => {
+		getActive(fetch).then(
+			(ds) => {
+				const n: Record<string, number> = {};
+				for (const d of ds) if (d.statut === 'enquete') n[d.slug] = (n[d.slug] ?? 0) + 1;
+				enquetes = n;
+			},
+			() => {}
+		);
+	});
 	let filtre = $state('');
 
 	const liste = $derived(data.communes.filter((c) => normaliser(c.nom).includes(normaliser(filtre))));
@@ -28,14 +43,14 @@
 		{#each liste as c (c.slug)}
 			<li>
 				<a href={resolve('/commune/[slug]', { slug: c.slug })}>{c.nom}</a>
-				{#if c.statuts.enquete}
-					<span class="enq">{c.statuts.enquete} à l’enquête</span>
+				{#if enquetes[c.slug]}
+					<span class="enq">{enquetes[c.slug]} à l’enquête</span>
 				{/if}
 			</li>
 		{/each}
 	</ul>
 	<p class="source">
-		{data.meta.source}. Sans foi publique : seule la FAO fait foi.
+		{SOURCE} depuis votre navigateur. Sans foi publique : seule la FAO fait foi.
 		<a href={resolve('/infos-legales')}>Informations légales</a>
 	</p>
 </main>
