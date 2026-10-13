@@ -7,9 +7,14 @@ How the engineering skills should consume this repo's domain documentation when 
 - **`CONTEXT.md`** at the repo root, or
 - **`CONTEXT-MAP.md`** at the repo root if it exists: it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
 - **`docs/adr/`**: read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
-- **`docs/DECISIONS.md`**: the project's reference record of product, interface, architecture and data-source decisions (in French). Read the sections relevant to the topic; it predates `docs/adr/` and remains authoritative.
+- **`docs/sources.md`**: the inventory of data sources (used, rejected, not found) with their access path. Read it before adding, changing or debugging a source; update it when a source changes.
+- **`docs/feuille-de-route.md`** (temporary): milestones J0–J6, phase 2, backlog and the owner's actions, until they are migrated to GitHub milestones and issues.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
+
+## Language
+
+The product, the code and these docs are in French. Write new `CONTEXT.md` entries, ADRs and `docs/sources.md` changes in French, translating the template keywords too: `_Avoid_` → `_À éviter_`, and the optional ADR sections → `## Statut`, `## Options envisagées`, `## Conséquences`.
 
 ## File structure
 
@@ -50,5 +55,3 @@ If the concept you need isn't in the glossary yet, that's a signal: either you'r
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
 
 > _Contradicts ADR-0007 (event-sourced orders), but worth reopening because…_
-
-The same applies to `docs/DECISIONS.md`: name the section you contradict (e.g. _Contradicts DECISIONS.md › Architecture…_).
