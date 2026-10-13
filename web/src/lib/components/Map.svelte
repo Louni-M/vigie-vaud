@@ -24,7 +24,6 @@
 		statuts?: Statut[];
 		nature?: string;
 		anneeMin?: number;
-		aerien?: boolean;
 		selection?: number | null;
 		/** Position du dossier sélectionné, marquée d'un anneau (y compris pour un dossier de l'historique). */
 		point?: [number, number] | null;
@@ -32,7 +31,8 @@
 		repere?: [number, number] | null;
 		bounds?: LngLatBoundsLike;
 		interactive?: boolean;
-		onselect?: (id: number) => void;
+		/** Clic sur un point : n° du dossier et position du point. */
+		onselect?: (id: number, position: [number, number]) => void;
 		onview?: (b: [number, number, number, number], centre: Centre) => void;
 	}
 
@@ -43,7 +43,6 @@
 		statuts = STATUTS_ORDRE,
 		nature = '',
 		anneeMin = 1999,
-		aerien = false,
 		selection = null,
 		point = null,
 		repere = null,
@@ -111,10 +110,23 @@
 		onview([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], { lon: c.lng, lat: c.lat, zoom: map.getZoom() });
 	}
 
-	/** Centre la carte sur un point (recherche d'adresse, géolocalisation, sélection). */
-	export function voler(lon: number, lat: number, zoom = 16) {
-		if (!map) aller({ lon, lat, zoom });
-		else map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), zoom) });
+	/**
+	 * Centre la carte sur un point (recherche d'adresse, géolocalisation, sélection), en un vol souple :
+	 * dézoom léger puis approche. `decalage` (px) remonte le point au-dessus d'un aperçu en bas de carte.
+	 * MapLibre remplace l'animation par un saut si le visiteur a demandé moins d'animations.
+	 */
+	export function voler(lon: number, lat: number, zoom = 16, decalage = 0) {
+		if (!map) return aller({ lon, lat, zoom });
+		const cible = Math.max(map.getZoom(), zoom);
+		const loin = cible - map.getZoom() > 4;
+		map.flyTo({
+			center: [lon, lat],
+			zoom: cible,
+			offset: [0, -decalage],
+			curve: 1.6,
+			speed: loin ? 1.4 : 0.9,
+			easing: (t) => 1 - Math.pow(1 - t, 3)
+		});
 	}
 
 	export function cadrer(b: LngLatBoundsLike, anime = true) {
@@ -168,13 +180,10 @@
 			if (interactive) m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
 			m.on('load', () => {
-				// Fond aérien, inséré sous les étiquettes du fond swisstopo.
+				// Fond aérien (SWISSIMAGE) toujours affiché, sous les étiquettes du fond swisstopo.
 				const premierSymbole = m.getStyle().layers.find((l: { type: string }) => l.type === 'symbol')?.id;
 				m.addSource('swissimage', { type: 'raster', tiles: [SWISSIMAGE], tileSize: 256, maxzoom: 20 });
-				m.addLayer(
-					{ id: 'swissimage', type: 'raster', source: 'swissimage', layout: { visibility: 'none' } },
-					premierSymbole
-				);
+				m.addLayer({ id: 'swissimage', type: 'raster', source: 'swissimage' }, premierSymbole);
 
 				// Historique lu en direct sur le service du canton, une année après l'autre (voir `histo`).
 				m.addSource('historique', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -187,9 +196,11 @@
 					paint: {
 						'circle-color': couleur('s'),
 						'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2, 13, 4, 17, 8],
-						'circle-opacity': 0.7,
-						'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 12, 0, 15, 1],
-						'circle-stroke-color': '#fff'
+						'circle-opacity': 0.9,
+						// Liseré blanc à toutes les échelles : sans lui, les points se perdent dans la photo aérienne.
+						'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 12, 0.8, 15, 1.2],
+						'circle-stroke-color': '#fff',
+						'circle-stroke-opacity': 0.8
 					}
 				});
 
@@ -252,7 +263,8 @@
 						};
 						const f = proches.sort((a, b) => distance(a) - distance(b))[0];
 						const id = f?.properties?.id;
-						if (id != null) onselect?.(Number(id));
+						const position = (f?.geometry as unknown as { coordinates: [number, number] })?.coordinates;
+						if (id != null) onselect?.(Number(id), position);
 					});
 					for (const layer of ['actifs', 'historique']) {
 						m.on('mouseenter', layer, () => (m.getCanvas().style.cursor = 'pointer'));
@@ -299,7 +311,6 @@
 		map.setFilter('actifs', filtre('statut', 'nature', false));
 		map.setFilter('historique', filtre('s', 'n', true));
 		map.setLayoutProperty('historique', 'visibility', historique ? 'visible' : 'none');
-		map.setLayoutProperty('swissimage', 'visibility', aerien ? 'visible' : 'none');
 	});
 
 	$effect(() => {

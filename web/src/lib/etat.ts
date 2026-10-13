@@ -15,7 +15,6 @@ export interface EtatCarte {
 	nature: string;
 	historique: boolean;
 	depuis: number | null;
-	aerien: boolean;
 	tri: Tri;
 	/** Lien depuis une page commune : cadre la carte sur la commune (lu, jamais écrit). */
 	commune: string | null;
@@ -42,7 +41,6 @@ export function lireEtat(params: Pick<URLSearchParams, 'get'>): EtatCarte {
 		nature: nature in NATURES ? nature : '',
 		historique: params.get('historique') === '1',
 		depuis: entier(params.get('depuis')),
-		aerien: params.get('fond') === 'aerien',
 		tri: params.get('tri') === 'fin' ? 'fin' : 'recent',
 		commune: params.get('commune')
 	};
@@ -64,7 +62,6 @@ export function ecrireEtat(
 		p.push(['statuts', STATUTS_ORDRE.filter((s) => statuts.includes(s)).join(',')]);
 	if (e.nature) p.push(['nature', e.nature]);
 	if (e.tri !== 'recent') p.push(['tri', e.tri]);
-	if (e.aerien) p.push(['fond', 'aerien']);
 	// Virgules laissées en clair : l'URL reste lisible.
 	return p.length ? `?${p.map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`).join('&')}` : '';
 }

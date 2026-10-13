@@ -27,7 +27,6 @@
 	let centre: Centre | null = $state(null);
 
 	let historique = $state(false);
-	let aerien = $state(false);
 	let nature = $state('');
 	let tri: Tri = $state('recent');
 	let anneeMin = $state(DEPUIS_DEFAUT);
@@ -53,7 +52,7 @@
 	const statutsProposes = $derived<Statut[]>(historique ? STATUTS_ORDRE : STATUTS_EN_COURS);
 	const statuts = $derived(historique ? statutsHisto : statutsActifs);
 	const filtresActifs = $derived(
-		Number(statuts.length !== statutsProposes.length) + Number(!!nature) + Number(aerien) + Number(tri !== 'recent')
+		Number(statuts.length !== statutsProposes.length) + Number(!!nature) + Number(tri !== 'recent')
 	);
 
 	/*
@@ -175,7 +174,7 @@
 
 	const requete = $derived(
 		ecrireEtat(
-			{ d: ouvert, vue: centre, statuts, nature, historique, depuis: anneeMin, aerien, tri },
+			{ d: ouvert, vue: centre, statuts, nature, historique, depuis: anneeMin, tri },
 			statutsProposes,
 			DEPUIS_DEFAUT
 		)
@@ -216,7 +215,6 @@
 
 	async function appliquer(e: EtatCarte, initial = false) {
 		historique = e.historique;
-		aerien = e.aerien;
 		nature = e.nature;
 		tri = e.tri;
 		anneeMin = Math.min(Math.max(e.depuis ?? DEPUIS_DEFAUT, 1999), ANNEE_COURANTE);
@@ -437,7 +435,6 @@
 						<option value="recent">Publication récente d’abord</option>
 						<option value="fin">Fin d’enquête la plus proche</option>
 					</select>
-					<label class="bascule"><input type="checkbox" bind:checked={aerien} /> Vue aérienne</label>
 				</div>
 				{#if historique}
 					<label class="annee">
@@ -535,11 +532,14 @@
 			{statuts}
 			{nature}
 			{anneeMin}
-			{aerien}
 			{repere}
 			selection={selection?.id ?? null}
 			point={selection ? [selection.lon, selection.lat] : null}
-			onselect={(id) => ouvrir(id, true)}
+			onselect={(id, [lon, lat]) => {
+				// Vol vers le point aussitôt, sans attendre la fiche ; sur téléphone, au-dessus de l'aperçu.
+				carte?.voler(lon, lat, 17, telephone.current && mode === 'carte' ? 70 : 0);
+				ouvrir(id, true);
+			}}
 			onview={(b, c) => {
 				vue = b;
 				centre = c;
