@@ -15,6 +15,9 @@
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
 	import type { Centre, Dossier, PointHisto, Statut } from '#lib/types.js';
 
+	/** Emprise du canton : vue de départ, et retour par le logo. */
+	const CANTON: LngLatBoundsLike = [5.9, 46.18, 7.25, 46.99];
+
 	interface Props {
 		dossiers: Dossier[];
 		/** Affiche aussi l'historique (`histo`). */
@@ -46,7 +49,7 @@
 		selection = null,
 		point = null,
 		repere = null,
-		bounds = [5.9, 46.18, 7.25, 46.99],
+		bounds = CANTON,
 		interactive = true,
 		onselect,
 		onview
@@ -136,6 +139,12 @@
 			return;
 		}
 		map.fitBounds(b, { padding: 40, duration: anime ? 600 : 0 });
+	}
+
+	/** Revient à la vue d'ensemble du canton, en un vol souple. */
+	export function vueCanton() {
+		if (!map) return cadrer(CANTON, false);
+		map.fitBounds(CANTON, { padding: 20, duration: 1200, easing: (t) => 1 - Math.pow(1 - t, 3) });
 	}
 
 	/** Rétablit une vue précise (URL, retour à la liste) ; gardée pour le chargement si la carte n'est pas prête. */

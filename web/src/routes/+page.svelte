@@ -223,6 +223,11 @@
 		if (e.vue) {
 			centre = e.vue;
 			carte?.aller(e.vue, !initial);
+		} else if (!initial && e.d == null && !e.commune) {
+			// Adresse nue « / » (logo, lien « Carte ») : retour à la vue d'ensemble du canton.
+			repere = null;
+			mode = 'carte';
+			carte?.vueCanton();
 		}
 
 		if (e.d == null) {
