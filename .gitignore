@@ -1,0 +1,8 @@
+# Données : licence DCG 8401 (rediffusion interdite sans autorisation).
+# Les instantanés vivent dans un dépôt privé séparé, jamais dans ce dépôt public.
+/data/
+/web/static/data/
+
+.venv/
+__pycache__/
+.DS_Store

@@ -1,0 +1,16 @@
+// See https://svelte.dev/docs/kit/types#app.d.ts
+// for information about these interfaces
+declare global {
+	namespace App {
+		// interface Error {}
+		// interface Locals {}
+		// interface PageData {}
+		interface PageState {
+			/** Entrée d'historique créée à l'ouverture d'une fiche sur la carte : « Retour » revient en arrière. */
+			fiche?: boolean;
+		}
+		// interface Platform {}
+	}
+}
+
+export {};

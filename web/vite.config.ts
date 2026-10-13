@@ -1,0 +1,44 @@
+import { existsSync, readFileSync } from 'node:fs';
+import adapter from '@sveltejs/adapter-static';
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+
+// Pages générées à l'avance : toutes les communes et les dossiers récents ou actifs
+// (listes produites par pipeline/fetch.py). Les autres dossiers sont rendus côté navigateur.
+function readJson<T>(path: string, fallback: T): T {
+	return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : fallback;
+}
+const communes = readJson<{ slug: string }[]>('static/data/communes.json', []);
+const dossiers = readJson<number[]>('static/data/prerender.json', []);
+
+export default defineConfig({
+	// MapLibre 6 charge son worker par une URL relative au module : le pré-bundling de Vite la casse.
+	optimizeDeps: { exclude: ['maplibre-gl'] },
+	plugins: [
+		sveltekit({
+			compilerOptions: {
+				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
+				runes: ({ filename }) =>
+					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+			},
+
+			// Site entièrement statique ; 404.html sert de point d'entrée pour les fiches non pré-générées.
+			adapter: adapter({ fallback: '404.html' }),
+			paths: {
+				// GitHub Pages sert le site sous /<dépôt> tant qu'il n'y a pas de domaine.
+				base: (process.env.BASE_PATH ?? '') as '' | `/${string}`
+			},
+			prerender: {
+				concurrency: 8,
+				// Pas d'exploration des liens : seules les pages listées ci-dessous sont pré-générées.
+				crawl: false,
+				entries: [
+					'*',
+					'/commune',
+					...communes.map((c) => `/commune/${c.slug}` as const),
+					...dossiers.map((id) => `/dossier/${id}` as const)
+				]
+			}
+		})
+	]
+});

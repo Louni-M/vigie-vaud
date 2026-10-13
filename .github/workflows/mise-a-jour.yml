@@ -1,0 +1,74 @@
+name: Mise à jour quotidienne
+
+on:
+  schedule:
+    # Tous les jours à 05:30 UTC (la FAO paraît le mardi et le vendredi).
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: mise-a-jour
+  cancel-in-progress: false
+
+jobs:
+  donnees-et-site:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Instantané précédent + journal des changements, dans un dépôt PRIVÉ séparé
+      # (secret DATA_REPO = "propriétaire/nom", DATA_TOKEN = jeton avec droit d'écriture sur ce dépôt).
+      - name: Récupérer l'historique (dépôt privé)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.DATA_REPO }}
+          token: ${{ secrets.DATA_TOKEN }}
+          path: data
+
+      - name: Installer tippecanoe
+        run: sudo apt-get update && sudo apt-get install -y tippecanoe
+
+      - uses: astral-sh/setup-uv@v6
+      - name: Récupérer et préparer les données
+        working-directory: pipeline
+        run: uv run python fetch.py
+
+      - name: Enregistrer l'instantané du jour (dépôt privé)
+        working-directory: data
+        run: |
+          git config user.name "chantiers-vaud-bot"
+          git config user.email "chantiers-vaud-bot@users.noreply.github.com"
+          git add snapshot.json changes.jsonl
+          git diff --cached --quiet || git commit -m "Instantané du $(date -u +%F)"
+          git push
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Construire le site
+        working-directory: web
+        env:
+          BASE_PATH: ${{ vars.BASE_PATH }}
+          VITE_GOATCOUNTER: ${{ vars.GOATCOUNTER }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      # Publication désactivée tant que la variable de dépôt PUBLIER ne vaut pas "true"
+      # (en attente de la réponse de la DCG sur les conditions d'utilisation).
+      - if: vars.PUBLIER == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/build
+      - if: vars.PUBLIER == 'true'
+        uses: actions/deploy-pages@v4

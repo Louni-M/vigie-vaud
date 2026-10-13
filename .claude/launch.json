@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "pnpm --dir web dev --port ${PORT:-5173} --strictPort"
+      ],
+      "port": 5173,
+      "autoPort": true
+    },
+    {
+      "name": "preview",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "pnpm --dir web preview --port ${PORT:-4173} --strictPort"
+      ],
+      "port": 4173,
+      "autoPort": true
+    }
+  ]
+}
