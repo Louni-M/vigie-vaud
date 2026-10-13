@@ -47,8 +47,15 @@ que tiennent l'attribution, la voie d'accès, la fraîcheur et la Couverture.
 
 **Voie d'accès** :
 La manière dont le site obtient une source : **Direct** (le navigateur appelle la source), **Cron** (la source
-passe par le cron et le dépôt de données) ou **Worker** (la source passe par le relais Cloudflare).
+passe par le cron et le dépôt de données), **Worker** (la source passe par le relais Cloudflare) ou **Préparée**
+(la source est transformée une fois en fichier, publié avec le site ; par exemple les limites des communes).
 _À éviter_ : backend, proxy (pour le Worker)
+
+**Sonde** :
+La requête de vérification que le cron envoie à une source, quelle que soit sa voie d'accès, sans en conserver les
+données. Seules les sondes décident qu'une source est **en panne** : l'échec d'un visiteur ne change pas la
+Couverture.
+_À éviter_ : ping, healthcheck, test
 
 **Rattachement** :
 L'association d'un élément à une commune, par sa position (dossiers) ou par le nom de la commune dans son titre ou
