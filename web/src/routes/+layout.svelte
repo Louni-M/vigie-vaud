@@ -26,7 +26,7 @@
 </svelte:head>
 
 <header>
-	<a class="marque" href={resolve('/')}>Chantiers <span>Vaud</span></a>
+	<a class="marque" href={resolve('/')}>Vigie <span>Vaud</span></a>
 	<nav>
 		{#each nav as l (l.href)}
 			<a href={l.href} aria-current={courant(l.href, page.url.pathname) ? 'page' : undefined}>{l.label}</a>
@@ -121,7 +121,7 @@
 		outline-color: #fff;
 	}
 	.marque {
-		/* Pas de flex ici : l'espace entre « Chantiers » et « Vaud » serait supprimé. */
+		/* Pas de flex ici : l'espace entre « Vigie » et « Vaud » serait supprimé. */
 		display: inline-block;
 		padding: 11px 0;
 		line-height: 22px;

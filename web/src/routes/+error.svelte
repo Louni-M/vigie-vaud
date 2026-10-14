@@ -14,7 +14,7 @@
 </script>
 
 <svelte:head>
-	<title>{titre} – Chantiers Vaud</title>
+	<title>{titre} – Vigie Vaud</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

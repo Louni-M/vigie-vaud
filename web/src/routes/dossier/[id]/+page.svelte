@@ -45,7 +45,7 @@
 </script>
 
 <svelte:head>
-	<title>{titre} – Chantiers Vaud</title>
+	<title>{titre} – Vigie Vaud</title>
 	{#if resume}<meta name="description" content={resume} />{/if}
 	<meta property="og:type" content="article" />
 	<meta property="og:title" content={titre} />

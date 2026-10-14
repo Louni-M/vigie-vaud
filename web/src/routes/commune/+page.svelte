@@ -25,7 +25,7 @@
 </script>
 
 <svelte:head>
-	<title>Mises à l’enquête par commune – Chantiers Vaud</title>
+	<title>Mises à l’enquête par commune – Vigie Vaud</title>
 	<meta name="description" content="Les demandes de permis de construire des 300 communes vaudoises : enquêtes en cours et historique." />
 </svelte:head>
 
