@@ -25,7 +25,10 @@ Vérification du 13 octobre 2026 : appels `curl` avec un en-tête `Origin`, lect
 | Incidents | Police cantonale (`vd.ch/djes/polcant/flux.rss`) | Cron | Lieu dans le titre, rattachement par commune |
 | Radios | `stream.srg-ssr.ch/srgssr/{la-1ere,couleur3,espace-2,option-musique}/mp3/128` ; `*.ice.infomaniak.ch` (LFM, Rouge FM, One FM, Radio Lac, Radio Chablais) | Direct | HTTPS obligatoire. Éviter les URL SRG `/m/…`, qui redirigent vers du HTTP |
 | Radios (zones) | geo.admin.ch `ch.bakom.versorgungsgebiet-ukw` | Préparé une fois | Libellés possiblement antérieurs aux concessions 2025, à recouper avec l'annexe 1 de l'ORTV (RS 784.401) |
-| Hôtels de ville | OpenStreetMap `amenity=townhall` | Préparé une fois | Position vérifiée une fois et versionnée par `pipeline/communes.py` ; à défaut, centre de la commune |
+| Anciennes communes | OFS, répertoire historisé des communes (`agvchapp.bfs.admin.ch/api/communes/mutations`, depuis 1960) | Préparé une fois | OGD. Lu par `pipeline/communes.py` : 101 anciennes communes vaudoises et 7 anciens noms, écrits avec la commune actuelle dans `web/static/communes.json` ; relancé à chaque fusion |
+| Hôtels de ville | Annuaire de l'UCV (`ucv.ch/annuaire/recherche-par-localite`), adresse du siège de chaque commune | Préparé une fois | HTML sans licence de réutilisation : seuls les faits (une adresse par commune) sont repris, avec attribution. Lu une fois pour remplir `pipeline/hotels-de-ville.csv`, qui fait foi |
+| Hôtels de ville (position) | swisstopo, Répertoire officiel des adresses de bâtiments (`data.geo.admin.ch/ch.swisstopo.amtliches-gebaeudeadressverzeichnis/…`) | Préparé une fois | OGD, « © swisstopo ». Géocode les adresses de l'UCV par n° OFS (282 sur 300 sans retouche) ; OpenStreetMap `amenity=townhall` ne sert que de contrôle |
+| Lacs | swissTLMRegio, couche `tlmregio_hydrography_lake` | Préparé une fois | OGD, « © swisstopo ». Soustraits des limites des communes pour la partie terrestre (cadrage et position approximative de l'hôtel de ville) |
 | Accidents (historique) | geo.admin.ch `ch.astra.unfaelle-personenschaeden_alle` | Direct | Annuel, 2011–2025 |
 
 ## Sources écartées

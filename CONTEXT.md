@@ -15,8 +15,24 @@ fiche commune a un onglet par couche, qu'elle soit activée ou non. La couche H�
 on ne peut pas la désactiver.
 _À éviter_ : calque, layer, module
 
+**Volet** :
+Le panneau d'une couche, ouvert depuis le panneau des couches : interrupteur, badge de fraîcheur, attribution, puis
+ce que la couche y ajoute (réglages, légende, liste des éléments de la zone visible pour les Permis).
+_À éviter_ : réglages (pour le volet entier), tiroir
+
+**Commune** :
+L'une des communes vaudoises actuelles, telles que les définit le répertoire officiel de l'OFS.
+_À éviter_ : localité, village (pour la commune)
+
+**Ancienne commune** :
+Une commune disparue dans une fusion (Cully, aujourd'hui dans Bourg-en-Lavaux). On la retrouve par son nom, qui
+mène à la commune qui l'a absorbée.
+_À éviter_ : commune fusionnée (ambigu : désigne aussi la nouvelle commune)
+
 **Hôtel de ville** :
-Le marqueur unique d'une commune sur la carte, qui ouvre sa fiche commune.
+Le marqueur unique d'une commune sur la carte, qui ouvre sa fiche commune. Il est placé sur le siège de son
+administration communale ; à défaut, sur un point de la commune en terre ferme, et sa position est alors dite
+**approximative**. Les anciennes communes n'ont pas de marqueur.
 _À éviter_ : mairie, marqueur commune
 
 **Fiche commune** :
@@ -36,8 +52,12 @@ _À éviter_ : flux, timeline, actualités
 L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »).
 
 **Couverture** :
-L'état de chaque source pour chaque commune : API, scrapé, non couvert, ou en panne depuis une date donnée.
-Une commune **non couverte** est grisée sur la carte.
+Ce qu'une source apporte à chaque commune, selon deux axes : son **mode** (API, scrapé ou non couvert), déclaré
+une fois pour toutes, et son **état** (disponible, en panne depuis une date donnée, surveillance interrompue, non
+surveillée ou inconnu), mesuré par les sondes. Seules les sources des couches qui ont un onglet dans la fiche commune
+ont une Couverture. Une couche couvre une commune dès qu'une de ses sources la couvre. Une commune **non couverte**
+par la couche dont le volet est ouvert est grisée sur la carte ; une panne ne grise rien.
+_À éviter_ : disponibilité (pour la Couverture entière)
 
 ### Données
 
