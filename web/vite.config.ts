@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import { verifierSources } from './scripts/verifier-sources.ts';
 
 // Pages générées à l'avance : l'accueil, les pages fixes et le cadre des 300 pages commune
 // (index swisstopo produit par pipeline/communes.py). Aucune donnée CAMAC n'est lue au build :
@@ -15,6 +16,11 @@ export default defineConfig({
 	// MapLibre 6 charge son worker par une URL relative au module : le pré-bundling de Vite la casse.
 	optimizeDeps: { exclude: ['maplibre-gl'] },
 	plugins: [
+		verifierSources({
+			sources: '../sources.json',
+			schema: '../schema/sources.schema.json',
+			communes: 'static/communes.json'
+		}),
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
