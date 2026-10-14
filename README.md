@@ -71,12 +71,14 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 | Dossier | Rôle |
 |---|---|
 | `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) ; données CAMAC lues en direct par `src/lib/api.ts` et `src/lib/data.ts` |
-| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
+| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `schema.py` : modèles du schéma commun. `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
+| `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
+| `sources.json` | Déclaration de chaque source (attribution, voie d'accès, fraîcheur, Couverture, sonde), lue par le site et le cron |
 | `.github/workflows/` | Construction et publication sur GitHub Pages, sans aucune donnée CAMAC |
 
 ## Lancer en local
 
-Prérequis : Node 24+, pnpm. [uv](https://docs.astral.sh/uv/) seulement pour régénérer les communes.
+Prérequis : Node 24+, pnpm. [uv](https://docs.astral.sh/uv/) seulement pour régénérer les communes ou le schéma commun, et pour les tests du pipeline.
 
 ```bash
 cd web && pnpm install && pnpm dev
@@ -88,6 +90,21 @@ Limites communales (après une fusion de communes, par exemple) :
 cd pipeline && uv run python communes.py
 ```
 
+## Sources et schéma commun
+
+Chaque source est déclarée une seule fois, dans `sources.json` à la racine ; toutes les attributions affichées en
+viennent. La construction du site échoue si le fichier ne suit pas le schéma ou cite un n° OFS qui n'est pas une
+commune actuelle.
+
+Le schéma commun (ADR 0013) s'écrit seulement dans les modèles Pydantic de `pipeline/schema.py`. On en tire le JSON
+Schema (`schema/`) puis les types du site (`web/src/lib/schema.ts`), tous deux versionnés. Après une modification
+des modèles :
+
+```bash
+pnpm --dir web schema          # régénère schema/ et web/src/lib/schema.ts (uv et pnpm requis)
+cd pipeline && uv run pytest   # tests du pipeline
+```
+
 ## Configuration
 
 Les adresses du dépôt, du courriel de contact, du site public et des Pages du dépôt de données sont écrites une
@@ -95,8 +112,9 @@ seule fois, dans `config.json` à la racine. Le site les lit par `web/src/lib/co
 
 ## Contrôles et publication
 
-Le workflow `ci.yml` se lance sur chaque PR : `svelte-check`, la construction, puis la vérification qu'aucune donnée
-CAMAC n'est dans le site construit.
+Le workflow `ci.yml` se lance sur chaque PR : `svelte-check`, la construction (qui valide `sources.json`), la
+vérification qu'aucune donnée CAMAC n'est dans le site construit, la régénération du schéma commun (qui doit ne rien
+changer) et les tests du pipeline (pytest).
 
 Le workflow `publier.yml` se lance à la main. Il construit le site, sans aucun fichier de données cantonales, et le
 publie sur GitHub Pages si la variable `PUBLIER` vaut `true`. Variables : `BASE_PATH` (ex. `/vigie-vaud` sans
