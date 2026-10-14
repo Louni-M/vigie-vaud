@@ -3,13 +3,13 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
-// Pages générées à l'avance : toutes les communes et les dossiers récents ou actifs
-// (listes produites par pipeline/fetch.py). Les autres dossiers sont rendus côté navigateur.
+// Pages générées à l'avance : l'accueil, les pages fixes et le cadre des 300 pages commune
+// (index swisstopo produit par pipeline/communes.py). Aucune donnée CAMAC n'est lue au build :
+// les dossiers sont chargés en direct par le navigateur, et les fiches dossier rendues côté navigateur.
 function readJson<T>(path: string, fallback: T): T {
 	return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : fallback;
 }
-const communes = readJson<{ slug: string }[]>('static/data/communes.json', []);
-const dossiers = readJson<number[]>('static/data/prerender.json', []);
+const communes = readJson<{ slug: string }[]>('static/communes.json', []);
 
 export default defineConfig({
 	// MapLibre 6 charge son worker par une URL relative au module : le pré-bundling de Vite la casse.
@@ -22,7 +22,7 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// Site entièrement statique ; 404.html sert de point d'entrée pour les fiches non pré-générées.
+			// Site entièrement statique ; 404.html sert de point d'entrée pour les fiches dossier.
 			adapter: adapter({ fallback: '404.html' }),
 			paths: {
 				// GitHub Pages sert le site sous /<dépôt> tant qu'il n'y a pas de domaine.
@@ -35,8 +35,7 @@ export default defineConfig({
 				entries: [
 					'*',
 					'/commune',
-					...communes.map((c) => `/commune/${c.slug}` as const),
-					...dossiers.map((id) => `/dossier/${id}` as const)
+					...communes.map((c) => `/commune/${c.slug}` as const)
 				]
 			}
 		})

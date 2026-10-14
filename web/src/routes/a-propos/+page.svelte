@@ -22,8 +22,10 @@
 	<h2>D’où viennent les données ?</h2>
 	<p>
 		Source : Géodonnées Etat de Vaud – couche « Demandes de permis de construire (enquête publique) » gérée par la
-		Centrale des autorisations en matière de construction (CAMAC). Les données sont récupérées
-		chaque jour. Elles sont <strong>dépourvues de foi publique</strong> : seule la publication dans la
+		Centrale des autorisations en matière de construction (CAMAC). <strong>Ce site ne stocke ni ne rediffuse
+		ces données</strong> : c’est votre navigateur qui interroge directement, à chaque visite, le service public
+		du canton (ogc.vd.ch). Vous voyez donc toujours l’état actuel de la couche cantonale. Ces données sont
+		<strong>dépourvues de foi publique</strong> : seule la publication dans la
 		<a href="https://www.vd.ch/territoire-et-construction/permis-de-construire/faq/avis-denquete/publication-fao" target="_blank" rel="noopener">Feuille des avis officiels (FAO)</a>
 		fait foi. Chaque fiche renvoie vers l’avis d’enquête officiel.
 	</p>
@@ -37,7 +39,8 @@
 	<p>
 		Ce site ne reprend pas les noms de propriétaire, de requérant ou d’architecte des avis officiels : seulement la
 		nature des travaux, leur description, les dates et le statut. Lorsqu’une description mentionne un particulier
-		(« pour le compte de M. … »), son nom est remplacé automatiquement par « [particulier] » ; les entreprises et
+		(« pour le compte de M. … »), son nom est remplacé automatiquement par « [particulier] », dans votre navigateur,
+		avant affichage ; les entreprises et
 		collectivités restent nommées. Ce masquage automatique peut laisser passer un cas isolé : il suffit de nous le
 		signaler pour qu’il soit corrigé. Les avis officiels, eux, contiennent ces informations pendant la durée de
 		l’enquête.

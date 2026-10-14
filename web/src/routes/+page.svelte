@@ -8,20 +8,14 @@
 	import Recherche from '#lib/components/Recherche.svelte';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
 	import DossierFiche from '#lib/components/DossierFiche.svelte';
-	import { getActive, getCommuneDossiers, getCommunes, getDossier } from '#lib/data.js';
+	import { ErreurApi, getActive, getCommunes, getDossier, getDossiers, getHistoAnnee, SOURCE } from '#lib/data.js';
 	import { NATURES, STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
-	import { dateLongue } from '#lib/dates.js';
 	import { ecrireEtat, lireEtat, STATUTS_EN_COURS, type EtatCarte, type Tri } from '#lib/etat.js';
-	import type { Centre, Commune, Dossier, Resultat, Statut } from '#lib/types.js';
-	import type { PageProps } from './$types';
-
-	let { data }: PageProps = $props();
+	import type { Centre, Commune, Dossier, PointHisto, Resultat, Statut } from '#lib/types.js';
 
 	const ANNEE_COURANTE = new Date().getFullYear();
 	const DEPUIS_DEFAUT = ANNEE_COURANTE - 2;
 	const LISTE_MAX = 150;
-	/** Au-delà (communes visibles cumulées), l'historique serait trop lourd à charger pour la liste. */
-	const HISTO_MAX_DOSSIERS = 12_000;
 
 	/** Téléphone en portrait : carte et liste occupent tour à tour tout l'écran. Même requête que dans le CSS. */
 	const telephone = new MediaQuery('(max-width: 760px) and (min-height: 521px)', false);
@@ -33,7 +27,6 @@
 	let centre: Centre | null = $state(null);
 
 	let historique = $state(false);
-	let aerien = $state(false);
 	let nature = $state('');
 	let tri: Tri = $state('recent');
 	let anneeMin = $state(DEPUIS_DEFAUT);
@@ -49,7 +42,9 @@
 	let mode: 'carte' | 'liste' = $state('carte');
 	let reglagesOuverts = $state(false);
 	let erreur = $state('');
-	let echecChargement = $state(false);
+	/** Message d'échec du chargement des dossiers en cours (service du canton indisponible). */
+	let echecChargement = $state('');
+	let chargementFiche = $state(false);
 	let localisation = $state(false);
 	let detail: HTMLDivElement | undefined = $state();
 	let compte: HTMLParagraphElement | undefined = $state();
@@ -57,38 +52,52 @@
 	const statutsProposes = $derived<Statut[]>(historique ? STATUTS_ORDRE : STATUTS_EN_COURS);
 	const statuts = $derived(historique ? statutsHisto : statutsActifs);
 	const filtresActifs = $derived(
-		Number(statuts.length !== statutsProposes.length) + Number(!!nature) + Number(aerien) + Number(tri !== 'recent')
+		Number(statuts.length !== statutsProposes.length) + Number(!!nature) + Number(tri !== 'recent')
 	);
 
-	/* Historique dans la liste : dossiers des communes visibles (data/communes/tout/<slug>.json). */
-	let histoCommunes: Record<string, Dossier[]> = $state.raw({});
+	/*
+	 * Historique : points légers lus sur le service du canton, une année à la fois, de l'année en cours
+	 * jusqu'à « depuis ». Les fiches complètes ne sont chargées que pour les dossiers listés.
+	 */
+	let histo: PointHisto[] = $state.raw([]);
+	const anneesDemandees = new Set<number>();
+	let histoEnCours = $state(0);
 	let histoEchec = $state(false);
-	const communesVisibles = $derived.by(() => {
-		if (!vue || !historique) return [];
-		const [w, s, e, n] = vue;
-		return communes.filter(({ bbox: [cw, cs, ce, cn] }) => cw <= e && ce >= w && cs <= n && cn >= s);
-	});
-	const histoTropLarge = $derived(communesVisibles.reduce((t, c) => t + c.total, 0) > HISTO_MAX_DOSSIERS);
-	const histoChargement = $derived(
-		!histoTropLarge && !histoEchec && communesVisibles.some((c) => !(c.slug in histoCommunes))
-	);
 	$effect(() => {
-		if (histoTropLarge) return;
-		const charges = untrack(() => histoCommunes);
-		for (const c of communesVisibles.filter((c) => !(c.slug in charges))) {
-			getCommuneDossiers(fetch, c.slug).then(
-				(ds) => (histoCommunes = { ...histoCommunes, [c.slug]: ds }),
-				() => (histoEchec = true)
-			);
-		}
+		if (!historique) return;
+		const min = anneeMin;
+		// Le curseur des années passe par toutes les valeurs : on attend qu'il s'arrête.
+		const t = setTimeout(() => chargerHisto(min), 250);
+		return () => clearTimeout(t);
 	});
+	function chargerHisto(min: number) {
+		histoEchec = false;
+		for (let a = ANNEE_COURANTE; a >= min; a--) {
+			if (anneesDemandees.has(a)) continue;
+			anneesDemandees.add(a);
+			histoEnCours++;
+			getHistoAnnee(a)
+				.then(
+					(pts) => (histo = histo.concat(pts)),
+					() => {
+						anneesDemandees.delete(a);
+						histoEchec = true;
+					}
+				)
+				.finally(() => histoEnCours--);
+		}
+	}
+	const histoChargement = $derived(histoEnCours > 0);
+
+	/** Fiches complètes des dossiers d'historique affichés dans la liste. */
+	let fichesHisto: Record<number, Dossier> = $state.raw({});
 
 	const idsActifs = $derived(new Set(actifs.map((d) => d.id)));
-	const annee = (d: Dossier) => Number(d.debut?.slice(0, 4) ?? 0);
+	const annee = (d: PointHisto) => Number(d.debut?.slice(0, 4) ?? 0);
 	/** Publication (début d'enquête) la plus récente d'abord. */
-	const parPublication = (a: Dossier, b: Dossier) => (b.debut ?? '').localeCompare(a.debut ?? '') || b.id - a.id;
+	const parPublication = (a: PointHisto, b: PointHisto) => (b.debut ?? '').localeCompare(a.debut ?? '') || b.id - a.id;
 	/** Enquêtes en cours d'abord, la plus proche de sa fin en tête ; ensuite par publication. */
-	const parFin = (a: Dossier, b: Dossier) =>
+	const parFin = (a: PointHisto, b: PointHisto) =>
 		Number(b.statut === 'enquete') - Number(a.statut === 'enquete') ||
 		(a.statut === 'enquete' ? (a.fin ?? '').localeCompare(b.fin ?? '') : 0) ||
 		parPublication(a, b);
@@ -96,27 +105,65 @@
 	const visibles = $derived.by(() => {
 		if (!vue) return [];
 		const [w, s, e, n] = vue;
-		const garde = (d: Dossier) =>
+		const garde = (d: PointHisto) =>
 			d.lon >= w && d.lon <= e && d.lat >= s && d.lat <= n &&
 			statuts.includes(d.statut) && (!nature || d.nature === nature);
-		const liste = actifs.filter(garde);
+		const liste: (Dossier | PointHisto)[] = actifs.filter(garde);
 		// Comme sur la carte : l'historique est filtré par année, pas les dossiers en cours.
-		if (historique && !histoTropLarge)
-			for (const c of communesVisibles)
-				for (const d of histoCommunes[c.slug] ?? [])
-					if (!idsActifs.has(d.id) && annee(d) >= anneeMin && garde(d)) liste.push(d);
+		if (historique)
+			for (const d of histo) if (!idsActifs.has(d.id) && annee(d) >= anneeMin && garde(d)) liste.push(d);
 		return liste.sort(tri === 'fin' ? parFin : parPublication);
 	});
 
+	/** Fiche complète d'un élément de la liste, ou `undefined` tant qu'elle n'est pas chargée. */
+	const fiche = (d: Dossier | PointHisto): Dossier | undefined => ('slug' in d ? d : fichesHisto[d.id]);
+
+	// Fiches des dossiers d'historique en tête de liste, chargées quand la carte s'arrête.
+	$effect(() => {
+		const manquants = visibles
+			.slice(0, LISTE_MAX)
+			.filter((d) => !fiche(d))
+			.map((d) => d.id);
+		if (!manquants.length) return;
+		const ctrl = new AbortController();
+		const t = setTimeout(
+			() =>
+				getDossiers(fetch, manquants, ctrl.signal).then(
+					(ds) => (fichesHisto = { ...fichesHisto, ...Object.fromEntries(ds.map((d) => [d.id, d])) }),
+					() => {}
+				),
+			200
+		);
+		return () => {
+			clearTimeout(t);
+			ctrl.abort();
+		};
+	});
+
+	const messageErreur = (e: unknown) =>
+		e instanceof ErreurApi && e.hors_ligne
+			? 'Vous semblez hors ligne : les dossiers sont lus en direct sur le service du canton.'
+			: e instanceof ErreurApi
+				? `${e.message} Les dossiers sont lus en direct sur ogc.vd.ch : réessayez dans un instant.`
+				: 'Les données n’ont pas pu être chargées.';
+
 	async function charger() {
-		echecChargement = false;
+		echecChargement = '';
+		// Les deux partent ensemble ; la recherche de communes reste utilisable si le canton ne répond pas.
+		const enCours = getActive(fetch);
 		try {
-			[actifs, communes] = await Promise.all([getActive(fetch), getCommunes(fetch)]);
-		} catch {
-			echecChargement = true;
+			communes = await getCommunes(fetch);
+			actifs = await enCours;
+		} catch (e) {
+			echecChargement = messageErreur(e);
 		}
 	}
-	onMount(charger);
+	onMount(() => {
+		const t0 = performance.now();
+		charger().then(() => {
+			if (import.meta.env.DEV) console.info(`Dossiers en cours : ${actifs.length} en ${Math.round(performance.now() - t0)} ms`);
+		});
+	});
 
 	/* ---- État dans l'URL : lu côté navigateur seulement (pages pré-générées sans paramètres). ---- */
 
@@ -127,7 +174,7 @@
 
 	const requete = $derived(
 		ecrireEtat(
-			{ d: ouvert, vue: centre, statuts, nature, historique, depuis: anneeMin, aerien, tri },
+			{ d: ouvert, vue: centre, statuts, nature, historique, depuis: anneeMin, tri },
 			statutsProposes,
 			DEPUIS_DEFAUT
 		)
@@ -168,7 +215,6 @@
 
 	async function appliquer(e: EtatCarte, initial = false) {
 		historique = e.historique;
-		aerien = e.aerien;
 		nature = e.nature;
 		tri = e.tri;
 		anneeMin = Math.min(Math.max(e.depuis ?? DEPUIS_DEFAUT, 1999), ANNEE_COURANTE);
@@ -177,6 +223,11 @@
 		if (e.vue) {
 			centre = e.vue;
 			carte?.aller(e.vue, !initial);
+		} else if (!initial && e.d == null && !e.commune) {
+			// Adresse nue « / » (logo, lien « Carte ») : retour à la vue d'ensemble du canton.
+			repere = null;
+			mode = 'carte';
+			carte?.vueCanton();
 		}
 
 		if (e.d == null) {
@@ -188,7 +239,7 @@
 		}
 
 		if (initial && e.commune && !e.vue && e.d == null) {
-			const c = (await getCommunes(fetch).catch(() => [])).find((c) => c.slug === e.commune);
+			const c = (await getCommunes(fetch).catch((): Commune[] => [])).find((c) => c.slug === e.commune);
 			if (c) carte?.cadrer(c.bbox, false);
 		}
 	}
@@ -199,10 +250,27 @@
 	async function ouvrir(cible: number | Dossier, nouvelle = false): Promise<Dossier | undefined> {
 		erreur = '';
 		const id = typeof cible === 'number' ? cible : cible.id;
-		const d =
-			typeof cible === 'number'
-				? (actifs.find((x) => x.id === id) ?? (await getDossier(fetch, id)))
-				: cible;
+		let d: Dossier | undefined;
+		if (typeof cible !== 'number') d = cible;
+		else {
+			d = actifs.find((x) => x.id === id) ?? fichesHisto[id];
+			if (!d) {
+				ouvert = id;
+				selection = null;
+				chargementFiche = true;
+				try {
+					d = await getDossier(fetch, id);
+				} catch (e) {
+					if (ouvert === id) ouvert = null;
+					erreur = messageErreur(e);
+					return;
+				} finally {
+					chargementFiche = false;
+				}
+				// Un autre dossier a été ouvert entre-temps.
+				if (ouvert !== id) return;
+			}
+		}
 		if (!d) {
 			if (ouvert === id) ouvert = null;
 			selection = null;
@@ -372,7 +440,6 @@
 						<option value="recent">Publication récente d’abord</option>
 						<option value="fin">Fin d’enquête la plus proche</option>
 					</select>
-					<label class="bascule"><input type="checkbox" bind:checked={aerien} /> Vue aérienne</label>
 				</div>
 				{#if historique}
 					<label class="annee">
@@ -394,29 +461,37 @@
 					</div>
 					<DossierFiche d={selection} lienFiche />
 				</div>
+			{:else if chargementFiche}
+				<div class="detail squelette" aria-busy="true" aria-label="Chargement du dossier n° {ouvert}">
+					<p class="muted">Chargement du dossier n° {ouvert} auprès du service du canton…</p>
+					<span class="barre-s" style:width="40%"></span>
+					<span class="barre-s" style:width="85%"></span>
+					<span class="barre-s" style:width="70%"></span>
+					<span class="barre-s" style:width="55%"></span>
+				</div>
 			{:else}
 				<p class="compte" bind:this={compte} tabindex="-1">
 					{#if echecChargement}
-						<span class="erreur">Les données n’ont pas pu être chargées.</span>
+						<span class="erreur">{echecChargement}</span>
 						<button class="bouton secondaire petit" type="button" onclick={charger}>Réessayer</button>
 					{:else if !actifs.length}
-						Chargement…
-					{:else if historique && !histoTropLarge}
+						Chargement des dossiers en cours auprès du canton…
+					{:else if historique}
 						<strong>{visibles.length}</strong> dossier{visibles.length > 1 ? 's' : ''} dans la zone affichée,
 						historique depuis {anneeMin} compris
 						{#if histoChargement}<span class="muted"> · chargement de l’historique…</span>{/if}
-						{#if histoEchec}<span class="erreur"> · l’historique n’a pas pu être chargé</span>{/if}
+						{#if histoEchec}
+							<span class="erreur"> · une partie de l’historique n’a pas pu être chargée</span>
+							<button class="bouton secondaire petit" type="button" onclick={() => chargerHisto(anneeMin)}>Réessayer</button>
+						{/if}
 					{:else}
 						<strong>{visibles.length}</strong> dossier{visibles.length > 1 ? 's' : ''} en cours dans la zone affichée
-						{#if historique}<span class="muted"> · zoomez sur la carte pour ajouter l’historique à la liste</span>{/if}
 					{/if}
 				</p>
 				{#if actifs.length && !visibles.length && !histoChargement}
 					<p class="muted vide">
 						{#if !statuts.length}
 							Aucun statut n’est sélectionné : activez-en au moins un pour afficher la liste.
-						{:else if historique && histoTropLarge}
-							Aucun dossier en cours ne correspond à ces filtres ici. Zoomez pour lister aussi l’historique.
 						{:else}
 							Aucun dossier ne correspond à ces filtres dans la zone affichée. Dézoomez la carte ou
 							choisissez « Toutes natures ».
@@ -425,8 +500,17 @@
 				{/if}
 				<ul class="liste">
 					{#each visibles.slice(0, LISTE_MAX) as d (d.id)}
+						{@const f = fiche(d)}
 						<li data-id={d.id}>
-							<DossierCarte {d} onclick={() => depuisListe(d)} />
+							{#if f}
+								<DossierCarte d={f} onclick={() => depuisListe(f)} />
+							{:else}
+								<div class="carte-attente" aria-busy="true">
+									<span class="barre-s" style:width="45%"></span>
+									<span class="barre-s" style:width="90%"></span>
+									<span class="barre-s" style:width="30%"></span>
+								</div>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -436,7 +520,7 @@
 			{/if}
 
 			<footer class="source">
-				{data.meta.source}. Données mises à jour le {dateLongue(data.meta.mise_a_jour)}, sans foi
+				{SOURCE} depuis votre navigateur ; ce site ne les stocke pas. Sans foi
 				publique : seule la <a href="https://www.vd.ch/territoire-et-construction/permis-de-construire/faq/avis-denquete/publication-fao" target="_blank" rel="noopener">FAO</a> fait foi.
 				Fond de carte © swisstopo. <a href={resolve('/infos-legales')}>Informations légales</a> ·
 				<a href={resolve('/a-propos')}>À propos</a>
@@ -449,14 +533,18 @@
 			bind:this={carte}
 			dossiers={actifs}
 			{historique}
+			{histo}
 			{statuts}
 			{nature}
 			{anneeMin}
-			{aerien}
 			{repere}
 			selection={selection?.id ?? null}
 			point={selection ? [selection.lon, selection.lat] : null}
-			onselect={(id) => ouvrir(id, true)}
+			onselect={(id, [lon, lat]) => {
+				// Vol vers le point aussitôt, sans attendre la fiche ; sur téléphone, au-dessus de l'aperçu.
+				carte?.voler(lon, lat, 17, telephone.current && mode === 'carte' ? 70 : 0);
+				ouvrir(id, true);
+			}}
 			onview={(b, c) => {
 				vue = b;
 				centre = c;
@@ -484,6 +572,40 @@
 </div>
 
 <style>
+	.squelette,
+	.carte-attente {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.carte-attente {
+		padding: 12px;
+		border: 1px solid var(--line);
+		border-radius: 10px;
+		background: var(--surface);
+		min-height: 92px;
+	}
+	.barre-s {
+		display: block;
+		height: 12px;
+		border-radius: 6px;
+		background: linear-gradient(90deg, var(--line) 0%, var(--bg) 50%, var(--line) 100%);
+		background-size: 200% 100%;
+		animation: reflet 1.2s ease-in-out infinite;
+	}
+	@keyframes reflet {
+		from {
+			background-position: 100% 0;
+		}
+		to {
+			background-position: -100% 0;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.barre-s {
+			animation: none;
+		}
+	}
 	.app {
 		display: grid;
 		/* Sur tablette (≈ 768 px), le panneau rétrécit pour laisser de la place à la carte. */

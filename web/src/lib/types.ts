@@ -6,7 +6,7 @@ export interface Etape {
 	decision?: string | null;
 }
 
-/** Un dossier tel qu'écrit par pipeline/fetch.py (champs vides omis). */
+/** Un dossier tel que converti par lib/data.ts depuis le service du canton (champs vides omis). */
 export interface Dossier {
 	id: number;
 	fao?: string;
@@ -32,18 +32,10 @@ export interface Commune {
 	slug: string;
 	habitants: number | null;
 	bbox: [number, number, number, number];
-	total: number;
-	statuts: Record<Statut, number>;
 }
 
-export interface Meta {
-	mise_a_jour: string;
-	genere_le: string;
-	total: number;
-	statuts: Record<Statut, number>;
-	derniere_enquete: string | null;
-	source: string;
-}
+/** Point léger de l'historique sur la carte (la fiche complète est chargée à la demande). */
+export type PointHisto = Pick<Dossier, 'id' | 'statut' | 'nature' | 'debut' | 'fin' | 'lon' | 'lat'>;
 
 /** Centre et zoom de la carte. */
 export interface Centre {
@@ -56,10 +48,3 @@ export type Resultat =
 	| { type: 'adresse'; genre: string; label: string; lon: number; lat: number }
 	| { type: 'commune'; label: string; commune: Commune }
 	| { type: 'dossier'; label: string; id: number };
-
-/** Résumé intégré à la page d'une commune (pipeline/fetch.py). */
-export interface CommuneResume {
-	actifs: Dossier[];
-	recents: Dossier[];
-	par_annee: Record<string, number>;
-}

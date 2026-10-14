@@ -1,10 +1,12 @@
-import { error } from '@sveltejs/kit';
-import { getDossier, getMeta } from '#lib/data.js';
+import { getDossier } from '#lib/data.js';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = async ({ fetch, params }) => {
+// Fiche lue en direct sur le service du canton : jamais pré-générée ni rendue côté serveur.
+export const prerender = false;
+export const ssr = false;
+
+export const load: PageLoad = ({ fetch, params }) => {
 	const id = Number(params.id);
-	const dossier = Number.isInteger(id) ? await getDossier(fetch, id) : undefined;
-	if (!dossier) error(404, 'Dossier introuvable');
-	return { dossier, meta: await getMeta(fetch) };
+	// Promesse non attendue : la page s'affiche aussitôt, avec un squelette pendant le chargement.
+	return { id, dossier: Number.isInteger(id) ? getDossier(fetch, id) : Promise.resolve(undefined) };
 };
