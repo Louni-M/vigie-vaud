@@ -1,0 +1,42 @@
+name: Contrôles des PR
+
+# Chaîne de contrôles de chaque PR, que les tickets suivants complètent (tests, schéma commun…).
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  site:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Installer les dépendances
+        run: pnpm install --frozen-lockfile
+
+      - name: svelte-check
+        run: pnpm check
+
+      - name: Construire le site
+        run: pnpm build
+
+      - name: Vérifier qu'aucune donnée CAMAC n'est dans le site construit
+        working-directory: .
+        run: .github/scripts/verifier-sans-camac.sh web/build

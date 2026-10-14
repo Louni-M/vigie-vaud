@@ -38,8 +38,7 @@ jobs:
           pnpm build
 
       - name: Vérifier qu'aucune donnée CAMAC n'est publiée
-        run: |
-          if [ -e web/build/data ]; then echo "web/build/data ne doit pas exister" && exit 1; fi
+        run: .github/scripts/verifier-sans-camac.sh web/build
 
       - if: vars.PUBLIER == 'true'
         uses: actions/upload-pages-artifact@v3
