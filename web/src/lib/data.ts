@@ -1,6 +1,7 @@
 import { chercher, sql, type Entite, type Requete } from './api';
 import { getRattachement, type Rattachement } from './communes';
 import { masquerNoms, nettoyer } from './masquage';
+import { source } from './sources';
 import type { Commune, Dossier, PointHisto, Statut } from './types';
 
 export { getCommunes } from './communes';
@@ -13,7 +14,7 @@ export { ErreurApi } from './api';
 
 type Fetch = typeof fetch;
 
-export const SOURCE = 'Source : Géodonnées Etat de Vaud (CAMAC), consultées en direct';
+export const SOURCE = `Source : ${source('camac-permis').attribution.texte}, consultées en direct`;
 
 const STATUT: Record<string, Statut> = {
 	'Enquête publique en cours': 'enquete',
