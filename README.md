@@ -1,4 +1,7 @@
-# Chantiers Vaud — prototype « API en direct »
+# Vigie Vaud
+
+Tableau de bord du canton de Vaud, commune par commune. Sa première couche, Permis (l'ancien site Chantiers
+Vaud), est décrite ci-dessous.
 
 > **Branche `prototype/live-api`.** Ce site **ne stocke ni ne rediffuse les données CAMAC**. C'est le navigateur
 > de chaque visiteur qui interroge directement le service public du canton
@@ -85,13 +88,23 @@ Limites communales (après une fusion de communes, par exemple) :
 cd pipeline && uv run python communes.py
 ```
 
-## Publication
+## Configuration
+
+Les adresses du dépôt, du courriel de contact, du site public et des Pages du dépôt de données sont écrites une
+seule fois, dans `config.json` à la racine. Le site les lit par `web/src/lib/config.ts`.
+
+## Contrôles et publication
+
+Le workflow `ci.yml` se lance sur chaque PR : `svelte-check`, la construction, puis la vérification qu'aucune donnée
+CAMAC n'est dans le site construit.
 
 Le workflow `publier.yml` se lance à la main. Il construit le site, sans aucun fichier de données cantonales, et le
-publie sur GitHub Pages si la variable `PUBLIER` vaut `true`. Variables : `BASE_PATH` (ex. `/chantiers-vaud` sans
+publie sur GitHub Pages si la variable `PUBLIER` vaut `true`. Variables : `BASE_PATH` (ex. `/vigie-vaud` sans
 domaine propre), `GOATCOUNTER` (facultatif).
 
 ## Données et licence
+
+Le code est sous licence AGPL-3.0 (fichier `LICENSE`). Les données restent sous les conditions de leur source.
 
 Source : Géodonnées Etat de Vaud, couche « Demandes de permis de construire (enquête publique) » de la CAMAC
 ([fiche viageo](https://viageo.ch/md/cb71405f-13f6-421b-b2ee-3ca76efbd56d)). Ces données sont dépourvues de foi

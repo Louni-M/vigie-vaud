@@ -380,7 +380,7 @@
 </script>
 
 <svelte:head>
-	<title>Chantiers Vaud – carte des mises à l’enquête du canton de Vaud</title>
+	<title>Carte des mises à l’enquête du canton de Vaud – Vigie Vaud</title>
 	<meta
 		name="description"
 		content="Toutes les demandes de permis de construire du canton de Vaud sur une carte : enquêtes publiques en cours, dates de consultation des dossiers, historique depuis 1999."

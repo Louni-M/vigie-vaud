@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { COURRIEL, DEPOT } from '#lib/config.js';
 </script>
 
 <svelte:head>
-	<title>À propos – Chantiers Vaud</title>
+	<title>À propos – Vigie Vaud</title>
 </svelte:head>
 
 <main class="page">
 	<h1>À propos</h1>
 	<p>
-		<strong>Chantiers Vaud</strong> rend visibles, sur une carte simple, toutes les demandes de permis de construire
+		<strong>Vigie Vaud</strong> rend visibles, sur une carte simple, toutes les demandes de permis de construire
 		mises à l’enquête publique dans le canton de Vaud. L’objectif : que chaque habitante et chaque habitant puisse
 		savoir ce qui se prépare près de chez soi et, au besoin, consulter le dossier pendant l’enquête. Le site
 		informe sur les projets ; il ne prend pas position à leur sujet.
@@ -42,7 +43,7 @@
 		(« pour le compte de M. … »), son nom est remplacé automatiquement par « [particulier] », dans votre navigateur,
 		avant affichage ; les entreprises et
 		collectivités restent nommées. Ce masquage automatique peut laisser passer un cas isolé : il suffit de nous le
-		signaler pour qu’il soit corrigé. Les avis officiels, eux, contiennent ces informations pendant la durée de
+		signaler à <a href="mailto:{COURRIEL}">{COURRIEL}</a> pour qu’il soit corrigé. Les avis officiels, eux, contiennent ces informations pendant la durée de
 		l’enquête.
 	</p>
 	<p>
@@ -59,6 +60,7 @@
 
 	<h2>Projet</h2>
 	<p>
-		Projet citoyen, non commercial et indépendant de l’administration cantonale. Le code source est ouvert.
+		Projet citoyen, non commercial et indépendant de l’administration cantonale.
+		<a href={DEPOT} target="_blank" rel="noopener">Code source</a> sous licence AGPL-3.0.
 	</p>
 </main>

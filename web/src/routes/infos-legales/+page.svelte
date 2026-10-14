@@ -68,7 +68,7 @@
 {/snippet}
 
 <svelte:head>
-	<title>Informations légales : l’enquête publique – Chantiers Vaud</title>
+	<title>Informations légales : l’enquête publique – Vigie Vaud</title>
 	<meta
 		name="description"
 		content="L’enquête publique d’un permis de construire dans le canton de Vaud : consultation du dossier, observations et oppositions, recours, avec les textes officiels."
@@ -80,7 +80,7 @@
 	<h1>L’enquête publique : ce que prévoit la loi</h1>
 	<p class="chapeau">
 		Cette page résume les règles vaudoises qui s’appliquent pendant l’enquête publique d’une demande de permis de
-		construire. Chantiers Vaud informe sur les projets ; il ne prend pas position à leur sujet et ne recommande ni
+		construire. Vigie Vaud informe sur les projets ; il ne prend pas position à leur sujet et ne recommande ni
 		d’intervenir, ni de s’abstenir. Le site ne transmet aucune intervention aux communes.
 	</p>
 	<p class="avertissement">
@@ -116,7 +116,7 @@
 		</p>
 		<p>
 			L’avis officiel indique notamment le propriétaire, l’auteur du projet, le lieu et la destination des travaux,
-			ainsi que les dérogations demandées ({@render src('latc', 'LATC, art. 109 al. 2')}). Chantiers Vaud ne reprend
+			ainsi que les dérogations demandées ({@render src('latc', 'LATC, art. 109 al. 2')}). Vigie Vaud ne reprend
 			aucun de ces noms.
 		</p>
 	</section>

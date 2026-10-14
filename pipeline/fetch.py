@@ -43,7 +43,7 @@ BOUNDARIES_URL = (
     "swissboundaries3d_2026-01_2056_5728.gpkg.zip"
 )
 PAGE = 2000
-USER_AGENT = "chantiers-vaud/0.1 (projet citoyen non commercial)"
+USER_AGENT = "vigie-vaud/0.1 (projet citoyen non commercial)"
 
 # Garde-fou : refuse la mise à jour si le nombre de dossiers chute trop.
 MAX_DROP = 0.05

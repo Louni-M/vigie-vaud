@@ -77,7 +77,7 @@
 </script>
 
 <svelte:head>
-	<title>Mises à l’enquête à {c.nom} – Chantiers Vaud</title>
+	<title>Mises à l’enquête à {c.nom} – Vigie Vaud</title>
 	<meta
 		name="description"
 		content="Demandes de permis de construire à l’enquête publique à {c.nom} (VD) : dossiers en cours, chiffres et historique depuis 1999."
