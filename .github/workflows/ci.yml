@@ -34,9 +34,58 @@ jobs:
       - name: svelte-check
         run: pnpm check
 
+      # La construction échoue si sources.json est invalide ou cite un n° OFS hors des communes actuelles.
       - name: Construire le site
         run: pnpm build
 
       - name: Vérifier qu'aucune donnée CAMAC n'est dans le site construit
         working-directory: .
         run: .github/scripts/verifier-sans-camac.sh web/build
+
+  # Schéma commun (ADR 0013) : les modèles Pydantic sont la seule source. Le JSON Schema et les types TypeScript
+  # versionnés doivent être ceux qu'une nouvelle génération produit.
+  schema:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Installer les dépendances
+        run: |
+          uv sync --locked --project pipeline
+          pnpm --dir web install --frozen-lockfile
+
+      - name: Régénérer le schéma et les types
+        run: pnpm --dir web schema
+
+      - name: Vérifier que rien n'a changé
+        run: |
+          if [ -n "$(git status --porcelain -- schema web/src/lib/schema.ts)" ]; then
+            git status --short -- schema web/src/lib/schema.ts
+            git diff -- schema web/src/lib/schema.ts
+            echo "Schéma commun périmé : lancer « pnpm --dir web schema » et versionner le résultat" >&2
+            exit 1
+          fi
+
+  pipeline:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+      - name: Installer les dépendances
+        run: uv sync --locked
+
+      - name: pytest
+        run: uv run pytest
