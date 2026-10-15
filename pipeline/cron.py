@@ -2,25 +2,28 @@
 
 Le passage relit `sources.json` et l'état précédent dans un clone du dépôt de données, sonde chaque source qui a
 un bloc `sonde`, écrit `etat-sources.json`, copie `schema/`, puis committe (l'historique sert d'archive) et pousse.
+Quand une source passe en panne ou revient, il ouvre ou ferme son issue `panne-source` dans le dépôt de données.
 
 En local, contre un clone du dépôt de données (depuis `pipeline/`) :
 
     uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push
 
-`--sans-push` écrit l'état et committe sans pousser. En production, le workflow réutilisable
-`.github/workflows/cron.yml` lance la même commande sans cette option, puis publie le dépôt sur Pages.
+`--sans-push` écrit l'état et committe sans pousser, et affiche les issues au lieu de les ouvrir. En production, le
+workflow réutilisable `.github/workflows/cron.yml` lance la même commande sans cette option, avec le `GITHUB_TOKEN`
+et le `GITHUB_REPOSITORY` du dépôt de données dans l'environnement, puis publie le dépôt sur Pages.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import ssl
 import subprocess
 import sys
-from collections.abc import Callable
-from datetime import UTC, datetime
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
@@ -36,8 +39,8 @@ USER_AGENT = f"VigieVaud-sonde (+{json.loads((RACINE / 'config.json').read_text(
 
 
 class ClientIssues(Protocol):
-    """Ce que le passage signale des issues `panne-source` du dépôt de données (ouverture sans doublon,
-    commentaire et fermeture au retour : ticket #32)."""
+    """Ce que le passage signale des issues `panne-source` du dépôt de données : `IssuesGitHub` en production,
+    `IssuesAffichees` sans push."""
 
     def panne(self, source: Source, etat: EtatSource) -> None:
         """La source vient de passer en panne ; `etat.depuis` est l'heure de la première sonde en échec."""
@@ -54,6 +57,75 @@ class IssuesAffichees:
 
     def retour(self, source: Source, panne: EtatSource, etat: EtatSource) -> None:
         print(f"Retour : {source.nom} (en panne depuis {panne.depuis:%Y-%m-%d %H:%M}Z)")
+
+
+ETIQUETTE_PANNE = "panne-source"
+
+
+class IssuesGitHub:
+    """Client d'issues du cron : il ouvre et ferme les issues `panne-source` du dépôt de données `depot`
+    (« propriétaire/nom ») avec le `GITHUB_TOKEN` de ce dépôt (ADR 0014)."""
+
+    def __init__(self, client: httpx.Client, depot: str, jeton: str) -> None:
+        self._client = client
+        self._api = f"https://api.github.com/repos/{depot}/issues"
+        self._entetes = {
+            "Authorization": f"Bearer {jeton}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": USER_AGENT,
+        }
+
+    def panne(self, source: Source, etat: EtatSource) -> None:
+        if self._ouvertes(source):
+            return
+        corps = (
+            f"La sonde de {source.nom} échoue depuis le {etat.depuis:%Y-%m-%d à %H:%M} UTC ({etat.motif}).\n\n"
+            "Le cron commentera puis fermera cette issue au retour de la source."
+        )
+        self._requete(
+            "POST", self._api, json={"title": titre_panne(source), "body": corps, "labels": [ETIQUETTE_PANNE]}
+        )
+
+    def retour(self, source: Source, panne: EtatSource, etat: EtatSource) -> None:
+        commentaire = f"{source.nom} est de nouveau disponible après {duree(etat.depuis - panne.depuis)}."
+        for numero in self._ouvertes(source):
+            self._requete("POST", f"{self._api}/{numero}/comments", json={"body": commentaire})
+            self._requete("PATCH", f"{self._api}/{numero}", json={"state": "closed", "state_reason": "completed"})
+
+    def _ouvertes(self, source: Source) -> list[int]:
+        """Numéros des issues `panne-source` ouvertes pour `source`, retrouvées par leur titre."""
+        params = {"labels": ETIQUETTE_PANNE, "state": "open", "per_page": 100}
+        issues = self._requete("GET", self._api, params=params).json()
+        return [i["number"] for i in issues if "pull_request" not in i and i["title"] == titre_panne(source)]
+
+    def _requete(self, methode: str, url: str, **options) -> httpx.Response:
+        reponse = self._client.request(methode, url, headers=self._entetes, **options)
+        reponse.raise_for_status()
+        return reponse
+
+
+def client_issues(sans_push: bool, environ: Mapping[str, str], client: httpx.Client) -> ClientIssues:
+    """Sans push, les issues sont seulement affichées. Avec push, elles s'ouvrent dans le dépôt de données avec son
+    `GITHUB_TOKEN` : dans le workflow, `GITHUB_REPOSITORY` désigne ce dépôt, qui porte le déclencheur."""
+    if sans_push:
+        return IssuesAffichees()
+    manquantes = [v for v in ("GITHUB_TOKEN", "GITHUB_REPOSITORY") if not environ.get(v)]
+    if manquantes:
+        raise SystemExit(f"{' et '.join(manquantes)} absent(s) : lancer le passage avec --sans-push hors du workflow")
+    return IssuesGitHub(client, environ["GITHUB_REPOSITORY"], environ["GITHUB_TOKEN"])
+
+
+def titre_panne(source: Source) -> str:
+    return f"Panne : {source.nom}"
+
+
+def duree(ecart: timedelta) -> str:
+    """Durée d'une panne à la minute : « 3 h 10 », « 2 h », « 40 min »."""
+    heures, minutes = divmod(int(ecart.total_seconds()) // 60, 60)
+    if not heures:
+        return f"{minutes} min"
+    return f"{heures} h {minutes:02d}" if minutes else f"{heures} h"
 
 
 def passage(
@@ -229,8 +301,9 @@ def main(argv: list[str] | None = None) -> None:
     depot = args.depot.resolve()
     if not (depot / ".git").exists():
         raise SystemExit(f"{depot} n'est pas un clone git du dépôt de données")
-    with httpx.Client() as client:
-        etat = passage(depot, lire_sources(args.sources), client, lambda: datetime.now(UTC), IssuesAffichees())
+    with httpx.Client() as client, httpx.Client(timeout=30) as client_github:
+        issues = client_issues(args.sans_push, os.environ, client_github)
+        etat = passage(depot, lire_sources(args.sources), client, lambda: datetime.now(UTC), issues)
     for id_source, e in etat.sources.items():
         print(f"{id_source} : {e.etat}" + (f" ({e.motif}, {e.echecs_consecutifs} échec(s))" if e.motif else ""))
 
