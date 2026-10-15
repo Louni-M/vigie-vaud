@@ -12,6 +12,7 @@
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Commune, Dossier } from '#lib/types.js';
 	import { permis, SOURCE, type ChiffresCommune, type Parametres } from './donnees.svelte.js';
+	import { ouvrirDossier } from './index.js';
 
 	let { ctx }: { ctx: Contexte<Parametres> } = $props();
 
@@ -76,7 +77,7 @@
 
 	/** Un dossier choisi s'ouvre par le registre, ici même sous le fil ; la carte vole vers lui. */
 	function ouvrir(d: Dossier) {
-		ctx.ouvrir({ couche: 'permis', element: String(d.id), position: [d.lon, d.lat] });
+		ouvrirDossier(ctx, d.id, [d.lon, d.lat]);
 	}
 </script>
 

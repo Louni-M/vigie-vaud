@@ -15,6 +15,7 @@
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Dossier, PointHisto } from '#lib/types.js';
 	import { permis, type Parametres } from './donnees.svelte.js';
+	import { dossierOuvert, ouvrirDossier } from './index.js';
 
 	let { ctx }: { ctx: Contexte<Parametres> } = $props();
 
@@ -163,7 +164,7 @@
 		};
 		const f = proches.sort((a, b) => distance(a) - distance(b))[0];
 		if (f?.properties?.id == null) return;
-		ctx.ouvrir({ couche: 'permis', element: String(f.properties.id), position: position(f) });
+		ouvrirDossier(ctx, Number(f.properties.id), position(f));
 	}
 	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
 	const sansPointeur = () => (map.getCanvas().style.cursor = '');
@@ -176,8 +177,7 @@
 	/** Position du dossier ouvert : celle de son point s'il est chargé, sinon celle de sa fiche. */
 	let anneau = $state<[number, number] | null>(null);
 	$effect(() => {
-		const o = ctx.ouvert;
-		const id = o?.couche === 'permis' ? Number(o.element) : null;
+		const id = dossierOuvert(ctx.ouvert);
 		if (id === null) return void (anneau = null);
 		const point = untrack(() => permis.actifs.find((d) => d.id === id) ?? permis.histo.find((d) => d.id === id));
 		if (point) return void (anneau = [point.lon, point.lat]);
