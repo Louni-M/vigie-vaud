@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { teteCommune, titreFiche } from './tete.js';
 import type { CoucheInscrite } from './types.js';
-import type { Commune } from '#lib/types.js';
+import { commune } from '#lib/couches/permis/faux-canton.js';
 
 const couche = (id: string, champs: Partial<CoucheInscrite> = {}): CoucheInscrite => ({
 	id,
@@ -14,7 +14,7 @@ const couche = (id: string, champs: Partial<CoucheInscrite> = {}): CoucheInscrit
 	...champs
 });
 
-const PULLY: Commune = { bfs: 5590, nom: 'Pully', slug: 'pully', habitants: 18900, bbox: [6.62, 46.49, 6.69, 46.53] };
+const PULLY = commune(5590, 'Pully', [6.62, 46.49, 6.69, 46.53]);
 
 describe('<head> d’une commune', () => {
 	it('porte le titre « Pully – Vigie Vaud »', () => {

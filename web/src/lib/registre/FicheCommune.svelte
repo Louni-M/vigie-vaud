@@ -1,6 +1,7 @@
 <script lang="ts">
 	/*
-	 * Fiche commune, rendue par le registre en colonne à droite de la carte : en-tête (nom de la commune), puis un
+	 * Fiche commune, rendue par le registre en colonne à droite de la carte : en-tête (nom de la commune, adresse de
+	 * son hôtel de ville ou « position approximative », anciennes communes et anciens noms), puis un
 	 * onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
 	 * a qu'un onglet ; sous le nom de chaque onglet, le badge de fraîcheur de chacune des sources de la couche.
 	 * Changer de commune remplace le contenu sur place : l'onglet choisi reste, son contenu est
@@ -13,9 +14,12 @@
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { source } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
+	import { enteteFiche } from './entete.js';
 	import type { Registre } from './registre.svelte.js';
 
 	let { registre, commune }: { registre: Registre; commune: Commune } = $props();
+
+	const entete = $derived(enteteFiche(commune));
 
 	const onglets = $derived(registre.couches.filter((c) => c.composants.Onglet));
 	let choisi = $state<string | null>(null);
@@ -67,6 +71,14 @@
 		<button class="fermer" type="button" aria-label="Fermer la fiche de {commune.nom}" onclick={registre.fermerCommune}>
 			×
 		</button>
+	</div>
+	<div class="infos">
+		{#if entete.siege}
+			<p>Hôtel de ville : {entete.siege}</p>
+		{:else}
+			<p class="approximative">Hôtel de ville : position approximative</p>
+		{/if}
+		{#each entete.anciens as ligne (ligne)}<p>{ligne}</p>{/each}
 	</div>
 
 	<!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -130,6 +142,18 @@
 		align-items: center;
 		gap: 10px;
 		padding: 12px 14px 6px;
+	}
+	.infos {
+		padding: 0 14px 8px;
+		font-size: 13px;
+		color: var(--muted);
+	}
+	.infos p {
+		margin: 2px 0 0;
+	}
+	/* Mention discrète : le marqueur n'est pas sur le siège de l'administration. */
+	.approximative {
+		font-style: italic;
 	}
 	h2 {
 		flex: 1;

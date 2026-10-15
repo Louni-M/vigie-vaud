@@ -5,8 +5,15 @@ import type { Commune } from '#lib/types.js';
  * répond aux seules requêtes qu'envoie le module de données Permis, et garde la trace de chacune.
  */
 
-export const PULLY: Commune = { bfs: 5590, nom: 'Pully', slug: 'pully', habitants: 18900, bbox: [6.65, 46.49, 6.7, 46.52] };
-export const LUTRY: Commune = { bfs: 5606, nom: 'Lutry', slug: 'lutry', habitants: 10500, bbox: [6.7, 46.49, 6.75, 46.52] };
+/** Une commune de l'index, sans lac : son cadre est son emprise, et son hôtel de ville en est le centre. */
+export function commune(bfs: number, nom: string, bbox: Commune['bbox']): Commune {
+	const [w, s, e, n] = bbox;
+	const slug = nom.toLowerCase();
+	return { bfs, nom, slug, habitants: 1000, bbox, cadre: bbox, hotel: [(w + e) / 2, (s + n) / 2], adresse: '', anciens: [] };
+}
+
+export const PULLY: Commune = commune(5590, 'Pully', [6.65, 46.49, 6.7, 46.52]);
+export const LUTRY: Commune = commune(5606, 'Lutry', [6.7, 46.49, 6.75, 46.52]);
 
 /** Limites carrées, sans lac : le rattachement par position est alors évident. */
 const carre = ([w, s, e, n]: Commune['bbox']) => [[[[w, s], [e, s], [e, n], [w, n], [w, s]]]];
