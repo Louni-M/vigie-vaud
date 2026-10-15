@@ -259,6 +259,9 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			get commune() {
 				return commune;
 			},
+			get communes() {
+				return communes();
+			},
 			recouvert(point) {
 				if (!map) return false;
 				const calques = calquesAuDessus(map.getStyle().layers.map((l) => l.id), ancre(c.id));
