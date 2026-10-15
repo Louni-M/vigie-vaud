@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { visibles, type Parametres } from './donnees.svelte.js';
-import type { Dossier, PointHisto } from '#lib/types.js';
+import type { Dossier, PointHisto, Zone } from '#lib/types.js';
 
 /** Zone visible : Lausanne et environs. */
-const ZONE: [number, number, number, number] = [6.5, 46.4, 6.8, 46.6];
+const ZONE: Zone = [6.5, 46.4, 6.8, 46.6];
 
 const EN_COURS: Parametres = {
 	statuts: ['enquete', 'procedure'],

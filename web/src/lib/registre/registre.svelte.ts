@@ -4,7 +4,7 @@ import { afterNavigate, goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { page } from '$app/state';
 import type { Map as MlMap } from 'maplibre-gl';
-import type { Commune, Centre, Zone } from '#lib/types.js';
+import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
 import type { Chargeur, Cible, Contexte, CoucheInscrite, Lecteur, Ouvert } from './types.js';
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
 import { corrigerChemin, fermeture, memeElement, mouvement, type Adresse } from './navigation.js';
@@ -18,7 +18,7 @@ export interface VueCarte {
 	voler(lon: number, lat: number, zoom?: number): void;
 	vueCanton(): void;
 	/** Cadre une emprise ; `parDefaut` : la vue obtenue n'entre pas dans l'adresse. */
-	cadrer(emprise: [number, number, number, number], anime?: boolean, parDefaut?: boolean): void;
+	cadrer(emprise: Emprise, anime?: boolean, parDefaut?: boolean): void;
 }
 
 /** Route de la fiche commune : la commune ouverte est dans le chemin (ADR 0012). */

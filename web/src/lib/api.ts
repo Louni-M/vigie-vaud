@@ -1,4 +1,5 @@
 import { browser } from '$app/env';
+import type { Emprise } from './types.js';
 
 /**
  * Client minimal du service ArcGIS du canton (couche « vd.demande_permis_construire », CAMAC).
@@ -34,7 +35,7 @@ export interface Requete {
 	 * Emprise [ouest, sud, est, nord] en WGS84. Pas de polygone : avec un polygone, ce serveur tronque
 	 * les résultats (limite de 2000 appliquée avant le filtre spatial) et ses comptages divergent.
 	 */
-	enveloppe?: [number, number, number, number];
+	enveloppe?: Emprise;
 }
 
 export class ErreurApi extends Error {
