@@ -1,0 +1,26 @@
+# Seul workflow du dépôt de données `vigie-vaud-donnees` (ADR 0014), à poser tel quel dans son
+# `.github/workflows/cron.yml` au passage public. GitHub ne lance pas ce fichier ici : il n'est que le modèle.
+# Il appelle le workflow réutilisable du dépôt principal avec le seul `GITHUB_TOKEN` du dépôt de données,
+# sans aucun secret. Pages doit y être publié « par GitHub Actions ».
+name: Cron
+
+on:
+  schedule:
+    # Toutes les 30 minutes, en UTC, à des minutes décalées du début de l'heure.
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+# Un passage attend la fin du précédent, sans l'annuler.
+concurrency:
+  group: cron
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pages: write
+  id-token: write
+
+jobs:
+  passage:
+    uses: Louni-M/vigie-vaud/.github/workflows/cron.yml@main
