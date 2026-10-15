@@ -1,7 +1,7 @@
 import { asset } from '$app/paths';
 import { inscrireEtat } from '#lib/fraicheur.js';
 import type { Commune } from '#lib/types.js';
-import millesimes from '../../../static/millesimes.json';
+import millesimes from '#lib/millesimes.json';
 
 /**
  * Index et limites des communes (swissBOUNDARIES3D, swisstopo, données ouvertes), avec leurs hôtels de ville et

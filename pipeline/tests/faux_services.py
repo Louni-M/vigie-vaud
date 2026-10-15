@@ -285,6 +285,6 @@ def preparer(monde: Monde, dossier: Path, hotels: list[dict], jusqu_au: date = d
         w.writerows(hotels)
     sortie = dossier / "static"
     with httpx.Client(transport=monde.transport()) as client:
-        prep.preparer(client, csv_hdv, sortie, cache=dossier / "cache", jusqu_au=jusqu_au)
+        prep.preparer(client, csv_hdv, sortie, dossier / "millesimes.json", cache=dossier / "cache", jusqu_au=jusqu_au)
     return json.loads((sortie / "communes.json").read_text(encoding="utf-8"))
 

@@ -17,7 +17,8 @@ Fichiers écrits (versionnés) :
                                     pour cadrer la carte), `hotel` [lon, lat], `adresse` (vide pour une position
                                     approximative) et `anciens` (nom, slug, type, année)
   web/static/communes-limites.json  polygones simplifiés (WGS84, ~1 m de précision)
-  web/static/millesimes.json        édition de chaque source Préparée lue ici, pour son badge de fraîcheur
+  web/src/lib/millesimes.json       édition de chaque source Préparée lue ici, importée par le site pour le badge
+                                    de fraîcheur de ces sources
 """
 
 from __future__ import annotations
@@ -44,6 +45,7 @@ ICI = Path(__file__).resolve().parent
 ROOT = ICI.parent
 CACHE = ROOT / "data" / "cache"
 OUT = ROOT / "web" / "static"
+MILLESIMES = ROOT / "web" / "src" / "lib" / "millesimes.json"
 CSV_HDV = ICI / "hotels-de-ville.csv"
 
 USER_AGENT = "vigie-vaud/0.1 (projet citoyen non commercial)"
@@ -192,11 +194,12 @@ def preparer(
     client: httpx.Client,
     csv_hdv: Path = CSV_HDV,
     sortie: Path = OUT,
+    millesimes_json: Path = MILLESIMES,
     cache: Path = CACHE,
     jusqu_au: date | None = None,
 ) -> None:
-    """Écrit communes.json, communes-limites.json et millesimes.json dans `sortie`, ou lève `HotelsHorsTerre`
-    sans rien écrire."""
+    """Écrit communes.json et communes-limites.json dans `sortie`, puis `millesimes_json`, ou lève
+    `HotelsHorsTerre` sans rien écrire."""
     jusqu_au = jusqu_au or date.today()
     communes = charger_communes(client, cache)
     communes = communes.dissolve(by=["bfs_nummer", "name"], aggfunc={"einwohnerzahl": "max"}).reset_index()
@@ -244,9 +247,10 @@ def preparer(
         raise HotelsHorsTerre(hors_terre)
     index.sort(key=lambda c: c["slug"])
     sortie.mkdir(parents=True, exist_ok=True)
-    fichiers = {"communes.json": index, "communes-limites.json": limites, "millesimes.json": millesimes(jusqu_au)}
-    for nom, contenu in fichiers.items():
-        (sortie / nom).write_text(json.dumps(contenu, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    fichiers = {sortie / "communes.json": index, sortie / "communes-limites.json": limites,
+                millesimes_json: millesimes(jusqu_au)}
+    for chemin, contenu in fichiers.items():
+        chemin.write_text(json.dumps(contenu, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"{len(index)} communes écrites dans {sortie}", file=sys.stderr)
 
 
