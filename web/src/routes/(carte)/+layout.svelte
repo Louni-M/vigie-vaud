@@ -16,6 +16,7 @@
 	import Recherche from '#lib/socle/Recherche.svelte';
 	import { COUCHES } from '#lib/registre/couches.js';
 	import { resultatsCouches } from '#lib/registre/recherche.js';
+	import { ancre } from '#lib/registre/recouvrement.js';
 	import { creerRegistre, fournirRegistre, type VueCarte } from '#lib/registre/registre.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
@@ -152,7 +153,7 @@
 		<!-- Calques de chaque couche, dans l'ordre du registre ; importés à la première activation. -->
 		{#if registre.map}
 			<!-- Sous toutes les couches : le gris voile le fond, pas les éléments. -->
-			<Grisage map={registre.map} sous="couche:{COUCHES[0].id}" {grisees} />
+			<Grisage map={registre.map} sous={ancre(COUCHES[0].id)} {grisees} />
 			{#each COUCHES as c (c.id)}
 				{#if registre.montee(c.id)}
 					{#await registre.composant(c, 'Carte') then module}
