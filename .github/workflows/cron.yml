@@ -22,21 +22,21 @@ jobs:
       url: ${{ steps.deploiement.outputs.page_url }}
     steps:
       - name: Cloner le dépôt de données
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: donnees
 
       # Le dépôt principal, à la même branche que l'appel `cron.yml@main` du déclencheur. Son adresse est aussi
       # dans `config.json` (`depot`), que ce workflow ne peut pas lire avant de l'avoir cloné.
       - name: Cloner le code du cron
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Louni-M/vigie-vaud
           ref: main
           path: code
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10.3.0
       - name: Installer le pipeline
         run: uv sync --locked --no-dev --project code/pipeline
 
@@ -51,9 +51,9 @@ jobs:
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: uv run --no-dev --project code/pipeline python code/pipeline/cron.py --depot donnees
 
-      # `upload-pages-artifact` laisse de côté `.git` et `.github`.
-      - uses: actions/upload-pages-artifact@v3
+      # `upload-pages-artifact` laisse de côté `.git`, `.github` et, depuis sa v4, tout fichier caché.
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: donnees
       - id: deploiement
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
