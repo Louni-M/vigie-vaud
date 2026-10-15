@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getCommunes } from '#lib/data.js';
+import { getCommunes } from '#lib/socle/communes.js';
 import type { PageLoad } from './$types';
 
 // Seuls le nom et les limites de la commune (swisstopo) sont intégrés à la page pré-générée ;

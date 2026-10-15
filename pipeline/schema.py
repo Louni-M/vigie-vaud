@@ -90,11 +90,19 @@ class CouvertureDeclaree(Modele):
 
 
 class Sonde(Modele):
-    """Requête de vérification envoyée par le cron, sans conserver de données."""
+    """Requête de vérification envoyée par le cron, sans conserver de données.
+
+    Une seule requête GET par passage, sans nouvel essai. La réponse doit être un objet JSON dont `features` liste
+    les enregistrements (JSON ArcGIS ou GeoJSON) ; elle doit donc rester légère (un enregistrement suffit).
+    """
 
     url: Lien
     delai: Annotated[int, Field(ge=1, le=60)] = Field(description="Délai de réponse en secondes.")
-    champs: list[str] = Field(default=[], description="Champs que doit porter chaque enregistrement renvoyé.")
+    champs: list[str] = Field(
+        default=[],
+        description="Champs que doit porter chaque enregistrement renvoyé, lus dans `attributes` (JSON ArcGIS) "
+        "ou `properties` (GeoJSON).",
+    )
     jamais_vide: bool = Field(default=False, description="Une réponse sans enregistrement compte comme un échec.")
 
 
@@ -129,12 +137,42 @@ def lire_sources(chemin: Path) -> FichierSources:
     return FichierSources.model_validate_json(chemin.read_bytes())
 
 
+# --- État des sources (etat-sources.json, dépôt de données) ----------------------------------------------------
+
+EtatSonde = TypeAliasType("EtatSonde", Literal["disponible", "en_panne"])
+
+
+class EtatSource(Modele):
+    """Ce que les sondes ont mesuré pour une source, dans un état binaire (sans « dégradée »).
+
+    Aucun numéro d'issue n'y figure.
+    """
+
+    etat: EtatSonde
+    depuis: Horodatage | None = Field(
+        description="En panne : heure de la première sonde en échec. Disponible : heure du retour, ou de la première "
+        "sonde réussie ; `null` tant qu'aucune sonde n'a réussi."
+    )
+    derniere_sonde: Horodatage
+    dernier_succes: Horodatage | None = Field(description="`null` tant qu'aucune sonde n'a réussi.")
+    echecs_consecutifs: Annotated[int, Field(ge=0)] = Field(description="La source passe en panne à 2.")
+    motif: str | None = Field(description="Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…).")
+
+
+class EtatSources(Enveloppe):
+    """`etat-sources.json` : l'état de chaque source sondée, indexé par identifiant de source."""
+
+    version: Literal[1] = Field(description="Version 1. Le cron repart de zéro devant une autre version.")
+    sources: dict[IdSource, EtatSource] = Field(description="Seules les sources qui ont un bloc `sonde` y figurent.")
+
+
 # --- Génération du JSON Schema ---------------------------------------------------------------------------------
 
 # Un JSON Schema par document : `schema/<nom>.schema.json`.
 DOCUMENTS: dict[str, type[BaseModel]] = {
     "sources": FichierSources,
     "enveloppe": Enveloppe,
+    "etat-sources": EtatSources,
 }
 
 

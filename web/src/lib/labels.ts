@@ -10,6 +10,8 @@ export const STATUTS: Record<Statut, { label: string; court: string; couleur: st
 };
 
 export const STATUTS_ORDRE: Statut[] = ['enquete', 'procedure', 'delivre', 'realise', 'abandonne'];
+/** Statuts des dossiers en cours, proposés quand l'historique n'est pas affiché. */
+export const STATUTS_EN_COURS: Statut[] = ['enquete', 'procedure'];
 
 export const NATURES: Record<string, string> = {
 	construction: 'Construction nouvelle',

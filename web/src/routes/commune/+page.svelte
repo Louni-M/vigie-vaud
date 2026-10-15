@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { getActive, SOURCE } from '#lib/data.js';
+	import { permis, SOURCE } from '#lib/couches/permis/donnees.svelte.js';
 	import { normaliser } from '#lib/labels.js';
 	import type { PageProps } from './$types';
 
@@ -10,7 +10,7 @@
 	/** Enquêtes en cours par commune, lues en direct sur le service du canton. */
 	let enquetes: Record<string, number> = $state({});
 	onMount(() => {
-		getActive(fetch).then(
+		permis.chargerActifs().then(
 			(ds) => {
 				const n: Record<string, number> = {};
 				for (const d of ds) if (d.statut === 'enquete') n[d.slug] = (n[d.slug] ?? 0) + 1;

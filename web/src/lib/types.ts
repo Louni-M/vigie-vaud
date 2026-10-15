@@ -6,7 +6,7 @@ export interface Etape {
 	decision?: string | null;
 }
 
-/** Un dossier tel que converti par lib/data.ts depuis le service du canton (champs vides omis). */
+/** Un dossier tel que converti par le module de données Permis (lib/couches/permis/donnees.svelte.ts) depuis le service du canton (champs vides omis). */
 export interface Dossier {
 	id: number;
 	fao?: string;
@@ -37,6 +37,9 @@ export interface Commune {
 /** Point léger de l'historique sur la carte (la fiche complète est chargée à la demande). */
 export type PointHisto = Pick<Dossier, 'id' | 'statut' | 'nature' | 'debut' | 'fin' | 'lon' | 'lat'>;
 
+/** Emprise [ouest, sud, est, nord] de la carte, en WGS84. */
+export type Zone = [number, number, number, number];
+
 /** Centre et zoom de la carte. */
 export interface Centre {
 	lon: number;
@@ -47,4 +50,5 @@ export interface Centre {
 export type Resultat =
 	| { type: 'adresse'; genre: string; label: string; lon: number; lat: number }
 	| { type: 'commune'; label: string; commune: Commune }
-	| { type: 'dossier'; label: string; id: number };
+	/** Élément d'une couche, fourni par son `chercher` ; `genre` est le nom de la couche. */
+	| { type: 'element'; genre: string; label: string; couche: string; element: string };

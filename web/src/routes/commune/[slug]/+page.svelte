@@ -1,19 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { goto } from '$app/navigation';
-	import Map from '#lib/components/Map.svelte';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
-	import {
-		ErreurApi,
-		getActive,
-		getChiffresCommune,
-		getDossiers,
-		SOURCE,
-		type ChiffresCommune
-	} from '#lib/data.js';
+	import { ErreurApi } from '#lib/api.js';
+	import { permis, SOURCE, type ChiffresCommune } from '#lib/couches/permis/donnees.svelte.js';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
-	import { lienCarteCommune } from '#lib/etat.js';
+	import { lienVue } from '#lib/registre/liens.js';
 	import type { Dossier } from '#lib/types.js';
 	import type { PageProps } from './$types';
 
@@ -37,14 +29,15 @@
 	function charger() {
 		echec = '';
 		const commune = c;
-		getActive(fetch).then(
+		permis.chargerActifs().then(
 			(ds) => (actifs = ds.filter((d) => d.slug === commune.slug)),
 			(e) => (echec = message(e))
 		);
-		getChiffresCommune(fetch, commune)
+		permis
+			.chiffres(commune)
 			.then((r) => {
 				chiffres = r;
-				return getDossiers(fetch, r.historique.slice(0, RECENTS).map((d) => d.id));
+				return permis.fiches(r.historique.slice(0, RECENTS).map((d) => d.id));
 			})
 			.then(
 				(r) => (recents = r),
@@ -61,7 +54,7 @@
 		chargement = true;
 		echecTout = false;
 		try {
-			tout = await getDossiers(fetch, chiffres?.historique.map((d) => d.id) ?? []);
+			tout = await permis.fiches(chiffres?.historique.map((d) => d.id) ?? []);
 		} catch {
 			echecTout = true;
 		} finally {
@@ -74,6 +67,13 @@
 	const lienDossier = (d: Dossier) => resolve('/dossier/[id]', { id: String(d.id) });
 	const resumeAnnees = $derived(annees.map(([a, n]) => `${a} : ${n}`).join(', '));
 	const totalHisto = $derived(chiffres?.historique.length ?? 0);
+
+	/** Vue de la grande carte sur la commune : son centre, à un zoom qui la contient à peu près. */
+	const vueCommune = $derived.by(() => {
+		const [w, s, e, n] = c.bbox;
+		const etendue = Math.max(e - w, (n - s) * 1.45);
+		return { lon: (w + e) / 2, lat: (s + n) / 2, zoom: Math.min(15, Math.max(9, 9.6 + Math.log2(0.4 / etendue))) };
+	});
 </script>
 
 <svelte:head>
@@ -87,16 +87,7 @@
 <main class="page">
 	<p class="fil"><a href={resolve('/commune')}>Communes</a> › {c.nom}</p>
 	<h1>Mises à l’enquête à {c.nom}</h1>
-	<p class="vers-carte"><a href={lienCarteCommune(c.slug)}>Voir {c.nom} sur la grande carte</a></p>
-
-	<div class="mini-carte">
-		<Map
-			dossiers={actifs ?? []}
-			bounds={c.bbox}
-			statuts={['enquete', 'procedure']}
-			onselect={(id) => goto(resolve('/dossier/[id]', { id: String(id) }))}
-		/>
-	</div>
+	<p class="vers-carte"><a href={lienVue(vueCommune)}>Voir {c.nom} sur la grande carte</a></p>
 
 	{#if echec}
 		<p class="erreur" role="alert">
@@ -200,13 +191,6 @@
 	h2 {
 		font-size: 18px;
 		margin: 28px 0 10px;
-	}
-	.mini-carte {
-		position: relative;
-		height: 300px;
-		border-radius: 12px;
-		overflow: hidden;
-		border: 1px solid var(--line);
 	}
 	.chiffres {
 		display: grid;
