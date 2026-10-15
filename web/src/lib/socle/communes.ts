@@ -8,7 +8,7 @@ import type { Commune } from '#lib/types.js';
 
 type Fetch = typeof fetch;
 /** Polygones d'une commune : [polygone][anneau][point] = [lon, lat]. */
-type Limites = number[][][][];
+export type Limites = number[][][][];
 
 const cache = new Map<string, Promise<unknown>>();
 function getJson<T>(f: Fetch, path: string): Promise<T> {
@@ -25,7 +25,8 @@ function getJson<T>(f: Fetch, path: string): Promise<T> {
 }
 
 export const getCommunes = (f: Fetch) => getJson<Commune[]>(f, 'communes.json');
-const getLimites = (f: Fetch) => getJson<Record<string, Limites>>(f, 'communes-limites.json');
+/** Limites des communes, par n° OFS. */
+export const getLimites = (f: Fetch) => getJson<Record<string, Limites>>(f, 'communes-limites.json');
 
 function dansAnneau(lon: number, lat: number, anneau: number[][]): boolean {
 	let dedans = false;

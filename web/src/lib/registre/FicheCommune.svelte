@@ -3,10 +3,13 @@
 	 * Fiche commune, rendue par le registre en colonne à droite de la carte : en-tête (nom de la commune), puis un
 	 * onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
 	 * a qu'un onglet ; sous le nom de chaque onglet, le badge de fraîcheur de chacune des sources de la couche.
+	 * Pour une commune que la couche ne couvre pas, l'onglet affiche le message commun « non couvert ».
 	 * Changer de commune remplace le contenu sur place : l'onglet choisi reste, son contenu est
 	 * remonté pour la nouvelle commune.
 	 */
+	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
+	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import { source } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
 	import type { Registre } from './registre.svelte.js';
@@ -16,6 +19,7 @@
 	const onglets = $derived(registre.couches.filter((c) => c.composants.Onglet));
 	let choisi = $state<string | null>(null);
 	const courant = $derived(onglets.find((c) => c.id === choisi) ?? onglets[0]);
+	const couvert = $derived(!courant || couvertureCourante().couvre(courant.id, commune.bfs));
 
 	/** Flèches gauche et droite : d'un onglet à l'autre, comme le veut le motif « tabs » de l'ARIA. */
 	function clavier(e: KeyboardEvent) {
@@ -56,13 +60,20 @@
 
 	{#if courant}
 		<div class="corps" role="tabpanel" id="panneau-{courant.id}" aria-labelledby="onglet-{courant.id}">
-			{#key `${courant.id}:${commune.slug}`}
-				{#await registre.composant(courant, 'Onglet') then module}
-					{#if module}<module.default ctx={registre.contexte(courant)} />{/if}
-				{:catch}
-					<p class="erreur">L’onglet n’a pas pu être chargé. Rechargez la page.</p>
-				{/await}
-			{/key}
+			{#if !couvert}
+				<p class="non-couvert">
+					<strong>Non couvert</strong> : la couche {courant.nom} n’a pas de source pour {commune.nom}.
+					<a href={resolve('/couverture')}>Voir la Couverture</a>
+				</p>
+			{:else}
+				{#key `${courant.id}:${commune.slug}`}
+					{#await registre.composant(courant, 'Onglet') then module}
+						{#if module}<module.default ctx={registre.contexte(courant)} />{/if}
+					{:catch}
+						<p class="erreur">L’onglet n’a pas pu être chargé. Rechargez la page.</p>
+					{/await}
+				{/key}
+			{/if}
 		</div>
 	{/if}
 </section>
@@ -135,6 +146,10 @@
 		overflow-y: auto;
 		padding: 12px 14px 32px;
 		font-size: 14px;
+	}
+	.non-couvert {
+		margin: 0;
+		color: var(--muted);
 	}
 	.erreur {
 		color: var(--erreur);

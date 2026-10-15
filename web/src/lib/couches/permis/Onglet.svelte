@@ -81,7 +81,7 @@
 	}
 </script>
 
-<EchecSource message="Les permis n’ont pas pu être chargés" etat={permis.source} />
+<EchecSource source="camac-permis" message="Les permis n’ont pas pu être chargés" />
 
 <div class="chiffres" aria-busy={!chiffres || !actifs}>
 	{#each STATUTS_ORDRE as s (s)}

@@ -79,7 +79,7 @@
 	}
 </script>
 
-<EchecSource message="Les permis n’ont pas pu être chargés" etat={permis.source} />
+<EchecSource source="camac-permis" message="Les permis n’ont pas pu être chargés" />
 
 <div class="reglages">
 	<div class="puces" role="group" aria-label="Statuts affichés (légende de la carte)">
