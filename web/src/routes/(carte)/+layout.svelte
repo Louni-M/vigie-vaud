@@ -35,6 +35,11 @@
 	import { attributionHtml, source } from '#lib/sources.js';
 	import type { Resultat } from '#lib/types.js';
 	import type { LayoutProps } from './$types';
+	// PROTOTYPE (ticket #45) : trois variantes du fil cantonal.
+	import Variantes, { filChoisi } from '#lib/fil-prototype/Variantes.svelte';
+	import FilA from '#lib/fil-prototype/FilA.svelte';
+	import FilB from '#lib/fil-prototype/FilB.svelte';
+	import FilC from '#lib/fil-prototype/FilC.svelte';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -128,6 +133,15 @@
 		document.querySelector<HTMLElement>('#carte .maplibregl-canvas')?.focus();
 	}
 
+	/* ---- PROTOTYPE (ticket #45) ---- */
+	const variante = $derived(filChoisi.variante);
+	// Variante A : le fil est ouvert à l'arrivée, à la place d'un volet.
+	$effect(() => {
+		if (variante === 'A') untrack(() => (registre.volet ??= 'fil'));
+		else if (untrack(() => registre.volet) === 'fil') registre.volet = null;
+	});
+	const colonneB = $derived(variante === 'B' && !telephone.current);
+
 	function fermerVolet() {
 		const id = registre.volet;
 		registre.volet = null;
@@ -136,10 +150,26 @@
 	}
 </script>
 
-<div class="app" class:avec-fiche={registre.commune} data-affichage={affichage}>
+<Variantes />
+
+<div class="app" class:avec-fiche={registre.commune || colonneB} data-affichage={affichage}>
 	<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
 
-	<Rail {registre} />
+	<Rail {registre}>
+		{#snippet avant()}
+			{#if variante === 'A'}
+				<button
+					type="button"
+					class="rail-fil"
+					class:ouvert={registre.volet === 'fil'}
+					aria-expanded={registre.volet === 'fil'}
+					onclick={() => (registre.volet = registre.volet === 'fil' ? null : 'fil')}
+				>
+					<span class="icone-fil" aria-hidden="true">≡</span>Fil
+				</button>
+			{/if}
+		{/snippet}
+	</Rail>
 
 	<div class="zone-carte" id="carte" bind:this={zoneCarte}>
 		<Map
@@ -188,6 +218,18 @@
 			{/if}
 		{/each}
 
+		{#if variante === 'A' && registre.volet === 'fil' && !telephone.current}
+			<div class="volet volet-fil" transition:fly={{ x: -20, duration: 160 }}>
+				<FilA {registre} communes={data.communes} onfermer={() => (registre.volet = null)} />
+			</div>
+		{/if}
+		{#if variante === 'B' && telephone.current && !registre.commune}
+			<FilB {registre} communes={data.communes} tiroir />
+		{/if}
+		{#if variante === 'C' && !(telephone.current && registre.commune)}
+			<FilC {registre} communes={data.communes} telephone={telephone.current} />
+		{/if}
+
 		<p class="liens">
 			<a href={resolve('/a-propos')}>À propos</a> ·
 			<a href={resolve('/protection-des-donnees')}>Protection des données</a>
@@ -210,7 +252,15 @@
 		</div>
 	{/if}
 
-	{#if registre.commune}
+	{#if telephone.current && variante === 'A' && affichage === ('fil' as Affichage)}
+		<div class="couches">
+			<FilA {registre} communes={data.communes} onouvert={() => (affichage = 'carte')} />
+		</div>
+	{/if}
+
+	{#if colonneB}
+		<div class="colonne"><FilB {registre} communes={data.communes} /></div>
+	{:else if registre.commune}
 		<!-- Une seule colonne : changer de commune remplace son contenu sans la refermer. -->
 		<div class="colonne" in:fly={{ x: 40, duration: 200 }}>
 			<FicheCommune {registre} commune={registre.commune} />
@@ -220,6 +270,9 @@
 	<!-- Masquée sur bureau par la feuille de style : sur téléphone, elle est là dès le premier rendu. -->
 	<nav class="barre-vues" aria-label="Affichage">
 		<button type="button" aria-pressed={affichage === 'carte'} onclick={() => (affichage = 'carte')}>Carte</button>
+		{#if variante === 'A'}
+			<button type="button" aria-pressed={affichage === ('fil' as Affichage)} onclick={() => (affichage = 'fil' as Affichage)}>Fil</button>
+		{/if}
 		<button type="button" aria-pressed={affichage === 'couches'} onclick={() => (affichage = 'couches')}>
 			Couches
 		</button>
@@ -301,6 +354,39 @@
 		/* Le volet est à la hauteur de son contenu, sans dépasser le bas de la carte. */
 		height: fit-content;
 		max-height: calc(100% - 100px);
+	}
+	/* PROTOTYPE (ticket #45) */
+	.volet-fil {
+		width: min(380px, calc(100% - 20px));
+	}
+	.rail-fil {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 3px;
+		padding: 8px 2px 10px;
+		margin-bottom: 6px;
+		border: 0;
+		border-bottom: 1px solid var(--line);
+		border-radius: 8px 8px 0 0;
+		background: none;
+		font: inherit;
+		font-size: 11px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.rail-fil.ouvert {
+		background: var(--bg);
+	}
+	.icone-fil {
+		width: 30px;
+		height: 30px;
+		border-radius: 8px;
+		display: grid;
+		place-items: center;
+		background: #111;
+		color: #fff;
+		font-size: 18px;
 	}
 	.liens {
 		position: absolute;

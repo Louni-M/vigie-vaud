@@ -12,7 +12,10 @@
 			},
 			"voie_acces": "direct",
 			"fraicheur": "requete",
-			"couverture": { "communes": "canton", "mode": "api" },
+			"couverture": {
+				"communes": "canton",
+				"mode": "api"
+			},
 			"sonde": {
 				"url": "https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/537/query?where=1%3D1&outFields=NO_CAMAC,NO_FAO,DATE_ENQUETE,NATURE,DESCRIPTION,DECISION_COMMUNALE,DATE_DECISION,URL,ETAT&returnGeometry=false&resultRecordCount=1&f=json",
 				"delai": 20,
@@ -41,7 +44,10 @@
 			},
 			"voie_acces": "direct",
 			"fraicheur": "requete",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"couverture": {
+				"communes": "canton",
+				"mode": "api"
+			}
 		},
 		{
 			"id": "swisstopo-recherche",
@@ -54,7 +60,10 @@
 			},
 			"voie_acces": "direct",
 			"fraicheur": "requete",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"couverture": {
+				"communes": "canton",
+				"mode": "api"
+			}
 		},
 		{
 			"id": "swisstopo-limites",
@@ -67,7 +76,10 @@
 			},
 			"voie_acces": "preparee",
 			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"couverture": {
+				"communes": "canton",
+				"mode": "api"
+			}
 		},
 		{
 			"id": "ucv-annuaire",
@@ -80,7 +92,10 @@
 			},
 			"voie_acces": "preparee",
 			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "scrape" }
+			"couverture": {
+				"communes": "canton",
+				"mode": "scrape"
+			}
 		},
 		{
 			"id": "swisstopo-adresses",
@@ -93,7 +108,10 @@
 			},
 			"voie_acces": "preparee",
 			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"couverture": {
+				"communes": "canton",
+				"mode": "api"
+			}
 		},
 		{
 			"id": "swisstopo-lacs",
@@ -106,7 +124,10 @@
 			},
 			"voie_acces": "preparee",
 			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"couverture": {
+				"communes": "canton",
+				"mode": "api"
+			}
 		},
 		{
 			"id": "ofs-communes-historique",
@@ -119,7 +140,36 @@
 			},
 			"voie_acces": "preparee",
 			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"couverture": {
+				"communes": "canton",
+				"mode": "api"
+			}
+		},
+		{
+			"id": "openparldata-prototype",
+			"nom": "OpenParlData (PROTOTYPE, données fictives)",
+			"nom_court": "OpenParlData",
+			"attribution": {
+				"texte": "Source: OpenParlData.ch",
+				"lien": "https://openparldata.ch",
+				"licence": "PROTOTYPE"
+			},
+			"voie_acces": "direct",
+			"fraicheur": "requete",
+			"couverture": {
+				"communes": [
+					5586,
+					5890,
+					5591,
+					5642,
+					5938,
+					5724,
+					5886,
+					5590,
+					5589
+				],
+				"mode": "api"
+			}
 		}
 	]
 }

@@ -3,14 +3,17 @@
 	 * Rail des couches : une icône par couche inscrite, dans l'ordre du registre, pleine si la couche est
 	 * activée et cerclée sinon. Un clic ouvre ou ferme son volet.
 	 */
+	import type { Snippet } from 'svelte';
 	import type { Registre } from './registre.svelte.js';
 
-	let { registre }: { registre: Registre } = $props();
+	// PROTOTYPE (ticket #45) : `avant` place l'entrée « Fil » de la variante A en tête du rail.
+	let { registre, avant }: { registre: Registre; avant?: Snippet } = $props();
 
 	const basculer = (id: string) => (registre.volet = registre.volet === id ? null : id);
 </script>
 
 <nav class="rail" aria-label="Couches">
+	{@render avant?.()}
 	{#each registre.couches as c (c.id)}
 		{@const active = registre.active(c.id)}
 		<button
