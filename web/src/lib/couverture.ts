@@ -61,6 +61,11 @@ export interface Couverture {
 	 * Couverture et ne laisse donc aucune commune « non couverte ».
 	 */
 	couvre(couche: string, bfs: number): boolean;
+	/**
+	 * Communes grisées sur la carte (bureau) quand le volet de cette couche est ouvert : celles qu'elle ne couvre
+	 * pas. Sans volet ouvert, aucune. Une panne ne grise rien : seul le mode compte, jamais l'état.
+	 */
+	grisees(volet: string | null): number[];
 }
 
 /** Une couche n'a de Couverture que si elle a un onglet dans la fiche commune. */
@@ -84,6 +89,11 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 		return lu.etat === 'en_panne' ? { etat: 'en_panne', depuis: lu.depuis } : { etat: 'disponible' };
 	};
 	const ids = [...new Set(couches.filter(aUneCouverture).flatMap((c) => c.sources))].filter((id) => parId.has(id));
+	const couvre = (id: string, bfs: number) => {
+		const couche = couches.find((c) => c.id === id);
+		if (!couche || !aUneCouverture(couche)) return true;
+		return couche.sources.some((s) => mode(s, bfs) !== 'non_couvert');
+	};
 	return {
 		sources: ids.map((id) => {
 			const source = parId.get(id)!;
@@ -102,11 +112,8 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 			const m = mode(id, bfs);
 			return { mode: m, etat: m === 'non_couvert' ? null : etatSource(id) };
 		},
-		couvre(id, bfs) {
-			const couche = couches.find((c) => c.id === id);
-			if (!couche || !aUneCouverture(couche)) return true;
-			return couche.sources.some((s) => mode(s, bfs) !== 'non_couvert');
-		}
+		couvre,
+		grisees: (volet) => (volet === null ? [] : communes.filter((c) => !couvre(volet, c.bfs)).map((c) => c.bfs))
 	};
 }
 

@@ -5,6 +5,7 @@
 	 * commune en colonne à droite quand une commune est ouverte. Les pages du groupe ne portent que le <head>.
 	 */
 	import { tick } from 'svelte';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { fly } from 'svelte/transition';
 	import { resolve } from '$app/paths';
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
@@ -15,6 +16,8 @@
 	import Rail from '#lib/registre/Rail.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
 	import FicheCommune from '#lib/registre/FicheCommune.svelte';
+	import Grisage from '#lib/registre/Grisage.svelte';
+	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import { attributionHtml, source } from '#lib/sources.js';
 	import type { Resultat } from '#lib/types.js';
 	import type { LayoutProps } from './$types';
@@ -28,6 +31,10 @@
 
 	/** Adresse cherchée ou position GPS, marquée sur la carte ; jamais écrite dans l'URL. */
 	let repere: [number, number] | null = $state(null);
+
+	/** Le grisage suit la couche dont le volet est ouvert, sur grand écran seulement. */
+	const telephone = new MediaQuery('max-width: 760px');
+	const grisees = $derived(telephone.current ? [] : couvertureCourante(data.communes).grisees(registre.volet));
 
 	// Un même texte (« © swisstopo », pour le fond, les adresses et les lacs) n'est cité qu'une fois.
 	const attribution = $derived(
@@ -91,6 +98,8 @@
 
 		<!-- Calques de chaque couche, dans l'ordre du registre ; importés à la première activation. -->
 		{#if registre.map}
+			<!-- Sous toutes les couches : le gris voile le fond, pas les éléments. -->
+			<Grisage map={registre.map} sous="couche:{COUCHES[0].id}" {grisees} />
 			{#each COUCHES as c (c.id)}
 				{#if registre.montee(c.id)}
 					{#await registre.composant(c, 'Carte') then module}

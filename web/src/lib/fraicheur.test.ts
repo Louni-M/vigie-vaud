@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { libelleBadge } from './fraicheur.js';
+import { libelleBadge, messageEchec } from './fraicheur.js';
 
 /** Horloge fixée : 15 octobre 2026, 10 h UTC. */
 const maintenant = new Date('2026-10-15T10:00:00Z');
@@ -42,5 +42,33 @@ describe('libellé du badge de fraîcheur', () => {
 		expect(libelleBadge(camac, { derniere: null, erreur: 'indisponible' }, maintenant)).toBe(
 			'service indisponible · CAMAC'
 		);
+	});
+});
+
+describe('message d’échec d’une source Direct', () => {
+	const PERMIS = 'Les permis n’ont pas pu être chargés';
+	// 12 h UTC = 14 h à Lausanne en octobre (heure d'été).
+	const panne = { etat: 'en_panne', depuis: '2026-10-12T12:00:00Z' } as const;
+
+	it('dit la panne constatée par la surveillance, avec sa date', () => {
+		expect(messageEchec(PERMIS, 'indisponible', panne)).toBe('Source en panne depuis le 12 oct., 14 h.');
+		expect(messageEchec(PERMIS, 'indisponible', { etat: 'en_panne', depuis: null })).toBe('Source en panne.');
+	});
+
+	it('donne le message de la couche et la cause vue du navigateur quand la surveillance n’a pas constaté de panne', () => {
+		expect(messageEchec(PERMIS, 'indisponible', { etat: 'disponible' })).toBe(
+			'Les permis n’ont pas pu être chargés : le service est indisponible pour le moment.'
+		);
+		expect(messageEchec(PERMIS, 'hors_ligne', { etat: 'inconnu' })).toBe(
+			'Les permis n’ont pas pu être chargés : vous semblez hors ligne.'
+		);
+		// Un état périmé ne dit plus rien de la source.
+		expect(messageEchec(PERMIS, 'indisponible', { etat: 'surveillance_interrompue' })).toBe(
+			'Les permis n’ont pas pu être chargés : le service est indisponible pour le moment.'
+		);
+	});
+
+	it('ne dit rien quand le navigateur a obtenu les données, même si le cron déclare la panne', () => {
+		expect(messageEchec(PERMIS, null, panne)).toBeNull();
 	});
 });

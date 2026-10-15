@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { deduireCouverture, libelleEtat, libellePaire } from './couverture.js';
 import { chargerEtatSources, lienPannes, lireEtatSources } from './etat-sources.js';
 import type { CoucheInscrite } from './registre/types.js';
+import { COUCHES } from './registre/couches.js';
 import type { EtatSource, EtatSources, Source } from './schema.js';
+import { SOURCES } from './sources.js';
+import communesJ0 from '../../static/communes.json';
 
 const MAINTENANT = new Date('2026-10-12T14:30:00Z');
 const COMMUNES = [{ bfs: 5586 }, { bfs: 5590 }, { bfs: 5889 }];
@@ -150,6 +153,53 @@ describe('Couverture déduite', () => {
 		expect(deduire(lireEtatSources(v2)).etat('camac')).toEqual({ etat: 'inconnu' });
 		expect(deduire(lireEtatSources('<html>')).etat('camac')).toEqual({ etat: 'inconnu' });
 		expect(deduire(lireEtatSources(etat({ camac: disponible }))).etat('camac')).toEqual({ etat: 'disponible' });
+	});
+});
+
+describe('grisage de la carte', () => {
+	const panne: EtatSource = { ...disponible, etat: 'en_panne', depuis: '2026-10-12T12:17:00Z', motif: 'HTTP 503' };
+	const deduire = (e: EtatSources | null) =>
+		deduireCouverture({
+			sources: [
+				source('camac', { communes: 'canton', mode: 'api' }),
+				source('ouest', { communes: [5586], mode: 'api' }),
+				source('est', { communes: [5889], mode: 'scrape' })
+			],
+			etat: e,
+			couches: [couche('permis', ['camac']), couche('conseils', ['ouest', 'est']), couche('fond', ['ouest'], false)],
+			communes: COMMUNES,
+			maintenant: MAINTENANT
+		});
+
+	it('grise les communes que la couche du volet ouvert ne couvre pas', () => {
+		expect(deduire(etat({})).grisees('conseils')).toEqual([5590]);
+	});
+
+	it('ne grise rien sans volet ouvert', () => {
+		expect(deduire(etat({})).grisees(null)).toEqual([]);
+	});
+
+	it('ne grise rien pour une couche cantonale, ni pour une couche sans onglet', () => {
+		expect(deduire(etat({})).grisees('permis')).toEqual([]);
+		expect(deduire(etat({})).grisees('fond')).toEqual([]);
+	});
+
+	it('ne grise rien de plus pour une panne', () => {
+		const c = deduire(etat({ camac: panne, ouest: panne, est: panne }));
+		expect(c.grisees('permis')).toEqual([]);
+		expect(c.grisees('conseils')).toEqual([5590]);
+	});
+
+	it('ne grise rien en J0 : toutes les sources sont cantonales', () => {
+		const c = deduireCouverture({
+			sources: SOURCES,
+			etat: etat({ 'camac-permis': panne }),
+			couches: COUCHES,
+			communes: communesJ0,
+			maintenant: MAINTENANT
+		});
+		expect(communesJ0).toHaveLength(300);
+		for (const couche of COUCHES) expect(c.grisees(couche.id)).toEqual([]);
 	});
 });
 

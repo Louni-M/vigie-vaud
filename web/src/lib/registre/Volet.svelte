@@ -1,9 +1,10 @@
 <script lang="ts">
 	/*
-	 * Volet d'une couche, assemblé par le registre : interrupteur (ou « permanente »), badge de fraîcheur et
-	 * attribution de chaque source tirée de sources.json, puis le `Volet` de la couche. Le lien vers la page
-	 * Couverture viendra s'ajouter ici.
+	 * Volet d'une couche, assemblé par le registre : interrupteur (ou « permanente »), badge de fraîcheur de chaque
+	 * source et lien vers la page Couverture, attribution de chaque source tirée de sources.json, puis le `Volet` de
+	 * la couche.
 	 */
+	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { source } from '#lib/sources.js';
 	import type { Registre } from './registre.svelte.js';
@@ -37,6 +38,7 @@
 
 	<p class="badges">
 		{#each sources as s (s.id)}<BadgeFraicheur source={s} />{/each}
+		<a class="couverture" href={resolve('/couverture')}>Couverture</a>
 	</p>
 
 	<p class="attribution">
@@ -113,6 +115,10 @@
 		flex-wrap: wrap;
 		gap: 2px 12px;
 		margin: -6px 0 0;
+	}
+	.couverture {
+		font-size: 12px;
+		color: var(--muted);
 	}
 	.attribution {
 		margin: -8px 0 0;

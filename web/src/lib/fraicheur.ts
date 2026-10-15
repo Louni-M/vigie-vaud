@@ -1,6 +1,7 @@
 // Badge de fraîcheur : de quand datent les données d'une source, ou pourquoi elles manquent. Un badge par source,
 // sans agrégat, sous le nom de chaque onglet et dans le volet de la couche (décisions de #2).
 import { SvelteMap } from 'svelte/reactivity';
+import { dateHeure, type EtatCouverture } from './couverture.js';
 import type { Source } from './schema';
 
 /** Pourquoi le dernier chargement d'une source a échoué, vu du navigateur. */
@@ -53,6 +54,23 @@ export function libelleBadge(
 		quand = source.fraicheur === 'requete' ? `consulté ${age(date, maintenant)}` : age(date, maintenant);
 	}
 	return `${quand} · ${source.nom_court}`;
+}
+
+/** La cause d'un échec, dans le message d'échec. */
+const CAUSES_MESSAGE: Record<CauseEchec, string> = {
+	hors_ligne: 'vous semblez hors ligne',
+	indisponible: 'le service est indisponible pour le moment'
+};
+
+/**
+ * Message d'échec d'une source Direct, après la nouvelle tentative automatique : « Source en panne depuis le … »
+ * si la surveillance a constaté une panne (état tiré de la Couverture), sinon le message de la couche et la cause
+ * vue du navigateur. `null` tant que le navigateur obtient les données, même si le cron déclare la panne.
+ */
+export function messageEchec(message: string, cause: CauseEchec | null, etat: EtatCouverture): string | null {
+	if (!cause) return null;
+	if (etat.etat === 'en_panne') return etat.depuis ? `Source en panne depuis le ${dateHeure(etat.depuis)}.` : 'Source en panne.';
+	return `${message} : ${CAUSES_MESSAGE[cause]}.`;
 }
 
 /* ---- États des sources à l'exécution, inscrits par leur code d'accès ---- */
