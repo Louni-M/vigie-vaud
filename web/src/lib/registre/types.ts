@@ -63,8 +63,8 @@ export interface Contexte<P = unknown> {
 	fermer(): void;
 }
 
-/** Composant d'une couche, importé à la demande. */
-export type Chargeur<P> = () => Promise<{ default: Component<{ ctx: Contexte<P> }> }>;
+/** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */
+export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ ctx: Contexte<P> } & Props> }>;
 
 /** Description légère d'une couche, inscrite au registre. */
 export interface Couche<P = unknown> {
@@ -99,7 +99,8 @@ export interface Couche<P = unknown> {
 		Volet?: Chargeur<P>;
 		Onglet?: Chargeur<P>;
 		Fiche?: Chargeur<P>;
-		Apercu?: Chargeur<P>;
+		/** Aperçu de l'élément ouvert, en bas de la carte sur téléphone ; `voir` montre la fiche. */
+		Apercu?: Chargeur<P, { voir: () => void }>;
 	};
 }
 
