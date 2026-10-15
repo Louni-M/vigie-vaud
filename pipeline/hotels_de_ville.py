@@ -51,6 +51,8 @@ ECART_MAX = 150  # mètres
 # Les coordonnées UCV sont arrondies à 100 m : un `townhall` OSM bien nommé à moins de CONFIRMATION_OSM m du siège
 # géocodé suffit à le confirmer, et l'écart avec l'UCV n'est alors que du bruit (ticket #26).
 CONFIRMATION_OSM = 80  # mètres
+# En deçà, le marqueur reste sur l'adresse officielle du bon village : assez pour une carte (ticket #26).
+ECART_UCV_MIN = 1000  # mètres
 
 COLONNES = ["ofs", "nom", "adresse", "E", "N", "origine", "note"]
 COLONNES_REVUE = ["ofs", "nom", "motif", "detail", "carte"]
@@ -224,9 +226,8 @@ def lire_townhalls(client: httpx.Client, essais: int = 4, attente: float = 30) -
 
 
 def ecarts(position: Point, fiche: FicheUCV | None, townhalls: list[tuple[str, Point]]) -> list[str]:
-    """Écarts de plus de ECART_MAX m avec le `townhall` OSM bien nommé le plus proche et avec les coordonnées UCV.
-
-    L'écart avec l'UCV n'est retenu que si OSM ne confirme pas le siège (pas de `townhall` à CONFIRMATION_OSM m).
+    """Écarts de plus de ECART_MAX m avec le `townhall` OSM bien nommé le plus proche, et d'au moins ECART_UCV_MIN m
+    avec les coordonnées UCV quand OSM ne confirme pas le siège (pas de `townhall` à CONFIRMATION_OSM m).
     """
     constats = []
     nom, d_osm = None, None
@@ -235,7 +236,7 @@ def ecarts(position: Point, fiche: FicheUCV | None, townhalls: list[tuple[str, P
         if (d_osm := plus_proche.distance(position)) > ECART_MAX:
             constats.append(f"à {d_osm:.0f} m du townhall OSM « {nom} »")
     confirme_par_osm = d_osm is not None and d_osm <= CONFIRMATION_OSM
-    if fiche and fiche.coordonnees and (d := Point(fiche.coordonnees).distance(position)) > ECART_MAX:
+    if fiche and fiche.coordonnees and (d := Point(fiche.coordonnees).distance(position)) >= ECART_UCV_MIN:
         if not confirme_par_osm:
             constats.append(f"à {d:.0f} m des coordonnées UCV")
             if d_osm is None:
