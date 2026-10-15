@@ -11,6 +11,7 @@
 	// « Carte » reste marqué comme page courante quand une fiche commune est ouverte sur la carte.
 	const nav = [
 		{ href: resolve('/(carte)'), label: 'Carte', groupe: '/(carte)' },
+		{ href: resolve('/couverture'), label: 'Couverture', groupe: '/couverture' },
 		{ href: resolve('/a-propos'), label: 'À propos', groupe: '/a-propos' }
 	];
 	const courant = (groupe: string) => page.route.id === groupe || !!page.route.id?.startsWith(`${groupe}/`);

@@ -68,7 +68,7 @@
 {/snippet}
 
 <svelte:head>
-	<title>Informations légales : l’enquête publique – Vigie Vaud</title>
+	<title>L’enquête publique : ce que prévoit la loi – Vigie Vaud</title>
 	<meta
 		name="description"
 		content="L’enquête publique d’un permis de construire dans le canton de Vaud : consultation du dossier, observations et oppositions, recours, avec les textes officiels."
@@ -76,7 +76,7 @@
 </svelte:head>
 
 <main class="page texte">
-	<p class="fil"><a href={resolve('/(carte)')}>Carte</a> › Informations légales</p>
+	<p class="fil"><a href={resolve('/(carte)')}>Carte</a> › L’enquête publique</p>
 	<h1>L’enquête publique : ce que prévoit la loi</h1>
 	<p class="chapeau">
 		Cette page résume les règles vaudoises qui s’appliquent pendant l’enquête publique d’une demande de permis de

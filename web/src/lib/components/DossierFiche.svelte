@@ -59,7 +59,7 @@
 	{:else if d.statut === 'procedure'}
 		<p class="note">
 			L’enquête publique est terminée : la Municipalité statue sur la demande.
-			<a href={resolve('/infos-legales')}>Comment se déroule la procédure</a>
+			<a href={resolve('/enquete-publique')}>Comment se déroule la procédure</a>
 		</p>
 	{/if}
 	{#if d.statut === 'enquete' || d.statut === 'procedure'}
