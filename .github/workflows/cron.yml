@@ -1,0 +1,56 @@
+name: Passage du cron
+
+# Workflow réutilisable (ADR 0014). Il n'est lancé que par le déclencheur du dépôt de données `vigie-vaud-donnees`,
+# dont le contenu est dans `pipeline/depot-donnees/.github/workflows/cron.yml`. Il tourne donc avec le
+# `GITHUB_TOKEN` du dépôt de données, sans aucun secret, et `github.repository` y désigne le dépôt de données.
+# Un passage : sondes et état des sources (`pipeline/cron.py`), commit qui sert d'archive, push (avec
+# `pull --rebase` et deux nouveaux essais au plus), puis publication du dépôt de données sur Pages.
+on:
+  workflow_call:
+
+jobs:
+  passage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - name: Cloner le dépôt de données
+        uses: actions/checkout@v4
+        with:
+          path: donnees
+
+      # Le dépôt principal, à la même branche que l'appel `cron.yml@main` du déclencheur. Son adresse est aussi
+      # dans `config.json` (`depot`), que ce workflow ne peut pas lire avant de l'avoir cloné.
+      - name: Cloner le code du cron
+        uses: actions/checkout@v4
+        with:
+          repository: Louni-M/vigie-vaud
+          ref: main
+          path: code
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v6
+      - name: Installer le pipeline
+        run: uv sync --locked --no-dev --project code/pipeline
+
+      - name: Passage du cron
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: uv run --no-dev --project code/pipeline python code/pipeline/cron.py --depot donnees
+
+      # `upload-pages-artifact` laisse de côté `.git` et `.github`.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: donnees
+      - id: deploiement
+        uses: actions/deploy-pages@v4
