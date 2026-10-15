@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { teteCommune, titreFiche } from './tete.js';
 import type { CoucheInscrite } from './types.js';
 import { commune } from '#lib/couches/permis/faux-canton.js';
+import type { AncienNom } from '#lib/types.js';
 
 const couche = (id: string, champs: Partial<CoucheInscrite> = {}): CoucheInscrite => ({
 	id,
@@ -36,6 +37,25 @@ describe('<head> d’une commune', () => {
 			couche('c', { resume: 'les trains' })
 		];
 		expect(teteCommune(PULLY, couches).description).toBe('Pully (VD) sur Vigie Vaud : les permis, les routes et les trains.');
+	});
+
+	it('nomme les anciennes communes et les anciens noms', () => {
+		const ancienne = (nom: string): AncienNom => ({ nom, slug: nom.toLowerCase(), type: 'Ancienne commune', annee: 2011 });
+		const bel = {
+			...commune(5613, 'Bourg-en-Lavaux', [6.68, 46.44, 6.76, 46.52]),
+			anciens: ['Cully', 'Epesses', 'Grandvaux', 'Riex', 'Villette (Lavaux)'].map(ancienne)
+		};
+		const yverdon = {
+			...commune(5938, 'Yverdon-les-Bains', [6.6, 46.76, 6.68, 46.8]),
+			anciens: [ancienne('Gressy'), { nom: 'Yverdon', slug: 'yverdon', type: 'Ancien nom' as const, annee: 1982 }]
+		};
+		const couches = [couche('permis', { resume: 'les permis' })];
+		expect(teteCommune(bel, couches).description).toBe(
+			'Bourg-en-Lavaux (VD) sur Vigie Vaud : les permis. Anciennes communes : Cully, Epesses, Grandvaux, Riex, Villette (Lavaux).'
+		);
+		expect(teteCommune(yverdon, couches).description).toBe(
+			'Yverdon-les-Bains (VD) sur Vigie Vaud : les permis. Ancienne commune : Gressy. Ancien nom : Yverdon.'
+		);
 	});
 });
 

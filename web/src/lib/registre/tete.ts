@@ -1,4 +1,5 @@
 import type { Commune } from '#lib/types.js';
+import { enteteFiche } from './entete.js';
 import type { CoucheInscrite, Ouvert } from './types.js';
 
 /** « a », « a et b », « a, b et c ». */
@@ -8,13 +9,16 @@ function enumerer(parties: string[]): string {
 
 /**
  * Titre et description de la page d'une commune (`/commune/<slug>`), pré-générée : c'est ce qu'affiche l'aperçu
- * d'un lien partagé. La description dit ce que les couches inscrites montrent de la commune, dans l'ordre du registre.
+ * d'un lien partagé. La description dit ce que les couches inscrites montrent de la commune, dans l'ordre du registre,
+ * puis nomme ses anciennes communes et ses anciens noms.
  */
 export function teteCommune(commune: Commune, couches: readonly CoucheInscrite[]) {
 	const resumes = couches.flatMap((c) => (c.resume ? [c.resume] : []));
+	// Les anciennes communes, comme dans l'en-tête de la fiche : on retrouve son village dans l'aperçu du lien.
+	const anciens = enteteFiche(commune).anciens.map((l) => ` ${l}.`);
 	return {
 		titre: titreFiche(commune, null, couches),
-		description: `${commune.nom} (VD) sur Vigie Vaud : ${enumerer(resumes)}.`
+		description: `${commune.nom} (VD) sur Vigie Vaud : ${enumerer(resumes)}.${anciens.join('')}`
 	};
 }
 
