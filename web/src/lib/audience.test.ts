@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cheminACompter, mesureAudience } from './audience.js';
+import { adresseDeComptage, cheminACompter, mesureAudience } from './audience.js';
 
 const url = (chemin: string) => new URL(chemin, 'https://vigie.exemple.ch');
 
@@ -15,6 +15,23 @@ describe('mesure d’audience activée à la construction', () => {
 			compteur: 'https://vigievaud.goatcounter.com/count',
 			tableau: 'https://vigievaud.goatcounter.com'
 		});
+	});
+});
+
+describe('adresse de comptage d’une page vue', () => {
+	const mesure = mesureAudience('vigievaud')!;
+
+	it('ne transmet à GoatCounter que le chemin, et un nombre aléatoire contre le cache', () => {
+		const adresse = new URL(adresseDeComptage(mesure, '/commune/pully', 0.25));
+		expect(adresse.origin + adresse.pathname).toBe('https://vigievaud.goatcounter.com/count');
+		expect([...adresse.searchParams.keys()].sort()).toEqual(['p', 'rnd']);
+		expect(adresse.searchParams.get('p')).toBe('/commune/pully');
+	});
+
+	it('encode le chemin sans rien y ajouter', () => {
+		const adresse = new URL(adresseDeComptage(mesure, '/commune/château-d’œx', 0.5));
+		expect(adresse.searchParams.get('p')).toBe('/commune/château-d’œx');
+		expect(adresse.searchParams.size).toBe(2);
 	});
 });
 
