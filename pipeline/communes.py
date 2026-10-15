@@ -39,6 +39,7 @@ import httpx
 from pyproj import Transformer
 from shapely.geometry import Point
 
+from telechargement import telecharger
 from terre import LACS_URL, charger_lacs, partie_terrestre, point_repli
 
 ICI = Path(__file__).resolve().parent
@@ -78,13 +79,7 @@ def charger_communes(client: httpx.Client, cache: Path = CACHE) -> gpd.GeoDataFr
     cache.mkdir(parents=True, exist_ok=True)
     gpkgs = list(cache.glob("swissBOUNDARIES3D*.gpkg"))
     if not gpkgs:
-        zpath = cache / "sb3d.gpkg.zip"
-        with client.stream("GET", BOUNDARIES_URL, timeout=600) as r:
-            r.raise_for_status()
-            with open(zpath, "wb") as f:
-                for chunk in r.iter_bytes():
-                    f.write(chunk)
-        with zipfile.ZipFile(zpath) as z:
+        with zipfile.ZipFile(telecharger(client, BOUNDARIES_URL, cache / "sb3d.gpkg.zip")) as z:
             z.extractall(cache)
         gpkgs = list(cache.glob("swissBOUNDARIES3D*.gpkg"))
     gdf = gpd.read_file(gpkgs[0], layer="tlm_hoheitsgebiet")
