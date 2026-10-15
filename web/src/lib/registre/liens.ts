@@ -8,7 +8,7 @@ import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
  */
 
 /** La fiche d'une commune. */
-export const lienCommune = (slug: string) => resolve('/commune/[slug]', { slug });
+export const lienCommune = (slug: string) => resolve('/(carte)/commune/[slug]', { slug });
 
 /** La carte, avec ce qui diffère de l'état par défaut. */
 export function lienCarte(etat: Partial<EtatUrl> = {}): string {

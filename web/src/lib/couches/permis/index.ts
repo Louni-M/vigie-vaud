@@ -21,9 +21,11 @@ export const couchePermis: Couche<Parametres> = {
 		const n = texte.trim();
 		return /^\d{5,6}$/.test(n) ? [{ couche: 'permis', element: n, libelle: `Dossier CAMAC n° ${n}` }] : [];
 	},
+	resume: 'les permis de construire à l’enquête, en direct depuis le canton',
 	composants: {
 		Carte: () => import('./Carte.svelte'),
-		Volet: () => import('./Volet.svelte')
+		Volet: () => import('./Volet.svelte'),
+		Onglet: () => import('./Onglet.svelte')
 	}
 };
 

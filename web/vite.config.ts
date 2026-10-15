@@ -4,7 +4,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { verifierSources } from './scripts/verifier-sources.ts';
 
-// Pages générées à l'avance : l'accueil, les pages fixes et le cadre des 300 pages commune
+// Pages générées à l'avance : l'accueil, les pages fixes et les 300 fiches commune
 // (index swisstopo produit par pipeline/communes.py). Aucune donnée CAMAC n'est lue au build :
 // les dossiers sont chargés en direct par le navigateur, et les fiches dossier rendues côté navigateur.
 function readJson<T>(path: string, fallback: T): T {
@@ -38,11 +38,7 @@ export default defineConfig({
 				concurrency: 8,
 				// Pas d'exploration des liens : seules les pages listées ci-dessous sont pré-générées.
 				crawl: false,
-				entries: [
-					'*',
-					'/commune',
-					...communes.map((c) => `/commune/${c.slug}` as const)
-				]
+				entries: ['*', ...communes.map((c) => `/commune/${c.slug}` as const)]
 			}
 		})
 	]

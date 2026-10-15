@@ -32,7 +32,6 @@
 	{/if}
 	<p class="actions">
 		<a class="bouton" href={resolve('/(carte)')}>Retour à la carte</a>
-		<a class="bouton secondaire" href={resolve('/commune')}>Liste des communes</a>
 	</p>
 </main>
 
