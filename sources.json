@@ -14,7 +14,7 @@
 			"fraicheur": "requete",
 			"couverture": { "communes": "canton", "mode": "api" },
 			"sonde": {
-				"url": "https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/537/query?where=1%3D1&outFields=NO_CAMAC,NO_FAO,DATE_ENQUETE,NATURE,DESCRIPTION,DECISION_COMMUNALE,DATE_DECISION,URL,ETAT&returnGeometry=true&resultRecordCount=1&f=json",
+				"url": "https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/537/query?where=1%3D1&outFields=NO_CAMAC,NO_FAO,DATE_ENQUETE,NATURE,DESCRIPTION,DECISION_COMMUNALE,DATE_DECISION,URL,ETAT&returnGeometry=false&resultRecordCount=1&f=json",
 				"delai": 20,
 				"champs": [
 					"NO_CAMAC",
