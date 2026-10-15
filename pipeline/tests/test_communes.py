@@ -1,5 +1,8 @@
 """Préparation des communes : communes.json et communes-limites.json (#27)."""
 
+import json
+from datetime import date
+
 import pytest
 from pyproj import Transformer
 from shapely.geometry import Point, box
@@ -27,6 +30,19 @@ def test_le_slug_d_une_commune_ne_change_pas_puisqu_il_sert_d_adresse(tmp_path, 
     [commune] = preparer(monde, tmp_path, [hotel(5511, nom, 2537000, 1163000)])
 
     assert commune["slug"] == slug
+
+
+def test_la_preparation_ecrit_l_edition_de_chaque_source_preparee(tmp_path):
+    preparer(Monde(communes=[ASSENS]), tmp_path, [hotel(5511, "Assens", 2537000, 1163000)], jusqu_au=date(2027, 1, 4))
+
+    millesimes = json.loads((tmp_path / "static" / "millesimes.json").read_text(encoding="utf-8"))
+    assert millesimes == {
+        "swisstopo-limites": 2026,  # swissBOUNDARIES3D 2026-01
+        "swisstopo-lacs": 2026,  # swissTLMRegio 2026
+        "ucv-annuaire": 2026,  # lus par l'outil d'initialisation en octobre 2026
+        "swisstopo-adresses": 2026,
+        "ofs-communes-historique": 2027,  # répertoire lu jusqu'au jour de la préparation
+    }
 
 
 def test_l_hotel_de_ville_est_place_et_decrit_d_apres_le_csv(tmp_path):

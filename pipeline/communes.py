@@ -17,6 +17,7 @@ Fichiers écrits (versionnés) :
                                     pour cadrer la carte), `hotel` [lon, lat], `adresse` (vide pour une position
                                     approximative) et `anciens` (nom, slug, type, année)
   web/static/communes-limites.json  polygones simplifiés (WGS84, ~1 m de précision)
+  web/static/millesimes.json        édition de chaque source Préparée lue ici, pour son badge de fraîcheur
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ import httpx
 from pyproj import Transformer
 from shapely.geometry import Point
 
-from terre import charger_lacs, partie_terrestre, point_repli
+from terre import LACS_URL, charger_lacs, partie_terrestre, point_repli
 
 ICI = Path(__file__).resolve().parent
 ROOT = ICI.parent
@@ -53,6 +54,9 @@ BOUNDARIES_URL = (
 MUTATIONS_URL = "https://www.agvchapp.bfs.admin.ch/api/communes/mutations"
 # Le répertoire historisé des communes commence en 1960.
 DEPUIS = 1960
+# Année où l'outil d'initialisation (hotels_de_ville.py) a lu l'annuaire de l'UCV et le répertoire des adresses
+# pour écrire hotels-de-ville.csv : à mettre à jour quand on le relance.
+EDITION_HOTELS = 2026
 
 # Tolérance de simplification (m, LV95) : invisible à l'échelle d'une commune, fichier ~5 fois plus léger.
 TOLERANCE = 10
@@ -162,6 +166,18 @@ def lire_hotels(chemin: Path) -> dict[int, dict]:
         return {int(r["ofs"]): r for r in csv.DictReader(f)}
 
 
+def millesimes(jusqu_au: date) -> dict[str, int]:
+    """Édition de chaque source Préparée lue ici, par identifiant de sources.json (badge de fraîcheur du site)."""
+    annee = lambda url: int(re.search(r"_(\d{4})", url)[1])  # noqa: E731
+    return {
+        "swisstopo-limites": annee(BOUNDARIES_URL),
+        "swisstopo-lacs": annee(LACS_URL),
+        "ucv-annuaire": EDITION_HOTELS,
+        "swisstopo-adresses": EDITION_HOTELS,
+        "ofs-communes-historique": jusqu_au.year,
+    }
+
+
 def arrondi(coords):
     if isinstance(coords[0], (int, float)):
         return [round(coords[0], 5), round(coords[1], 5)]
@@ -179,13 +195,15 @@ def preparer(
     cache: Path = CACHE,
     jusqu_au: date | None = None,
 ) -> None:
-    """Écrit communes.json et communes-limites.json dans `sortie`, ou lève `HotelsHorsTerre` sans rien écrire."""
+    """Écrit communes.json, communes-limites.json et millesimes.json dans `sortie`, ou lève `HotelsHorsTerre`
+    sans rien écrire."""
+    jusqu_au = jusqu_au or date.today()
     communes = charger_communes(client, cache)
     communes = communes.dissolve(by=["bfs_nummer", "name"], aggfunc={"einwohnerzahl": "max"}).reset_index()
     hotels = lire_hotels(csv_hdv)
     lacs = charger_lacs(client, cache)
     actuelles = {int(c.bfs_nummer): c["name"] for _, c in communes.iterrows()}
-    anciens = lire_anciens(client, jusqu_au or date.today(), actuelles)
+    anciens = lire_anciens(client, jusqu_au, actuelles)
     for ofs in hotels.keys() - actuelles.keys():
         print(f"  Avertissement : {hotels[ofs]['nom']} ({ofs}) n'est plus une commune, ligne ignorée", file=sys.stderr)
 
@@ -226,7 +244,8 @@ def preparer(
         raise HotelsHorsTerre(hors_terre)
     index.sort(key=lambda c: c["slug"])
     sortie.mkdir(parents=True, exist_ok=True)
-    for nom, contenu in (("communes.json", index), ("communes-limites.json", limites)):
+    fichiers = {"communes.json": index, "communes-limites.json": limites, "millesimes.json": millesimes(jusqu_au)}
+    for nom, contenu in fichiers.items():
         (sortie / nom).write_text(json.dumps(contenu, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"{len(index)} communes écrites dans {sortie}", file=sys.stderr)
 
