@@ -71,7 +71,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 | Dossier | Rôle |
 |---|---|
 | `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) ; données CAMAC lues en direct par `src/lib/api.ts` et `src/lib/data.ts` |
-| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `schema.py` : modèles du schéma commun. `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
+| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `schema.py` : modèles du schéma commun. `cron.py` : un passage du cron. `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
 | `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
 | `sources.json` | Déclaration de chaque source (attribution, voie d'accès, fraîcheur, Couverture, sonde), lue par le site et le cron |
 | `.github/workflows/` | Construction et publication sur GitHub Pages, sans aucune donnée CAMAC |
@@ -104,6 +104,20 @@ des modèles :
 pnpm --dir web schema          # régénère schema/ et web/src/lib/schema.ts (uv et pnpm requis)
 cd pipeline && uv run pytest   # tests du pipeline
 ```
+
+## Cron et dépôt de données
+
+Le cron (ADR 0005 et 0014) envoie une sonde à chaque source de `sources.json` qui a un bloc `sonde`, puis écrit
+`etat-sources.json` et `schema/` dans le dépôt de données `vigie-vaud-donnees`, committe et pousse. Pendant J0, on le
+lance en local contre un clone de ce dépôt ; `--sans-push` écrit l'état et committe sans pousser :
+
+```bash
+cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push
+```
+
+Au passage public, le déclencheur `pipeline/depot-donnees/.github/workflows/cron.yml` se pose tel quel dans le dépôt
+de données : il appelle toutes les 30 minutes le workflow réutilisable `.github/workflows/cron.yml`, qui fait le
+passage puis publie le dépôt de données sur Pages, avec son seul `GITHUB_TOKEN`.
 
 ## Configuration
 
