@@ -70,7 +70,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 
 | Dossier | Rôle |
 |---|---|
-| `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) ; données CAMAC lues en direct par `src/lib/api.ts` et `src/lib/data.ts` |
+| `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) ; données CAMAC lues en direct par `src/lib/api.ts` et `src/lib/couches/permis/donnees.svelte.ts` |
 | `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
 | `.github/workflows/` | Construction et publication sur GitHub Pages, sans aucune donnée CAMAC |
 
@@ -80,6 +80,12 @@ Prérequis : Node 24+, pnpm. [uv](https://docs.astral.sh/uv/) seulement pour ré
 
 ```bash
 cd web && pnpm install && pnpm dev
+```
+
+Tests du site (Vitest, sans navigateur ni appel au canton) :
+
+```bash
+cd web && pnpm test
 ```
 
 Limites communales (après une fusion de communes, par exemple) :

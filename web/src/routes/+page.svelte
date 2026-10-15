@@ -8,7 +8,9 @@
 	import Recherche from '#lib/components/Recherche.svelte';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
 	import DossierFiche from '#lib/components/DossierFiche.svelte';
-	import { ErreurApi, getActive, getCommunes, getDossier, getDossiers, getHistoAnnee, SOURCE } from '#lib/data.js';
+	import { ErreurApi } from '#lib/api.js';
+	import { getCommunes } from '#lib/communes.js';
+	import { permis, SOURCE, visibles as dossiersVisibles } from '#lib/couches/permis/donnees.svelte.js';
 	import { NATURES, STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
 	import { ecrireEtat, lireEtat, STATUTS_EN_COURS, type EtatCarte, type Tri } from '#lib/etat.js';
 	import type { Centre, Commune, Dossier, PointHisto, Resultat, Statut } from '#lib/types.js';
@@ -20,7 +22,7 @@
 	/** Téléphone en portrait : carte et liste occupent tour à tour tout l'écran. Même requête que dans le CSS. */
 	const telephone = new MediaQuery('(max-width: 760px) and (min-height: 521px)', false);
 
-	let actifs: Dossier[] = $state([]);
+	const actifs = $derived(permis.actifs);
 	let communes: Commune[] = $state([]);
 	let carte: ReturnType<typeof Map> | undefined = $state();
 	let vue: [number, number, number, number] | null = $state(null);
@@ -59,61 +61,20 @@
 	 * Historique : points légers lus sur le service du canton, une année à la fois, de l'année en cours
 	 * jusqu'à « depuis ». Les fiches complètes ne sont chargées que pour les dossiers listés.
 	 */
-	let histo: PointHisto[] = $state.raw([]);
-	const anneesDemandees = new Set<number>();
-	let histoEnCours = $state(0);
-	let histoEchec = $state(false);
 	$effect(() => {
 		if (!historique) return;
 		const min = anneeMin;
 		// Le curseur des années passe par toutes les valeurs : on attend qu'il s'arrête.
-		const t = setTimeout(() => chargerHisto(min), 250);
+		const t = setTimeout(() => permis.chargerHisto(min), 250);
 		return () => clearTimeout(t);
 	});
-	function chargerHisto(min: number) {
-		histoEchec = false;
-		for (let a = ANNEE_COURANTE; a >= min; a--) {
-			if (anneesDemandees.has(a)) continue;
-			anneesDemandees.add(a);
-			histoEnCours++;
-			getHistoAnnee(a)
-				.then(
-					(pts) => (histo = histo.concat(pts)),
-					() => {
-						anneesDemandees.delete(a);
-						histoEchec = true;
-					}
-				)
-				.finally(() => histoEnCours--);
-		}
-	}
-	const histoChargement = $derived(histoEnCours > 0);
 
 	/** Fiches complètes des dossiers d'historique affichés dans la liste. */
 	let fichesHisto: Record<number, Dossier> = $state.raw({});
 
-	const idsActifs = $derived(new Set(actifs.map((d) => d.id)));
-	const annee = (d: PointHisto) => Number(d.debut?.slice(0, 4) ?? 0);
-	/** Publication (début d'enquête) la plus récente d'abord. */
-	const parPublication = (a: PointHisto, b: PointHisto) => (b.debut ?? '').localeCompare(a.debut ?? '') || b.id - a.id;
-	/** Enquêtes en cours d'abord, la plus proche de sa fin en tête ; ensuite par publication. */
-	const parFin = (a: PointHisto, b: PointHisto) =>
-		Number(b.statut === 'enquete') - Number(a.statut === 'enquete') ||
-		(a.statut === 'enquete' ? (a.fin ?? '').localeCompare(b.fin ?? '') : 0) ||
-		parPublication(a, b);
-
-	const visibles = $derived.by(() => {
-		if (!vue) return [];
-		const [w, s, e, n] = vue;
-		const garde = (d: PointHisto) =>
-			d.lon >= w && d.lon <= e && d.lat >= s && d.lat <= n &&
-			statuts.includes(d.statut) && (!nature || d.nature === nature);
-		const liste: (Dossier | PointHisto)[] = actifs.filter(garde);
-		// Comme sur la carte : l'historique est filtré par année, pas les dossiers en cours.
-		if (historique)
-			for (const d of histo) if (!idsActifs.has(d.id) && annee(d) >= anneeMin && garde(d)) liste.push(d);
-		return liste.sort(tri === 'fin' ? parFin : parPublication);
-	});
+	const visibles = $derived(
+		dossiersVisibles(vue, { statuts, nature, historique, depuis: anneeMin, tri }, permis)
+	);
 
 	/** Fiche complète d'un élément de la liste, ou `undefined` tant qu'elle n'est pas chargée. */
 	const fiche = (d: Dossier | PointHisto): Dossier | undefined => ('slug' in d ? d : fichesHisto[d.id]);
@@ -128,7 +89,7 @@
 		const ctrl = new AbortController();
 		const t = setTimeout(
 			() =>
-				getDossiers(fetch, manquants, ctrl.signal).then(
+				permis.fiches(manquants, ctrl.signal).then(
 					(ds) => (fichesHisto = { ...fichesHisto, ...Object.fromEntries(ds.map((d) => [d.id, d])) }),
 					() => {}
 				),
@@ -150,10 +111,10 @@
 	async function charger() {
 		echecChargement = '';
 		// Les deux partent ensemble ; la recherche de communes reste utilisable si le canton ne répond pas.
-		const enCours = getActive(fetch);
+		const enCours = permis.chargerActifs();
 		try {
 			communes = await getCommunes(fetch);
-			actifs = await enCours;
+			await enCours;
 		} catch (e) {
 			echecChargement = messageErreur(e);
 		}
@@ -259,7 +220,7 @@
 				selection = null;
 				chargementFiche = true;
 				try {
-					d = await getDossier(fetch, id);
+					d = await permis.fiche(id);
 				} catch (e) {
 					if (ouvert === id) ouvert = null;
 					erreur = messageErreur(e);
@@ -479,16 +440,16 @@
 					{:else if historique}
 						<strong>{visibles.length}</strong> dossier{visibles.length > 1 ? 's' : ''} dans la zone affichée,
 						historique depuis {anneeMin} compris
-						{#if histoChargement}<span class="muted"> · chargement de l’historique…</span>{/if}
-						{#if histoEchec}
+						{#if permis.histoChargement}<span class="muted"> · chargement de l’historique…</span>{/if}
+						{#if permis.histoEchec}
 							<span class="erreur"> · une partie de l’historique n’a pas pu être chargée</span>
-							<button class="bouton secondaire petit" type="button" onclick={() => chargerHisto(anneeMin)}>Réessayer</button>
+							<button class="bouton secondaire petit" type="button" onclick={() => permis.chargerHisto(anneeMin)}>Réessayer</button>
 						{/if}
 					{:else}
 						<strong>{visibles.length}</strong> dossier{visibles.length > 1 ? 's' : ''} en cours dans la zone affichée
 					{/if}
 				</p>
-				{#if actifs.length && !visibles.length && !histoChargement}
+				{#if actifs.length && !visibles.length && !permis.histoChargement}
 					<p class="muted vide">
 						{#if !statuts.length}
 							Aucun statut n’est sélectionné : activez-en au moins un pour afficher la liste.
@@ -533,7 +494,7 @@
 			bind:this={carte}
 			dossiers={actifs}
 			{historique}
-			{histo}
+			histo={permis.histo}
 			{statuts}
 			{nature}
 			{anneeMin}
