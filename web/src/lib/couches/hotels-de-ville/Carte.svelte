@@ -12,6 +12,7 @@
 		Popup
 	} from 'maplibre-gl';
 	import type { Contexte } from '#lib/registre/types.js';
+	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import type { Commune } from '#lib/types.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
@@ -111,17 +112,11 @@
 		return () => {
 			detruit = true;
 			bulle?.remove();
-			// La carte du socle a pu être détruite avant cette couche (fin de la coquille).
-			try {
-				map.off('mousemove', MARQUEURS, survol);
-				map.off('mouseleave', MARQUEURS, quitter);
-				map.off('click', MARQUEURS, clic);
-				map.off('movestart', quitter);
-				map.removeLayer(MARQUEURS);
-				map.removeSource(SOURCE);
-			} catch {
-				/* carte déjà détruite */
-			}
+			map.off('mousemove', MARQUEURS, survol);
+			map.off('mouseleave', MARQUEURS, quitter);
+			map.off('click', MARQUEURS, clic);
+			map.off('movestart', quitter);
+			retirerDeLaCarte(map, [MARQUEURS], [SOURCE]);
 		};
 	});
 </script>

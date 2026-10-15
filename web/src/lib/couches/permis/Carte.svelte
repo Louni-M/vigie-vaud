@@ -13,6 +13,7 @@
 	} from 'maplibre-gl';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
 	import type { Contexte } from '#lib/registre/types.js';
+	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import type { Dossier, PointHisto } from '#lib/types.js';
 	import { permis, type Parametres } from './donnees.svelte.js';
 	import { dossierOuvert, ouvrirDossier } from './index.js';
@@ -196,22 +197,12 @@
 		// Un échec est signalé par le volet, qui propose de réessayer.
 		permis.chargerActifs().catch(() => {});
 		return () => {
-			// La carte du socle a pu être détruite avant cette couche (fin de la coquille).
-			try {
-				map.off('click', clic);
-				for (const id of [ACTIFS, HISTO]) {
-					map.off('mouseenter', id, pointeur);
-					map.off('mouseleave', id, sansPointeur);
-				}
-				map.removeLayer(SELECTION);
-				map.removeSource(SELECTION);
-				for (const id of [ACTIFS, HISTO]) {
-					map.removeLayer(id);
-					map.removeSource(id);
-				}
-			} catch {
-				/* carte déjà détruite */
+			map.off('click', clic);
+			for (const id of [ACTIFS, HISTO]) {
+				map.off('mouseenter', id, pointeur);
+				map.off('mouseleave', id, sansPointeur);
 			}
+			retirerDeLaCarte(map, [SELECTION, ACTIFS, HISTO], [SELECTION, ACTIFS, HISTO]);
 		};
 	});
 
