@@ -9,6 +9,6 @@
 		name="description"
 		content="Toutes les demandes de permis de construire du canton de Vaud sur une carte : enquêtes publiques en cours, dates de consultation des dossiers, historique depuis 1999."
 	/>
-	<!-- Sans paramètres : la mesure d'audience (GoatCounter suit ce lien) ne reçoit pas le centre de la carte. -->
+	<!-- Sans paramètres : un lien partagé ou indexé mène à la carte, pas à son centre du moment. -->
 	<link rel="canonical" href={resolve('/(carte)')} />
 </svelte:head>

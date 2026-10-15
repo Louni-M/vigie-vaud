@@ -16,8 +16,9 @@ prend pas position sur les projets.
   filtres par statut et par nature de travaux, historique par année, vue aérienne. L'état de la carte (dossier
   ouvert, centre, filtres) est dans l'URL : `/?d=<n°>` ouvre un dossier, `/?commune=<slug>` cadre une commune.
   Le marqueur « autour de moi » n'est jamais écrit dans l'URL ; le centre de la carte, lui, l'est (après
-  « Autour de moi », un lien partagé montre donc le quartier). La page d'accueil déclare une URL canonique sans
-  paramètres, que la mesure d'audience GoatCounter utilise à la place de l'adresse complète.
+  « Autour de moi », un lien partagé montre donc le quartier). La mesure d'audience GoatCounter, active seulement
+  si `VITE_GOATCOUNTER` est défini à la construction, compte chaque page par son chemin seul, sans ces paramètres
+  (`web/src/lib/audience.ts`).
 - **Une page par commune** (300 communes) : dossiers en cours, chiffres, demandes par année, historique.
 - **Une fiche par dossier**, avec un lien à partager et les modalités de consultation du dossier.
 - **Informations légales** (`/infos-legales`) : consultation, observations, oppositions et recours, avec renvois
