@@ -8,11 +8,11 @@
 
 	const goatcounter = import.meta.env.VITE_GOATCOUNTER as string | undefined;
 	const nav = [
-		{ href: resolve('/'), label: 'Carte' },
+		{ href: resolve('/(carte)'), label: 'Carte' },
 		{ href: resolve('/commune'), label: 'Communes' },
 		{ href: resolve('/a-propos'), label: 'À propos' }
 	];
-	const accueil = resolve('/');
+	const accueil = resolve('/(carte)');
 	// « Communes » reste marqué comme page courante sur la page d'une commune.
 	const courant = (href: string, chemin: string) =>
 		chemin === href || (href !== accueil && chemin.startsWith(`${href}/`));
@@ -26,7 +26,7 @@
 </svelte:head>
 
 <header>
-	<a class="marque" href={resolve('/')}>Vigie <span>Vaud</span></a>
+	<a class="marque" href={resolve('/(carte)')}>Vigie <span>Vaud</span></a>
 	<nav>
 		{#each nav as l (l.href)}
 			<a href={l.href} aria-current={courant(l.href, page.url.pathname) ? 'page' : undefined}>{l.label}</a>

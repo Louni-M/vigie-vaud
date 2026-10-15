@@ -76,7 +76,7 @@
 </svelte:head>
 
 <main class="page texte">
-	<p class="fil"><a href={resolve('/')}>Carte</a> › Informations légales</p>
+	<p class="fil"><a href={resolve('/(carte)')}>Carte</a> › Informations légales</p>
 	<h1>L’enquête publique : ce que prévoit la loi</h1>
 	<p class="chapeau">
 		Cette page résume les règles vaudoises qui s’appliquent pendant l’enquête publique d’une demande de permis de

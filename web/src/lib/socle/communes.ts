@@ -1,5 +1,5 @@
 import { asset } from '$app/paths';
-import type { Commune } from './types';
+import type { Commune } from '#lib/types.js';
 
 /**
  * Index et limites des communes (swissBOUNDARIES3D, swisstopo, données ouvertes), produits par

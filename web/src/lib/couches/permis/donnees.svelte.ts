@@ -1,9 +1,8 @@
 import { creerClientCanton, sql, type Entite, type Requete } from '#lib/api.js';
-import { getRattachement, type Rattachement } from '#lib/communes.js';
-import type { Tri } from '#lib/etat.js';
+import { getRattachement, type Rattachement } from '#lib/socle/communes.js';
 import { masquerNoms, nettoyer } from '#lib/masquage.js';
 import { source } from '#lib/sources.js';
-import type { Commune, Dossier, PointHisto, Statut } from '#lib/types.js';
+import type { Commune, Dossier, PointHisto, Statut, Zone } from '#lib/types.js';
 
 /**
  * Module de données de la couche Permis, partagé par ses composants : dossiers CAMAC lus en direct sur
@@ -276,8 +275,10 @@ export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: 
 	};
 }
 
-/** Emprise [ouest, sud, est, nord] de la carte, en WGS84. */
-export type Zone = [number, number, number, number];
+export type { Zone };
+
+/** Ordre de la liste : publication la plus récente d'abord, ou fin d'enquête la plus proche. */
+export type Tri = 'recent' | 'fin';
 
 /** Réglages de la couche Permis, tels que les porte l'URL. */
 export interface Parametres {

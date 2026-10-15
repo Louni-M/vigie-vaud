@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { STATUTS, natureLabel } from '#lib/labels.js';
 	import { dateLongue } from '#lib/dates.js';
-	import { lienCarteDossier } from '#lib/etat.js';
+	import { lienVue } from '#lib/registre/liens.js';
 	import type { Dossier } from '#lib/types.js';
 	import Compte from './Compte.svelte';
 	import Consultation from './Consultation.svelte';
@@ -57,7 +57,7 @@
 			<a class="bouton secondaire" href={resolve('/dossier/[id]', { id: String(d.id) })}>Fiche et lien à partager</a>
 		{/if}
 		{#if lienCarte}
-			<a class="bouton secondaire" href={lienCarteDossier(d.id)}>Voir sur la carte</a>
+			<a class="bouton secondaire" href={lienVue({ lon: d.lon, lat: d.lat, zoom: 17 })}>Voir sur la carte</a>
 		{/if}
 	</p>
 
