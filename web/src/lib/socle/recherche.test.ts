@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chercherCommunes } from './recherche.js';
-import { commune } from '#lib/couches/permis/faux-canton.js';
+import { commune } from '#tests/faux-canton.js';
 import type { AncienNom, Commune } from '#lib/types.js';
 
 const ancienne = (nom: string, slug: string, annee = 2011): AncienNom => ({ nom, slug, type: 'Ancienne commune', annee });
