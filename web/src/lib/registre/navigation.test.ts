@@ -1,41 +1,92 @@
 import { describe, expect, it } from 'vitest';
-import { mouvement } from './navigation.js';
+import { corrigerChemin, fermeture, mouvement } from './navigation.js';
+import type { Ouvert } from './types.js';
 
 const VUE = { lat: 46.5, lon: 6.6, zoom: 13 };
 const DOSSIER = { couche: 'permis', element: '248845' };
+const AUTRE = { couche: 'permis', element: '250001' };
+
+/** Ce que reflétait l'adresse précédente. */
+const avant = (commune: string | null, ouvert: Ouvert | null = null) => ({ commune, ouvert });
+const DEPART = avant(null);
 
 describe('mouvement de la carte quand l’adresse change', () => {
 	describe('à l’arrivée sur le site', () => {
-		it('rétablit la vue partagée, qui l’emporte sur la commune', () => {
-			expect(mouvement(null, { commune: 'pully', vue: VUE, ouvert: null }, true)).toEqual({ aller: VUE });
+		it('rétablit la vue partagée, qui l’emporte sur la commune et sur l’élément', () => {
+			expect(mouvement(DEPART, { commune: 'pully', vue: VUE, ouvert: null }, true)).toEqual({ aller: VUE });
+			expect(mouvement(DEPART, { commune: 'lutry', vue: VUE, ouvert: DOSSIER }, true)).toEqual({ aller: VUE });
 		});
 		it('cadre la commune de l’adresse quand il n’y a pas de vue', () => {
-			expect(mouvement(null, { commune: 'pully', vue: null, ouvert: null }, true)).toEqual({ cadrer: 'pully' });
+			expect(mouvement(DEPART, { commune: 'pully', vue: null, ouvert: null }, true)).toEqual({ cadrer: 'pully' });
+		});
+		it('montre l’élément de l’adresse quand il n’y a pas de vue', () => {
+			expect(mouvement(DEPART, { commune: null, vue: null, ouvert: DOSSIER }, true)).toBe('element');
+			expect(mouvement(DEPART, { commune: 'lutry', vue: null, ouvert: DOSSIER }, true)).toBe('element');
 		});
 		it('laisse la carte sur sa vue de départ à l’adresse nue', () => {
-			expect(mouvement(null, { commune: null, vue: null, ouvert: null }, true)).toBeNull();
+			expect(mouvement(DEPART, { commune: null, vue: null, ouvert: null }, true)).toBeNull();
 		});
 	});
 
 	describe('pendant la navigation', () => {
 		it('cadre la commune qu’on vient d’ouvrir', () => {
-			expect(mouvement(null, { commune: 'pully', vue: null, ouvert: null }, false)).toEqual({ cadrer: 'pully' });
-			expect(mouvement('lutry', { commune: 'pully', vue: null, ouvert: null }, false)).toEqual({ cadrer: 'pully' });
+			expect(mouvement(DEPART, { commune: 'pully', vue: null, ouvert: null }, false)).toEqual({ cadrer: 'pully' });
+			expect(mouvement(avant('lutry'), { commune: 'pully', vue: null, ouvert: null }, false)).toEqual({
+				cadrer: 'pully'
+			});
 		});
 		it('rétablit la vue de l’entrée d’historique retrouvée', () => {
-			expect(mouvement('pully', { commune: 'lutry', vue: VUE, ouvert: null }, false)).toEqual({ aller: VUE });
-			expect(mouvement('pully', { commune: null, vue: VUE, ouvert: null }, false)).toEqual({ aller: VUE });
+			expect(mouvement(avant('pully'), { commune: 'lutry', vue: VUE, ouvert: null }, false)).toEqual({ aller: VUE });
+			expect(mouvement(avant('pully'), { commune: null, vue: VUE, ouvert: null }, false)).toEqual({ aller: VUE });
 		});
 		it('revient au canton à l’adresse nue « / »', () => {
-			expect(mouvement('pully', { commune: null, vue: null, ouvert: null }, false)).toBe('canton');
-			expect(mouvement(null, { commune: null, vue: null, ouvert: null }, false)).toBe('canton');
+			expect(mouvement(avant('pully'), { commune: null, vue: null, ouvert: null }, false)).toBe('canton');
+			expect(mouvement(DEPART, { commune: null, vue: null, ouvert: null }, false)).toBe('canton');
 		});
 		it('ne bouge pas quand la commune reste la même', () => {
-			expect(mouvement('pully', { commune: 'pully', vue: null, ouvert: null }, false)).toBeNull();
-			expect(mouvement('pully', { commune: 'pully', vue: null, ouvert: DOSSIER }, false)).toBeNull();
+			expect(mouvement(avant('pully'), { commune: 'pully', vue: null, ouvert: null }, false)).toBeNull();
 		});
-		it('ne bouge pas pour un élément ouvert sans commune', () => {
-			expect(mouvement(null, { commune: null, vue: null, ouvert: DOSSIER }, false)).toBeNull();
+		it('montre l’élément retrouvé par le précédent ou le suivant du navigateur', () => {
+			expect(mouvement(avant('lutry'), { commune: 'lutry', vue: null, ouvert: DOSSIER }, false)).toBe('element');
+			expect(mouvement(avant('lutry', AUTRE), { commune: 'lutry', vue: null, ouvert: DOSSIER }, false)).toBe(
+				'element'
+			);
 		});
+		it('ne bouge pas quand seul le chemin de l’élément ouvert est corrigé', () => {
+			expect(mouvement(avant(null, DOSSIER), { commune: 'lutry', vue: null, ouvert: DOSSIER }, false)).toBeNull();
+			expect(mouvement(avant('pully', DOSSIER), { commune: 'lutry', vue: null, ouvert: DOSSIER }, false)).toBeNull();
+		});
+		it('ne bouge pas quand on ferme l’élément pour revenir à l’onglet de sa commune, même vers une autre vue', () => {
+			expect(mouvement(avant('lutry', DOSSIER), { commune: 'lutry', vue: null, ouvert: null }, false)).toBeNull();
+			expect(mouvement(avant('lutry', DOSSIER), { commune: 'lutry', vue: VUE, ouvert: null }, false)).toBeNull();
+		});
+	});
+});
+
+describe('correction du chemin d’un élément ouvert', () => {
+	it('mène à la commune de l’élément depuis l’adresse nue ou une autre commune', () => {
+		expect(corrigerChemin(null, { commune: 'lutry' })).toEqual({ commune: 'lutry' });
+		expect(corrigerChemin('pully', { commune: 'lutry' })).toEqual({ commune: 'lutry' });
+	});
+	it('garde le chemin qui porte déjà la commune de l’élément', () => {
+		expect(corrigerChemin('lutry', { commune: 'lutry' })).toBeNull();
+	});
+	it('retire l’élément que la couche ne trouve pas', () => {
+		expect(corrigerChemin('pully', null)).toBe('retirer');
+		expect(corrigerChemin(null, null)).toBe('retirer');
+	});
+});
+
+describe('fermeture d’un élément', () => {
+	it('revient en arrière quand l’application a ouvert l’élément depuis la fiche de la même commune', () => {
+		expect(fermeture({ element: { depuis: 'lutry' } }, 'lutry')).toBe('retour');
+	});
+	it('remplace l’adresse pour un élément ouvert par un lien direct', () => {
+		expect(fermeture({}, 'lutry')).toBe('remplacer');
+	});
+	it('remplace l’adresse quand l’entrée précédente est une autre commune ou la carte seule', () => {
+		// Revenir en arrière quitterait la fiche de la commune de l'élément au lieu de revenir à son onglet.
+		expect(fermeture({ element: { depuis: 'pully' } }, 'lutry')).toBe('remplacer');
+		expect(fermeture({ element: { depuis: null } }, 'lutry')).toBe('remplacer');
 	});
 });

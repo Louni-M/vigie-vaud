@@ -8,7 +8,7 @@
 
 <!-- Résumé neutre : le détail juridique, sourcé, est sur la page « Informations légales ». -->
 <aside class="encadre" aria-labelledby="{uid}-titre">
-	<h3 id="{uid}-titre">Consulter le dossier</h3>
+	<h4 id="{uid}-titre">Consulter le dossier</h4>
 	<p>
 		Pendant l’enquête publique, le dossier complet (plans, descriptif) peut être consulté à l’administration
 		communale {deCommune(commune)}, au greffe ou au service technique. Renseignez-vous auprès de la commune pour les
@@ -34,7 +34,7 @@
 		font-size: 14px;
 		line-height: 1.45;
 	}
-	h3 {
+	h4 {
 		margin: 0;
 		font-size: 15px;
 	}

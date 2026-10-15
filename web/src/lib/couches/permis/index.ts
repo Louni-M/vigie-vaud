@@ -21,11 +21,21 @@ export const couchePermis: Couche<Parametres> = {
 		const n = texte.trim();
 		return /^\d{5,6}$/.test(n) ? [{ couche: 'permis', element: n, libelle: `Dossier CAMAC n° ${n}` }] : [];
 	},
+	// Le module de données n'est importé qu'à la première ouverture d'un dossier : la description reste légère.
+	async localiser(element) {
+		if (!/^\d+$/.test(element)) return null;
+		const { permis } = await import('./donnees.svelte.js');
+		const d = await permis.fiche(Number(element));
+		return d ? { commune: d.slug, position: [d.lon, d.lat] } : null;
+	},
+	introuvable: (element) => `Aucun dossier n° ${element}.`,
+	titre: (element, commune) => `Dossier n° ${element} – ${commune} – Vigie Vaud`,
 	resume: 'les permis de construire à l’enquête, en direct depuis le canton',
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),
-		Onglet: () => import('./Onglet.svelte')
+		Onglet: () => import('./Onglet.svelte'),
+		Fiche: () => import('./Fiche.svelte')
 	}
 };
 

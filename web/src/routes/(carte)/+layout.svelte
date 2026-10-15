@@ -10,7 +10,7 @@
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
 	import Recherche from '#lib/socle/Recherche.svelte';
 	import { COUCHES } from '#lib/registre/couches.js';
-	import { creerRegistre } from '#lib/registre/registre.svelte.js';
+	import { creerRegistre, fournirRegistre } from '#lib/registre/registre.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
@@ -24,6 +24,7 @@
 	const registre = creerRegistre(COUCHES, () => data.communes);
 	let carte: ReturnType<typeof Map> | undefined = $state();
 	registre.brancherAdresse(() => carte);
+	fournirRegistre(registre);
 
 	/** Adresse cherchée ou position GPS, marquée sur la carte ; jamais écrite dans l'URL. */
 	let repere: [number, number] | null = $state(null);
@@ -42,6 +43,7 @@
 		);
 
 	function choix(r: Resultat) {
+		registre.oublierAvis();
 		if (r.type === 'adresse') {
 			repere = [r.lon, r.lat];
 			carte?.voler(r.lon, r.lat, r.genre === 'Position' ? 15 : 16);
@@ -94,6 +96,13 @@
 
 		<div class="recherche">
 			<Recherche communes={data.communes} {chercherCouches} onchoix={choix} />
+			<!-- Élément introuvable (« Aucun dossier n° … »), près de la recherche qui permet d'en chercher un autre. -->
+			<p class="avis" role="status">
+				{#if registre.avis}
+					{registre.avis}
+					<button type="button" aria-label="Masquer ce message" onclick={registre.oublierAvis}>×</button>
+				{/if}
+			</p>
 		</div>
 
 		<!-- Un bloc par couche : le volet qui se ferme garde sa couche pendant qu'il disparaît. -->
@@ -154,6 +163,29 @@
 		width: min(360px, calc(100% - 70px));
 		border-radius: 10px;
 		box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+	}
+	.avis:empty {
+		display: none;
+	}
+	.avis {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 6px 0 0;
+		padding: 8px 6px 8px 12px;
+		border-radius: 10px;
+		background: var(--surface);
+		font-size: 14px;
+		color: var(--erreur);
+	}
+	.avis button {
+		margin-left: auto;
+		border: 0;
+		background: none;
+		font-size: 18px;
+		line-height: 1;
+		color: var(--muted);
+		cursor: pointer;
 	}
 	.volet {
 		position: absolute;
