@@ -73,10 +73,11 @@
 		ctx.regler({ depuis: Number((e.currentTarget as HTMLInputElement).value) });
 	}
 
-	/** Un clic sur un dossier de la liste fait voler la carte vers lui ; l'ouvrir viendra avec l'onglet Permis. */
+	/** Un dossier de la liste s'ouvre dans l'onglet Permis de sa commune ; la carte vole vers lui. */
 	function vers(d: Dossier) {
-		ctx.map.flyTo({ center: [d.lon, d.lat], zoom: Math.max(ctx.map.getZoom(), 16), curve: 1.6, speed: 0.9 });
+		ctx.ouvrir({ couche: 'permis', element: String(d.id), position: [d.lon, d.lat] });
 	}
+	const ouvert = $derived(ctx.ouvert?.couche === 'permis' ? Number(ctx.ouvert.element) : null);
 </script>
 
 <EchecSource source="camac-permis" message="Les permis n’ont pas pu être chargés" />
@@ -160,7 +161,7 @@
 				{@const f = fiche(d)}
 				<li data-id={d.id}>
 					{#if f}
-						<DossierCarte d={f} onclick={() => vers(f)} />
+						<DossierCarte d={f} actif={f.id === ouvert} onclick={() => vers(f)} />
 					{:else}
 						<div class="carte-attente" aria-busy="true">
 							<span class="barre-s" style:width="45%"></span>
@@ -180,7 +181,7 @@
 <p class="source">
 	Dossiers consultés en direct depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la
 	<a href="https://www.vd.ch/territoire-et-construction/permis-de-construire/faq/avis-denquete/publication-fao" target="_blank" rel="noopener">FAO</a>
-	fait foi. <a href={resolve('/infos-legales')}>L’enquête publique : ce que prévoit la loi</a>
+	fait foi. <a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>
 </p>
 
 <style>

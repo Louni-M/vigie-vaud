@@ -25,8 +25,9 @@ prend pas position sur les projets.
 
 Les noms de propriétaire, de requérant ou d'architecte des avis officiels ne sont pas repris. Dans les descriptions
 libres, les noms de particuliers sont masqués **dans le navigateur, avant affichage**
-(`web/src/lib/masquage.ts`, portage exact de `mask_names` dans `pipeline/fetch.py`, vérifié sur les 112 534
-descriptions : 229 masquées, aucune différence) ; les entreprises et collectivités restent nommées.
+(`web/src/lib/masquage.ts`, portage exact de `mask_names` du script de la version hébergée, conservé sous
+l'étiquette `chantiers-hebergee`, vérifié sur les 112 534 descriptions : 229 masquées, aucune différence) ; les
+entreprises et collectivités restent nommées.
 
 ## Fonctionnement
 
@@ -71,7 +72,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 | Dossier | Rôle |
 |---|---|
 | `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) ; données CAMAC lues en direct par `src/lib/api.ts` et `src/lib/couches/permis/donnees.svelte.ts` |
-| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `schema.py` : modèles du schéma commun. `cron.py` : un passage du cron. `hotels_de_ville.py` : outil d'initialisation de `hotels-de-ville.csv`. `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
+| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `schema.py` : modèles du schéma commun. `cron.py` : un passage du cron. `hotels_de_ville.py` : outil d'initialisation de `hotels-de-ville.csv` |
 | `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
 | `sources.json` | Déclaration de chaque source (attribution, voie d'accès, fraîcheur, Couverture, sonde), lue par le site et le cron |
 | `.github/workflows/` | Construction et publication sur GitHub Pages, sans aucune donnée CAMAC |
@@ -90,7 +91,10 @@ Tests du site (Vitest, sans navigateur ni appel au canton) :
 cd web && pnpm test
 ```
 
-Limites communales (après une fusion de communes, par exemple) :
+Préparation des communes, relancée à chaque fusion : limites, hôtels de ville (lus dans
+`pipeline/hotels-de-ville.csv`), cadre de la partie terrestre et anciens noms (répertoire historisé de l'OFS). Elle
+échoue si un hôtel de ville du CSV tombe hors de la partie terrestre de sa commune, et place une commune absente du
+CSV en repli avec un avertissement. Elle télécharge environ 450 Mo dans `data/cache/` la première fois.
 
 ```bash
 cd pipeline && uv run python communes.py

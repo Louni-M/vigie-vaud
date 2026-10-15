@@ -1,24 +1,23 @@
 <script lang="ts">
+	/*
+	 * Fiche d'un dossier, affichée dans l'onglet Permis de sa commune (sous le fil rendu par le registre) : le titre
+	 * de la fiche commune est un h2, celui du dossier un h3.
+	 */
 	import { resolve } from '$app/paths';
 	import { STATUTS, natureLabel } from '#lib/labels.js';
 	import { dateLongue } from '#lib/dates.js';
-	import { lienCommune, lienVue } from '#lib/registre/liens.js';
 	import type { Dossier } from '#lib/types.js';
 	import Compte from './Compte.svelte';
 	import Consultation from './Consultation.svelte';
 
-	let {
-		d,
-		lienFiche = false,
-		lienCarte = false
-	}: { d: Dossier; lienFiche?: boolean; lienCarte?: boolean } = $props();
+	let { d }: { d: Dossier } = $props();
 </script>
 
 <article class="fiche">
 	<p class="statut" style:--c={STATUTS[d.statut].couleur}>
 		<span class="pastille"></span>{STATUTS[d.statut].label}
 	</p>
-	<h2>{natureLabel(d.nature)} · <a href={lienCommune(d.slug)}>{d.commune}</a></h2>
+	<h3 class="titre">{natureLabel(d.nature)} · {d.commune}</h3>
 	<p class="desc">{d.description ?? 'Sans description'}</p>
 
 	{#if d.statut === 'enquete'}
@@ -41,7 +40,7 @@
 	</dl>
 
 	{#if d.historique?.length}
-		<h3>Évolution suivie</h3>
+		<h4>Évolution suivie</h4>
 		<ul class="histo">
 			{#each d.historique as e (e.date)}
 				<li>{dateLongue(e.date)} : {e.statut ? STATUTS[e.statut].court : ''}{e.decision ? ` (${e.decision})` : ''}</li>
@@ -53,12 +52,6 @@
 		{#if d.url}
 			<a class="bouton" href={d.url} target="_blank" rel="noopener">Voir l’avis d’enquête officiel ↗</a>
 		{/if}
-		{#if lienFiche}
-			<a class="bouton secondaire" href={resolve('/dossier/[id]', { id: String(d.id) })}>Fiche et lien à partager</a>
-		{/if}
-		{#if lienCarte}
-			<a class="bouton secondaire" href={lienVue({ lon: d.lon, lat: d.lat, zoom: 17 })}>Voir sur la carte</a>
-		{/if}
 	</p>
 
 	{#if d.statut === 'enquete'}
@@ -66,7 +59,7 @@
 	{:else if d.statut === 'procedure'}
 		<p class="note">
 			L’enquête publique est terminée : la Municipalité statue sur la demande.
-			<a href={resolve('/infos-legales')}>Comment se déroule la procédure</a>
+			<a href={resolve('/enquete-publique')}>Comment se déroule la procédure</a>
 		</p>
 	{/if}
 	{#if d.statut === 'enquete' || d.statut === 'procedure'}
@@ -97,15 +90,12 @@
 		border-radius: 50%;
 		background: var(--c);
 	}
-	h2 {
+	.titre {
 		margin: 0;
 		font-size: 20px;
 		line-height: 1.25;
 	}
-	h2 a {
-		color: inherit;
-	}
-	h3 {
+	h4 {
 		margin: 4px 0 0;
 		font-size: 15px;
 	}

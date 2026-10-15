@@ -74,10 +74,9 @@
 	const resumeAnnees = $derived(annees.map(([a, n]) => `${a} : ${n}`).join(', '));
 	const totalHisto = $derived(chiffres?.historique.length ?? 0);
 
-	/** Un dossier choisi s'ouvre par le registre ; la carte vole vers lui. */
+	/** Un dossier choisi s'ouvre par le registre, ici même sous le fil ; la carte vole vers lui. */
 	function ouvrir(d: Dossier) {
-		ctx.map.flyTo({ center: [d.lon, d.lat], zoom: Math.max(ctx.map.getZoom(), 16), curve: 1.6, speed: 0.9 });
-		ctx.ouvrir({ couche: 'permis', element: String(d.id) });
+		ctx.ouvrir({ couche: 'permis', element: String(d.id), position: [d.lon, d.lat] });
 	}
 </script>
 
@@ -161,7 +160,7 @@
 <p class="source">
 	{SOURCE} depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la FAO fait foi.
 	Rattachement aux communes actuelles (limites swisstopo).
-	<a href={resolve('/infos-legales')}>L’enquête publique : ce que prévoit la loi</a>
+	<a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>
 </p>
 
 <style>
