@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { COURRIEL, DEPOT } from '#lib/config.js';
+	import { canonique } from '#lib/indexation.js';
 	import { COUCHES } from '#lib/registre/couches.js';
 	import { grouperSources, libelleVoie, SENS_VOIES, SOURCES } from '#lib/sources.js';
 
@@ -17,6 +18,7 @@
 		name="description"
 		content="Vigie Vaud rassemble sur une carte ce qui se passe dans chaque commune vaudoise. D’où viennent ses données, et leurs limites."
 	/>
+	<link rel="canonical" href={canonique('/a-propos')} />
 </svelte:head>
 
 <main class="page texte">

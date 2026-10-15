@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { canonique } from '#lib/indexation.js';
 
 	// Textes officiels consultés le 12 octobre 2026. Chaque affirmation de la page renvoie à l'une de ces sources ;
 	// à relire si la LATC, le RLATC ou la LPA-VD sont modifiés.
@@ -73,6 +74,7 @@
 		name="description"
 		content="L’enquête publique d’un permis de construire dans le canton de Vaud : consultation du dossier, observations et oppositions, recours, avec les textes officiels."
 	/>
+	<link rel="canonical" href={canonique('/enquete-publique')} />
 </svelte:head>
 
 <main class="page texte">

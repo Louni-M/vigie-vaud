@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { dateHeure, deduireCouverture, libelleEtat, libelleMode, type Paire } from '#lib/couverture.js';
 	import { chargerEtatSources, lienPannes } from '#lib/etat-sources.js';
+	import { canonique } from '#lib/indexation.js';
 	import { normaliser } from '#lib/labels.js';
 	import { COUCHES } from '#lib/registre/couches.js';
 	import { lienCommune } from '#lib/registre/liens.js';
@@ -43,6 +44,7 @@
 		name="description"
 		content="Pour chaque source de Vigie Vaud et chaque commune vaudoise : comment les données sont obtenues, et si la source répond."
 	/>
+	<link rel="canonical" href={canonique('/couverture')} />
 </svelte:head>
 
 <main class="page">

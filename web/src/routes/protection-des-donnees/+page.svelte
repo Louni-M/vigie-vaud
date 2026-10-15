@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { AUDIENCE } from '#lib/audience.js';
 	import { COURRIEL } from '#lib/config.js';
+	import { canonique } from '#lib/indexation.js';
 
 	// Deux parties (#16) : ce que le site publie sur des personnes (ADR 0007), puis la déclaration exigée par
 	// l'art. 19 nLPD (responsable, finalités, destinataires et leur pays). Tout ce qui parle de GoatCounter
@@ -13,6 +14,7 @@
 		name="description"
 		content="Ce que Vigie Vaud publie sur des personnes, et ce que votre visite transmet : responsable, finalités, destinataires et vos droits."
 	/>
+	<link rel="canonical" href={canonique('/protection-des-donnees')} />
 </svelte:head>
 
 <main class="page texte">
