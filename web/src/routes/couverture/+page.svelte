@@ -1,32 +1,18 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { dateHeure, deduireCouverture, libelleEtat, libelleMode, type Paire } from '#lib/couverture.js';
-	import { chargerEtatSources, lienPannes } from '#lib/etat-sources.js';
+	import { dateHeure, libelleEtat, libelleMode, type Paire } from '#lib/couverture.js';
+	import { couvertureChargee, couvertureCourante } from '#lib/couverture-courante.svelte.js';
+	import { lienPannes } from '#lib/etat-sources.js';
 	import { canonique } from '#lib/indexation.js';
 	import { normaliser } from '#lib/labels.js';
-	import { COUCHES } from '#lib/registre/couches.js';
 	import { lienCommune } from '#lib/registre/liens.js';
-	import type { EtatSources } from '#lib/schema.js';
-	import { SOURCES, libelleVoie } from '#lib/sources.js';
+	import { libelleVoie } from '#lib/sources.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	// La page est pré-générée sans l'état des sources : `undefined` tant qu'il n'est pas chargé, `null` s'il est
-	// illisible (état « inconnu »).
-	let etat = $state<EtatSources | null | undefined>(undefined);
-	let maintenant = $state(new Date());
-	onMount(() => {
-		chargerEtatSources(fetch).then((e) => {
-			maintenant = new Date();
-			etat = e;
-		});
-	});
-
-	const couverture = $derived(
-		deduireCouverture({ sources: SOURCES, etat: etat ?? null, couches: COUCHES, communes: data.communes, maintenant })
-	);
-	const charge = $derived(etat !== undefined);
+	// La page est pré-générée sans l'état des sources : il est chargé dans le navigateur.
+	const couverture = $derived(couvertureCourante(data.communes));
+	const charge = $derived(couvertureChargee());
 
 	let recherche = $state('');
 	const lignes = $derived.by(() => {
