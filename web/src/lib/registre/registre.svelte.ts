@@ -20,8 +20,8 @@ export interface VueCarte {
 /** Route de la fiche commune : la commune ouverte est dans le chemin (ADR 0012). */
 const ROUTE_COMMUNE = '/(carte)/commune/[slug]' as const;
 
-/** Emprise sur laquelle cadrer une commune : sa partie terrestre quand elle est connue, sinon toute la commune. */
-export const cadreDe = (c: Commune) => c.cadre ?? c.bbox;
+/** Emprise sur laquelle cadrer une commune : sa partie terrestre, pas son emprise lac compris. */
+export const cadreDe = (c: Commune) => c.cadre;
 
 type NomComposant = keyof CoucheInscrite['composants'];
 

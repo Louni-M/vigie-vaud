@@ -1,10 +1,17 @@
 import { asset } from '$app/paths';
+import { inscrireEtat } from '#lib/fraicheur.js';
 import type { Commune } from '#lib/types.js';
+import millesimes from '../../../static/millesimes.json';
 
 /**
- * Index et limites des communes (swissBOUNDARIES3D, swisstopo, données ouvertes), produits par
- * pipeline/communes.py et hébergés avec le site : ce ne sont pas des données cantonales.
+ * Index et limites des communes (swissBOUNDARIES3D, swisstopo, données ouvertes), avec leurs hôtels de ville et
+ * leurs anciens noms, produits par pipeline/communes.py et hébergés avec le site : ce ne sont pas des données
+ * cantonales.
  */
+
+// Sources Préparées de ces fichiers : leur badge de fraîcheur donne l'édition écrite par la préparation.
+for (const [id, annee] of Object.entries(millesimes))
+	inscrireEtat(id, { derniere: annee, erreur: null, recharger() {} });
 
 type Fetch = typeof fetch;
 /** Polygones d'une commune : [polygone][anneau][point] = [lon, lat]. */

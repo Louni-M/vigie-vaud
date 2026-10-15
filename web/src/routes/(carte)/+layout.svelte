@@ -28,7 +28,13 @@
 	/** Adresse cherchée ou position GPS, marquée sur la carte ; jamais écrite dans l'URL. */
 	let repere: [number, number] | null = $state(null);
 
-	const attribution = $derived(sourcesCarte(COUCHES, registre.actives).map((id) => attributionHtml(source(id))));
+	// Un même texte (« © swisstopo », pour le fond, les adresses et les lacs) n'est cité qu'une fois.
+	const attribution = $derived(
+		sourcesCarte(COUCHES, registre.actives)
+			.map(source)
+			.filter((s, i, toutes) => toutes.findIndex((t) => t.attribution.texte === s.attribution.texte) === i)
+			.map(attributionHtml)
+	);
 
 	const chercherCouches = (texte: string) =>
 		COUCHES.flatMap((c) =>

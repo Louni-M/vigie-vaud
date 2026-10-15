@@ -26,6 +26,16 @@ export interface Dossier {
 	historique?: Etape[];
 }
 
+/** Ancienne commune absorbée par une fusion, ou ancien nom gardé sous le même n° OFS (répertoire de l'OFS). */
+export interface AncienNom {
+	nom: string;
+	slug: string;
+	type: 'Ancienne commune' | 'Ancien nom';
+	/** Année de la fusion ou du changement de nom. */
+	annee: number;
+}
+
+/** Une commune actuelle, telle que l'écrit la préparation des communes (pipeline/communes.py). */
 export interface Commune {
 	bfs: number;
 	nom: string;
@@ -33,8 +43,13 @@ export interface Commune {
 	habitants: number | null;
 	/** Emprise complète, lac compris (rattachement des dossiers). */
 	bbox: [number, number, number, number];
-	/** Emprise de la partie terrestre, pour cadrer la carte ; à venir avec la couche Hôtels de ville. */
-	cadre?: [number, number, number, number];
+	/** Emprise de la partie terrestre, pour cadrer la carte. */
+	cadre: [number, number, number, number];
+	/** Hôtel de ville [lon, lat], toujours en terre ferme. */
+	hotel: [number, number];
+	/** Adresse officielle de l'hôtel de ville ; vide quand sa position est approximative. */
+	adresse: string;
+	anciens: AncienNom[];
 }
 
 /** Point léger de l'historique sur la carte (la fiche complète est chargée à la demande). */
