@@ -130,6 +130,13 @@ issues `panne-source` qu'il ouvrirait ou fermerait au lieu de toucher à GitHub 
 cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push
 ```
 
+Le site lit `etat-sources.json` sur les Pages du dépôt de données (`donnees` dans `config.json`). Pour qu'il lise
+plutôt ce clone local, par exemple sur la page `/couverture`, on le désigne au serveur de développement :
+
+```bash
+cd web && DONNEES_LOCALES=../../vigie-vaud-donnees pnpm dev
+```
+
 Au passage public, le déclencheur `pipeline/depot-donnees/.github/workflows/cron.yml` se pose tel quel dans le dépôt
 de données : il appelle toutes les 30 minutes le workflow réutilisable `.github/workflows/cron.yml`, qui fait le
 passage puis publie le dépôt de données sur Pages, avec son seul `GITHUB_TOKEN`. Ce jeton sert aussi aux issues
