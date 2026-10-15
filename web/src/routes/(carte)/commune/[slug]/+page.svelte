@@ -1,7 +1,7 @@
 <script lang="ts">
 	// La carte et la fiche de la commune sont dans la coquille (../../+layout.svelte) : cette page ne porte que le <head>.
 	import { COUCHES } from '#lib/registre/couches.js';
-	import { lienCommune } from '#lib/registre/liens.js';
+	import { canonique, cheminCommune } from '#lib/indexation.js';
 	import { registreCourant } from '#lib/registre/registre.svelte.js';
 	import { teteCommune } from '#lib/registre/tete.js';
 	import type { PageProps } from './$types';
@@ -19,5 +19,5 @@
 	<meta property="og:title" content={tete.titre} />
 	<meta property="og:description" content={tete.description} />
 	<!-- Sans paramètres : un lien partagé ou indexé mène à la commune, pas à une vue de la carte. -->
-	<link rel="canonical" href={lienCommune(data.commune.slug)} />
+	<link rel="canonical" href={canonique(cheminCommune(data.commune.slug))} />
 </svelte:head>
