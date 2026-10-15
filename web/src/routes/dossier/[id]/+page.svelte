@@ -3,7 +3,8 @@
 	import { page } from '$app/state';
 	import Map from '#lib/components/Map.svelte';
 	import DossierFiche from '#lib/components/DossierFiche.svelte';
-	import { ErreurApi, SOURCE } from '#lib/data.js';
+	import { ErreurApi } from '#lib/api.js';
+	import { SOURCE } from '#lib/couches/permis/donnees.svelte.js';
 	import { STATUTS, natureLabel } from '#lib/labels.js';
 	import { dateLongue } from '#lib/dates.js';
 	import type { Dossier } from '#lib/types.js';

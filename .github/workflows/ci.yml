@@ -34,6 +34,9 @@ jobs:
       - name: svelte-check
         run: pnpm check
 
+      - name: Tests (Vitest)
+        run: pnpm test
+
       # La construction échoue si sources.json est invalide ou cite un n° OFS hors des communes actuelles.
       - name: Construire le site
         run: pnpm build
