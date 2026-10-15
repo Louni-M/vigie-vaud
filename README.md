@@ -115,7 +115,8 @@ cd pipeline && uv run pytest   # tests du pipeline
 
 Le cron (ADR 0005 et 0014) envoie une sonde à chaque source de `sources.json` qui a un bloc `sonde`, puis écrit
 `etat-sources.json` et `schema/` dans le dépôt de données `vigie-vaud-donnees`, committe et pousse. Pendant J0, on le
-lance en local contre un clone de ce dépôt ; `--sans-push` écrit l'état et committe sans pousser :
+lance en local contre un clone de ce dépôt ; `--sans-push` écrit l'état et committe sans pousser, et affiche les
+issues `panne-source` qu'il ouvrirait ou fermerait au lieu de toucher à GitHub :
 
 ```bash
 cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push
@@ -123,7 +124,9 @@ cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-pus
 
 Au passage public, le déclencheur `pipeline/depot-donnees/.github/workflows/cron.yml` se pose tel quel dans le dépôt
 de données : il appelle toutes les 30 minutes le workflow réutilisable `.github/workflows/cron.yml`, qui fait le
-passage puis publie le dépôt de données sur Pages, avec son seul `GITHUB_TOKEN`.
+passage puis publie le dépôt de données sur Pages, avec son seul `GITHUB_TOKEN`. Ce jeton sert aussi aux issues
+`panne-source` : une issue « Panne : <nom de la source> » s'ouvre quand la source passe en panne (sauf si elle est
+déjà ouverte), puis est commentée et fermée à son retour.
 
 ## Configuration
 

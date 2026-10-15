@@ -12,7 +12,7 @@ import httpx
 import jsonschema
 import pytest
 
-from cron import passage
+from cron import IssuesGitHub, client_issues, passage
 from schema import FichierSources
 
 T0 = datetime(2026, 10, 14, 12, 17, tzinfo=UTC)
@@ -313,3 +313,185 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
         "schema/sources.schema.json",
     ]
     assert "987654" not in (tmp_path / "etat-sources.json").read_text()
+
+
+# --- Issues `panne-source` dans le dépôt de données (ticket #32), contre un GitHub factice ----------------------
+
+DEPOT_DONNEES = "Louni-M/vigie-vaud-donnees"
+API = f"https://api.github.com/repos/{DEPOT_DONNEES}/issues"
+JETON = "jeton-du-depot"
+
+
+class GitHubFactice:
+    """Transport factice de l'API REST des issues : il tient en mémoire les issues du dépôt de données."""
+
+    def __init__(self, *ouvertes):
+        self.issues = []
+        self.requetes = []
+        for titre, etiquettes in ouvertes:
+            self._creer({"title": titre, "body": "", "labels": etiquettes})
+
+    def client(self):
+        return httpx.Client(transport=httpx.MockTransport(self._traiter))
+
+    def _creer(self, corps):
+        issue = {
+            "number": len(self.issues) + 1,
+            "title": corps["title"],
+            "body": corps.get("body"),
+            "labels": [{"name": n} for n in corps.get("labels", [])],
+            "state": "open",
+            "commentaires": [],
+        }
+        self.issues.append(issue)
+        return issue
+
+    def _traiter(self, requete):
+        self.requetes.append(requete)
+        if requete.headers.get("Authorization") != f"Bearer {JETON}":
+            return httpx.Response(401, json={"message": "Bad credentials"})
+        url = str(requete.url.copy_with(query=None))
+        corps = json.loads(requete.content) if requete.content else None
+        if url == API and requete.method == "GET":
+            etiquette, etat = requete.url.params["labels"], requete.url.params["state"]
+            return httpx.Response(
+                200,
+                json=[i for i in self.issues if i["state"] == etat and etiquette in [e["name"] for e in i["labels"]]],
+            )
+        if url == API and requete.method == "POST":
+            return httpx.Response(201, json=self._creer(corps))
+        for issue in self.issues:
+            if url == f"{API}/{issue['number']}/comments" and requete.method == "POST":
+                issue["commentaires"].append(corps["body"])
+                return httpx.Response(201, json={"body": corps["body"]})
+            if url == f"{API}/{issue['number']}" and requete.method == "PATCH":
+                issue["state"] = corps["state"]
+                return httpx.Response(200, json=issue)
+        return httpx.Response(404, json={"message": "Not Found"})
+
+
+def _passer_avec_github(depot, github, reponses, minutes=None):
+    """Des passages, toutes les 30 minutes depuis T0 ou aux `minutes` données, avec le client d'issues GitHub
+    branché sur le GitHub factice."""
+    with github.client() as client:
+        issues = IssuesGitHub(client, DEPOT_DONNEES, JETON)
+        for i, reponse in enumerate(reponses):
+            heure = T0 + timedelta(minutes=30 * i if minutes is None else minutes[i])
+            _passer(depot, _sources(SONDEE), reponse, heure, issues)
+
+
+def test_le_passage_en_panne_ouvre_une_seule_issue_panne_source_titree_d_apres_la_source(tmp_path):
+    github = GitHubFactice()
+
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER)] + [httpx.Response(503)] * 4)
+
+    (issue,) = github.issues
+    assert issue["title"] == "Panne : Permis CAMAC (MapServer/537)"
+    assert [e["name"] for e in issue["labels"]] == ["panne-source"]
+    assert issue["state"] == "open"
+
+
+def test_aucune_issue_n_est_ouverte_si_une_issue_panne_source_est_deja_ouverte_pour_cette_source(tmp_path):
+    github = GitHubFactice(
+        ("Panne : Permis CAMAC (MapServer/537)", ["panne-source"]),
+        ("Panne : Autre source", ["panne-source"]),
+    )
+
+    _passer_avec_github(tmp_path, github, [httpx.Response(503)] * 3)
+
+    assert [(i["title"], i["state"]) for i in github.issues] == [
+        ("Panne : Permis CAMAC (MapServer/537)", "open"),
+        ("Panne : Autre source", "open"),
+    ]
+
+
+def test_une_issue_du_meme_titre_sans_l_etiquette_panne_source_n_empeche_pas_d_ouvrir_la_sienne(tmp_path):
+    github = GitHubFactice(("Panne : Permis CAMAC (MapServer/537)", []))
+
+    _passer_avec_github(tmp_path, github, [httpx.Response(503)] * 2)
+
+    assert [[e["name"] for e in i["labels"]] for i in github.issues] == [[], ["panne-source"]]
+
+
+def test_au_retour_l_issue_est_commentee_avec_la_duree_de_la_panne_puis_fermee(tmp_path):
+    github = GitHubFactice()
+    # Première sonde en échec à 12:47, retour à 15:57.
+    reponses = [_dossiers(DOSSIER), httpx.Response(503), httpx.Response(503), _dossiers(DOSSIER)]
+
+    _passer_avec_github(tmp_path, github, reponses, minutes=[0, 30, 60, 220])
+
+    (issue,) = github.issues
+    assert issue["commentaires"] == ["Permis CAMAC (MapServer/537) est de nouveau disponible après 3 h 10."]
+    assert issue["state"] == "closed"
+    assert [(r.method, r.url.path) for r in github.requetes[-2:]] == [
+        ("POST", f"/repos/{DEPOT_DONNEES}/issues/1/comments"),
+        ("PATCH", f"/repos/{DEPOT_DONNEES}/issues/1"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("minutes", "texte"),
+    [(40, "40 min"), (120, "2 h"), (125, "2 h 05"), (26 * 60 + 30, "26 h 30")],
+)
+def test_la_duree_de_la_panne_se_lit_en_heures_et_minutes(tmp_path, minutes, texte):
+    github = GitHubFactice()
+    reponses = [httpx.Response(503), httpx.Response(503), _dossiers(DOSSIER)]
+
+    _passer_avec_github(tmp_path, github, reponses, minutes=[0, 30, minutes])
+
+    assert github.issues[0]["commentaires"] == [
+        f"Permis CAMAC (MapServer/537) est de nouveau disponible après {texte}."
+    ]
+
+
+def test_l_issue_ouverte_dit_depuis_quand_et_pourquoi_la_sonde_echoue(tmp_path):
+    github = GitHubFactice()
+
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER), httpx.Response(503), httpx.Response(503)])
+
+    assert github.issues[0]["body"] == (
+        "La sonde de Permis CAMAC (MapServer/537) échoue depuis le 2026-10-14 à 12:47 UTC (HTTP 503).\n\n"
+        "Le cron commentera puis fermera cette issue au retour de la source."
+    )
+
+
+def test_un_retour_sans_issue_ouverte_ne_modifie_rien(tmp_path):
+    _etat_precedent(tmp_path, version=1)
+    github = GitHubFactice(("Panne : Autre source", ["panne-source"]))
+
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER)])
+
+    assert [r.method for r in github.requetes] == ["GET"]
+    assert github.issues[0]["state"] == "open"
+
+
+ENV_DU_WORKFLOW = {"GITHUB_TOKEN": JETON, "GITHUB_REPOSITORY": DEPOT_DONNEES}
+
+
+def _passer_en_panne(depot, issues):
+    for i in range(2):
+        _passer(depot, _sources(SONDEE), httpx.Response(503), T0 + timedelta(minutes=30 * i), issues)
+
+
+def test_en_mode_local_sans_push_les_issues_sont_affichees_et_rien_n_est_demande_a_github(tmp_path, capsys):
+    github = GitHubFactice()
+
+    with github.client() as client:
+        _passer_en_panne(tmp_path, client_issues(sans_push=True, environ=ENV_DU_WORKFLOW, client=client))
+
+    assert github.requetes == []
+    assert "Panne : Permis CAMAC (MapServer/537)" in capsys.readouterr().out
+
+
+def test_avec_push_les_issues_s_ouvrent_dans_le_depot_du_workflow_avec_son_github_token(tmp_path):
+    github = GitHubFactice()
+
+    with github.client() as client:
+        _passer_en_panne(tmp_path, client_issues(sans_push=False, environ=ENV_DU_WORKFLOW, client=client))
+
+    assert [i["title"] for i in github.issues] == ["Panne : Permis CAMAC (MapServer/537)"]
+
+
+def test_avec_push_sans_github_token_le_passage_refuse_de_partir():
+    with httpx.Client() as client, pytest.raises(SystemExit, match="GITHUB_TOKEN"):
+        client_issues(sans_push=False, environ={"GITHUB_REPOSITORY": DEPOT_DONNEES}, client=client)
