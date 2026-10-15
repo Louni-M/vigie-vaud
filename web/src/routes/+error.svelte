@@ -20,12 +20,7 @@
 
 <main class="page">
 	<h1>{titre}</h1>
-	{#if introuvable && page.route.id === '/dossier/[id]'}
-		<p>
-			Ce numéro ne correspond à aucun dossier des données actuelles. Les numéros de dossier CAMAC comptent 5 ou 6
-			chiffres ; un dossier très récent peut n’apparaître qu’à la prochaine mise à jour quotidienne.
-		</p>
-	{:else if introuvable}
+	{#if introuvable}
 		<p>Cette adresse ne correspond à aucune page du site.</p>
 	{:else}
 		<p>La page n’a pas pu être affichée ({page.status}). Réessayez dans un instant.</p>
