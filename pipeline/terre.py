@@ -15,6 +15,8 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import polylabel
 
+from telechargement import telecharger
+
 LACS_URL = (
     "https://data.geo.admin.ch/ch.swisstopo.swisstlmregio/swisstlmregio_2026/"
     "swisstlmregio_2026_2056.gpkg.zip"
@@ -26,13 +28,7 @@ def charger_lacs(client: httpx.Client, cache: Path) -> gpd.GeoSeries:
     """Les lacs de swissTLMRegio en LV95 (téléchargés une fois dans `cache`)."""
     produits = list(cache.glob("swissTLMRegio_Product*.gpkg"))
     if not produits:
-        cache.mkdir(parents=True, exist_ok=True)
-        archive = cache / "swisstlmregio.gpkg.zip"
-        with client.stream("GET", LACS_URL, timeout=600) as r:
-            r.raise_for_status()
-            with archive.open("wb") as f:
-                for morceau in r.iter_bytes():
-                    f.write(morceau)
+        archive = telecharger(client, LACS_URL, cache / "swisstlmregio.gpkg.zip")
         with zipfile.ZipFile(archive) as z:
             for nom in z.namelist():
                 if Path(nom).name.startswith("swissTLMRegio_Product"):

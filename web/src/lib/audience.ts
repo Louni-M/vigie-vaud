@@ -1,10 +1,12 @@
 // Mesure d'audience GoatCounter (#16). Elle n'existe que si `VITE_GOATCOUNTER` (le code du site chez
-// GoatCounter) est défini à la construction : sans lui, ni script ni texte qui en parle. Elle compte le chemin
-// de la page sans ses paramètres : `/commune/pully` est compté, le centre de la carte et le dossier ouvert
-// (`?d=`) ne le sont pas.
+// GoatCounter) est défini à la construction : sans lui, aucune requête ni texte qui en parle. Elle compte le
+// chemin de la page sans ses paramètres : `/commune/pully` est compté, le centre de la carte et le dossier
+// ouvert (`?d=`) ne le sont pas. Le script de GoatCounter (count.js) n'est pas chargé : il enverrait les
+// paramètres de l'adresse (`q`) et la page précédente (`r`). Chaque page vue est envoyée par son pixel de
+// comptage, avec le chemin seul.
 
 export interface MesureAudience {
-	/** Adresse de comptage, lue par le script de GoatCounter (`data-goatcounter`). */
+	/** Adresse du pixel de comptage, sans paramètres. */
 	compteur: string;
 	/** Tableau de bord public. */
 	tableau: string;
@@ -16,6 +18,15 @@ export function mesureAudience(code: string | undefined): MesureAudience | null 
 	if (!c) return null;
 	const tableau = `https://${c}.goatcounter.com`;
 	return { compteur: `${tableau}/count`, tableau };
+}
+
+/**
+ * Adresse du pixel qui compte une page vue : le chemin (`p`) et rien d'autre de la page, plus un nombre
+ * aléatoire (`rnd`, ignoré par GoatCounter) pour que le navigateur ne la serve pas depuis son cache.
+ */
+export function adresseDeComptage(mesure: MesureAudience, chemin: string, aleatoire: number): string {
+	const parametres = new URLSearchParams({ p: chemin, rnd: aleatoire.toString(36).slice(2) });
+	return `${mesure.compteur}?${parametres}`;
 }
 
 /**

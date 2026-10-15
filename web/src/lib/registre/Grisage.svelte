@@ -7,6 +7,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MlMap } from 'maplibre-gl';
+	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import { getLimites } from '#lib/socle/communes.js';
 
 	let { map, sous, grisees }: { map: MlMap; sous: string; grisees: readonly number[] } = $props();
@@ -54,10 +55,5 @@
 		};
 	});
 
-	// La carte a pu être détruite avant ce composant (fin de la coquille) : rien à retirer alors.
-	$effect(() => () => {
-		if (!map.style) return;
-		map.removeLayer(CALQUE);
-		map.removeSource(CALQUE);
-	});
+	$effect(() => () => retirerDeLaCarte(map, [CALQUE], [CALQUE]));
 </script>

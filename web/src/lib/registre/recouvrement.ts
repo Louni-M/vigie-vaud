@@ -1,6 +1,9 @@
 /** Préfixe des ancres que le registre pose sur la carte, une par couche, dans l'ordre du registre. */
 export const PREFIXE_ANCRE = 'couche:';
 
+/** Ancre de la couche `couche` : le calque vide sous lequel elle dessine les siens. */
+export const ancre = (couche: string) => `${PREFIXE_ANCRE}${couche}`;
+
 /**
  * Calques des couches dessinées au-dessus de celle dont l'ancre est `ancre`, d'après l'ordre de dessin de la
  * carte (`ordre`, du dessous au dessus). Le repère du socle, au-dessus de la dernière ancre, n'en fait pas partie.

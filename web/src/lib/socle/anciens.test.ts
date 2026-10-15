@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ancienneAdresse } from './anciens.js';
-import { commune } from '#lib/couches/permis/faux-canton.js';
+import { commune } from '#tests/faux-canton.js';
 import type { Commune } from '#lib/types.js';
 
 const BEL: Commune = {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { creerDonneesPermis } from './donnees.svelte.js';
-import { entite, fauxCanton, PULLY } from './faux-canton.js';
+import { entite, fauxCanton, PULLY } from '#tests/faux-canton.js';
 
 // Le client du canton refuse de partir ailleurs que dans un navigateur.
 vi.mock('$app/env', () => ({ browser: true }));

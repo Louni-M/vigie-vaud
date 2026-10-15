@@ -33,7 +33,7 @@
 		navigator.geolocation.getCurrentPosition(
 			(p) => {
 				localisation = false;
-				onchoix({ type: 'adresse', genre: 'Position', label: 'Votre position', lon: p.coords.longitude, lat: p.coords.latitude });
+				onchoix({ type: 'adresse', categorie: 'Position', libelle: 'Votre position', lon: p.coords.longitude, lat: p.coords.latitude });
 			},
 			(e) => {
 				localisation = false;
@@ -81,7 +81,7 @@
 	 * « <i>Lieu</i> <b>Donatyre</b> (VD) - Avenches » → « Donatyre - Avenches », et « Avenches - Avenches » → « Avenches » :
 	 * le type est affiché à part.
 	 */
-	const libelle = (label: string) =>
+	const nettoyer = (label: string) =>
 		label
 			.replace(/<i>.*?<\/i>/g, '')
 			.replace(/<[^>]+>/g, '')
@@ -115,14 +115,14 @@
 			if (n !== requete) return;
 			const adresses: Resultat[] = ((json.results ?? []) as Lieu[]).filter(vaudois).map(({ attrs: a }) => ({
 				type: 'adresse',
-				genre: TYPES[a.origin] ?? 'Lieu',
-				label: libelle(a.label),
+				categorie: TYPES[a.origin] ?? 'Lieu',
+				libelle: nettoyer(a.label),
 				lon: a.lon,
 				lat: a.lat
 			}));
 			// Un même lieu revient sous plusieurs catégories (sortie d'autoroute, camping…) : un seul suffit.
-			const vus = new Set(local.map((r) => r.label));
-			const uniques = adresses.filter((r) => !vus.has(r.label) && vus.add(r.label));
+			const vus = new Set(local.map((r) => r.libelle));
+			const uniques = adresses.filter((r) => !vus.has(r.libelle) && vus.add(r.libelle));
 			resultats = [...local, ...uniques].slice(0, 10);
 		} catch {
 			/* hors ligne : on garde les résultats locaux */
@@ -143,7 +143,7 @@
 			champ?.focus();
 		}
 		// « Cully → Bourg-en-Lavaux » : le champ garde le nom de la commune actuelle, dont la fiche s'ouvre.
-		texte = r.type === 'commune' ? r.commune.nom : r.label;
+		texte = r.type === 'commune' ? r.commune.nom : r.libelle;
 		ouvert = false;
 		onchoix(r);
 	}
@@ -231,8 +231,8 @@
 			{#each resultats as r, i (i)}
 				<li>
 					<button type="button" onclick={() => choisir(r)}>
-						<span class="type">{r.type === 'commune' ? 'Commune' : r.genre}</span>
-						<span>{r.label}</span>
+						<span class="type">{r.type === 'commune' ? 'Commune' : r.type === 'adresse' ? r.categorie : r.nomCouche}</span>
+						<span>{r.libelle}</span>
 					</button>
 				</li>
 			{/each}

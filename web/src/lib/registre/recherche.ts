@@ -6,8 +6,8 @@ export const resultatsCouches = (couches: readonly CoucheInscrite[], texte: stri
 	couches.flatMap((c) =>
 		(c.chercher?.(texte) ?? []).map((r) => ({
 			type: 'element' as const,
-			genre: c.nom,
-			label: r.libelle,
+			nomCouche: c.nom,
+			libelle: r.libelle,
 			couche: r.couche,
 			element: r.element
 		}))

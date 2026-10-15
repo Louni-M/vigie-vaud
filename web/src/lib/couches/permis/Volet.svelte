@@ -11,7 +11,7 @@
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Dossier, PointHisto, Statut } from '#lib/types.js';
 	import { permis, visibles as dossiersVisibles, type Parametres } from './donnees.svelte.js';
-	import { ANNEE_MIN, statutsProposes } from './index.js';
+	import { ANNEE_MIN, dossierOuvert, ouvrirDossier, statutsProposes } from './index.js';
 
 	let { ctx }: { ctx: Contexte<Parametres> } = $props();
 
@@ -75,9 +75,9 @@
 
 	/** Un dossier de la liste s'ouvre dans l'onglet Permis de sa commune ; la carte vole vers lui. */
 	function vers(d: Dossier) {
-		ctx.ouvrir({ couche: 'permis', element: String(d.id), position: [d.lon, d.lat] });
+		ouvrirDossier(ctx, d.id, [d.lon, d.lat]);
 	}
-	const ouvert = $derived(ctx.ouvert?.couche === 'permis' ? Number(ctx.ouvert.element) : null);
+	const ouvert = $derived(dossierOuvert(ctx.ouvert));
 </script>
 
 <EchecSource source="camac-permis" message="Les permis n’ont pas pu être chargés" />

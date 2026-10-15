@@ -7,11 +7,11 @@
 	 * s'affiche normalement, même si le cron déclare la panne.
 	 */
 	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
-	import { etatSource, messageEchec } from '#lib/fraicheur.js';
+	import { etatExecution, messageEchec } from '#lib/fraicheur.js';
 
 	let { message, source }: { message: string; source: string } = $props();
 
-	const etat = $derived(etatSource(source));
+	const etat = $derived(etatExecution(source));
 	const texte = $derived(etat && messageEchec(message, etat.erreur, couvertureCourante().etat(source)));
 </script>
 

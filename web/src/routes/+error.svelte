@@ -43,7 +43,7 @@
 	function choix(r: Resultat) {
 		if (r.type === 'commune') goto(lienCommune(r.commune.slug));
 		else if (r.type === 'element') goto(lienElement(r.couche, r.element));
-		else goto(lienVue({ lon: r.lon, lat: r.lat, zoom: r.genre === 'Position' ? 15 : 16 }));
+		else goto(lienVue({ lon: r.lon, lat: r.lat, zoom: r.categorie === 'Position' ? 15 : 16 }));
 	}
 </script>
 

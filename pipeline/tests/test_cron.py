@@ -69,6 +69,9 @@ class IssuesFactices:
     def __init__(self):
         self.signalements = []
 
+    def signalees(self, sources):
+        return None
+
     def panne(self, source, etat):
         self.signalements.append(("panne", source.id, etat.depuis.isoformat()))
 
@@ -328,6 +331,7 @@ class GitHubFactice:
     def __init__(self, *ouvertes):
         self.issues = []
         self.requetes = []
+        self.hors_service = False
         for titre, etiquettes in ouvertes:
             self._creer({"title": titre, "body": "", "labels": etiquettes})
 
@@ -348,6 +352,8 @@ class GitHubFactice:
 
     def _traiter(self, requete):
         self.requetes.append(requete)
+        if self.hors_service:
+            return httpx.Response(503, json={"message": "Service Unavailable"})
         if requete.headers.get("Authorization") != f"Bearer {JETON}":
             return httpx.Response(401, json={"message": "Bad credentials"})
         url = str(requete.url.copy_with(query=None))
@@ -462,6 +468,54 @@ def test_un_retour_sans_issue_ouverte_ne_modifie_rien(tmp_path):
     _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER)])
 
     assert [r.method for r in github.requetes] == ["GET"]
+    assert github.issues[0]["state"] == "open"
+
+
+def test_une_panne_de_l_api_github_n_empeche_pas_d_ecrire_l_etat(tmp_path, capsys):
+    github = GitHubFactice()
+    github.hors_service = True
+
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER), httpx.Response(503), httpx.Response(503)])
+
+    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    assert etat["sources"]["camac-permis"]["etat"] == "en_panne"
+    assert "503" in capsys.readouterr().err
+
+
+def test_une_issue_que_l_api_n_a_pas_laisse_ouvrir_est_ouverte_au_passage_suivant(tmp_path):
+    github = GitHubFactice()
+    github.hors_service = True
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER), httpx.Response(503), httpx.Response(503)])
+
+    github.hors_service = False
+    _passer_avec_github(tmp_path, github, [httpx.Response(503)], minutes=[90])
+
+    (issue,) = github.issues
+    assert issue["state"] == "open"
+    assert "échoue depuis le 2026-10-14 à 12:47 UTC" in issue["body"]
+
+
+def test_une_issue_que_l_api_n_a_pas_laisse_fermer_est_fermee_au_passage_suivant(tmp_path):
+    github = GitHubFactice()
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER), httpx.Response(503), httpx.Response(503)])
+    github.hors_service = True
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER)], minutes=[90])
+
+    github.hors_service = False
+    _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER)], minutes=[120])
+
+    (issue,) = github.issues
+    assert issue["state"] == "closed"
+    assert issue["commentaires"] == [
+        "Permis CAMAC (MapServer/537) est de nouveau disponible depuis le 2026-10-14 à 13:47 UTC."
+    ]
+
+
+def test_un_seul_echec_ne_ferme_pas_l_issue_d_une_source_en_panne(tmp_path):
+    github = GitHubFactice(("Panne : Permis CAMAC (MapServer/537)", ["panne-source"]))
+
+    _passer_avec_github(tmp_path, github, [httpx.Response(503)])
+
     assert github.issues[0]["state"] == "open"
 
 

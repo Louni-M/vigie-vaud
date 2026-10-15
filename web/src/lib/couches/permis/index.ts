@@ -1,4 +1,4 @@
-import type { Codec, Couche } from '#lib/registre/types.js';
+import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
 import type { Parametres } from './donnees.svelte.js';
 import { NATURES, STATUTS, STATUTS_EN_COURS, STATUTS_ORDRE } from '#lib/labels.js';
 import type { Statut } from '#lib/types.js';
@@ -39,6 +39,14 @@ export const couchePermis: Couche<Parametres> = {
 		Apercu: () => import('./Apercu.svelte')
 	}
 };
+
+/** Ouvre un dossier par le registre, dans l'onglet Permis de sa commune ; la carte vole tout de suite vers lui. */
+export function ouvrirDossier(ctx: Pick<Contexte, 'ouvrir'>, id: number, position: [number, number]) {
+	ctx.ouvrir({ couche: couchePermis.id, element: String(id), position });
+}
+
+/** N° du dossier ouvert, ou `null` si ce qui est ouvert n'est pas un dossier. */
+export const dossierOuvert = (o: Ouvert | null) => (o?.couche === couchePermis.id ? Number(o.element) : null);
 
 /** Première année que le service du canton connaît. */
 export const ANNEE_MIN = 1999;

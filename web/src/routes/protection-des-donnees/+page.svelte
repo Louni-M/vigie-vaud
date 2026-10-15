@@ -66,9 +66,11 @@
 		</li>
 		{#if AUDIENCE}
 			<li>
-				<strong>GoatCounter</strong> (Irlande, serveurs en Finlande et en Allemagne), la mesure d’audience : il
-				compte les pages vues par leur chemin seul, sans le centre de la carte ni le dossier ouvert. Il ne pose
-				aucun cookie, ne conserve pas votre adresse IP et ne garde que des totaux.
+				<strong>GoatCounter</strong> (Irlande, serveurs en Finlande et en Allemagne), la mesure d’audience : à
+				chaque page vue, il reçoit votre adresse IP, le nom de votre navigateur et le chemin de la page
+				(<code>/commune/pully</code>), sans ses paramètres : ni le centre de la carte, ni le dossier ouvert, ni la
+				page d’où vous venez. Il ne pose aucun cookie, ne conserve pas votre adresse IP et ne garde que des
+				totaux.
 			</li>
 		{/if}
 		<li>

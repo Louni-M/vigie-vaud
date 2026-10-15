@@ -2,7 +2,9 @@
 
 Le passage relit `sources.json` et l'état précédent dans un clone du dépôt de données, sonde chaque source qui a
 un bloc `sonde`, écrit `etat-sources.json`, copie `schema/`, puis committe (l'historique sert d'archive) et pousse.
-Quand une source passe en panne ou revient, il ouvre ou ferme son issue `panne-source` dans le dépôt de données.
+Il ouvre l'issue `panne-source` d'une source en panne et ferme celle d'une source disponible, dans le dépôt de
+données. Une erreur de l'API des issues ne fait pas échouer le passage : l'état est tout de même écrit et publié, et
+le passage suivant, qui compare de nouveau l'état aux issues ouvertes, refait ce qui a manqué.
 
 En local, contre un clone du dépôt de données (depuis `pipeline/`) :
 
@@ -39,24 +41,32 @@ USER_AGENT = f"VigieVaud-sonde (+{json.loads((RACINE / 'config.json').read_text(
 
 
 class ClientIssues(Protocol):
-    """Ce que le passage signale des issues `panne-source` du dépôt de données : `IssuesGitHub` en production,
-    `IssuesAffichees` sans push."""
+    """Les issues `panne-source` du dépôt de données : `IssuesGitHub` en production, `IssuesAffichees` sans push.
+    Une erreur de l'API lève `httpx.HTTPError`."""
+
+    def signalees(self, sources: list[Source]) -> set[str] | None:
+        """Identifiants des `sources` qui ont une issue `panne-source` ouverte, ou `None` pour un client qui ne voit
+        pas les issues : le passage les suppose alors ouvertes pour les sources en panne dans l'état relu."""
 
     def panne(self, source: Source, etat: EtatSource) -> None:
-        """La source vient de passer en panne ; `etat.depuis` est l'heure de la première sonde en échec."""
+        """La source est en panne sans issue ouverte ; `etat.depuis` est l'heure de la première sonde en échec."""
 
-    def retour(self, source: Source, panne: EtatSource, etat: EtatSource) -> None:
-        """La source en panne depuis `panne.depuis` est de nouveau disponible depuis `etat.depuis`."""
+    def retour(self, source: Source, panne: EtatSource | None, etat: EtatSource) -> None:
+        """La source qui a une issue ouverte est disponible depuis `etat.depuis`. `panne` est son état en panne
+        quand elle revient à ce passage, `None` quand son retour date d'un passage précédent."""
 
 
 class IssuesAffichees:
     """Client d'issues du mode local : il affiche ce qu'il signalerait, sans rien ouvrir."""
 
+    def signalees(self, sources: list[Source]) -> None:
+        return None
+
     def panne(self, source: Source, etat: EtatSource) -> None:
         print(f"Panne : {source.nom} (depuis {etat.depuis:%Y-%m-%d %H:%M}Z, {etat.motif})")
 
-    def retour(self, source: Source, panne: EtatSource, etat: EtatSource) -> None:
-        print(f"Retour : {source.nom} (en panne depuis {panne.depuis:%Y-%m-%d %H:%M}Z)")
+    def retour(self, source: Source, panne: EtatSource | None, etat: EtatSource) -> None:
+        print(f"Retour : {source.nom} (disponible depuis {etat.depuis:%Y-%m-%d %H:%M}Z)")
 
 
 ETIQUETTE_PANNE = "panne-source"
@@ -76,9 +86,11 @@ class IssuesGitHub:
             "User-Agent": USER_AGENT,
         }
 
+    def signalees(self, sources: list[Source]) -> set[str]:
+        titres = {i["title"] for i in self._issues_ouvertes()}
+        return {s.id for s in sources if titre_panne(s) in titres}
+
     def panne(self, source: Source, etat: EtatSource) -> None:
-        if self._ouvertes(source):
-            return
         corps = (
             f"La sonde de {source.nom} échoue depuis le {etat.depuis:%Y-%m-%d à %H:%M} UTC ({etat.motif}).\n\n"
             "Le cron commentera puis fermera cette issue au retour de la source."
@@ -87,17 +99,23 @@ class IssuesGitHub:
             "POST", self._api, json={"title": titre_panne(source), "body": corps, "labels": [ETIQUETTE_PANNE]}
         )
 
-    def retour(self, source: Source, panne: EtatSource, etat: EtatSource) -> None:
-        commentaire = f"{source.nom} est de nouveau disponible après {duree(etat.depuis - panne.depuis)}."
+    def retour(self, source: Source, panne: EtatSource | None, etat: EtatSource) -> None:
+        if panne is not None:
+            commentaire = f"{source.nom} est de nouveau disponible après {duree(etat.depuis - panne.depuis)}."
+        else:
+            commentaire = f"{source.nom} est de nouveau disponible depuis le {etat.depuis:%Y-%m-%d à %H:%M} UTC."
         for numero in self._ouvertes(source):
             self._requete("POST", f"{self._api}/{numero}/comments", json={"body": commentaire})
             self._requete("PATCH", f"{self._api}/{numero}", json={"state": "closed", "state_reason": "completed"})
 
     def _ouvertes(self, source: Source) -> list[int]:
         """Numéros des issues `panne-source` ouvertes pour `source`, retrouvées par leur titre."""
+        return [i["number"] for i in self._issues_ouvertes() if i["title"] == titre_panne(source)]
+
+    def _issues_ouvertes(self) -> list[dict]:
         params = {"labels": ETIQUETTE_PANNE, "state": "open", "per_page": 100}
         issues = self._requete("GET", self._api, params=params).json()
-        return [i["number"] for i in issues if "pull_request" not in i and i["title"] == titre_panne(source)]
+        return [i for i in issues if "pull_request" not in i]
 
     def _requete(self, methode: str, url: str, **options) -> httpx.Response:
         reponse = self._client.request(methode, url, headers=self._entetes, **options)
@@ -137,7 +155,8 @@ def passage(
 ) -> EtatSources:
     """Sonde chaque source qui a un bloc `sonde`, puis écrit `etat-sources.json` et copie `schema/` dans `depot`,
     un clone du dépôt de données. L'état précédent est relu dans ce clone ; absent, illisible ou d'une autre
-    version, le passage repart de zéro. Le commit et le push sont l'affaire de l'appelant."""
+    version, le passage repart de zéro. Les issues sont ensuite accordées à l'état écrit ; une erreur de leur API
+    est affichée sans faire échouer le passage. Le commit et le push sont l'affaire de l'appelant."""
     genere = _a_la_seconde(horloge())
     precedent = _lire_etat(depot / FICHIER_ETAT)
     etats: dict[str, EtatSource] = {}
@@ -151,15 +170,28 @@ def passage(
     shutil.rmtree(depot / "schema", ignore_errors=True)
     shutil.copytree(DOSSIER_SCHEMA, depot / "schema")
 
-    for source in sources.sources:
-        avant, apres = precedent.get(source.id), etats.get(source.id)
-        if apres is None:
-            continue
-        if apres.etat == "en_panne" and (avant is None or avant.etat != "en_panne"):
-            issues.panne(source, apres)
-        elif apres.etat == "disponible" and avant is not None and avant.etat == "en_panne":
-            issues.retour(source, avant, apres)
+    try:
+        _accorder_issues(issues, [s for s in sources.sources if s.id in etats], precedent, etats)
+    except httpx.HTTPError as e:
+        print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
     return etat
+
+
+def _accorder_issues(
+    issues: ClientIssues, sondees: list[Source], precedent: dict[str, EtatSource], etats: dict[str, EtatSource]
+) -> None:
+    """Ouvre l'issue de chaque source en panne qui n'en a pas et ferme celle de chaque source dont la dernière sonde
+    a réussi (un seul échec la laisse disponible, sans la faire revenir). La décision part des issues ouvertes, pas
+    du seul changement d'état, pour qu'un passage refasse ce qu'un passage précédent a manqué."""
+    signalees = issues.signalees(sondees)
+    if signalees is None:
+        signalees = {id_source for id_source, e in precedent.items() if e.etat == "en_panne"}
+    for source in sondees:
+        avant, apres = precedent.get(source.id), etats[source.id]
+        if apres.etat == "en_panne" and source.id not in signalees:
+            issues.panne(source, apres)
+        elif apres.echecs_consecutifs == 0 and source.id in signalees:
+            issues.retour(source, avant if avant is not None and avant.etat == "en_panne" else None, apres)
 
 
 def _a_la_seconde(heure: datetime) -> datetime:

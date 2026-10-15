@@ -146,7 +146,8 @@ Au passage public, le déclencheur `pipeline/depot-donnees/.github/workflows/cro
 de données : il appelle toutes les 30 minutes le workflow réutilisable `.github/workflows/cron.yml`, qui fait le
 passage puis publie le dépôt de données sur Pages, avec son seul `GITHUB_TOKEN`. Ce jeton sert aussi aux issues
 `panne-source` : une issue « Panne : <nom de la source> » s'ouvre quand la source passe en panne (sauf si elle est
-déjà ouverte), puis est commentée et fermée à son retour.
+déjà ouverte), puis est commentée et fermée à son retour. Une erreur de l'API des issues ne fait pas échouer le
+passage : l'état est publié quand même, et le passage suivant ouvre ou ferme ce qui a manqué.
 
 ## Configuration
 

@@ -31,7 +31,8 @@ import httpx
 from pyproj import Transformer
 from shapely.geometry import Point
 
-from communes import CACHE, charger_communes
+from communes import CACHE, USER_AGENT, charger_communes
+from telechargement import telecharger
 from terre import charger_lacs, point_repli
 
 ICI = Path(__file__).resolve().parent
@@ -150,7 +151,7 @@ class AdresseOfficielle:
 
 def lire_adresses(client: httpx.Client, cache: Path) -> dict[int, list[AdresseOfficielle]]:
     """Les adresses vaudoises existantes, rangées par n° OFS de commune."""
-    archive = _telecharger(client, ADRESSES_URL, cache / "adresses.csv.zip")
+    archive = telecharger(client, ADRESSES_URL, cache / "adresses.csv.zip")
     index: dict[int, list[AdresseOfficielle]] = {}
     with zipfile.ZipFile(archive) as z, z.open(z.namelist()[0]) as brut:
         for r in csv.DictReader(io.TextIOWrapper(brut, encoding="utf-8-sig"), delimiter=";"):
@@ -234,19 +235,6 @@ def ecarts(position: Point, fiche: FicheUCV | None, townhalls: list[tuple[str, P
 # --- Exécution ---------------------------------------------------------------------------------------
 
 
-def _telecharger(client: httpx.Client, url: str, chemin: Path) -> Path:
-    if not chemin.exists():
-        chemin.parent.mkdir(parents=True, exist_ok=True)
-        partiel = chemin.with_suffix(".partiel")
-        with client.stream("GET", url, timeout=600) as r:
-            r.raise_for_status()
-            with partiel.open("wb") as f:
-                for morceau in r.iter_bytes():
-                    f.write(morceau)
-        partiel.rename(chemin)
-    return chemin
-
-
 def initialiser(client: httpx.Client, csv_hdv: Path = CSV_HDV, revue: Path = REVUE, cache: Path = CACHE_HDV) -> None:
     communes = charger_communes(client, cache)
     communes = communes.dissolve(by=["bfs_nummer", "name"]).reset_index()
@@ -312,7 +300,6 @@ def _ecrire(chemin: Path, colonnes: list[str], lignes: list[dict]) -> None:
 
 
 if __name__ == "__main__":
-    with httpx.Client(headers={"User-Agent": "vigie-vaud/0.1 (projet citoyen non commercial)"},
-                      follow_redirects=True) as client:
+    with httpx.Client(headers={"User-Agent": USER_AGENT}, follow_redirects=True) as client:
         initialiser(client)
     print(f"Écrit : {CSV_HDV.name}, {REVUE.name}", file=sys.stderr)

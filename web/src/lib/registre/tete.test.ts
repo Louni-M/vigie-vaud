@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { teteCommune, titreFiche } from './tete.js';
 import type { CoucheInscrite } from './types.js';
-import { commune } from '#lib/couches/permis/faux-canton.js';
+import { commune } from '#tests/faux-canton.js';
 import type { AncienNom } from '#lib/types.js';
 
 const couche = (id: string, champs: Partial<CoucheInscrite> = {}): CoucheInscrite => ({

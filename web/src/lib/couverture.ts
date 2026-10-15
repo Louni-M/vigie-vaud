@@ -80,7 +80,7 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 		return communes === 'canton' || communes.includes(bfs) ? mode : 'non_couvert';
 	};
 	const interrompue = etat !== null && maintenant.getTime() - Date.parse(etat.genere) > INTERRUPTION;
-	const etatSource = (id: string): EtatCouverture => {
+	const etatCouverture = (id: string): EtatCouverture => {
 		if (!parId.get(id)?.sonde) return { etat: 'non_surveillee' };
 		if (!etat) return { etat: 'inconnu' };
 		if (interrompue) return { etat: 'surveillance_interrompue' };
@@ -97,7 +97,7 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 	return {
 		sources: ids.map((id) => {
 			const source = parId.get(id)!;
-			const e = etatSource(id);
+			const e = etatCouverture(id);
 			const lu = source.sonde && etat ? (etat.sources[id] ?? null) : null;
 			return {
 				source,
@@ -107,10 +107,10 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 			};
 		}),
 		mode,
-		etat: etatSource,
+		etat: etatCouverture,
 		paire(id, bfs) {
 			const m = mode(id, bfs);
-			return { mode: m, etat: m === 'non_couvert' ? null : etatSource(id) };
+			return { mode: m, etat: m === 'non_couvert' ? null : etatCouverture(id) };
 		},
 		couvre,
 		grisees: (volet) => (volet === null ? [] : communes.filter((c) => !couvre(volet, c.bfs)).map((c) => c.bfs))

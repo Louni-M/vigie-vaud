@@ -13,8 +13,10 @@
 	} from 'maplibre-gl';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
 	import type { Contexte } from '#lib/registre/types.js';
+	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import type { Dossier, PointHisto } from '#lib/types.js';
 	import { permis, type Parametres } from './donnees.svelte.js';
+	import { dossierOuvert, ouvrirDossier } from './index.js';
 
 	let { ctx }: { ctx: Contexte<Parametres> } = $props();
 
@@ -163,7 +165,7 @@
 		};
 		const f = proches.sort((a, b) => distance(a) - distance(b))[0];
 		if (f?.properties?.id == null) return;
-		ctx.ouvrir({ couche: 'permis', element: String(f.properties.id), position: position(f) });
+		ouvrirDossier(ctx, Number(f.properties.id), position(f));
 	}
 	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
 	const sansPointeur = () => (map.getCanvas().style.cursor = '');
@@ -176,8 +178,7 @@
 	/** Position du dossier ouvert : celle de son point s'il est chargé, sinon celle de sa fiche. */
 	let anneau = $state<[number, number] | null>(null);
 	$effect(() => {
-		const o = ctx.ouvert;
-		const id = o?.couche === 'permis' ? Number(o.element) : null;
+		const id = dossierOuvert(ctx.ouvert);
 		if (id === null) return void (anneau = null);
 		const point = untrack(() => permis.actifs.find((d) => d.id === id) ?? permis.histo.find((d) => d.id === id));
 		if (point) return void (anneau = [point.lon, point.lat]);
@@ -196,22 +197,12 @@
 		// Un échec est signalé par le volet, qui propose de réessayer.
 		permis.chargerActifs().catch(() => {});
 		return () => {
-			// La carte du socle a pu être détruite avant cette couche (fin de la coquille).
-			try {
-				map.off('click', clic);
-				for (const id of [ACTIFS, HISTO]) {
-					map.off('mouseenter', id, pointeur);
-					map.off('mouseleave', id, sansPointeur);
-				}
-				map.removeLayer(SELECTION);
-				map.removeSource(SELECTION);
-				for (const id of [ACTIFS, HISTO]) {
-					map.removeLayer(id);
-					map.removeSource(id);
-				}
-			} catch {
-				/* carte déjà détruite */
+			map.off('click', clic);
+			for (const id of [ACTIFS, HISTO]) {
+				map.off('mouseenter', id, pointeur);
+				map.off('mouseleave', id, sansPointeur);
 			}
+			retirerDeLaCarte(map, [SELECTION, ACTIFS, HISTO], [SELECTION, ACTIFS, HISTO]);
 		};
 	});
 

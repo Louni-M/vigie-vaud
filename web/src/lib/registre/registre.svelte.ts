@@ -4,12 +4,12 @@ import { afterNavigate, goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { page } from '$app/state';
 import type { Map as MlMap } from 'maplibre-gl';
-import type { Commune, Centre, Zone } from '#lib/types.js';
+import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
 import type { Chargeur, Cible, Contexte, CoucheInscrite, Lecteur, Ouvert } from './types.js';
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
 import { corrigerChemin, fermeture, memeElement, mouvement, type Adresse } from './navigation.js';
 import { titreFiche } from './tete.js';
-import { calquesAuDessus } from './recouvrement.js';
+import { ancre, calquesAuDessus } from './recouvrement.js';
 
 /** Ce que le registre demande à la carte du socle quand l'adresse change sous lui. */
 export interface VueCarte {
@@ -18,7 +18,7 @@ export interface VueCarte {
 	voler(lon: number, lat: number, zoom?: number): void;
 	vueCanton(): void;
 	/** Cadre une emprise ; `parDefaut` : la vue obtenue n'entre pas dans l'adresse. */
-	cadrer(emprise: [number, number, number, number], anime?: boolean, parDefaut?: boolean): void;
+	cadrer(emprise: Emprise, anime?: boolean, parDefaut?: boolean): void;
 }
 
 /** Route de la fiche commune : la commune ouverte est dans le chemin (ADR 0012). */
@@ -26,9 +26,6 @@ const ROUTE_COMMUNE = '/(carte)/commune/[slug]' as const;
 
 /** Zoom auquel un élément ouvert est montré. */
 const ZOOM_ELEMENT = 16;
-
-/** Emprise sur laquelle cadrer une commune : sa partie terrestre, pas son emprise lac compris. */
-export const cadreDe = (c: Commune) => c.cadre;
 
 type NomComposant = keyof CoucheInscrite['composants'];
 
@@ -113,7 +110,8 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	function cadrerCommune(s: string, anime: boolean) {
 		const c = communes().find((c) => c.slug === s);
-		if (c) carteSocle()?.cadrer(cadreDe(c), anime, true);
+		// Cadrée sur sa partie terrestre (`cadre`), pas sur son emprise lac compris.
+		if (c) carteSocle()?.cadrer(c.cadre, anime, true);
 	}
 
 	/**
@@ -155,7 +153,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	const messageIntrouvable = (o: Ouvert) =>
 		couches.find((c) => c.id === o.couche)?.introuvable?.(o.element) ?? `Aucun élément n° ${o.element}.`;
-	const messageEchec = (o: Ouvert) =>
+	const messageNonCherche = (o: Ouvert) =>
 		`Le n° ${o.element} n’a pas pu être cherché : vérifiez votre connexion, puis réessayez.`;
 
 	/**
@@ -172,7 +170,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		const lieu = await localiser(o);
 		if (demande !== o) return;
 		demande = null;
-		if (lieu === 'echec') return void (avis = messageEchec(o));
+		if (lieu === 'echec') return void (avis = messageNonCherche(o));
 		const k = corrigerChemin(slug, lieu);
 		if (k === 'retirer') return void (avis = messageIntrouvable(o));
 		if (!cible.position) carteSocle()?.voler(lieu!.position[0], lieu!.position[1], ZOOM_ELEMENT);
@@ -203,7 +201,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		const lieu = await localiser(o);
 		if (demande !== o || !memeElement(ouvert, o)) return;
 		demande = null;
-		if (lieu === 'echec') return void (avis = messageEchec(o));
+		if (lieu === 'echec') return void (avis = messageNonCherche(o));
 		const k = corrigerChemin(slug, lieu);
 		if (k === 'retirer') {
 			avis = messageIntrouvable(o);
@@ -244,7 +242,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 				if (!map) throw new Error('Carte pas encore prête');
 				return map;
 			},
-			avant: `couche:${c.id}`,
+			avant: ancre(c.id),
 			get zone() {
 				return zone;
 			},
@@ -261,12 +259,12 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			get commune() {
 				return commune;
 			},
+			get communes() {
+				return communes();
+			},
 			recouvert(point) {
 				if (!map) return false;
-				const calques = calquesAuDessus(
-					map.getStyle().layers.map((l) => l.id),
-					`couche:${c.id}`
-				);
+				const calques = calquesAuDessus(map.getStyle().layers.map((l) => l.id), ancre(c.id));
 				return calques.length > 0 && map.queryRenderedFeatures(point, { layers: calques }).length > 0;
 			},
 			ouvrir,
@@ -279,7 +277,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	/** La carte est prête : un calque vide par couche, dans l'ordre du registre, sous le repère du socle. */
 	function carte(m: MlMap, sous: string) {
 		for (const c of couches)
-			m.addLayer({ id: `couche:${c.id}`, type: 'background', layout: { visibility: 'none' } }, sous);
+			m.addLayer({ id: ancre(c.id), type: 'background', layout: { visibility: 'none' } }, sous);
 		map = m;
 	}
 

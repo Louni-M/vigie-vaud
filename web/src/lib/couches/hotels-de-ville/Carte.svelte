@@ -7,13 +7,12 @@
 	import { onMount, untrack } from 'svelte';
 	import type {
 		ExpressionSpecification,
-		GeoJSONSource,
 		GeoJSONSourceSpecification,
 		MapLayerMouseEvent,
 		Popup
 	} from 'maplibre-gl';
 	import type { Contexte } from '#lib/registre/types.js';
-	import { getCommunes } from '#lib/socle/communes.js';
+	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import type { Commune } from '#lib/types.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
@@ -36,7 +35,7 @@
 		};
 	}
 
-	map.addSource(SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+	map.addSource(SOURCE, { type: 'geojson', data: versGeoJSON(untrack(() => ctx.communes)) });
 	map.addLayer(
 		{
 			id: MARQUEURS,
@@ -68,14 +67,6 @@
 	onMount(() => {
 		let detruit = false;
 		let bulle: Popup | undefined;
-
-		getCommunes(fetch)
-			.then((communes) => {
-				if (!detruit) (map.getSource(SOURCE) as GeoJSONSource).setData(versGeoJSON(communes));
-			})
-			.catch(() => {
-				/* l'index des communes est déjà chargé par la coquille : un échec ici ne se produit pas */
-			});
 
 		function survol(e: MapLayerMouseEvent) {
 			const f = e.features?.[0];
@@ -121,17 +112,11 @@
 		return () => {
 			detruit = true;
 			bulle?.remove();
-			// La carte du socle a pu être détruite avant cette couche (fin de la coquille).
-			try {
-				map.off('mousemove', MARQUEURS, survol);
-				map.off('mouseleave', MARQUEURS, quitter);
-				map.off('click', MARQUEURS, clic);
-				map.off('movestart', quitter);
-				map.removeLayer(MARQUEURS);
-				map.removeSource(SOURCE);
-			} catch {
-				/* carte déjà détruite */
-			}
+			map.off('mousemove', MARQUEURS, survol);
+			map.off('mouseleave', MARQUEURS, quitter);
+			map.off('click', MARQUEURS, clic);
+			map.off('movestart', quitter);
+			retirerDeLaCarte(map, [MARQUEURS], [SOURCE]);
 		};
 	});
 </script>
