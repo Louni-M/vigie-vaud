@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import { donneesLocales } from './scripts/donnees-locales.ts';
 import { verifierSources } from './scripts/verifier-sources.ts';
 
 // Pages générées à l'avance : l'accueil, les pages fixes et les 300 fiches commune
@@ -16,6 +17,7 @@ export default defineConfig({
 	// MapLibre 6 charge son worker par une URL relative au module : le pré-bundling de Vite la casse.
 	optimizeDeps: { exclude: ['maplibre-gl'] },
 	plugins: [
+		donneesLocales(),
 		verifierSources({
 			sources: '../sources.json',
 			schema: '../schema/sources.schema.json',

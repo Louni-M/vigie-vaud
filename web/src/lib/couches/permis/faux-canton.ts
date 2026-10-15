@@ -67,11 +67,14 @@ export interface FauxCanton {
 	requetes: string[];
 	/** Le service répond désormais par cette erreur HTTP (`null` : rétabli). */
 	panne(statut: number | null): void;
+	/** Le service devient injoignable, comme sans réseau : `fetch` échoue (`false` : rétabli). */
+	horsLigne(oui: boolean): void;
 }
 
 export function fauxCanton(entites: EntiteCamac[], communes: Commune[] = [PULLY, LUTRY]): FauxCanton {
 	const requetes: string[] = [];
 	let statutPanne: number | null = null;
+	let injoignable = false;
 	const json = (corps: unknown, status = 200) =>
 		new Response(JSON.stringify(corps), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -81,6 +84,7 @@ export function fauxCanton(entites: EntiteCamac[], communes: Commune[] = [PULLY,
 		if (url.pathname.endsWith('/communes-limites.json'))
 			return json(Object.fromEntries(communes.map((c) => [c.bfs, carre(c.bbox)])));
 		if (!url.pathname.endsWith('/MapServer/537/query')) throw new Error(`Adresse non prévue : ${url}`);
+		if (injoignable) throw new TypeError('Failed to fetch');
 		if (statutPanne) return new Response('', { status: statutPanne });
 
 		const p = init?.body ? new URLSearchParams(String(init.body)) : url.searchParams;
@@ -102,6 +106,7 @@ export function fauxCanton(entites: EntiteCamac[], communes: Commune[] = [PULLY,
 	return {
 		fetch: repondre as typeof fetch,
 		requetes,
-		panne: (s) => (statutPanne = s)
+		panne: (s) => (statutPanne = s),
+		horsLigne: (oui) => (injoignable = oui)
 	};
 }

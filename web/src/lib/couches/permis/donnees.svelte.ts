@@ -1,4 +1,5 @@
-import { creerClientCanton, sql, type Entite, type Requete } from '#lib/api.js';
+import { creerClientCanton, ErreurApi, sql, type Entite, type Requete } from '#lib/api.js';
+import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
 import { getRattachement, type Rattachement } from '#lib/socle/communes.js';
 import { masquerNoms, nettoyer } from '#lib/masquage.js';
 import { source } from '#lib/sources.js';
@@ -96,7 +97,10 @@ const CHAMPS_POINT = 'NO_CAMAC,ETAT,NATURE,DATE_ENQUETE';
 export interface DonneesPermis {
 	/** Dossiers en cours (vide tant qu'ils ne sont pas chargés), par n° croissant. */
 	readonly actifs: Dossier[];
-	/** Charge les dossiers en cours, une seule fois par visite (un échec sera retenté). */
+	/**
+	 * Charge les dossiers en cours, une seule fois par visite. Un échec est retenté une fois au bout d'environ 5 s,
+	 * puis la source passe en erreur ; un nouvel appel recommence.
+	 */
 	chargerActifs(): Promise<Dossier[]>;
 	/** Points légers de l'historique déjà chargés, toutes années confondues (dossiers en cours compris). */
 	readonly histo: PointHisto[];
@@ -118,6 +122,8 @@ export interface DonneesPermis {
 	 * rattachés à la commune comme sur la carte : chiffres et listes concordent.
 	 */
 	chiffres(commune: Commune): Promise<ChiffresCommune>;
+	/** État de la source CAMAC : heure de la dernière consultation réussie, échec, nouvel essai. */
+	readonly source: EtatSourceExecution;
 }
 
 export interface ChiffresCommune {
@@ -126,6 +132,13 @@ export interface ChiffresCommune {
 	/** Dossiers hors dossiers en cours, publication la plus récente d'abord. */
 	historique: PointHisto[];
 }
+
+/** Délai avant l'unique nouvelle tentative automatique d'un chargement raté. */
+const RETENTE_MS = 5_000;
+
+/** Hors ligne si le navigateur le dit (ou le client du canton), sinon le service est tenu pour indisponible. */
+const causeDe = (e: unknown): CauseEchec =>
+	(e instanceof ErreurApi && e.hors_ligne) || globalThis.navigator?.onLine === false ? 'hors_ligne' : 'indisponible';
 
 /** Marge autour de l'emprise : dossiers sur un lac, rattachés à la commune riveraine la plus proche. */
 const MARGE = 0.01;
@@ -138,7 +151,33 @@ export interface Options {
 }
 
 export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: Options): DonneesPermis {
-	const canton = creerClientCanton(f);
+	/* ---- État de la source : chaque réponse du canton date la consultation (pas une réponse tirée du cache). ---- */
+
+	let derniere = $state.raw<Date | null>(null);
+	const canton = creerClientCanton(async (entree, init) => {
+		const r = await f(entree, init);
+		if (r.ok) derniere = maintenant();
+		return r;
+	});
+
+	let erreur = $state<CauseEchec | null>(null);
+	/**
+	 * Un chargement principal de la source (dossiers en cours, chiffres d'une commune) : un échec est retenté une
+	 * seule fois, au bout de RETENTE_MS ; si la nouvelle tentative échoue aussi, la source passe en erreur.
+	 */
+	async function charge<T>(g: () => Promise<T>): Promise<T> {
+		try {
+			const r = await g().catch(async () => {
+				await new Promise((ok) => setTimeout(ok, RETENTE_MS));
+				return g();
+			});
+			erreur = null;
+			return r;
+		} catch (e) {
+			erreur = causeDe(e);
+			throw e;
+		}
+	}
 
 	async function dossiers(q: Requete): Promise<Dossier[]> {
 		const [entites, r] = await Promise.all([canton.chercher({ outFields: CHAMPS_DOSSIER, ...q }), getRattachement(f)]);
@@ -159,7 +198,7 @@ export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: 
 	let chargementActifs: Promise<Dossier[]> | null = null;
 	function chargerActifs(): Promise<Dossier[]> {
 		if (chargementActifs) return chargementActifs;
-		const p = dossiers({ where: EN_COURS_SQL }).then((ds) => {
+		const p = charge(() => dossiers({ where: EN_COURS_SQL })).then((ds) => {
 			const r = ds
 				.filter((d) => d.statut === 'enquete' || (d.debut ?? '') >= LIMITE_PROCEDURE)
 				.sort((a, b) => a.id - b.id);
@@ -231,14 +270,16 @@ export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: 
 
 	async function chiffres(c: Commune): Promise<ChiffresCommune> {
 		const [w, s, e, n] = c.bbox;
-		const [entites, r] = await Promise.all([
-			canton.chercher({
-				where: '1=1',
-				outFields: CHAMPS_POINT,
-				enveloppe: [w - MARGE, s - MARGE, e + MARGE, n + MARGE]
-			}),
-			getRattachement(f)
-		]);
+		const [entites, r] = await charge(() =>
+			Promise.all([
+				canton.chercher({
+					where: '1=1',
+					outFields: CHAMPS_POINT,
+					enveloppe: [w - MARGE, s - MARGE, e + MARGE, n + MARGE]
+				}),
+				getRattachement(f)
+			])
+		);
 		const statuts = { enquete: 0, procedure: 0, delivre: 0, realise: 0, abandonne: 0, autre: 0 };
 		const parAnnee: Record<string, number> = {};
 		const historique: PointHisto[] = [];
@@ -271,7 +312,23 @@ export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: 
 		chargerHisto,
 		fiche,
 		fiches,
-		chiffres
+		chiffres,
+		source: {
+			get derniere() {
+				return derniere;
+			},
+			get erreur() {
+				return erreur;
+			},
+			/**
+			 * Lève l'erreur, ce qui fait recharger les composants qui l'affichaient, et recharge les dossiers en
+			 * cours s'ils manquent (avec, de nouveau, une seule nouvelle tentative automatique).
+			 */
+			recharger() {
+				erreur = null;
+				chargerActifs().catch(() => {});
+			}
+		}
 	};
 }
 
@@ -330,3 +387,4 @@ const annee = (d: PointHisto) => Number(d.debut?.slice(0, 4) ?? 0);
 
 /** Le module de données de la couche Permis, créé une seule fois et partagé par la carte et les pages. */
 export const permis = creerDonneesPermis({ fetch: (entree, init) => fetch(entree, init) });
+inscrireEtat('camac-permis', permis.source);
