@@ -2,11 +2,48 @@
 	import { normaliser } from '#lib/labels.js';
 	import type { Commune, Resultat } from '#lib/types.js';
 
+	/*
+	 * Recherche flottante du socle : communes, adresses et lieux swisstopo, résultats des couches (`chercher`),
+	 * et « Autour de moi ». La position du visiteur n'est envoyée à personne : elle n'est rendue qu'à `onchoix`.
+	 */
 	let {
 		communes,
 		onchoix,
+		chercherCouches = () => [],
 		texte = $bindable('')
-	}: { communes: Commune[]; onchoix: (r: Resultat) => void; texte?: string } = $props();
+	}: {
+		communes: Commune[];
+		onchoix: (r: Resultat) => void;
+		/** Résultats des couches pour une saisie, synchrones (n° de dossier…). */
+		chercherCouches?: (texte: string) => Extract<Resultat, { type: 'element' }>[];
+		texte?: string;
+	} = $props();
+
+	let localisation = $state(false);
+	let erreur = $state('');
+
+	function autourDeMoi() {
+		erreur = '';
+		if (!navigator.geolocation) {
+			erreur = 'La géolocalisation n’est pas disponible dans ce navigateur. Cherchez plutôt une adresse.';
+			return;
+		}
+		localisation = true;
+		navigator.geolocation.getCurrentPosition(
+			(p) => {
+				localisation = false;
+				onchoix({ type: 'adresse', genre: 'Position', label: 'Votre position', lon: p.coords.longitude, lat: p.coords.latitude });
+			},
+			(e) => {
+				localisation = false;
+				erreur =
+					e.code === e.PERMISSION_DENIED
+						? 'Position refusée : autorisez la localisation pour ce site, ou cherchez une adresse.'
+						: 'Position indisponible pour le moment. Cherchez plutôt une adresse.';
+			},
+			{ timeout: 15_000, maximumAge: 60_000 }
+		);
+	}
 
 	let resultats: Resultat[] = $state([]);
 	let ouvert = $state(false);
@@ -21,9 +58,7 @@
 	let cherche = '';
 
 	function locaux(q: string): Resultat[] {
-		const local: Resultat[] = [];
-		// Les n° CAMAC ont 5 ou 6 chiffres ; 4 chiffres sont plutôt un numéro postal.
-		if (/^\d{5,6}$/.test(q.trim())) local.push({ type: 'dossier', label: `Dossier CAMAC n° ${q.trim()}`, id: Number(q.trim()) });
+		const local: Resultat[] = chercherCouches(q);
 		const nq = normaliser(q);
 		if (nq.length >= 2) {
 			// Les communes dont le nom commence par la saisie passent en premier (« Yverdon » → Yverdon-les-Bains).
@@ -177,24 +212,36 @@
 </script>
 
 <div class="recherche" onfocusout={sortie} onfocusin={() => clearTimeout(fermeture)}>
-	<input
-		bind:this={champ}
-		type="search"
-		placeholder="Adresse, commune ou n° de dossier"
-		aria-label="Rechercher une adresse, une commune ou un numéro de dossier"
-		autocomplete="off"
-		bind:value={texte}
-		oninput={saisie}
-		onfocus={entree}
-		onkeydown={clavierChamp}
-	/>
+	<div class="champ">
+		<input
+			bind:this={champ}
+			type="search"
+			placeholder="Adresse, commune ou n° de dossier"
+			aria-label="Rechercher une adresse, une commune ou un numéro de dossier"
+			autocomplete="off"
+			bind:value={texte}
+			oninput={saisie}
+			onfocus={entree}
+			onkeydown={clavierChamp}
+		/>
+		<button
+			class="autour"
+			type="button"
+			onclick={autourDeMoi}
+			disabled={localisation}
+			title="Autour de moi"
+			aria-label={localisation ? 'Localisation en cours' : 'Autour de moi'}
+		>
+			<span aria-hidden="true">◎</span>
+		</button>
+	</div>
 	{#if ouvert && resultats.length}
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<ul bind:this={liste} aria-label="Résultats de recherche" onkeydown={clavierListe}>
 			{#each resultats as r, i (i)}
 				<li>
 					<button type="button" onclick={() => choisir(r)}>
-						<span class="type">{r.type === 'adresse' ? r.genre : r.type === 'commune' ? 'Commune' : 'Dossier'}</span>
+						<span class="type">{r.type === 'commune' ? 'Commune' : r.genre}</span>
 						<span>{r.label}</span>
 					</button>
 				</li>
@@ -211,21 +258,56 @@
 	{#if ouvert && vide && !resultats.length}
 		<p class="aucun">Aucun résultat pour cette recherche.</p>
 	{/if}
+	<p class="erreur" role="status">{erreur}</p>
 </div>
 
 <style>
 	.recherche {
 		position: relative;
 	}
-	input {
-		width: 100%;
-		min-height: 44px;
-		padding: 10px 12px;
-		font-size: 16px;
+	.champ {
+		display: flex;
 		border: 1px solid var(--line);
 		border-radius: 10px;
 		background: var(--surface);
+	}
+	input {
+		flex: 1;
+		min-width: 0;
+		min-height: 44px;
+		padding: 10px 12px;
+		font-size: 16px;
+		border: 0;
+		border-radius: 10px 0 0 10px;
+		background: none;
 		color: inherit;
+	}
+	.autour {
+		flex: none;
+		width: 44px;
+		justify-content: center;
+		align-items: center;
+		border-left: 1px solid var(--line);
+		border-radius: 0 10px 10px 0;
+		font-size: 18px;
+		color: var(--accent);
+	}
+	.autour:disabled {
+		cursor: progress;
+		opacity: 0.6;
+	}
+	.erreur {
+		margin: 4px 0 0;
+		padding: 6px 10px;
+		border-radius: 8px;
+		background: var(--surface);
+		color: var(--erreur);
+		font-size: 13px;
+	}
+	/* Région annoncée par les lecteurs d'écran : vide, elle ne doit pas créer d'espace. */
+	.erreur:empty {
+		position: absolute;
+		padding: 0;
 	}
 	ul,
 	.aucun {

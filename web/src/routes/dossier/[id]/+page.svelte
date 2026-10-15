@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import Map from '#lib/components/Map.svelte';
+	import Map from '#lib/socle/Map.svelte';
 	import DossierFiche from '#lib/components/DossierFiche.svelte';
 	import { ErreurApi } from '#lib/api.js';
 	import { SOURCE } from '#lib/couches/permis/donnees.svelte.js';
@@ -66,9 +66,7 @@
 			<div class="mini-carte">
 				{#key d.id}
 					<Map
-						dossiers={[d]}
-						statuts={[d.statut]}
-						selection={d.id}
+						repere={[d.lon, d.lat]}
 						bounds={[d.lon - delta, d.lat - delta * 0.7, d.lon + delta, d.lat + delta * 0.7]}
 					/>
 				{/key}
