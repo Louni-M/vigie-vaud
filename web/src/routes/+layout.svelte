@@ -1,8 +1,8 @@
 <script lang="ts">
 	import favicon from '#lib/assets/favicon.svg';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/state';
+	import { page, updated } from '$app/state';
 	import { adresseDeComptage, AUDIENCE, cheminACompter } from '#lib/audience.js';
 	import { SITE } from '#lib/config.js';
 	import type { LayoutProps } from './$types';
@@ -22,6 +22,13 @@
 			pixel.src = adresseDeComptage(mesure, chemin, Math.random());
 		});
 	}
+	// Après un déploiement (vu au retour sur l'onglet, ou par le contrôle horaire de SvelteKit), un changement de
+	// page charge la nouvelle version en entier. Les déplacements de la carte restent sur la même page.
+	beforeNavigate(({ from, to, willUnload }) => {
+		if (updated.current && !willUnload && to?.url && to.url.pathname !== from?.url.pathname) {
+			location.href = to.url.href;
+		}
+	});
 	// « Carte » reste marqué comme page courante quand une fiche commune est ouverte sur la carte.
 	const nav = [
 		{ href: resolve('/(carte)'), label: 'Carte', groupe: '/(carte)' },
