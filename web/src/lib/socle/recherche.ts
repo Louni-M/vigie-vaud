@@ -27,7 +27,7 @@ export function chercherCommunes(communes: readonly Commune[], saisie: string): 
 		nq
 	).slice(0, 3);
 	return [
-		...actuelles.map((c): ResultatCommune => ({ type: 'commune', label: c.nom, commune: c })),
-		...anciens.map(({ a, c }): ResultatCommune => ({ type: 'commune', label: `${a.nom} → ${c.nom}`, commune: c }))
+		...actuelles.map((c): ResultatCommune => ({ type: 'commune', libelle: c.nom, commune: c })),
+		...anciens.map(({ a, c }): ResultatCommune => ({ type: 'commune', libelle: `${a.nom} → ${c.nom}`, commune: c }))
 	];
 }

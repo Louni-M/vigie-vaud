@@ -153,7 +153,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	const messageIntrouvable = (o: Ouvert) =>
 		couches.find((c) => c.id === o.couche)?.introuvable?.(o.element) ?? `Aucun élément n° ${o.element}.`;
-	const messageEchec = (o: Ouvert) =>
+	const messageNonCherche = (o: Ouvert) =>
 		`Le n° ${o.element} n’a pas pu être cherché : vérifiez votre connexion, puis réessayez.`;
 
 	/**
@@ -170,7 +170,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		const lieu = await localiser(o);
 		if (demande !== o) return;
 		demande = null;
-		if (lieu === 'echec') return void (avis = messageEchec(o));
+		if (lieu === 'echec') return void (avis = messageNonCherche(o));
 		const k = corrigerChemin(slug, lieu);
 		if (k === 'retirer') return void (avis = messageIntrouvable(o));
 		if (!cible.position) carteSocle()?.voler(lieu!.position[0], lieu!.position[1], ZOOM_ELEMENT);
@@ -201,7 +201,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		const lieu = await localiser(o);
 		if (demande !== o || !memeElement(ouvert, o)) return;
 		demande = null;
-		if (lieu === 'echec') return void (avis = messageEchec(o));
+		if (lieu === 'echec') return void (avis = messageNonCherche(o));
 		const k = corrigerChemin(slug, lieu);
 		if (k === 'retirer') {
 			avis = messageIntrouvable(o);

@@ -83,6 +83,6 @@ export function inscrireEtat(id: string, etat: EtatSourceExecution): void {
 }
 
 /** État de la source à l'exécution, ou `null` si son code d'accès n'est pas encore chargé. */
-export function etatSource(id: string): EtatSourceExecution | null {
+export function etatExecution(id: string): EtatSourceExecution | null {
 	return etats.get(id) ?? null;
 }

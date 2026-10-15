@@ -65,8 +65,10 @@ export interface Centre {
 	zoom: number;
 }
 
+/** Résultat de la recherche du socle ; `libelle` est le texte affiché. */
 export type Resultat =
-	| { type: 'adresse'; genre: string; label: string; lon: number; lat: number }
-	| { type: 'commune'; label: string; commune: Commune }
-	/** Élément d'une couche, fourni par son `chercher` ; `genre` est le nom de la couche. */
-	| { type: 'element'; genre: string; label: string; couche: string; element: string };
+	/** Lieu de swisstopo, ou la position de l'appareil ; `categorie` : « Adresse », « Lieu », « Position »… */
+	| { type: 'adresse'; categorie: string; libelle: string; lon: number; lat: number }
+	| { type: 'commune'; libelle: string; commune: Commune }
+	/** Élément d'une couche, fourni par son `chercher`. */
+	| { type: 'element'; nomCouche: string; libelle: string; couche: string; element: string };

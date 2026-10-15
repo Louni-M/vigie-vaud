@@ -13,12 +13,12 @@ const BEL = avec(commune(5613, 'Bourg-en-Lavaux', [6.68, 46.44, 6.76, 46.52]), [
 ]);
 const PULLY = commune(5590, 'Pully', [6.62, 46.49, 6.69, 46.53]);
 
-const libelles = (communes: Commune[], saisie: string) => chercherCommunes(communes, saisie).map((r) => r.label);
+const libelles = (communes: Commune[], saisie: string) => chercherCommunes(communes, saisie).map((r) => r.libelle);
 
 describe('recherche des communes', () => {
 	it('retrouve une ancienne commune et mène à la commune actuelle (« Cully → Bourg-en-Lavaux »)', () => {
 		const [r] = chercherCommunes([PULLY, BEL], 'cully');
-		expect(r.label).toBe('Cully → Bourg-en-Lavaux');
+		expect(r.libelle).toBe('Cully → Bourg-en-Lavaux');
 		expect(r.commune.slug).toBe('bourg-en-lavaux');
 	});
 

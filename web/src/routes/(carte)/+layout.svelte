@@ -112,7 +112,7 @@
 		registre.oublierAvis();
 		if (r.type === 'adresse') {
 			repere = [r.lon, r.lat];
-			carte?.voler(r.lon, r.lat, r.genre === 'Position' ? 15 : 16);
+			carte?.voler(r.lon, r.lat, r.categorie === 'Position' ? 15 : 16);
 		} else if (r.type === 'commune') {
 			// La fiche s'ouvre, et la carte cadre la commune.
 			repere = null;
