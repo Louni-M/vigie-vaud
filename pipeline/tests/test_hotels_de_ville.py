@@ -1,5 +1,6 @@
 """Outil d'initialisation des hôtels de ville : `hotels-de-ville.csv` et liste des cas à revoir (#25)."""
 
+import pytest
 from shapely.geometry import Point, box
 
 from faux_services import Adresse, Commune, Fiche, Monde, Townhall, carre, ecrire_csv, executer
@@ -63,6 +64,42 @@ def test_une_adresse_abregee_dans_l_annuaire_retrouve_son_libelle_officiel(tmp_p
 
     assert [(l["adresse"], l["origine"]) for l in lignes] == [("Route de Saint-Germain 3, 1042 Assens", "adresse:333")]
     assert revue == []
+
+
+def test_l_apostrophe_typographique_et_les_accents_de_l_annuaire_ne_genent_pas_l_appariement(tmp_path):
+    bursins = Commune(5853, "Bursins", carre(2510000, 1144000))
+    monde = Monde(
+        communes=[bursins],
+        fiches=[Fiche("Bursins", 5853, ["Greffe municipal", "Rue de l’Église 2", "1183 Bursins"])],
+        adresses=[Adresse(5853, "Rue de l'Eglise", "2", "1183 Bursins", egid=827982, e=2511000, n=1145000)],
+    )
+
+    lignes, _ = executer(monde, tmp_path)
+
+    assert [l["origine"] for l in lignes] == ["adresse:827982"]
+
+
+@pytest.mark.parametrize(
+    "lignes",
+    [
+        pytest.param(["Hôtel de Ville, Place Pestalozzi 2", "Case postale 355"], id="nom du bâtiment devant"),
+        pytest.param(["Place Pestalozzi 2, Case postale 221"], id="case postale derrière"),
+        pytest.param(["Commune de Yverdon - Place Pestalozzi 2"], id="tiret"),
+        pytest.param(["Place Pestalozzi 2 / CP 14"], id="barre oblique"),
+        pytest.param(["p.a. Place Pestalozzi 2 (2ème étage)"], id="par adresse et précision"),
+    ],
+)
+def test_la_rue_du_siege_se_retrouve_parmi_les_mentions_de_l_annuaire(tmp_path, lignes):
+    yverdon = Commune(5938, "Yverdon-les-Bains", carre(2538000, 1180000))
+    monde = Monde(
+        communes=[yverdon],
+        fiches=[Fiche("Yverdon-les-Bains", 5938, [*lignes, "1401 Yverdon-les-Bains"])],
+        adresses=[Adresse(5938, "Place Pestalozzi", "2", "1400 Yverdon-les-Bains", egid=444, e=2539000, n=1181000)],
+    )
+
+    lignes_csv, _ = executer(monde, tmp_path)
+
+    assert [l["origine"] for l in lignes_csv] == ["adresse:444"]
 
 
 def test_une_adresse_introuvable_ou_une_commune_absente_de_l_annuaire_passe_en_repli_a_revoir(tmp_path):

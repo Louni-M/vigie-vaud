@@ -49,7 +49,8 @@ OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 ECART_MAX = 150  # mètres
 
 COLONNES = ["ofs", "nom", "adresse", "E", "N", "origine", "note"]
-COLONNES_REVUE = ["ofs", "nom", "motif", "detail"]
+COLONNES_REVUE = ["ofs", "nom", "motif", "detail", "carte"]
+CARTE = "https://map.geo.admin.ch/#/map?lang=fr&center={e},{n}&z=12&crosshair=marker,{e},{n}"
 
 
 # --- Annuaire de l'UCV -------------------------------------------------------------------------------
@@ -117,14 +118,15 @@ def siege(fiche: FicheUCV) -> Siege | None:
             npa = m[1]
             break
         lignes.append(ligne)
-    for ligne in lignes:
-        ligne = re.sub(r"^p\.?\s*a\.?\s+", "", ligne, flags=re.I)
-        ligne = re.sub(r"\(.*?\)", "", ligne)
-        ligne = re.split(r"\s+-\s+", ligne)[0]
-        ligne = " ".join(ligne.strip(' "«»').split())
-        if re.match(r"(case postale|cp)\b", ligne, re.I):
+    # Une ligne mêle parfois le bâtiment, la rue et la case postale : « Hôtel de Ville, Place Pestalozzi 2 »,
+    # « Commune de Villarzel - route de Romont 9 », « Rue du Village 39 / CP 14 ».
+    mentions = [m for ligne in lignes for m in re.split(r"\s+[-/]\s+|,\s*", re.sub(r"\(.*?\)", "", ligne))]
+    for mention in mentions:
+        mention = re.sub(r"^p\.?\s*a\.?\s+", "", mention, flags=re.I)
+        mention = " ".join(mention.strip(' "«»').split())
+        if re.match(r"(case postale|cp)\b", mention, re.I):
             continue
-        if m := re.fullmatch(r"(.*\D)\s+(\d+\s?[a-z]?)", ligne, re.I):
+        if m := re.fullmatch(r"(.*\D)\s+(\d+\s?[a-z]?)", mention, re.I):
             return Siege(m[1].strip(), m[2].replace(" ", ""), npa)
     return None
 
@@ -169,7 +171,8 @@ MOTS_VIDES = {"de", "du", "des", "la", "le", "les", "l", "d"}
 
 
 def _cle_rue(rue: str) -> tuple[str, ...]:
-    s = unicodedata.normalize("NFKD", rue).encode("ascii", "ignore").decode().lower()
+    s = unicodedata.normalize("NFKD", rue)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch)).lower()
     mots = re.sub(r"[^a-z0-9]+", " ", s).split()
     return tuple(ABREVIATIONS.get(m, m) for m in mots if m not in MOTS_VIDES)
 
@@ -269,7 +272,8 @@ def initialiser(client: httpx.Client, csv_hdv: Path = CSV_HDV, revue: Path = REV
                            "origine": f"adresse:{a.egid}", "note": note})
             dans_la_commune = [t for t in townhalls if c.geometry.contains(t[1])]
             if constats := ecarts(Point(a.e, a.n), fiche, dans_la_commune):
-                cas.append({"ofs": ofs, "nom": nom, "motif": "écart", "detail": " ; ".join(constats)})
+                cas.append({"ofs": ofs, "nom": nom, "motif": "écart", "detail": " ; ".join(constats),
+                            "carte": CARTE.format(e=round(a.e), n=round(a.n))})
             continue
         p = point_repli(c.geometry, lacs)
         lignes.append({"ofs": ofs, "nom": nom, "adresse": "", "E": round(p.x), "N": round(p.y),
@@ -280,7 +284,8 @@ def initialiser(client: httpx.Client, csv_hdv: Path = CSV_HDV, revue: Path = REV
             motif, detail = "repli", "UCV sans rue : " + " / ".join(fiche.lignes[:3])
         else:
             motif, detail = "repli", "commune absente de l'annuaire de l'UCV"
-        cas.append({"ofs": ofs, "nom": nom, "motif": motif, "detail": detail})
+        cas.append({"ofs": ofs, "nom": nom, "motif": motif, "detail": detail,
+                    "carte": CARTE.format(e=round(p.x), n=round(p.y))})
     for ofs, disparue in existantes.items():
         print(f"  Avertissement : {disparue['nom']} ({ofs}) n'est plus une commune, ligne retirée", file=sys.stderr)
     lignes.sort(key=lambda l: int(l["ofs"]))
