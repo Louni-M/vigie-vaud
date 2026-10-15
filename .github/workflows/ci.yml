@@ -34,6 +34,9 @@ jobs:
       - name: svelte-check
         run: pnpm check
 
+      - name: Tests (Vitest)
+        run: pnpm test
+
       - name: Construire le site
         run: pnpm build
 
