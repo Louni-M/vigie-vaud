@@ -1,35 +1,53 @@
 <script lang="ts">
 	import favicon from '#lib/assets/favicon.svg';
+	import { afterNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { adresseDeComptage, AUDIENCE, cheminACompter } from '#lib/audience.js';
+	import { SITE } from '#lib/config.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 
-	const goatcounter = import.meta.env.VITE_GOATCOUNTER as string | undefined;
+	// Chaque changement de page est compté ici, par son chemin seul : les navigations de l'application (fiche
+	// commune, retour à la carte) sont ainsi comptées, et les paramètres de la carte jamais. Le pixel part sans
+	// en-tête Referer, qui porterait l'adresse complète de la page.
+	if (AUDIENCE) {
+		const mesure = AUDIENCE;
+		afterNavigate(({ from, to }) => {
+			const chemin = cheminACompter(from?.url, to?.url);
+			if (!chemin) return;
+			const pixel = new Image();
+			pixel.referrerPolicy = 'no-referrer';
+			pixel.src = adresseDeComptage(mesure, chemin, Math.random());
+		});
+	}
+	// « Carte » reste marqué comme page courante quand une fiche commune est ouverte sur la carte.
 	const nav = [
-		{ href: resolve('/'), label: 'Carte' },
-		{ href: resolve('/commune'), label: 'Communes' },
-		{ href: resolve('/a-propos'), label: 'À propos' }
+		{ href: resolve('/(carte)'), label: 'Carte', groupe: '/(carte)' },
+		{ href: resolve('/couverture'), label: 'Couverture', groupe: '/couverture' },
+		{ href: resolve('/a-propos'), label: 'À propos', groupe: '/a-propos' }
 	];
-	const accueil = resolve('/');
-	// « Communes » reste marqué comme page courante sur la page d'une commune.
-	const courant = (href: string, chemin: string) =>
-		chemin === href || (href !== accueil && chemin.startsWith(`${href}/`));
+	const courant = (groupe: string) => page.route.id === groupe || !!page.route.id?.startsWith(`${groupe}/`);
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	{#if goatcounter}
-		<script data-goatcounter="https://{goatcounter}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
-	{/if}
+	<!-- Aperçu des liens partagés : une image commune à tout le site, à l'adresse publique (absolue). -->
+	<meta property="og:site_name" content="Vigie Vaud" />
+	<meta property="og:locale" content="fr_CH" />
+	<meta property="og:image" content="{SITE}/apercu.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="Vigie Vaud : ce qui se passe dans votre commune, sur la carte du canton de Vaud" />
+	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <header>
-	<a class="marque" href={resolve('/')}>Chantiers <span>Vaud</span></a>
+	<a class="marque" href={resolve('/(carte)')}>Vigie <span>Vaud</span></a>
 	<nav>
 		{#each nav as l (l.href)}
-			<a href={l.href} aria-current={courant(l.href, page.url.pathname) ? 'page' : undefined}>{l.label}</a>
+			<a href={l.href} aria-current={courant(l.groupe) ? 'page' : undefined}>{l.label}</a>
 		{/each}
 	</nav>
 </header>
@@ -121,7 +139,7 @@
 		outline-color: #fff;
 	}
 	.marque {
-		/* Pas de flex ici : l'espace entre « Chantiers » et « Vaud » serait supprimé. */
+		/* Pas de flex ici : l'espace entre « Vigie » et « Vaud » serait supprimé. */
 		display: inline-block;
 		padding: 11px 0;
 		line-height: 22px;

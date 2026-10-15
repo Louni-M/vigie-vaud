@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Attribution": {
+      "additionalProperties": false,
+      "properties": {
+        "texte": {
+          "description": "Texte affiché, par ex. « © swisstopo ».",
+          "minLength": 1,
+          "type": "string"
+        },
+        "lien": {
+          "$ref": "#/$defs/Lien"
+        },
+        "licence": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "texte",
+        "lien",
+        "licence"
+      ],
+      "title": "Attribution",
+      "type": "object"
+    },
+    "CouvertureDeclaree": {
+      "additionalProperties": false,
+      "properties": {
+        "communes": {
+          "anyOf": [
+            {
+              "const": "canton",
+              "type": "string"
+            },
+            {
+              "items": {
+                "$ref": "#/$defs/NumeroOfs"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          ],
+          "description": "« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes."
+        },
+        "mode": {
+          "$ref": "#/$defs/ModeCouverture"
+        }
+      },
+      "required": [
+        "communes",
+        "mode"
+      ],
+      "title": "CouvertureDeclaree",
+      "type": "object"
+    },
+    "IdSource": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "Lien": {
+      "pattern": "^https?://\\S+$",
+      "type": "string"
+    },
+    "ModeCouverture": {
+      "enum": [
+        "api",
+        "scrape"
+      ],
+      "type": "string"
+    },
+    "NumeroOfs": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "Sonde": {
+      "additionalProperties": false,
+      "description": "Requête de vérification envoyée par le cron, sans conserver de données.\n\nUne seule requête GET par passage, sans nouvel essai. La réponse doit être un objet JSON dont `features` liste\nles enregistrements (JSON ArcGIS ou GeoJSON) ; elle doit donc rester légère (un enregistrement suffit).",
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/Lien"
+        },
+        "delai": {
+          "description": "Délai de réponse en secondes.",
+          "maximum": 60,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "champs": {
+          "default": [],
+          "description": "Champs que doit porter chaque enregistrement renvoyé, lus dans `attributes` (JSON ArcGIS) ou `properties` (GeoJSON).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "jamais_vide": {
+          "default": false,
+          "description": "Une réponse sans enregistrement compte comme un échec.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "url",
+        "delai"
+      ],
+      "title": "Sonde",
+      "type": "object"
+    },
+    "SorteFraicheur": {
+      "enum": [
+        "donnee",
+        "requete",
+        "millesime"
+      ],
+      "type": "string"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/IdSource",
+          "description": "Identifiant stable, clé de la source dans l'état des sources."
+        },
+        "nom": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "nom_court": {
+          "description": "Nom affiché dans le badge de fraîcheur (« · CAMAC »).",
+          "minLength": 1,
+          "type": "string"
+        },
+        "attribution": {
+          "$ref": "#/$defs/Attribution"
+        },
+        "voie_acces": {
+          "$ref": "#/$defs/VoieAcces"
+        },
+        "fraicheur": {
+          "$ref": "#/$defs/SorteFraicheur"
+        },
+        "couverture": {
+          "$ref": "#/$defs/CouvertureDeclaree"
+        },
+        "sonde": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Sonde"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sans sonde, la source n'est pas surveillée."
+        }
+      },
+      "required": [
+        "id",
+        "nom",
+        "nom_court",
+        "attribution",
+        "voie_acces",
+        "fraicheur",
+        "couverture"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "VoieAcces": {
+      "enum": [
+        "direct",
+        "cron",
+        "worker",
+        "preparee"
+      ],
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`sources.json` : chaque source y est déclarée une seule fois, pour le site et pour le cron.",
+  "properties": {
+    "$schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "sources"
+  ],
+  "title": "FichierSources",
+  "type": "object"
+}

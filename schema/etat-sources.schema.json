@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "EtatSonde": {
+      "enum": [
+        "disponible",
+        "en_panne"
+      ],
+      "type": "string"
+    },
+    "EtatSource": {
+      "additionalProperties": false,
+      "description": "Ce que les sondes ont mesuré pour une source, dans un état binaire (sans « dégradée »).\n\nAucun numéro d'issue n'y figure.",
+      "properties": {
+        "etat": {
+          "$ref": "#/$defs/EtatSonde"
+        },
+        "depuis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Horodatage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "En panne : heure de la première sonde en échec. Disponible : heure du retour, ou de la première sonde réussie ; `null` tant qu'aucune sonde n'a réussi."
+        },
+        "derniere_sonde": {
+          "$ref": "#/$defs/Horodatage"
+        },
+        "dernier_succes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Horodatage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`null` tant qu'aucune sonde n'a réussi."
+        },
+        "echecs_consecutifs": {
+          "description": "La source passe en panne à 2.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "motif": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…)."
+        }
+      },
+      "required": [
+        "etat",
+        "depuis",
+        "derniere_sonde",
+        "dernier_succes",
+        "echecs_consecutifs",
+        "motif"
+      ],
+      "title": "EtatSource",
+      "type": "object"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "IdSource": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`etat-sources.json` : l'état de chaque source sondée, indexé par identifiant de source.",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1. Le cron repart de zéro devant une autre version.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "sources": {
+      "additionalProperties": {
+        "$ref": "#/$defs/EtatSource"
+      },
+      "description": "Seules les sources qui ont un bloc `sonde` y figurent.",
+      "propertyNames": {
+        "$ref": "#/$defs/IdSource"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "sources"
+  ],
+  "title": "EtatSources",
+  "type": "object"
+}

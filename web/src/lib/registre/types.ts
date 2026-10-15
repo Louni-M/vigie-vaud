@@ -1,0 +1,114 @@
+import type { Component } from 'svelte';
+import type { Map as MlMap } from 'maplibre-gl';
+import type { Commune, Zone } from '#lib/types.js';
+
+/** Lecture des paramètres de requête (un `URLSearchParams` suffit). */
+export type Lecteur = Pick<URLSearchParams, 'get' | 'has'>;
+
+/**
+ * Paramètres de requête propres à une couche. Le registre les décode et les passe à ses composants ;
+ * seules les valeurs différentes des valeurs par défaut sont écrites.
+ */
+export interface Codec<P> {
+	/** Clés de requête que le codec lit et écrit, et lui seul. */
+	readonly cles: readonly string[];
+	/** Paramètres décodés ; une clé absente ou invalide donne la valeur par défaut. */
+	lire(params: Lecteur): P;
+	/** Paires clé-valeur à écrire, sans les valeurs par défaut. */
+	ecrire(parametres: P): [string, string][];
+}
+
+/** L'élément ouvert : un seul à la fois, dans toute l'application. */
+export interface Ouvert {
+	couche: string;
+	element: string;
+}
+
+/**
+ * Ce qu'on peut ouvrir : la fiche d'une commune, ou un élément d'une couche. Le registre ouvre l'élément dans la
+ * fiche de sa commune, qu'il trouve par `localiser`. Quand celui qui l'ouvre connaît déjà sa `position` (clic sur
+ * la carte, liste), la carte vole vers lui tout de suite, sans attendre `localiser`.
+ */
+export type Cible = { commune: string } | (Ouvert & { position?: [number, number] });
+
+/** Résultat qu'une couche fournit à la recherche du socle. */
+export interface ResultatCouche {
+	couche: string;
+	element: string;
+	libelle: string;
+}
+
+/** Contexte passé aux composants d'une couche. Toutes ses valeurs suivent l'état du registre. */
+export interface Contexte<P = unknown> {
+	/** Carte MapLibre du socle ; les composants ne sont montés qu'une fois la carte prête. */
+	readonly map: MlMap;
+	/** Calque sous lequel la couche ajoute les siens : l'ordre du registre est l'ordre de dessin. */
+	readonly avant: string;
+	/** Emprise visible, `null` tant que la carte n'a rien affiché. */
+	readonly zone: Zone | null;
+	readonly parametres: P;
+	/** Change une partie des paramètres ; l'adresse est remplacée, sans nouvelle entrée d'historique. */
+	regler(partiel: Partial<P>): void;
+	/** La couche est activée : sa `Carte` reste montée quand on la désactive, pour le fondu. */
+	readonly active: boolean;
+	readonly ouvert: Ouvert | null;
+	/** Commune dont la fiche est ouverte (celle que montre l'`Onglet`), ou `null`. */
+	readonly commune: Commune | null;
+	/** Index des communes actuelles, connu dès le rendu de la page. */
+	readonly communes: readonly Commune[];
+	/**
+	 * Une couche dessinée au-dessus montre quelque chose sous ce point de la carte (pixels) : c'est elle qui reçoit
+	 * le clic. Une couche qui ouvre ses éléments par un clic à quelques pixels près s'abstient alors.
+	 */
+	recouvert(point: [number, number]): boolean;
+	ouvrir(cible: Cible): void;
+	fermer(): void;
+}
+
+/** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */
+export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ ctx: Contexte<P> } & Props> }>;
+
+/** Description légère d'une couche, inscrite au registre. */
+export interface Couche<P = unknown> {
+	id: string;
+	nom: string;
+	/** Identifiants de `sources.json`. */
+	sources: string[];
+	/** Toujours affichée, sans interrupteur. */
+	permanente: boolean;
+	activeParDefaut: boolean;
+	/** Pastille du rail : un signe et sa couleur. */
+	icone: { signe: string; couleur: string };
+	codec?: Codec<P>;
+	/** Clé de requête de l'élément ouvert de cette couche (« d » pour un dossier). */
+	cleElement?: string;
+	/** Commune (slug) et position (lon, lat) d'un élément, ou `null` si la couche ne le trouve pas. */
+	localiser?(element: string): Promise<{ commune: string; position: [number, number] } | null>;
+	/** Message affiché près de la recherche quand `localiser` ne trouve pas l'élément (« Aucun dossier n° … »). */
+	introuvable?(element: string): string;
+	/** Synchrone : la recherche du socle l'appelle à chaque frappe. */
+	chercher?(texte: string): ResultatCouche[];
+	/** Titre du document quand l'élément est ouvert ; `commune` est le nom de la commune de l'élément. */
+	titre?(element: string, commune: string): string;
+	/**
+	 * Ce que la couche montre d'une commune, pour la description de la page de la commune
+	 * (« les permis de construire à l’enquête, en direct depuis le canton »).
+	 */
+	resume?: string;
+	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */
+	composants: {
+		Carte: Chargeur<P>;
+		Volet?: Chargeur<P>;
+		Onglet?: Chargeur<P>;
+		Fiche?: Chargeur<P>;
+		/** Aperçu de l'élément ouvert, en bas de la carte sur téléphone ; `voir` montre la fiche. */
+		Apercu?: Chargeur<P, { voir: () => void }>;
+	};
+}
+
+/**
+ * Une couche du registre, quels que soient ses paramètres. Chaque couche ne voit que les siens,
+ * typés dans sa description ; le registre les transporte sans les lire.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type CoucheInscrite = Couche<any>;
