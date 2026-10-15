@@ -71,7 +71,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 | Dossier | Rôle |
 |---|---|
 | `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) ; données CAMAC lues en direct par `src/lib/api.ts` et `src/lib/data.ts` |
-| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `schema.py` : modèles du schéma commun. `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
+| `pipeline/` | `communes.py` produit l'index et les limites des communes (swisstopo). `schema.py` : modèles du schéma commun. `hotels_de_ville.py` : outil d'initialisation de `hotels-de-ville.csv`. `fetch.py` (version hébergée, `main`) n'est plus utilisé par le site |
 | `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
 | `sources.json` | Déclaration de chaque source (attribution, voie d'accès, fraîcheur, Couverture, sonde), lue par le site et le cron |
 | `.github/workflows/` | Construction et publication sur GitHub Pages, sans aucune donnée CAMAC |
@@ -88,6 +88,14 @@ Limites communales (après une fusion de communes, par exemple) :
 
 ```bash
 cd pipeline && uv run python communes.py
+```
+
+Hôtels de ville, seulement pour une nouvelle commune : l'outil d'initialisation réécrit `pipeline/hotels-de-ville.csv`
+(qui fait foi ; les lignes `manuel` n'y bougent jamais) et la liste des cas à revoir,
+`pipeline/hotels-de-ville-a-revoir.csv`. Il télécharge environ 500 Mo dans `data/cache/hotels-de-ville/`.
+
+```bash
+cd pipeline && uv run python hotels_de_ville.py
 ```
 
 ## Sources et schéma commun
