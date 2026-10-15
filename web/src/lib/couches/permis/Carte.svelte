@@ -145,7 +145,8 @@
 	 */
 	function clic(e: MapMouseEvent) {
 		const calques = [ACTIFS, HISTO].filter((id) => map.getLayoutProperty(id, 'visibility') !== 'none');
-		if (!ctx.active || !calques.length) return;
+		// Un hôtel de ville sous le clic, dessiné au-dessus, l'emporte sur les dossiers voisins.
+		if (!ctx.active || !calques.length || ctx.recouvert([e.point.x, e.point.y])) return;
 		const r = 8;
 		const proches = map.queryRenderedFeatures(
 			[

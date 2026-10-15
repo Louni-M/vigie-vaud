@@ -9,6 +9,7 @@ import type { Chargeur, Cible, Contexte, CoucheInscrite, Lecteur, Ouvert } from 
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
 import { corrigerChemin, fermeture, memeElement, mouvement, type Adresse } from './navigation.js';
 import { titreFiche } from './tete.js';
+import { calquesAuDessus } from './recouvrement.js';
 
 /** Ce que le registre demande à la carte du socle quand l'adresse change sous lui. */
 export interface VueCarte {
@@ -258,6 +259,14 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			},
 			get commune() {
 				return commune;
+			},
+			recouvert(point) {
+				if (!map) return false;
+				const calques = calquesAuDessus(
+					map.getStyle().layers.map((l) => l.id),
+					`couche:${c.id}`
+				);
+				return calques.length > 0 && map.queryRenderedFeatures(point, { layers: calques }).length > 0;
 			},
 			ouvrir,
 			fermer

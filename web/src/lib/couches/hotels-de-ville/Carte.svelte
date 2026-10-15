@@ -1,11 +1,17 @@
 <script lang="ts">
 	/*
 	 * Carte de la couche Hôtels de ville : un marqueur par commune actuelle (les anciennes communes n'en ont pas),
-	 * celui de la commune ouverte mis en évidence. Au survol, une bulle donne le nom et l'adresse (sans adresse pour
+	 * celui de la commune ouverte plus grand. Au survol, une bulle donne le nom et l'adresse (sans adresse pour
 	 * une position approximative) ; un clic ouvre la fiche de la commune.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import type { GeoJSONSource, GeoJSONSourceSpecification, MapLayerMouseEvent, Popup } from 'maplibre-gl';
+	import type {
+		ExpressionSpecification,
+		GeoJSONSource,
+		GeoJSONSourceSpecification,
+		MapLayerMouseEvent,
+		Popup
+	} from 'maplibre-gl';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { getCommunes } from '#lib/socle/communes.js';
 	import type { Commune } from '#lib/types.js';
@@ -16,7 +22,6 @@
 	const avant = untrack(() => ctx.avant);
 	const SOURCE = 'hotels-de-ville';
 	const MARQUEURS = 'hotels-de-ville';
-	const OUVERT = 'hotels-de-ville-ouvert';
 	const COULEUR = '#1f3a5f';
 
 	function versGeoJSON(communes: readonly Commune[]): GeoJSONSourceSpecification['data'] {
@@ -32,39 +37,32 @@
 	}
 
 	map.addSource(SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-	// Anneau de la commune ouverte, sous son marqueur.
-	map.addLayer(
-		{
-			id: OUVERT,
-			type: 'circle',
-			source: SOURCE,
-			filter: ['==', ['get', 'slug'], ''],
-			paint: {
-				'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 13, 13, 17, 17],
-				'circle-color': 'rgba(0, 0, 0, 0)',
-				'circle-stroke-width': 3,
-				'circle-stroke-color': COULEUR
-			}
-		},
-		avant
-	);
 	map.addLayer(
 		{
 			id: MARQUEURS,
 			type: 'circle',
 			source: SOURCE,
-			paint: {
-				'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 13, 7, 17, 10],
-				'circle-color': COULEUR,
-				'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 13, 2.5],
-				'circle-stroke-color': '#fff'
-			}
+			paint: { 'circle-color': COULEUR, 'circle-stroke-color': '#fff' }
 		},
 		avant
 	);
 
+	/*
+	 * Le marqueur de la commune ouverte est plus grand, sans calque à part : tout ce que ce calque dessine reçoit
+	 * le clic, et un anneau autour du marqueur rendrait inaccessibles les dossiers voisins.
+	 */
 	$effect(() => {
-		map.setFilter(OUVERT, ['==', ['get', 'slug'], ctx.commune?.slug ?? '']);
+		const ouvert: ExpressionSpecification = ['==', ['get', 'slug'], ctx.commune?.slug ?? ''];
+		/** Par niveau de zoom : [zoom, valeur pour la commune ouverte, valeur pour les autres]. */
+		const selon = (zooms: [number, number, number][]) =>
+			[
+				'interpolate',
+				['linear'],
+				['zoom'],
+				...zooms.flatMap(([z, o, n]) => [z, ['case', ouvert, o, n]])
+			] as ExpressionSpecification;
+		map.setPaintProperty(MARQUEURS, 'circle-radius', selon([[8, 6, 4], [13, 10, 7], [17, 13, 10]]));
+		map.setPaintProperty(MARQUEURS, 'circle-stroke-width', selon([[8, 2.5, 1.5], [13, 3.5, 2.5], [17, 3.5, 2.5]]));
 	});
 
 	onMount(() => {
@@ -129,7 +127,7 @@
 				map.off('mouseleave', MARQUEURS, quitter);
 				map.off('click', MARQUEURS, clic);
 				map.off('movestart', quitter);
-				for (const id of [MARQUEURS, OUVERT]) map.removeLayer(id);
+				map.removeLayer(MARQUEURS);
 				map.removeSource(SOURCE);
 			} catch {
 				/* carte déjà détruite */

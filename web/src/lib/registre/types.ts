@@ -54,6 +54,11 @@ export interface Contexte<P = unknown> {
 	readonly ouvert: Ouvert | null;
 	/** Commune dont la fiche est ouverte (celle que montre l'`Onglet`), ou `null`. */
 	readonly commune: Commune | null;
+	/**
+	 * Une couche dessinée au-dessus montre quelque chose sous ce point de la carte (pixels) : c'est elle qui reçoit
+	 * le clic. Une couche qui ouvre ses éléments par un clic à quelques pixels près s'abstient alors.
+	 */
+	recouvert(point: [number, number]): boolean;
 	ouvrir(cible: Cible): void;
 	fermer(): void;
 }
