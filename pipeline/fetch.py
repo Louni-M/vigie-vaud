@@ -207,19 +207,19 @@ def fetch_layer(client: httpx.Client) -> list[dict]:
     return features
 
 
-def load_communes(client: httpx.Client) -> gpd.GeoDataFrame:
-    CACHE.mkdir(parents=True, exist_ok=True)
-    gpkgs = list(CACHE.glob("*.gpkg"))
+def load_communes(client: httpx.Client, cache: Path = CACHE) -> gpd.GeoDataFrame:
+    cache.mkdir(parents=True, exist_ok=True)
+    gpkgs = list(cache.glob("swissBOUNDARIES3D*.gpkg"))
     if not gpkgs:
-        zpath = CACHE / "sb3d.gpkg.zip"
+        zpath = cache / "sb3d.gpkg.zip"
         with client.stream("GET", BOUNDARIES_URL, timeout=600) as r:
             r.raise_for_status()
             with open(zpath, "wb") as f:
                 for chunk in r.iter_bytes():
                     f.write(chunk)
         with zipfile.ZipFile(zpath) as z:
-            z.extractall(CACHE)
-        gpkgs = list(CACHE.glob("*.gpkg"))
+            z.extractall(cache)
+        gpkgs = list(cache.glob("swissBOUNDARIES3D*.gpkg"))
     gdf = gpd.read_file(gpkgs[0], layer="tlm_hoheitsgebiet")
     gdf = gdf[(gdf.kantonsnummer == 22) & (gdf.objektart == "Gemeindegebiet")]
     gdf = gdf[["bfs_nummer", "name", "einwohnerzahl", "geometry"]].copy()
