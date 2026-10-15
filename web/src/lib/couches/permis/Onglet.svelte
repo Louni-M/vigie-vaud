@@ -160,7 +160,7 @@
 <p class="source">
 	{SOURCE} depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la FAO fait foi.
 	Rattachement aux communes actuelles (limites swisstopo).
-	<a href={resolve('/infos-legales')}>L’enquête publique : ce que prévoit la loi</a>
+	<a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>
 </p>
 
 <style>

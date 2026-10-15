@@ -121,7 +121,7 @@
 
 		<p class="liens">
 			<a href={resolve('/a-propos')}>À propos</a> ·
-			<a href={resolve('/infos-legales')}>Informations légales</a>
+			<a href={resolve('/protection-des-donnees')}>Protection des données</a>
 		</p>
 	</div>
 

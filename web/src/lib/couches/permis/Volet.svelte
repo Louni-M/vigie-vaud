@@ -181,7 +181,7 @@
 <p class="source">
 	Dossiers consultés en direct depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la
 	<a href="https://www.vd.ch/territoire-et-construction/permis-de-construire/faq/avis-denquete/publication-fao" target="_blank" rel="noopener">FAO</a>
-	fait foi. <a href={resolve('/infos-legales')}>L’enquête publique : ce que prévoit la loi</a>
+	fait foi. <a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>
 </p>
 
 <style>
