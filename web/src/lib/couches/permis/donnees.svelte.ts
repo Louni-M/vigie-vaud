@@ -2,6 +2,7 @@ import { creerClientCanton, sql, type Entite, type Requete } from '#lib/api.js';
 import { getRattachement, type Rattachement } from '#lib/communes.js';
 import type { Tri } from '#lib/etat.js';
 import { masquerNoms, nettoyer } from '#lib/masquage.js';
+import { source } from '#lib/sources.js';
 import type { Commune, Dossier, PointHisto, Statut } from '#lib/types.js';
 
 /**
@@ -12,7 +13,7 @@ import type { Commune, Dossier, PointHisto, Statut } from '#lib/types.js';
 
 type Fetch = typeof fetch;
 
-export const SOURCE = 'Source : Géodonnées Etat de Vaud (CAMAC), consultées en direct';
+export const SOURCE = `Source : ${source('camac-permis').attribution.texte}, consultées en direct`;
 
 /* ---- Conversion CAMAC → Dossier (privée) ---- */
 

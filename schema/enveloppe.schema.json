@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Enveloppe de chaque fichier du dépôt de données.",
+  "properties": {
+    "version": {
+      "description": "Version majeure du format : seul un changement incompatible l'augmente. Le site refuse une version qu'il ne connaît pas.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    }
+  },
+  "required": [
+    "version",
+    "genere"
+  ],
+  "title": "Enveloppe",
+  "type": "object"
+}

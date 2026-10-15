@@ -1,0 +1,125 @@
+{
+	"$schema": "./schema/sources.schema.json",
+	"sources": [
+		{
+			"id": "camac-permis",
+			"nom": "Permis CAMAC (MapServer/537)",
+			"nom_court": "CAMAC",
+			"attribution": {
+				"texte": "Géodonnées État de Vaud (CAMAC)",
+				"lien": "https://viageo.ch/md/cb71405f-13f6-421b-b2ee-3ca76efbd56d",
+				"licence": "Norme DCG 8401, sans rediffusion"
+			},
+			"voie_acces": "direct",
+			"fraicheur": "requete",
+			"couverture": { "communes": "canton", "mode": "api" },
+			"sonde": {
+				"url": "https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/537/query?where=1%3D1&outFields=NO_CAMAC,NO_FAO,DATE_ENQUETE,NATURE,DESCRIPTION,DECISION_COMMUNALE,DATE_DECISION,URL,ETAT&returnGeometry=true&resultRecordCount=1&f=json",
+				"delai": 20,
+				"champs": [
+					"NO_CAMAC",
+					"NO_FAO",
+					"DATE_ENQUETE",
+					"NATURE",
+					"DESCRIPTION",
+					"DECISION_COMMUNALE",
+					"DATE_DECISION",
+					"URL",
+					"ETAT"
+				],
+				"jamais_vide": true
+			}
+		},
+		{
+			"id": "swisstopo-fond",
+			"nom": "Fond de carte swisstopo (carte de base et SWISSIMAGE)",
+			"nom_court": "swisstopo",
+			"attribution": {
+				"texte": "© swisstopo",
+				"lien": "https://www.swisstopo.admin.ch/fr/geoservices",
+				"licence": "Géodonnées gratuites OGD de swisstopo"
+			},
+			"voie_acces": "direct",
+			"fraicheur": "requete",
+			"couverture": { "communes": "canton", "mode": "api" }
+		},
+		{
+			"id": "swisstopo-recherche",
+			"nom": "Recherche d'adresses et de lieux swisstopo",
+			"nom_court": "swisstopo",
+			"attribution": {
+				"texte": "© swisstopo",
+				"lien": "https://docs.geo.admin.ch/access-data/search.html",
+				"licence": "Géodonnées gratuites OGD de swisstopo"
+			},
+			"voie_acces": "direct",
+			"fraicheur": "requete",
+			"couverture": { "communes": "canton", "mode": "api" }
+		},
+		{
+			"id": "swisstopo-limites",
+			"nom": "Limites des communes (swissBOUNDARIES3D)",
+			"nom_court": "swissBOUNDARIES3D",
+			"attribution": {
+				"texte": "© swisstopo",
+				"lien": "https://www.swisstopo.admin.ch/fr/modele-du-territoire-swissboundaries3d",
+				"licence": "Géodonnées gratuites OGD de swisstopo"
+			},
+			"voie_acces": "preparee",
+			"fraicheur": "millesime",
+			"couverture": { "communes": "canton", "mode": "api" }
+		},
+		{
+			"id": "ucv-annuaire",
+			"nom": "Annuaire des communes de l'UCV",
+			"nom_court": "UCV",
+			"attribution": {
+				"texte": "Union des communes vaudoises (UCV)",
+				"lien": "https://www.ucv.ch/annuaire/recherche-par-localite",
+				"licence": "Sans licence de réutilisation : seule l'adresse du siège de chaque commune est reprise"
+			},
+			"voie_acces": "preparee",
+			"fraicheur": "millesime",
+			"couverture": { "communes": "canton", "mode": "scrape" }
+		},
+		{
+			"id": "swisstopo-adresses",
+			"nom": "Répertoire officiel des adresses de bâtiments",
+			"nom_court": "swisstopo",
+			"attribution": {
+				"texte": "© swisstopo",
+				"lien": "https://www.swisstopo.admin.ch/fr/repertoire-officiel-des-adresses-de-batiments",
+				"licence": "Géodonnées gratuites OGD de swisstopo"
+			},
+			"voie_acces": "preparee",
+			"fraicheur": "millesime",
+			"couverture": { "communes": "canton", "mode": "api" }
+		},
+		{
+			"id": "swisstopo-lacs",
+			"nom": "Lacs (swissTLMRegio)",
+			"nom_court": "swissTLMRegio",
+			"attribution": {
+				"texte": "© swisstopo",
+				"lien": "https://www.swisstopo.admin.ch/fr/modele-du-territoire-swisstlmregio",
+				"licence": "Géodonnées gratuites OGD de swisstopo"
+			},
+			"voie_acces": "preparee",
+			"fraicheur": "millesime",
+			"couverture": { "communes": "canton", "mode": "api" }
+		},
+		{
+			"id": "ofs-communes-historique",
+			"nom": "Répertoire historisé des communes de l'OFS",
+			"nom_court": "OFS",
+			"attribution": {
+				"texte": "Office fédéral de la statistique (OFS)",
+				"lien": "https://www.agvchapp.bfs.admin.ch/fr",
+				"licence": "Données ouvertes (OGD)"
+			},
+			"voie_acces": "preparee",
+			"fraicheur": "millesime",
+			"couverture": { "communes": "canton", "mode": "api" }
+		}
+	]
+}

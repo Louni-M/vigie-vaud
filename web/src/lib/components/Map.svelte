@@ -13,6 +13,7 @@
 		MapMouseEvent
 	} from 'maplibre-gl';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
+	import { attributionHtml, source } from '#lib/sources.js';
 	import type { Centre, Dossier, PointHisto, Statut } from '#lib/types.js';
 
 	/** Emprise du canton : vue de départ, et retour par le logo. */
@@ -64,6 +65,8 @@
 
 	const STYLE = 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.lightbasemap.vt/style.json';
 	const SWISSIMAGE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg';
+	/** Contrôle d'attribution, tiré de sources.json : le fond de carte, puis la source des permis. */
+	const ATTRIBUTION = ['swisstopo-fond', 'camac-permis'].map((id) => attributionHtml(source(id)));
 
 	const couleur = (prop: string) =>
 		[
@@ -183,7 +186,7 @@
 			m.addControl(
 				new maplibregl.AttributionControl({
 					compact: true,
-					customAttribution: 'Source : Géodonnées Etat de Vaud (CAMAC), en direct'
+					customAttribution: ATTRIBUTION
 				})
 			);
 			if (interactive) m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
