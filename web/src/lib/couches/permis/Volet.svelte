@@ -6,7 +6,7 @@
 	 */
 	import { resolve } from '$app/paths';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
-	import { ErreurApi } from '#lib/api.js';
+	import EchecSource from '#lib/components/EchecSource.svelte';
 	import { NATURES, STATUTS } from '#lib/labels.js';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Dossier, PointHisto, Statut } from '#lib/types.js';
@@ -24,21 +24,10 @@
 	const actifs = $derived(permis.actifs);
 	const visibles = $derived(ctx.active ? dossiersVisibles(ctx.zone, p, permis) : []);
 
-	/* ---- Chargement des dossiers en cours, et son échec ---- */
+	/* ---- Chargement des dossiers en cours ; un échec est porté par l'état de la source, que « Réessayer » recharge. ---- */
 
-	let echec = $state('');
-	const messageErreur = (e: unknown) =>
-		e instanceof ErreurApi && e.hors_ligne
-			? 'Vous semblez hors ligne : les dossiers sont lus en direct sur le service du canton.'
-			: e instanceof ErreurApi
-				? `${e.message} Les dossiers sont lus en direct sur ogc.vd.ch : réessayez dans un instant.`
-				: 'Les données n’ont pas pu être chargées.';
-	function charger() {
-		echec = '';
-		permis.chargerActifs().catch((e) => (echec = messageErreur(e)));
-	}
 	$effect(() => {
-		if (ctx.active) charger();
+		if (ctx.active) permis.chargerActifs().catch(() => {});
 	});
 
 	/* ---- Fiches complètes des dossiers d'historique en tête de liste, chargées quand la carte s'arrête ---- */
@@ -90,6 +79,8 @@
 	}
 </script>
 
+<EchecSource message="Les permis n’ont pas pu être chargés" etat={permis.source} />
+
 <div class="reglages">
 	<div class="puces" role="group" aria-label="Statuts affichés (légende de la carte)">
 		{#each proposes as s (s)}
@@ -138,9 +129,8 @@
 {#if ctx.active}
 	<div class="zone">
 		<p class="compte" tabindex="-1">
-			{#if echec}
-				<span class="erreur">{echec}</span>
-				<button class="bouton secondaire petit" type="button" onclick={charger}>Réessayer</button>
+			{#if permis.source.erreur}
+				Dossiers en cours non chargés.
 			{:else if !actifs.length}
 				Chargement des dossiers en cours auprès du canton…
 			{:else if p.historique}

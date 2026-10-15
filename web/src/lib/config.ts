@@ -9,5 +9,13 @@ export const DEPOT: string = config.depot;
 export const COURRIEL: string = config.courriel;
 /** Adresse publique du site, sans barre finale (adresses canoniques, sitemap). */
 export const SITE: string = config.site;
-/** Adresse de base des Pages du dépôt de données (`etat-sources.json`), sans barre finale. */
-export const DONNEES: string = config.donnees;
+/**
+ * Adresse de base des Pages du dépôt de données (`etat-sources.json`), sans barre finale. En développement,
+ * `DONNEES_LOCALES` la remplace par celle d'un clone local (`scripts/donnees-locales.ts`).
+ */
+export const DONNEES: string = (import.meta.env.VITE_DONNEES as string | undefined) || config.donnees;
+/**
+ * Dépôt GitHub du dépôt de données (issues `panne-source`) : il a le propriétaire du dépôt du code, et son nom
+ * est le dernier segment de l'adresse de ses Pages (`…github.io/vigie-vaud-donnees`).
+ */
+export const DEPOT_DONNEES: string = DEPOT.replace(/[^/]+$/, config.donnees.split('/').at(-1)!);

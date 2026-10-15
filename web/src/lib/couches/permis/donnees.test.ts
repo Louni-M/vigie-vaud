@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { creerDonneesPermis } from './donnees.svelte.js';
 import { entite, fauxCanton, PULLY } from './faux-canton.js';
 
@@ -203,5 +203,106 @@ describe('dossiers en cours', () => {
 		const donnees = creerDonneesPermis({ fetch: canton.fetch, maintenant });
 
 		expect((await donnees.chargerActifs()).map((d) => d.id)).toEqual([202, 205, 206]);
+	});
+});
+
+describe('état de la source CAMAC', () => {
+	it('date la dernière consultation réussie', async () => {
+		let heure = new Date('2026-10-14T10:00:00Z');
+		const donnees = creerDonneesPermis({ fetch: fauxCanton([entite(1)]).fetch, maintenant: () => heure });
+		expect(donnees.source).toMatchObject({ derniere: null, erreur: null });
+
+		heure = new Date('2026-10-14T10:02:00Z');
+		await donnees.chargerActifs();
+
+		expect(donnees.source).toMatchObject({ derniere: heure, erreur: null });
+	});
+
+	describe('échecs', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.stubGlobal('navigator', { onLine: true });
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.unstubAllGlobals();
+		});
+
+		it('passe en « service indisponible » quand la nouvelle tentative échoue aussi', async () => {
+			const canton = fauxCanton([entite(1)]);
+			canton.panne(503);
+			const donnees = creerDonneesPermis({ fetch: canton.fetch, maintenant });
+
+			const chargement = donnees.chargerActifs();
+			const rejet = expect(chargement).rejects.toThrow();
+			await vi.advanceTimersByTimeAsync(6_000);
+			await rejet;
+
+			expect(donnees.source).toMatchObject({ derniere: null, erreur: 'indisponible' });
+		});
+
+		it('passe en « hors ligne » quand le navigateur n’a plus de réseau', async () => {
+			const canton = fauxCanton([entite(1)]);
+			canton.horsLigne(true);
+			vi.stubGlobal('navigator', { onLine: false });
+			const donnees = creerDonneesPermis({ fetch: canton.fetch, maintenant });
+
+			const rejet = expect(donnees.chiffres(PULLY)).rejects.toThrow();
+			await vi.advanceTimersByTimeAsync(6_000);
+			await rejet;
+
+			expect(donnees.source.erreur).toBe('hors_ligne');
+		});
+
+		it('retente une seule fois, au bout d’environ 5 s, sans signaler d’erreur entre-temps', async () => {
+			const canton = fauxCanton([entite(1)]);
+			canton.panne(503);
+			const donnees = creerDonneesPermis({ fetch: canton.fetch, maintenant });
+
+			const chargement = donnees.chargerActifs();
+			await vi.advanceTimersByTimeAsync(10);
+			expect(canton.requetes).toHaveLength(0);
+			canton.panne(null);
+			await vi.advanceTimersByTimeAsync(4_000);
+			expect(canton.requetes).toHaveLength(0);
+			expect(donnees.source.erreur).toBeNull();
+
+			await vi.advanceTimersByTimeAsync(1_500);
+			expect((await chargement).map((d) => d.id)).toEqual([1]);
+			expect(canton.requetes).toHaveLength(1);
+			expect(donnees.source.erreur).toBeNull();
+		});
+
+		it('ne retente pas une troisième fois', async () => {
+			const canton = fauxCanton([entite(1)]);
+			canton.panne(503);
+			const appels = vi.fn(canton.fetch);
+			const donnees = creerDonneesPermis({ fetch: appels, maintenant });
+
+			const rejet = expect(donnees.chargerActifs()).rejects.toThrow();
+			await vi.advanceTimersByTimeAsync(60_000);
+			await rejet;
+
+			// Comptage et première page partent ensemble : deux appels au canton par tentative.
+			expect(appels.mock.calls.filter(([url]) => String(url).includes('/MapServer/537/'))).toHaveLength(4);
+		});
+
+		it('« Réessayer » recharge les dossiers en cours et lève l’erreur', async () => {
+			const canton = fauxCanton([entite(1)]);
+			canton.horsLigne(true);
+			vi.stubGlobal('navigator', { onLine: false });
+			const donnees = creerDonneesPermis({ fetch: canton.fetch, maintenant });
+			donnees.chargerActifs().catch(() => {});
+			await vi.advanceTimersByTimeAsync(6_000);
+			expect(donnees.source.erreur).toBe('hors_ligne');
+
+			canton.horsLigne(false);
+			vi.stubGlobal('navigator', { onLine: true });
+			donnees.source.recharger();
+			await vi.advanceTimersByTimeAsync(10);
+
+			expect(donnees.actifs.map((d) => d.id)).toEqual([1]);
+			expect(donnees.source).toMatchObject({ derniere: maintenant(), erreur: null });
+		});
 	});
 });

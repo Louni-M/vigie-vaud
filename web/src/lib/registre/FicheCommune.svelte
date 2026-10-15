@@ -2,9 +2,12 @@
 	/*
 	 * Fiche commune, rendue par le registre en colonne à droite de la carte : en-tête (nom de la commune), puis un
 	 * onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
-	 * a qu'un onglet. Changer de commune remplace le contenu sur place : l'onglet choisi reste, son contenu est
+	 * a qu'un onglet ; sous le nom de chaque onglet, le badge de fraîcheur de chacune des sources de la couche.
+	 * Changer de commune remplace le contenu sur place : l'onglet choisi reste, son contenu est
 	 * remonté pour la nouvelle commune.
 	 */
+	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
+	import { source } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
 	import type { Registre } from './registre.svelte.js';
 
@@ -46,6 +49,7 @@
 				onclick={() => (choisi = c.id)}
 			>
 				{c.nom}
+				{#each c.sources.map(source) as s (s.id)}<BadgeFraicheur source={s} />{/each}
 			</button>
 		{/each}
 	</div>
@@ -107,6 +111,10 @@
 		overflow-x: auto;
 	}
 	.onglets button {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 1px;
 		padding: 8px 10px 6px;
 		border: 0;
 		border-bottom: 3px solid transparent;

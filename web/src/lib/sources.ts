@@ -1,7 +1,7 @@
 // Déclaration des sources (`sources.json` à la racine du dépôt), importée à la construction. Toutes les
 // attributions affichées en viennent ; la construction échoue si le fichier est invalide (scripts/verifier-sources.ts).
 import fichier from '../../../sources.json';
-import type { FichierSources, Source } from './schema';
+import type { FichierSources, Source, VoieAcces } from './schema';
 
 export const SOURCES: readonly Source[] = (fichier as FichierSources).sources;
 
@@ -12,7 +12,12 @@ export function source(id: string): Source {
 	return s;
 }
 
-const echapper = (texte: string) =>
+const VOIES: Record<VoieAcces, string> = { direct: 'Direct', cron: 'Cron', worker: 'Worker', preparee: 'Préparée' };
+
+/** Libellé de la voie d'accès d'une source : « Direct », « Cron », « Worker » ou « Préparée ». */
+export const libelleVoie = (s: Source) => VOIES[s.voie_acces];
+
+const echapper =(texte: string) =>
 	texte.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /** Attribution d'une source en HTML (lien vers la source), pour le contrôle d'attribution de la carte. */
