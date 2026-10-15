@@ -1,5 +1,5 @@
 ofs,nom,adresse,E,N,origine,note
-5401,Aigle,,2563373,1129143,repli,
+5401,Aigle,"Place du Marché 1, 1860 Aigle",2563873,1129673,manuel,"Source : https://www.aigle.ch (Hôtel de Ville, Place du Marché 1) ; EGID 847264"
 5402,Bex,"Rue Centrale 1, 1880 Bex",2567131,1122320,adresse:280004126,
 5403,Chessel,"Rue de l'Ouchettaz 1, 1846 Chessel",2558064,1133299,adresse:849770,
 5404,Corbeyrier,"Route de Laly 27, 1856 Corbeyrier",2563145,1133167,adresse:849891,
@@ -7,7 +7,7 @@ ofs,nom,adresse,E,N,origine,note
 5406,Lavey-Morcles,"Rue Centrale 16, 1892 Lavey-Village",2567468,1118835,adresse:9019127,
 5407,Leysin,"Rue du Village 39, 1854 Leysin",2566856,1132143,adresse:851334,
 5408,Noville,"Place du Collège 1, 1845 Noville",2558600,1136603,adresse:851996,
-5409,Ollon,,2570026,1128691,repli,
+5409,Ollon,"Place du Cotterd 1, 1867 Ollon VD",2565749,1127412,manuel,Source : https://www.ollon.ch (Administration communale) ; EGID 852821
 5410,Ormont-Dessous,"Chemin du Planchamp 2, 1863 Le Sépey",2570266,1134565,adresse:9019236,
 5411,Ormont-Dessus,"Rue de la Gare 1, 1865 Les Diablerets",2578399,1133076,adresse:855285,
 5412,Rennaz,"Route d'Arvel 10, 1847 Rennaz",2560102,1136252,adresse:856279,
@@ -20,7 +20,7 @@ ofs,nom,adresse,E,N,origine,note
 5425,Bière,"Rue de la Tillette 4, 1145 Bière",2515187,1154584,adresse:9019362,
 5426,Bougy-Villars,"Place de l'Ancienne Eglise 5, 1172 Bougy-Villars",2516710,1148097,adresse:3179170,
 5427,Féchy,"Place du Saugey 11, 1173 Féchy",2518190,1148095,adresse:859039,
-5428,Gimel,,2512696,1152020,repli,
+5428,Gimel,"Place de l'Union 4, 1188 Gimel",2513210,1151464,manuel,Source : https://www.gimel.ch (Administration communale) ; EGID 859209
 5429,Longirod,"Grand'Rue 6, 1261 Longirod",2509415,1149936,adresse:859454,
 5430,Marchissy,"Chemin du Battoir 10, 1261 Marchissy",2508498,1149419,adresse:859585,
 5431,Mollens (VD),"Place du Château 3, 1146 Mollens VD",2517579,1158960,adresse:859628,
@@ -35,7 +35,7 @@ ofs,nom,adresse,E,N,origine,note
 5471,Bettens,"Chemin Neuf 1, 1042 Bettens",2533958,1164258,adresse:862501,
 5472,Bournens,"Route de la Plantaz 12, 1035 Bournens",2532784,1161878,adresse:9082488,
 5473,Boussens,"Grand'Rue 1, 1034 Boussens",2534413,1161711,adresse:862692,
-5474,La Chaux (Cossonay),,2525849,1163933,repli,
+5474,La Chaux (Cossonay),,2525849,1163933,repli,"Repli assumé : https://www.lachaux.ch/contact donne « Route de St-Denis 3 », absente du répertoire des adresses (seuls les n° 1 et 4 existent) ; aucun bâtiment administratif identifiable au RegBL"
 5475,Chavannes-le-Veyron,"Rue des Fontaines 17, 1148 Chavannes-le-Veyron",2524271,1162352,adresse:862811,
 5476,Chevilly,"Rue du Collège 2, 1316 Chevilly",2526358,1166240,adresse:862860,
 5477,Cossonay,"Rue Neuve 1, 1304 Cossonay-Ville",2528645,1162928,adresse:9019492,
@@ -96,7 +96,7 @@ ofs,nom,adresse,E,N,origine,note
 5563,Mutrux,"Route de Concise 17, 1428 Mutrux",2545780,1192588,adresse:872703,
 5564,Novalles,"Place du Village 3, 1431 Novalles",2535689,1186722,adresse:872738,
 5565,Onnens (VD),"Rue du Pontet 11, 1425 Onnens VD",2542595,1187909,adresse:280005694,
-5566,Provence,,2542807,1195140,repli,
+5566,Provence,,2542807,1195140,repli,"Repli assumé : https://www.provence.ch donne « Route de Changebois 12 », absente du répertoire des adresses (n° 2, 4, 5 et 14 seulement) ; aucune maison communale identifiable au RegBL"
 5568,Sainte-Croix,"Rue Neuve 10, 1450 Ste-Croix",2528470,1186124,adresse:873365,
 5571,Tévenon,"Chemin de l'Eglise 6, 1423 Villars-Burquin",2537997,1188742,adresse:874260,
 5581,Belmont-sur-Lausanne,"Route d'Arnier 2, 1092 Belmont-sur-Lausanne",2541657,1152661,adresse:874581,
@@ -113,8 +113,8 @@ ofs,nom,adresse,E,N,origine,note
 5592,Romanel-sur-Lausanne,"Chemin du Village 24, 1032 Romanel-sur-Lausanne",2536268,1157171,adresse:788447,
 5601,Chexbres,"Rue du Bourg 9, 1071 Chexbres",2549473,1147966,adresse:788725,
 5604,Forel (Lavaux),"Route de Vevey 1, 1072 Forel (Lavaux)",2548692,1154596,adresse:280055390,
-5606,Lutry,,2542947,1151276,repli,
-5607,Puidoux,,2550651,1151213,repli,
+5606,Lutry,"Rue du Château 6, 1095 Lutry",2542289,1150476,manuel,"Source : https://www.lutry.ch (Administration communale, Le Château) ; EGID 280002276"
+5607,Puidoux,"Route du Village 38a, 1070 Puidoux",2549660,1150226,manuel,"Source : https://www.puidoux.ch donne « Rte du Village 38 », absente du répertoire des adresses ; le RegBL y nomme la Maison communale (EGID 3184434, entrées 38a et 38b)"
 5609,Rivaz,"Place du Collège 2, 1071 Rivaz",2549345,1147442,adresse:280006528,
 5610,Saint-Saphorin (Lavaux),"Chemin de l'Ancien Collège 6, 1071 St-Saphorin (Lavaux)",2550731,1147045,adresse:792517,
 5611,Savigny,"Route de Mollie-Margot 4, 1073 Savigny",2545852,1154502,adresse:9020322,
@@ -187,13 +187,13 @@ ofs,nom,adresse,E,N,origine,note
 5720,Givrins,"Route de la Bellangère 6, 1271 Givrins",2504916,1142744,adresse:9082120,
 5721,Gland,"Grand'Rue 38, 1196 Gland",2509831,1142068,adresse:811267,
 5722,Grens,"La Place 1, 1274 Grens",2504137,1138959,adresse:811783,
-5723,Mies,,2502029,1128640,repli,
+5723,Mies,"Route du Village 1, 1295 Mies",2502226,1128857,manuel,Source : https://www.mies.ch (l'UCV écrit « Rue du Village 1 ») ; EGID 811899
 5724,Nyon,"Place du Château 3, 1260 Nyon",2507791,1137471,adresse:9029434,
 5725,Prangins,"La Place 2, 1197 Prangins",2508523,1138780,adresse:813721,
 5726,La Rippe,"Rue des 4 Fontaines 2, 1278 La Rippe",2501018,1137486,adresse:814192,
 5727,Saint-Cergue,"Place Sy-Vieuxville 1, 1264 St-Cergue",2501591,1144652,adresse:814362,
 5728,Signy-Avenex,"Rue des Fontaines 19, 1274 Signy",2504901,1138413,adresse:280008082,
-5729,Tannay,,2503080,1129423,repli,
+5729,Tannay,"Route François-Louis-Duvillard 6, 1295 Tannay",2502847,1129377,manuel,Source : https://www.tannay.ch (l'UCV abrège en « Rte F.-L.-Duvillard 6 ») ; EGID 815339
 5730,Trélex,"Place de la Tour 6, 1270 Trélex",2505144,1141123,adresse:815686,
 5731,Le Vaud,"Grand Rue 4, 1261 Le Vaud",2507530,1148028,adresse:9029529,
 5732,Vich,"Place Marcel Poncet 1, 1267 Vich",2508682,1142619,adresse:816133,
@@ -227,7 +227,7 @@ ofs,nom,adresse,E,N,origine,note
 5798,Ropraz,"Place du Village 1, 1088 Ropraz",2547367,1162947,adresse:822211,
 5799,Servion,"Chemin du Clos-Joli 2, 1077 Servion",2549795,1158460,adresse:822375,
 5803,Vulliens,"Route du Village 21b, 1085 Vulliens",2550471,1163678,adresse:9029705,
-5804,Jorat-Menthue,"Route de Peyres-Possens 27, 1062 Sottens",2546154,1167490,adresse:9020882,
+5804,Jorat-Menthue,"Route de Peyres-Possens 27, 1062 Sottens",2546154,1167490,adresse:9020882,"vérifié : https://www.jorat-menthue.ch (Rte de Peyres-Possens 27, 1062 Sottens)"
 5805,Oron,"Grand-Rue 6, 1607 Palézieux-Village",2553292,1156213,adresse:3036128,
 5806,Jorat-Mézières,"Route du Village 35, 1084 Carrouge VD",2549192,1161745,adresse:820390,
 5812,Champtauroz,"Rue du Village 10, 1537 Champtauroz",2550420,1178956,adresse:822737,
@@ -236,14 +236,14 @@ ofs,nom,adresse,E,N,origine,note
 5817,Grandcour,"Place des Chavannes 1, 1543 Grandcour",2561144,1191309,adresse:9029736,
 5819,Henniez,"Route des Bains 2, 1525 Henniez",2557696,1176851,adresse:280090538,
 5821,Missy,"Route des Vernettes 2, 1565 Missy",2564106,1192007,adresse:9029758,
-5822,Payerne,,2560979,1186423,repli,
+5822,Payerne,"Rue de Savoie 1, 1530 Payerne",2561919,1185712,manuel,Source : https://www.payerne.ch (Administration communale) ; EGID 824279
 5827,Trey,"Place du Collège 1, 1552 Trey",2560801,1180061,adresse:9029879,
 5828,Treytorrens (Payerne),"Chemin des Ecoliers 1, 1538 Treytorrens (Payerne)",2551275,1180126,adresse:825685,
-5830,Villarzel,"Route de Romont 9, 1554 Sédeilles",2561286,1177502,adresse:825466,
+5830,Villarzel,"Route de Romont 9, 1554 Sédeilles",2561286,1177502,adresse:825466,"vérifié : https://www.villarzel.ch (Route de Romont 9, 1554 Sédeilles)"
 5831,Valbroye,"Rue du Collège 18, 1523 Granges-près-Marnand",2557804,1179168,adresse:9036981,
 5841,Château-d'Oex,"Grand Rue 67, 1660 Château-d'Oex",2576344,1147007,adresse:826335,
 5842,Rossinière,"Chemin de l'Eglise 14, 1658 Rossinière",2572742,1146372,adresse:827131,
-5843,Rougemont,,2582352,1151026,repli,
+5843,Rougemont,"Route de la Croisette 16, 1659 Rougemont",2582487,1148831,manuel,Source : https://www.rougemont.ch (Bâtiment communal) ; EGID 9016485
 5851,Allaman,"Place de l'Eglise 2, 1165 Allaman",2519882,1147133,adresse:827791,
 5852,Bursinel,"Route du Village 30, 1195 Bursinel",2512917,1143698,adresse:827917,
 5853,Bursins,"Rue de l'Eglise 2, 1183 Bursins",2511782,1145235,adresse:827982,
@@ -257,9 +257,9 @@ ofs,nom,adresse,E,N,origine,note
 5861,Rolle,"Grand-Rue 44, 1180 Rolle",2515545,1145863,adresse:280063767,
 5862,Tartegnin,"Place du Collège 1, 1180 Tartegnin",2513828,1146759,adresse:9029958,
 5863,Vinzel,"Rue du Collège 6, 1184 Vinzel",2510877,1144794,adresse:829960,
-5871,L'Abbaye,"Route de l'Hôtel de Ville 14, 1344 L'Abbaye",2514160,1166971,adresse:830211,
+5871,L'Abbaye,"Route de l'Hôtel de Ville 14, 1344 L'Abbaye",2514160,1166971,adresse:830211,"vérifié : https://www.labbaye.ch (Rte de l'Hôtel de Ville 14, 1344 L'Abbaye)"
 5872,Le Chenit,"Grand-Rue 31, 1347 Le Sentier",2507449,1162530,adresse:830558,
-5873,Le Lieu,"Grand-Rue 7, 1345 Le Lieu",2511361,1166848,adresse:831526,
+5873,Le Lieu,"Grand-Rue 7, 1345 Le Lieu",2511361,1166848,adresse:831526,"vérifié : https://www.lelieu.ch (Grand-Rue 7, 1345 Le Lieu)"
 5882,Chardonne,"Rue du Village 19, 1803 Chardonne",2553164,1147448,adresse:833080,
 5883,Corseaux,"Rue du Village 4, 1802 Corseaux",2553607,1146901,adresse:833816,
 5884,Corsier-sur-Vevey,"Rue du Château 4, 1804 Corsier-sur-Vevey",2554222,1146706,adresse:834375,
@@ -269,7 +269,7 @@ ofs,nom,adresse,E,N,origine,note
 5890,Vevey,"Rue du Lac 2, 1800 Vevey",2554529,1145455,adresse:9031258,
 5891,Veytaux,"Rue du They 1, 1820 Veytaux",2560763,1141014,adresse:9031206,
 5892,Blonay - Saint-Légier,"Route du Village 45, 1807 Blonay",2558274,1146102,adresse:280062969,
-5902,Belmont-sur-Yverdon,,2537828,1176250,repli,
+5902,Belmont-sur-Yverdon,,2537828,1176250,repli,"Repli assumé : https://www.belmont-sur-yverdon.ch/administration donne « Grand'Rue 18B », absente du répertoire des adresses ; le n° 18a est « Le Collège » (EGID 841670), sans preuve qu'il abrite l'administration"
 5903,Bioley-Magnoux,"Chemin du Réservoir 9, 1407 Bioley-Magnoux",2544603,1175415,adresse:841715,
 5904,Chamblon,"Rue du Village 1, 1436 Chamblon",2536436,1181150,adresse:841793,
 5905,Champvent,"Grand Rue 8, 1443 Champvent",2533867,1181668,adresse:841897,
@@ -283,7 +283,7 @@ ofs,nom,adresse,E,N,origine,note
 5914,Ependes (VD),"Rue du Collège 1, 1434 Ependes VD",2536573,1177211,adresse:842583,
 5919,Mathod,"Rue de la Forge 22, 1438 Mathod",2533235,1179799,adresse:101110107,
 5921,Molondin,"Route de Montigon 7b, 1415 Molondin",2547380,1178937,adresse:842870,
-5922,Montagny-près-Yverdon,,2536234,1182636,repli,
+5922,Montagny-près-Yverdon,"Chemin du Clos Lucens 1, 1442 Montagny-près-Yverdon",2536895,1182575,manuel,"Source : https://www.montagny.ch (adresse postale ; le guichet y est donné « Grand-Rue 3 », absente du répertoire des adresses) ; le RegBL nomme Chemin du Clos Lucens 1 Maison communale (EGID 3128370)"
 5923,Oppens,"Route d'Orzens 1, 1047 Oppens",2542861,1173946,adresse:3128371,
 5924,Orges,"Ruelle de l'Horloge 2, 1430 Orges",2535012,1184420,adresse:9018216,
 5925,Orzens,"Rue des Fontaines 1, 1413 Orzens",2542300,1175033,adresse:843220,
