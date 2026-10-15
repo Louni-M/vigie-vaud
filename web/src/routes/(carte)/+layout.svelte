@@ -10,6 +10,7 @@
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
 	import Recherche from '#lib/socle/Recherche.svelte';
 	import { COUCHES } from '#lib/registre/couches.js';
+	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { creerRegistre, fournirRegistre } from '#lib/registre/registre.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
@@ -37,16 +38,7 @@
 			.map(attributionHtml)
 	);
 
-	const chercherCouches = (texte: string) =>
-		COUCHES.flatMap((c) =>
-			(c.chercher?.(texte) ?? []).map((r) => ({
-				type: 'element' as const,
-				genre: c.nom,
-				label: r.libelle,
-				couche: r.couche,
-				element: r.element
-			}))
-		);
+	const chercherCouches = (texte: string) => resultatsCouches(COUCHES, texte);
 
 	function choix(r: Resultat) {
 		registre.oublierAvis();
