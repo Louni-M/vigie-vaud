@@ -31,7 +31,10 @@ export interface Commune {
 	nom: string;
 	slug: string;
 	habitants: number | null;
+	/** Emprise complète, lac compris (rattachement des dossiers). */
 	bbox: [number, number, number, number];
+	/** Emprise de la partie terrestre, pour cadrer la carte ; à venir avec la couche Hôtels de ville. */
+	cadre?: [number, number, number, number];
 }
 
 /** Point léger de l'historique sur la carte (la fiche complète est chargée à la demande). */

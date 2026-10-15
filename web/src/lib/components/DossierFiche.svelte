@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { STATUTS, natureLabel } from '#lib/labels.js';
 	import { dateLongue } from '#lib/dates.js';
-	import { lienVue } from '#lib/registre/liens.js';
+	import { lienCommune, lienVue } from '#lib/registre/liens.js';
 	import type { Dossier } from '#lib/types.js';
 	import Compte from './Compte.svelte';
 	import Consultation from './Consultation.svelte';
@@ -18,7 +18,7 @@
 	<p class="statut" style:--c={STATUTS[d.statut].couleur}>
 		<span class="pastille"></span>{STATUTS[d.statut].label}
 	</p>
-	<h2>{natureLabel(d.nature)} · <a href={resolve('/commune/[slug]', { slug: d.slug })}>{d.commune}</a></h2>
+	<h2>{natureLabel(d.nature)} · <a href={lienCommune(d.slug)}>{d.commune}</a></h2>
 	<p class="desc">{d.description ?? 'Sans description'}</p>
 
 	{#if d.statut === 'enquete'}

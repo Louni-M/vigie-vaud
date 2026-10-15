@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import Map from '#lib/socle/Map.svelte';
 	import DossierFiche from '#lib/components/DossierFiche.svelte';
+	import { lienCommune } from '#lib/registre/liens.js';
 	import { ErreurApi } from '#lib/api.js';
 	import { SOURCE } from '#lib/couches/permis/donnees.svelte.js';
 	import { STATUTS, natureLabel } from '#lib/labels.js';
@@ -55,8 +56,8 @@
 
 <main class="page">
 	<p class="fil">
-		<a href={resolve('/commune')}>Communes</a> ›
-		{#if d}<a href={resolve('/commune/[slug]', { slug: d.slug })}>{d.commune}</a> ›{/if}
+		<a href={resolve('/(carte)')}>Carte</a> ›
+		{#if d}<a href={lienCommune(d.slug)}>{d.commune}</a> ›{/if}
 		Dossier {data.id}
 	</p>
 

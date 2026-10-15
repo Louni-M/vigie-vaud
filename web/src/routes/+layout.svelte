@@ -2,24 +2,30 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { SITE } from '#lib/config.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 
 	const goatcounter = import.meta.env.VITE_GOATCOUNTER as string | undefined;
+	// « Carte » reste marqué comme page courante quand une fiche commune est ouverte sur la carte.
 	const nav = [
-		{ href: resolve('/(carte)'), label: 'Carte' },
-		{ href: resolve('/commune'), label: 'Communes' },
-		{ href: resolve('/a-propos'), label: 'À propos' }
+		{ href: resolve('/(carte)'), label: 'Carte', groupe: '/(carte)' },
+		{ href: resolve('/a-propos'), label: 'À propos', groupe: '/a-propos' }
 	];
-	const accueil = resolve('/(carte)');
-	// « Communes » reste marqué comme page courante sur la page d'une commune.
-	const courant = (href: string, chemin: string) =>
-		chemin === href || (href !== accueil && chemin.startsWith(`${href}/`));
+	const courant = (groupe: string) => page.route.id === groupe || !!page.route.id?.startsWith(`${groupe}/`);
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<!-- Aperçu des liens partagés : une image commune à tout le site, à l'adresse publique (absolue). -->
+	<meta property="og:site_name" content="Vigie Vaud" />
+	<meta property="og:locale" content="fr_CH" />
+	<meta property="og:image" content="{SITE}/apercu.png" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="Vigie Vaud : ce qui se passe dans votre commune, sur la carte du canton de Vaud" />
+	<meta name="twitter:card" content="summary_large_image" />
 	{#if goatcounter}
 		<script data-goatcounter="https://{goatcounter}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 	{/if}
@@ -29,7 +35,7 @@
 	<a class="marque" href={resolve('/(carte)')}>Vigie <span>Vaud</span></a>
 	<nav>
 		{#each nav as l (l.href)}
-			<a href={l.href} aria-current={courant(l.href, page.url.pathname) ? 'page' : undefined}>{l.label}</a>
+			<a href={l.href} aria-current={courant(l.groupe) ? 'page' : undefined}>{l.label}</a>
 		{/each}
 	</nav>
 </header>

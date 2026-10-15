@@ -49,10 +49,12 @@
 	/** Vue demandée avant que la carte soit prête (lien partagé, retour arrière). */
 	let enAttente: Centre | null = null;
 	let cadreEnAttente: LngLatBoundsLike | null = null;
+	/** Le cadre en attente mène à une vue par défaut. */
+	let cadreParDefaut = false;
 	let maplibre: typeof import('maplibre-gl') | undefined;
 	let controle: AttributionControl | undefined;
-	/** Le prochain déplacement terminé est le retour à la vue du canton. */
-	let retourCanton = false;
+	/** Le prochain déplacement terminé mène à une vue par défaut (canton, commune cadrée) : elle n'entre pas dans l'adresse. */
+	let versDefaut = false;
 
 	const STYLE = 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.lightbasemap.vt/style.json';
 	const SWISSIMAGE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg';
@@ -66,8 +68,8 @@
 
 	function emitView(parDefaut = false) {
 		if (!map || !onvue) return;
-		parDefaut ||= retourCanton;
-		retourCanton = false;
+		parDefaut ||= versDefaut;
+		versDefaut = false;
 		const b = map.getBounds();
 		const c = map.getCenter();
 		onvue(
@@ -96,19 +98,32 @@
 		});
 	}
 
-	export function cadrer(b: LngLatBoundsLike, anime = true) {
+	/*
+	 * `cadrer`, `vueCanton` et `aller` suivent l'adresse : la fiche commune vient peut-être d'ouvrir ou de fermer
+	 * sa colonne, et la carte relit sa taille avant de bouger, sans attendre son observateur de taille.
+	 */
+
+	/**
+	 * Cadre une emprise. `parDefaut` : la vue obtenue n'est pas un choix du visiteur (commune qu'on vient
+	 * d'ouvrir).
+	 */
+	export function cadrer(b: LngLatBoundsLike, anime = true, parDefaut = false) {
 		if (!map) {
 			cadreEnAttente = b;
+			cadreParDefaut = parDefaut;
 			enAttente = null;
 			return;
 		}
+		map.resize();
+		versDefaut = parDefaut;
 		map.fitBounds(b, { padding: 40, duration: anime ? 600 : 0 });
 	}
 
 	/** Revient à la vue d'ensemble du canton, en un vol souple. */
 	export function vueCanton() {
 		if (!map) return cadrer(CANTON, false);
-		retourCanton = true;
+		map.resize();
+		versDefaut = true;
 		map.fitBounds(CANTON, { padding: 20, duration: 1200, easing: (t) => 1 - Math.pow(1 - t, 3) });
 	}
 
@@ -119,6 +134,7 @@
 			cadreEnAttente = null;
 			return;
 		}
+		map.resize();
 		map.easeTo({ center: [c.lon, c.lat], zoom: c.zoom, duration: anime ? 500 : 0 });
 	}
 
@@ -170,13 +186,15 @@
 				m.on('moveend', () => emitView());
 				map = m;
 				// Vue demandée pendant le chargement du style.
+				// Une vue demandée (lien partagé) est un choix du visiteur : elle reste dans l'adresse.
+				const parDefaut = !enAttente && (!cadreEnAttente || cadreParDefaut);
 				if (enAttente) m.jumpTo({ center: [enAttente.lon, enAttente.lat], zoom: enAttente.zoom });
 				else if (cadreEnAttente) m.fitBounds(cadreEnAttente, { padding: 40, duration: 0 });
 				enAttente = cadreEnAttente = null;
 				if (import.meta.env.DEV) (window as unknown as { __carte: MlMap }).__carte = m;
 				pret = true;
 				onpret?.(m);
-				emitView(true);
+				emitView(parDefaut);
 			});
 		})();
 		return () => {

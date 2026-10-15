@@ -1,0 +1,27 @@
+<!--
+  Image d'aperçu des liens partagés, commune à tout le site (1200 × 630).
+  Après modification : rsvg-convert -w 1200 -h 630 scripts/apercu.svg -o static/apercu.png
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+	<rect width="1200" height="630" fill="#1f3a5f"/>
+	<g transform="translate(50 0)">
+	<g fill="none" stroke="#3b5a82" stroke-width="2">
+		<path d="M760 120 L900 90 L1040 150 L1110 260 L1080 400 L960 500 L820 520 L720 430 L690 300 Z"/>
+		<path d="M760 120 L840 250 L690 300 M840 250 L1040 150 M840 250 L960 360 L1110 260 M960 360 L960 500 M960 360 L720 430"/>
+	</g>
+	<g fill="#d9480f" stroke="#ffffff" stroke-width="3">
+		<circle cx="850" cy="300" r="11"/>
+		<circle cx="930" cy="215" r="9"/>
+		<circle cx="1005" cy="330" r="13"/>
+		<circle cx="790" cy="420" r="9"/>
+		<circle cx="905" cy="440" r="10"/>
+		<circle cx="1050" cy="230" r="8"/>
+	</g>
+	<g fill="#ffffff" stroke="#1f3a5f" stroke-width="3">
+		<rect x="868" y="350" width="22" height="22" rx="4"/>
+	</g>
+	</g>
+	<text x="80" y="290" font-family="Helvetica, Arial, sans-serif" font-size="104" font-weight="700" fill="#ffffff">Vigie <tspan fill="#ffb38a">Vaud</tspan></text>
+	<text x="84" y="370" font-family="Helvetica, Arial, sans-serif" font-size="36" fill="#dfe7f2">Ce qui se passe dans votre commune,</text>
+	<text x="84" y="418" font-family="Helvetica, Arial, sans-serif" font-size="36" fill="#dfe7f2">sur la carte du canton de Vaud</text>
+</svg>

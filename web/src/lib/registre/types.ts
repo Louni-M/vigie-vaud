@@ -1,6 +1,6 @@
 import type { Component } from 'svelte';
 import type { Map as MlMap } from 'maplibre-gl';
-import type { Zone } from '#lib/types.js';
+import type { Commune, Zone } from '#lib/types.js';
 
 /** Lecture des paramètres de requête (un `URLSearchParams` suffit). */
 export type Lecteur = Pick<URLSearchParams, 'get' | 'has'>;
@@ -48,6 +48,8 @@ export interface Contexte<P = unknown> {
 	/** La couche est activée : sa `Carte` reste montée quand on la désactive, pour le fondu. */
 	readonly active: boolean;
 	readonly ouvert: Ouvert | null;
+	/** Commune dont la fiche est ouverte (celle que montre l'`Onglet`), ou `null`. */
+	readonly commune: Commune | null;
 	ouvrir(cible: Cible): void;
 	fermer(): void;
 }
@@ -73,6 +75,11 @@ export interface Couche<P = unknown> {
 	/** Synchrone : la recherche du socle l'appelle à chaque frappe. */
 	chercher?(texte: string): ResultatCouche[];
 	titre?(element: string): string;
+	/**
+	 * Ce que la couche montre d'une commune, pour la description de la page de la commune
+	 * (« les permis de construire à l’enquête, en direct depuis le canton »).
+	 */
+	resume?: string;
 	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */
 	composants: {
 		Carte: Chargeur<P>;

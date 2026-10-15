@@ -1,37 +1,29 @@
 <script lang="ts">
 	/*
-	 * Coquille de la carte, commune à `/` et (bientôt) à `/commune/<slug>` : elle garde la carte montée pendant
-	 * la navigation. Rail des couches à gauche, volet posé sur la carte, recherche flottante en haut ; la fiche
-	 * commune viendra en colonne à droite. Les pages du groupe ne portent que le <head>.
+	 * Coquille de la carte, commune à `/` et à `/commune/<slug>` : elle garde la carte montée pendant la
+	 * navigation. Rail des couches à gauche, volet posé sur la carte, recherche flottante en haut, et la fiche
+	 * commune en colonne à droite quand une commune est ouverte. Les pages du groupe ne portent que le <head>.
 	 */
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { resolve } from '$app/paths';
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
 	import Recherche from '#lib/socle/Recherche.svelte';
-	import { getCommunes } from '#lib/socle/communes.js';
 	import { COUCHES } from '#lib/registre/couches.js';
 	import { creerRegistre } from '#lib/registre/registre.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
+	import FicheCommune from '#lib/registre/FicheCommune.svelte';
 	import { attributionHtml, source } from '#lib/sources.js';
-	import type { Commune, Resultat } from '#lib/types.js';
+	import type { Resultat } from '#lib/types.js';
 	import type { LayoutProps } from './$types';
 
-	let { children }: LayoutProps = $props();
+	let { data, children }: LayoutProps = $props();
 
-	const registre = creerRegistre(COUCHES);
+	const registre = creerRegistre(COUCHES, () => data.communes);
 	let carte: ReturnType<typeof Map> | undefined = $state();
 	registre.brancherAdresse(() => carte);
-
-	let communes: Commune[] = $state([]);
-	onMount(() => {
-		getCommunes(fetch).then(
-			(c) => (communes = c),
-			() => {}
-		);
-	});
 
 	/** Adresse cherchée ou position GPS, marquée sur la carte ; jamais écrite dans l'URL. */
 	let repere: [number, number] | null = $state(null);
@@ -54,8 +46,9 @@
 			repere = [r.lon, r.lat];
 			carte?.voler(r.lon, r.lat, r.genre === 'Position' ? 15 : 16);
 		} else if (r.type === 'commune') {
+			// La fiche s'ouvre, et la carte cadre la commune.
 			repere = null;
-			carte?.cadrer(r.commune.bbox);
+			registre.ouvrir({ commune: r.commune.slug });
 		} else registre.ouvrir({ couche: r.couche, element: r.element });
 	}
 
@@ -74,7 +67,7 @@
 	}
 </script>
 
-<div class="app">
+<div class="app" class:avec-fiche={registre.commune}>
 	<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
 
 	<Rail {registre} />
@@ -100,7 +93,7 @@
 		{/if}
 
 		<div class="recherche">
-			<Recherche {communes} {chercherCouches} onchoix={choix} />
+			<Recherche communes={data.communes} {chercherCouches} onchoix={choix} />
 		</div>
 
 		<!-- Un bloc par couche : le volet qui se ferme garde sa couche pendant qu'il disparaît. -->
@@ -122,6 +115,13 @@
 			<a href={resolve('/infos-legales')}>Informations légales</a>
 		</p>
 	</div>
+
+	{#if registre.commune}
+		<!-- Une seule colonne : changer de commune remplace son contenu sans la refermer. -->
+		<div class="colonne" in:fly={{ x: 40, duration: 200 }}>
+			<FicheCommune {registre} commune={registre.commune} />
+		</div>
+	{/if}
 </div>
 
 {@render children()}
@@ -134,8 +134,16 @@
 		height: calc(100dvh - var(--header-h));
 		position: relative;
 	}
+	/* La fiche ouverte prend une colonne à droite : la carte se rétrécit. */
+	.app.avec-fiche {
+		grid-template-columns: 72px minmax(0, 1fr) min(420px, 40vw);
+	}
 	.zone-carte {
 		position: relative;
+		overflow: hidden;
+	}
+	.colonne {
+		min-width: 0;
 		overflow: hidden;
 	}
 	.recherche {
