@@ -75,8 +75,9 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	/* ---- Composants, importés une seule fois chacun, à la demande ---- */
 
 	const charges = new Map<string, ReturnType<Chargeur<unknown>>>();
+	/** L'`Apercu` reçoit aussi `voir` : celui qui le rend lui donne ce type. */
 	function composant(c: CoucheInscrite, nom: NomComposant) {
-		const chargeur = c.composants[nom];
+		const chargeur = c.composants[nom] as Chargeur<unknown> | undefined;
 		if (!chargeur) return null;
 		const cle = `${c.id}:${nom}`;
 		let p = charges.get(cle);
