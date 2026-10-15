@@ -77,7 +77,7 @@
     },
     "Sonde": {
       "additionalProperties": false,
-      "description": "Requête de vérification envoyée par le cron, sans conserver de données.",
+      "description": "Requête de vérification envoyée par le cron, sans conserver de données.\n\nUne seule requête GET par passage, sans nouvel essai. La réponse doit être un objet JSON dont `features` liste\nles enregistrements (JSON ArcGIS ou GeoJSON) ; elle doit donc rester légère (un enregistrement suffit).",
       "properties": {
         "url": {
           "$ref": "#/$defs/Lien"
@@ -90,7 +90,7 @@
         },
         "champs": {
           "default": [],
-          "description": "Champs que doit porter chaque enregistrement renvoyé.",
+          "description": "Champs que doit porter chaque enregistrement renvoyé, lus dans `attributes` (JSON ArcGIS) ou `properties` (GeoJSON).",
           "items": {
             "type": "string"
           },
