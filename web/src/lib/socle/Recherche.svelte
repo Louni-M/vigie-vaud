@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { normaliser } from '#lib/labels.js';
 	import type { Commune, Resultat } from '#lib/types.js';
+	import { chercherCommunes } from './recherche.js';
 
 	/*
 	 * Recherche flottante du socle : communes, adresses et lieux swisstopo, résultats des couches (`chercher`),
@@ -57,20 +58,8 @@
 	/** Texte pour lequel `resultats` a été calculé. */
 	let cherche = '';
 
-	function locaux(q: string): Resultat[] {
-		const local: Resultat[] = chercherCouches(q);
-		const nq = normaliser(q);
-		if (nq.length >= 2) {
-			// Les communes dont le nom commence par la saisie passent en premier (« Yverdon » → Yverdon-les-Bains).
-			const trouvees = communes
-				.map((c) => ({ c, n: normaliser(c.nom) }))
-				.filter(({ n }) => n.includes(nq))
-				.sort((a, b) => Number(!a.n.startsWith(nq)) - Number(!b.n.startsWith(nq)) || a.n.length - b.n.length)
-				.slice(0, 4);
-			for (const { c } of trouvees) local.push({ type: 'commune', label: c.nom, commune: c });
-		}
-		return local;
-	}
+	// Communes actuelles, puis anciennes communes et anciens noms (« Cully → Bourg-en-Lavaux »).
+	const locaux = (q: string): Resultat[] => [...chercherCouches(q), ...chercherCommunes(communes, q)];
 
 	interface Lieu {
 		attrs: { origin: string; label: string; detail?: string; lat: number; lon: number };
@@ -153,7 +142,8 @@
 			garderFerme = true;
 			champ?.focus();
 		}
-		texte = r.label;
+		// « Cully → Bourg-en-Lavaux » : le champ garde le nom de la commune actuelle, dont la fiche s'ouvre.
+		texte = r.type === 'commune' ? r.commune.nom : r.label;
 		ouvert = false;
 		onchoix(r);
 	}
