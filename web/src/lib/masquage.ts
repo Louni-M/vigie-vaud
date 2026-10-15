@@ -1,6 +1,6 @@
 /**
  * Nettoyage des descriptions et masquage des noms de particuliers, côté navigateur.
- * Portage fidèle de `clean_text` et `mask_names` (pipeline/fetch.py) : les deux doivent rester alignés.
+ * Portage fidèle de `clean_text` et `mask_names` du script de la version hébergée (étiquette `chantiers-hebergee`).
  *
  * Différences d'expressions régulières entre Python et JavaScript : `\w` et `\b` n'y reconnaissent que
  * l'ASCII. On les remplace par des classes Unicode explicites (`L`, `nonL`) et le drapeau `u`.

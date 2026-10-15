@@ -31,7 +31,7 @@ import httpx
 from pyproj import Transformer
 from shapely.geometry import Point
 
-from fetch import CACHE, load_communes
+from communes import CACHE, charger_communes
 from terre import charger_lacs, point_repli
 
 ICI = Path(__file__).resolve().parent
@@ -248,7 +248,7 @@ def _telecharger(client: httpx.Client, url: str, chemin: Path) -> Path:
 
 
 def initialiser(client: httpx.Client, csv_hdv: Path = CSV_HDV, revue: Path = REVUE, cache: Path = CACHE_HDV) -> None:
-    communes = load_communes(client, cache)
+    communes = charger_communes(client, cache)
     communes = communes.dissolve(by=["bfs_nummer", "name"]).reset_index()
     fiches = lire_ucv(client, cache)
     adresses = lire_adresses(client, cache)
