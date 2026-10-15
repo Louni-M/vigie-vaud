@@ -18,6 +18,6 @@
 	<meta name="description" content={tete.description} />
 	<meta property="og:title" content={tete.titre} />
 	<meta property="og:description" content={tete.description} />
-	<!-- Sans paramètres : la mesure d'audience (GoatCounter suit ce lien) ne reçoit pas la vue de la carte. -->
+	<!-- Sans paramètres : un lien partagé ou indexé mène à la commune, pas à une vue de la carte. -->
 	<link rel="canonical" href={lienCommune(data.commune.slug)} />
 </svelte:head>

@@ -15,12 +15,15 @@
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
 	import Recherche from '#lib/socle/Recherche.svelte';
 	import { COUCHES } from '#lib/registre/couches.js';
+	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { creerRegistre, fournirRegistre, type VueCarte } from '#lib/registre/registre.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
 	import FicheCommune from '#lib/registre/FicheCommune.svelte';
 	import Apercu from '#lib/registre/Apercu.svelte';
+	import Grisage from '#lib/registre/Grisage.svelte';
+	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import {
 		TELEPHONE,
 		affichageApres,
@@ -91,6 +94,9 @@
 	/** Adresse cherchée ou position GPS, marquée sur la carte ; jamais écrite dans l'URL. */
 	let repere: [number, number] | null = $state(null);
 
+	/** Le grisage suit la couche dont le volet est ouvert, avec la mise en page du bureau seulement. */
+	const grisees = $derived(telephone.current ? [] : couvertureCourante(data.communes).grisees(registre.volet));
+
 	// Un même texte (« © swisstopo », pour le fond, les adresses et les lacs) n'est cité qu'une fois.
 	const attribution = $derived(
 		sourcesCarte(COUCHES, registre.actives)
@@ -99,16 +105,7 @@
 			.map(attributionHtml)
 	);
 
-	const chercherCouches = (texte: string) =>
-		COUCHES.flatMap((c) =>
-			(c.chercher?.(texte) ?? []).map((r) => ({
-				type: 'element' as const,
-				genre: c.nom,
-				label: r.libelle,
-				couche: r.couche,
-				element: r.element
-			}))
-		);
+	const chercherCouches = (texte: string) => resultatsCouches(COUCHES, texte);
 
 	function choix(r: Resultat) {
 		registre.oublierAvis();
@@ -154,6 +151,8 @@
 
 		<!-- Calques de chaque couche, dans l'ordre du registre ; importés à la première activation. -->
 		{#if registre.map}
+			<!-- Sous toutes les couches : le gris voile le fond, pas les éléments. -->
+			<Grisage map={registre.map} sous="couche:{COUCHES[0].id}" {grisees} />
 			{#each COUCHES as c (c.id)}
 				{#if registre.montee(c.id)}
 					{#await registre.composant(c, 'Carte') then module}
@@ -190,7 +189,7 @@
 
 		<p class="liens">
 			<a href={resolve('/a-propos')}>À propos</a> ·
-			<a href={resolve('/infos-legales')}>Informations légales</a>
+			<a href={resolve('/protection-des-donnees')}>Protection des données</a>
 		</p>
 
 		<!-- Téléphone : ce qui est ouvert s'affiche d'abord en aperçu, en bas de la carte. -->

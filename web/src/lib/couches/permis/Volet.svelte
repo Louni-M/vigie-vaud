@@ -80,7 +80,7 @@
 	const ouvert = $derived(ctx.ouvert?.couche === 'permis' ? Number(ctx.ouvert.element) : null);
 </script>
 
-<EchecSource message="Les permis n’ont pas pu être chargés" etat={permis.source} />
+<EchecSource source="camac-permis" message="Les permis n’ont pas pu être chargés" />
 
 <div class="reglages">
 	<div class="puces" role="group" aria-label="Statuts affichés (légende de la carte)">
@@ -181,7 +181,7 @@
 <p class="source">
 	Dossiers consultés en direct depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la
 	<a href="https://www.vd.ch/territoire-et-construction/permis-de-construire/faq/avis-denquete/publication-fao" target="_blank" rel="noopener">FAO</a>
-	fait foi. <a href={resolve('/infos-legales')}>L’enquête publique : ce que prévoit la loi</a>
+	fait foi. <a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>
 </p>
 
 <style>

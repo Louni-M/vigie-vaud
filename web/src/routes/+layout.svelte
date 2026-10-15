@@ -1,16 +1,38 @@
 <script lang="ts">
 	import favicon from '#lib/assets/favicon.svg';
+	import { afterNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import { AUDIENCE, cheminACompter } from '#lib/audience.js';
 	import { SITE } from '#lib/config.js';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 
-	const goatcounter = import.meta.env.VITE_GOATCOUNTER as string | undefined;
+	// Le script de GoatCounter ne compte rien de lui-même (`no_onload`) : chaque changement de page est compté
+	// ici, par son chemin seul. Les navigations de l'application (fiche commune, retour à la carte) sont ainsi
+	// comptées, et les paramètres de la carte jamais.
+	type GoatCounter = { count?: (v: { path: string }) => void };
+	const compter = (path: string) => {
+		const gc = (window as { goatcounter?: GoatCounter }).goatcounter;
+		if (gc?.count) return gc.count({ path });
+		// Script pas encore chargé (il est asynchrone) : on compte dès qu'il l'est.
+		document
+			.querySelector('script[data-goatcounter]')
+			?.addEventListener('load', () => (window as { goatcounter?: GoatCounter }).goatcounter?.count?.({ path }), {
+				once: true
+			});
+	};
+	if (AUDIENCE) {
+		afterNavigate(({ from, to }) => {
+			const chemin = cheminACompter(from?.url, to?.url);
+			if (chemin) compter(chemin);
+		});
+	}
 	// « Carte » reste marqué comme page courante quand une fiche commune est ouverte sur la carte.
 	const nav = [
 		{ href: resolve('/(carte)'), label: 'Carte', groupe: '/(carte)' },
+		{ href: resolve('/couverture'), label: 'Couverture', groupe: '/couverture' },
 		{ href: resolve('/a-propos'), label: 'À propos', groupe: '/a-propos' }
 	];
 	const courant = (groupe: string) => page.route.id === groupe || !!page.route.id?.startsWith(`${groupe}/`);
@@ -26,8 +48,13 @@
 	<meta property="og:image:height" content="630" />
 	<meta property="og:image:alt" content="Vigie Vaud : ce qui se passe dans votre commune, sur la carte du canton de Vaud" />
 	<meta name="twitter:card" content="summary_large_image" />
-	{#if goatcounter}
-		<script data-goatcounter="https://{goatcounter}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+	{#if AUDIENCE}
+		<script
+			data-goatcounter={AUDIENCE.compteur}
+			data-goatcounter-settings={'{"no_onload":true}'}
+			async
+			src="https://gc.zgo.at/count.js"
+		></script>
 	{/if}
 </svelte:head>
 
