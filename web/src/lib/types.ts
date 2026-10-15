@@ -6,7 +6,7 @@ export interface Etape {
 	decision?: string | null;
 }
 
-/** Un dossier tel que converti par lib/data.ts depuis le service du canton (champs vides omis). */
+/** Un dossier tel que converti par le module de données Permis (lib/couches/permis/donnees.svelte.ts) depuis le service du canton (champs vides omis). */
 export interface Dossier {
 	id: number;
 	fao?: string;
