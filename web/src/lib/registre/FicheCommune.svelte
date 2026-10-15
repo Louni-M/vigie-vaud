@@ -4,6 +4,7 @@
 	 * son hôtel de ville ou « position approximative », anciennes communes et anciens noms), puis un
 	 * onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
 	 * a qu'un onglet ; sous le nom de chaque onglet, le badge de fraîcheur de chacune des sources de la couche.
+	 * Pour une commune que la couche ne couvre pas, l'onglet affiche le message commun « non couvert ».
 	 * Changer de commune remplace le contenu sur place : l'onglet choisi reste, son contenu est
 	 * remonté pour la nouvelle commune.
 	 *
@@ -11,7 +12,9 @@
 	 * monté, caché, pour retrouver sa place quand on ferme l'élément ; le focus revient alors sur l'onglet.
 	 */
 	import { tick } from 'svelte';
+	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
+	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import { source } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
 	import { enteteFiche } from './entete.js';
@@ -29,6 +32,7 @@
 	);
 	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === choisi) ?? onglets[0]);
 	const element = $derived(avecFiche === courant ? registre.ouvert : null);
+	const couvert = $derived(!courant || couvertureCourante().couvre(courant.id, commune.bfs));
 
 	/** Défilement de l'onglet quand l'élément s'ouvre, rétabli quand il se ferme. */
 	let corps: HTMLElement | undefined = $state();
@@ -101,15 +105,22 @@
 
 	{#if courant}
 		<div class="corps" role="tabpanel" id="panneau-{courant.id}" aria-labelledby="onglet-{courant.id}" bind:this={corps}>
-			{#key `${courant.id}:${commune.slug}`}
-				<div hidden={element !== null}>
-					{#await registre.composant(courant, 'Onglet') then module}
-						{#if module}<module.default ctx={registre.contexte(courant)} />{/if}
-					{:catch}
-						<p class="erreur">L’onglet n’a pas pu être chargé. Rechargez la page.</p>
-					{/await}
-				</div>
-			{/key}
+			{#if !couvert}
+				<p class="non-couvert" hidden={element !== null}>
+					<strong>Non couvert</strong> : la couche {courant.nom} n’a pas de source pour {commune.nom}.
+					<a href={resolve('/couverture')}>Voir la Couverture</a>
+				</p>
+			{:else}
+				{#key `${courant.id}:${commune.slug}`}
+					<div hidden={element !== null}>
+						{#await registre.composant(courant, 'Onglet') then module}
+							{#if module}<module.default ctx={registre.contexte(courant)} />{/if}
+						{:catch}
+							<p class="erreur">L’onglet n’a pas pu être chargé. Rechargez la page.</p>
+						{/await}
+					</div>
+				{/key}
+			{/if}
 			{#if element}
 				<nav class="fil" aria-label="Fil d’Ariane">
 					<button type="button" class="lien" onclick={registre.fermer}>{courant.nom}</button>
@@ -208,6 +219,10 @@
 		overflow-y: auto;
 		padding: 12px 14px 32px;
 		font-size: 14px;
+	}
+	.non-couvert {
+		margin: 0;
+		color: var(--muted);
 	}
 	.fil {
 		display: flex;
