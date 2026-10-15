@@ -65,7 +65,7 @@ export interface Rattachement {
 }
 
 /**
- * Rattache un point à sa commune actuelle, comme pipeline/fetch.py : commune qui le contient,
+ * Rattache un point à sa commune actuelle, comme le faisait la version hébergée : commune qui le contient,
  * sinon la plus proche (lacs, imprécisions).
  */
 export const getRattachement = (f: Fetch): Promise<Rattachement> =>

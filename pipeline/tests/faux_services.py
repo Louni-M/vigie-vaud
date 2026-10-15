@@ -1,16 +1,19 @@
-"""Faux services HTTP pour l'outil d'initialisation des hôtels de ville.
+"""Faux services HTTP pour l'outil d'initialisation des hôtels de ville et la préparation des communes.
 
 Un `Monde` décrit en quelques lignes ce que renverraient swissBOUNDARIES3D, swissTLMRegio, le répertoire
-des adresses de bâtiments, l'annuaire de l'UCV et Overpass ; `transport()` le sert à `httpx` sans réseau.
+des adresses de bâtiments, l'annuaire de l'UCV, Overpass et le répertoire historisé des communes de l'OFS ;
+`transport()` le sert à `httpx` sans réseau.
 """
 
 from __future__ import annotations
 
 import csv
 import io
+import json
 import tempfile
 import zipfile
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from urllib.parse import quote
 
@@ -19,10 +22,16 @@ import httpx
 from pyproj import Transformer
 from shapely.geometry import Polygon, box
 
-import fetch
+import communes as prep
 import hotels_de_ville as hdv
 import terre
+from communes import BOUNDARIES_URL, MUTATIONS_URL
 
+COLONNES_MUTATIONS = (
+    "MutationNumber,MutationDate,InitialHistoricalCode,InitialCode,InitialName,InitialParentHistoricalCode,"
+    "InitialParentName,InitialStep,TerminalHistoricalCode,TerminalCode,TerminalName,TerminalParentHistoricalCode,"
+    "TerminalParentName,TerminalStep"
+).split(",")
 COLONNES_ADRESSES = (
     "ADR_EGAID;STR_ESID;BDG_EGID;ADR_EDID;STN_LABEL;ADR_NUMBER;BDG_CATEGORY;BDG_NAME;ZIP_LABEL;COM_FOSNR;"
     "COM_NAME;COM_CANTON;ADR_STATUS;ADR_OFFICIAL;ADR_MODIFIED;ADR_EASTING;ADR_NORTHING"
@@ -71,12 +80,33 @@ class Townhall:
 
 
 @dataclass
+class Etat:
+    """Une commune dans le répertoire historisé de l'OFS, à un moment de son histoire."""
+
+    historique: int  # n° d'historisation, propre à cet état
+    ofs: int
+    nom: str
+
+
+@dataclass
+class Mutation:
+    """Une mutation du répertoire historisé : des états initiaux remplacés par un état terminal."""
+
+    date: str  # « 01.07.2011 »
+    initiaux: list[Etat]
+    terminal: Etat
+    etape_initiale: int = 29  # radiation
+    etape_terminale: int = 21  # création
+
+
+@dataclass
 class Monde:
     communes: list[Commune]
     fiches: list[Fiche] = field(default_factory=list)
     adresses: list[Adresse] = field(default_factory=list)
     lacs: list[Polygon] = field(default_factory=list)
     townhalls: list[Townhall] = field(default_factory=list)
+    mutations: list[Mutation] = field(default_factory=list)
     requetes: list[httpx.Request] = field(default_factory=list)
 
     def transport(self) -> httpx.MockTransport:
@@ -85,7 +115,9 @@ class Monde:
     def _repondre(self, requete: httpx.Request) -> httpx.Response:
         self.requetes.append(requete)
         url = str(requete.url)
-        if url == fetch.BOUNDARIES_URL:
+        if url.startswith(MUTATIONS_URL + "?"):
+            return httpx.Response(200, content=self._mutations().encode("utf-8"))
+        if url == BOUNDARIES_URL:
             return httpx.Response(200, content=self._limites())
         if url == terre.LACS_URL:
             return httpx.Response(200, content=self._lacs())
@@ -141,6 +173,17 @@ class Monde:
             for f in self.fiches
         )
         return f'<html><body><a href="/annuaire/fusions">Fusions</a><ul>{liens}</ul></body></html>'
+
+    def _mutations(self) -> str:
+        texte = io.StringIO()
+        w = csv.writer(texte, lineterminator="\r\n")
+        w.writerow(COLONNES_MUTATIONS)
+        for numero, m in enumerate(self.mutations, start=1000):
+            t = m.terminal
+            for i in m.initiaux:
+                w.writerow([numero, m.date, i.historique, i.ofs, i.nom, 10000, "District", m.etape_initiale,
+                            t.historique, t.ofs, t.nom, 10000, "District", m.etape_terminale])
+        return texte.getvalue()
 
     def _overpass(self) -> dict:
         vers_wgs = Transformer.from_crs(2056, 4326, always_xy=True)
@@ -226,4 +269,22 @@ def ecrire_csv(chemin: Path, lignes: list[dict]) -> None:
         w = csv.DictWriter(f, fieldnames=list(lignes[0]))
         w.writeheader()
         w.writerows(lignes)
+
+
+def hotel(ofs: int, nom: str, e: float, n: float, adresse: str = "", origine: str = "repli") -> dict:
+    """Une ligne de hotels-de-ville.csv."""
+    return {"ofs": ofs, "nom": nom, "adresse": adresse, "E": e, "N": n, "origine": origine, "note": ""}
+
+
+def preparer(monde: Monde, dossier: Path, hotels: list[dict], jusqu_au: date = date(2026, 10, 15)) -> list[dict]:
+    """Lance la préparation des communes contre le monde factice et les lignes `hotels` du CSV ; renvoie communes.json."""
+    csv_hdv = dossier / "hotels-de-ville.csv"
+    with csv_hdv.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=hdv.COLONNES, lineterminator="\n")
+        w.writeheader()
+        w.writerows(hotels)
+    sortie = dossier / "static"
+    with httpx.Client(transport=monde.transport()) as client:
+        prep.preparer(client, csv_hdv, sortie, cache=dossier / "cache", jusqu_au=jusqu_au)
+    return json.loads((sortie / "communes.json").read_text(encoding="utf-8"))
 

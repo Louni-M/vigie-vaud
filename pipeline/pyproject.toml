@@ -1,7 +1,7 @@
 [project]
 name = "pipeline"
 version = "0.1.0"
-description = "Récupération des demandes de permis de construire vaudoises pour Vigie Vaud"
+description = "Préparation des données et cron de Vigie Vaud"
 requires-python = ">=3.11"
 dependencies = [
     "geopandas>=1.2.0",

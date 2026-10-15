@@ -6,8 +6,8 @@ import type { Commune, Dossier, PointHisto, Statut, Zone } from '#lib/types.js';
 
 /**
  * Module de données de la couche Permis, partagé par ses composants : dossiers CAMAC lus en direct sur
- * le service du canton depuis le navigateur. Les conversions reprennent celles de pipeline/fetch.py
- * (`normalize`).
+ * le service du canton depuis le navigateur. Les conversions reprennent `normalize` du script de la version
+ * hébergée (étiquette `chantiers-hebergee`).
  */
 
 type Fetch = typeof fetch;
@@ -41,7 +41,7 @@ const NATURE: Record<string, string> = {
 
 /** Année de début d'enquête, en SQL : DATE_ENQUETE vaut toujours « Du jj.mm.aaaa au … ». */
 const ANNEE_SQL = 'SUBSTRING(DATE_ENQUETE FROM 10 FOR 4)';
-/** Comme pipeline/fetch.py : les « procédures en cours » plus anciennes ne sont jamais clôturées dans la couche. */
+/** Comme dans la version hébergée : les « procédures en cours » plus anciennes ne sont jamais clôturées dans la couche. */
 const ACTIVE_PROCEDURE_YEARS = 3;
 
 /** « 17.01.2026 » ou « 17/01/2026 » → « 2026-01-17 ». */
