@@ -43,7 +43,7 @@ const NATURE: Record<string, string> = {
 /** Année de début d'enquête, en SQL : DATE_ENQUETE vaut toujours « Du jj.mm.aaaa au … ». */
 const ANNEE_SQL = 'SUBSTRING(DATE_ENQUETE FROM 10 FOR 4)';
 /** Comme dans la version hébergée : les « procédures en cours » plus anciennes ne sont jamais clôturées dans la couche. */
-const ACTIVE_PROCEDURE_YEARS = 3;
+const ANNEES_PROCEDURE_EN_COURS = 3;
 
 /** « 17.01.2026 » ou « 17/01/2026 » → « 2026-01-17 ». */
 const DATE_RE = /(\d{2})[./](\d{2})[./](\d{4})/g;
@@ -188,7 +188,7 @@ export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: 
 
 	const auj = maintenant();
 	/** Date de début d'enquête au-delà de laquelle une « procédure en cours » compte comme en cours. */
-	const LIMITE_PROCEDURE = `${auj.getFullYear() - ACTIVE_PROCEDURE_YEARS}${auj.toISOString().slice(4, 10)}`;
+	const LIMITE_PROCEDURE = `${auj.getFullYear() - ANNEES_PROCEDURE_EN_COURS}${auj.toISOString().slice(4, 10)}`;
 	/** Dossiers en cours, au plus près côté serveur (année seulement) ; le jour exact est filtré ensuite. */
 	const EN_COURS_SQL =
 		`(ETAT = ${sql(ETAT.enquete)} OR ` +
