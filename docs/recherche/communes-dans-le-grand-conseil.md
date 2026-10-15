@@ -46,7 +46,8 @@ rapporte des faits et des chiffres ; la règle de Rattachement des Objets se dé
   `begin_date` est entre le 15 octobre 2024 et le 6 octobre 2026 (dernier Objet présent le jour de la mesure).
 - Types dans l'échantillon : Interpellation 334, Question orale 288, Simple question 229, Motion 154,
   Décret/Loi 143, Postulat 132, Recours de compétence 54, Rapport 34, Résolution 28, Détermination 21,
-  Pétition 18, autres 39.
+  Pétition 18, autres 39. Les 8 « Consultation » (numéros « V 3.2.2025 »…) sont des mises en consultation du
+  Conseil d'État que l'API range sous le même `body_key` ; elles sont gardées dans les comptes.
 
 ## Où se trouve le nom
 
