@@ -6,8 +6,11 @@ declare global {
 		// interface Locals {}
 		// interface PageData {}
 		interface PageState {
-			/** Entrée d'historique créée à l'ouverture d'une fiche sur la carte : « Retour » revient en arrière. */
-			fiche?: boolean;
+			/**
+			 * Entrée d'historique poussée par l'application à l'ouverture d'un élément : `depuis` est la commune de
+			 * l'entrée précédente (`null` : la carte seule). Fermer l'élément y revient si c'est la même commune.
+			 */
+			element?: { depuis: string | null };
 		}
 		// interface Platform {}
 	}

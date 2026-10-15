@@ -1,4 +1,4 @@
-import { untrack } from 'svelte';
+import { createContext, untrack } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { afterNavigate, goto } from '$app/navigation';
 import { resolve } from '$app/paths';
@@ -7,11 +7,14 @@ import type { Map as MlMap } from 'maplibre-gl';
 import type { Commune, Centre, Zone } from '#lib/types.js';
 import type { Chargeur, Cible, Contexte, CoucheInscrite, Lecteur, Ouvert } from './types.js';
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
-import { mouvement } from './navigation.js';
+import { corrigerChemin, fermeture, memeElement, mouvement, type Adresse } from './navigation.js';
+import { titreFiche } from './tete.js';
 
 /** Ce que le registre demande à la carte du socle quand l'adresse change sous lui. */
 export interface VueCarte {
 	aller(c: Centre, anime?: boolean): void;
+	/** Vol souple vers un point, au moins à ce zoom. */
+	voler(lon: number, lat: number, zoom?: number): void;
 	vueCanton(): void;
 	/** Cadre une emprise ; `parDefaut` : la vue obtenue n'entre pas dans l'adresse. */
 	cadrer(emprise: [number, number, number, number], anime?: boolean, parDefaut?: boolean): void;
@@ -19,6 +22,9 @@ export interface VueCarte {
 
 /** Route de la fiche commune : la commune ouverte est dans le chemin (ADR 0012). */
 const ROUTE_COMMUNE = '/(carte)/commune/[slug]' as const;
+
+/** Zoom auquel un élément ouvert est montré. */
+const ZOOM_ELEMENT = 16;
 
 /** Emprise sur laquelle cadrer une commune : sa partie terrestre, pas son emprise lac compris. */
 export const cadreDe = (c: Commune) => c.cadre;
@@ -44,6 +50,8 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	let map = $state.raw<MlMap | null>(null);
 	/** Volet ouvert sur la carte (bureau) ; n'entre pas dans l'adresse. */
 	let volet = $state<string | null>(null);
+	/** Message près de la recherche : élément introuvable (« Aucun dossier n° … ») ou impossible à localiser. */
+	let avis = $state<string | null>(null);
 	/** Couches activées au moins une fois : leur `Carte` reste montée, pour le fondu à la désactivation. */
 	const montees = new SvelteSet<string>(depart.actives);
 
@@ -53,6 +61,8 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	const etat = (): EtatUrl => ({ actives, vue, ouvert, parametres });
 	const requete = $derived(ecrireUrl(couches, etat()));
+	/** Titre du document quand une fiche est ouverte ; il suit l'élément ouvert. */
+	const titre = $derived(commune ? titreFiche(commune, ouvert, couches) : null);
 
 	function appliquer(e: EtatUrl) {
 		actives = e.actives;
@@ -121,16 +131,107 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		goto(`${resolve('/(carte)')}${q}`, { reset: false });
 	}
 
-	function ouvrir(cible: Cible) {
-		if ('commune' in cible) return ouvrirCommune(cible.commune);
-		if (ouvert?.couche === cible.couche && ouvert.element === cible.element) return;
-		nouvelleEntree = true;
-		ouvert = { couche: cible.couche, element: cible.element };
+	/* ---- Élément ouvert : toujours dans la fiche de sa commune ---- */
+
+	/** Ce que reflète l'adresse courante : commune du chemin et élément de la requête. */
+	let suivi: Pick<Adresse, 'commune' | 'ouvert'> = { commune: null, ouvert: null };
+	/** Dernier élément demandé : une demande plus ancienne qui aboutit après lui est ignorée. */
+	let demande: Ouvert | null = null;
+
+	type Lieu = { commune: string; position: [number, number] } | null;
+
+	/** Commune et position de l'élément selon sa couche ; `echec` si la couche n'a pas pu le chercher. */
+	async function localiser(o: Ouvert): Promise<Lieu | 'echec'> {
+		const c = couches.find((c) => c.id === o.couche);
+		if (!c?.localiser) return null;
+		try {
+			return await c.localiser(o.element);
+		} catch {
+			return 'echec';
+		}
 	}
 
+	const messageIntrouvable = (o: Ouvert) =>
+		couches.find((c) => c.id === o.couche)?.introuvable?.(o.element) ?? `Aucun élément n° ${o.element}.`;
+	const messageEchec = (o: Ouvert) =>
+		`Le n° ${o.element} n’a pas pu être cherché : vérifiez votre connexion, puis réessayez.`;
+
+	/**
+	 * Ouvre un élément dans la fiche de sa commune, trouvée par `localiser`. Ouvrir un élément quand aucun n'est
+	 * ouvert, ou celui d'une autre commune, crée une entrée d'historique : le retour du navigateur ramène à la
+	 * fiche précédente. Passer d'un élément à un autre dans la même commune remplace l'entrée.
+	 */
+	async function ouvrirElement(cible: Ouvert & { position?: [number, number] }) {
+		const o: Ouvert = { couche: cible.couche, element: cible.element };
+		avis = null;
+		if (cible.position) carteSocle()?.voler(cible.position[0], cible.position[1], ZOOM_ELEMENT);
+		if (memeElement(ouvert, o)) return;
+		demande = o;
+		const lieu = await localiser(o);
+		if (demande !== o) return;
+		demande = null;
+		if (lieu === 'echec') return void (avis = messageEchec(o));
+		const k = corrigerChemin(slug, lieu);
+		if (k === 'retirer') return void (avis = messageIntrouvable(o));
+		if (!cible.position) carteSocle()?.voler(lieu!.position[0], lieu!.position[1], ZOOM_ELEMENT);
+		if (k === null) {
+			// Même commune : l'adresse suit l'état (entrée poussée si rien n'était ouvert).
+			nouvelleEntree = ouvert === null;
+			ouvert = o;
+			return;
+		}
+		// Autre commune : une nouvelle entrée, sans la vue (la carte vole vers l'élément). L'état suivra l'adresse,
+		// et la carte ne bougera pas une seconde fois.
+		const depuis = slug;
+		suivi = { commune: k.commune, ouvert: o };
+		const q = ecrireUrl(couches, { ...etat(), vue: null, ouvert: o });
+		goto(`${resolve(ROUTE_COMMUNE, { slug: k.commune })}${q}`, {
+			reset: false,
+			state: { element: { depuis } }
+		});
+	}
+
+	/**
+	 * L'adresse porte un élément qu'on n'a pas ouvert soi-même (lien partagé, précédent ou suivant du navigateur) :
+	 * on corrige son chemin vers la commune de l'élément, ou on retire l'élément introuvable. `montrer` : la carte
+	 * va vers lui, d'un saut à l'arrivée sur le site.
+	 */
+	async function corriger(o: Ouvert, montrer: boolean, initial: boolean) {
+		demande = o;
+		const lieu = await localiser(o);
+		if (demande !== o || !memeElement(ouvert, o)) return;
+		demande = null;
+		if (lieu === 'echec') return void (avis = messageEchec(o));
+		const k = corrigerChemin(slug, lieu);
+		if (k === 'retirer') {
+			avis = messageIntrouvable(o);
+			ouvert = null;
+			return;
+		}
+		const [lon, lat] = lieu!.position;
+		if (montrer && initial) carteSocle()?.aller({ lon, lat, zoom: ZOOM_ELEMENT }, false);
+		else if (montrer) carteSocle()?.voler(lon, lat, ZOOM_ELEMENT);
+		if (k === null) return;
+		suivi = { commune: k.commune, ouvert: o };
+		goto(`${resolve(ROUTE_COMMUNE, { slug: k.commune })}${ecrireUrl(couches, etat())}`, {
+			replace: true,
+			reset: false,
+			state: page.state
+		});
+	}
+
+	function ouvrir(cible: Cible) {
+		if ('commune' in cible) return ouvrirCommune(cible.commune);
+		ouvrirElement(cible);
+	}
+
+	/**
+	 * Fermer l'élément ramène à l'onglet de sa couche, sans bouger la carte : retour en arrière si l'application a
+	 * poussé l'entrée depuis la même commune, sinon l'adresse est remplacée par le chemin de la commune.
+	 */
 	function fermer() {
 		if (!ouvert) return;
-		if (page.state.fiche) history.back();
+		if (fermeture(page.state, slug) === 'retour') history.back();
 		else ouvert = null;
 	}
 
@@ -189,19 +290,22 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		carteSocle = carte;
 		/** Chemin et requête déjà reflétés par l'état ; `null` tant que l'adresse de départ n'a pas été lue. */
 		let synchro: string | null = null;
-		/** Commune de l'adresse reflétée par l'état. */
-		let suivie: string | null = null;
-
-		/** L'adresse a changé sous le registre : l'état la suit, et la carte bouge s'il le faut. */
+		/**
+		 * L'adresse a changé sous le registre : l'état la suit, et la carte bouge s'il le faut. Un élément qu'on
+		 * n'a pas ouvert soi-même est localisé, pour corriger son chemin et, s'il le faut, le montrer.
+		 */
 		function suivre(params: Lecteur, initial: boolean) {
 			const e = lireUrl(couches, params);
+			const m = mouvement(suivi, { commune: slug, vue: e.vue, ouvert: e.ouvert }, initial);
+			const nouveau = e.ouvert !== null && !memeElement(suivi.ouvert, e.ouvert);
+			suivi = { commune: slug, ouvert: e.ouvert };
 			appliquer(e);
-			vue = e.vue;
-			const m = mouvement(suivie, { commune: slug, vue: e.vue, ouvert: e.ouvert }, initial);
-			suivie = slug;
+			// Une carte qui ne bouge pas garde sa vue : l'adresse sera réécrite avec elle.
+			if (m !== null || initial) vue = e.vue;
 			if (m === 'canton') carteSocle()?.vueCanton();
-			else if (m && 'aller' in m) carteSocle()?.aller(m.aller, !initial);
-			else if (m) cadrerCommune(m.cadrer, !initial);
+			else if (m && typeof m === 'object' && 'aller' in m) carteSocle()?.aller(m.aller, !initial);
+			else if (m && typeof m === 'object') cadrerCommune(m.cadrer, !initial);
+			if (nouveau) corriger(e.ouvert!, m === 'element', initial);
 		}
 
 		afterNavigate(() => {
@@ -218,10 +322,11 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 				nouvelleEntree = false;
 				if (synchro === null || q === location.search) return;
 				synchro = location.pathname + q;
+				suivi = { commune: slug, ouvert };
 				goto(`${location.pathname}${q}`, {
 					shallow: true,
 					replace: !push,
-					state: push ? { fiche: true } : page.state
+					state: push ? { element: { depuis: slug } } : page.state
 				});
 			});
 		});
@@ -256,6 +361,15 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		get commune() {
 			return commune;
 		},
+		/** Titre du document quand une fiche est ouverte (`null` sinon). */
+		get titre() {
+			return titre;
+		},
+		/** Message près de la recherche (« Aucun dossier n° … »), jusqu'à la prochaine ouverture. */
+		get avis() {
+			return avis;
+		},
+		oublierAvis: () => (avis = null),
 		get volet() {
 			return volet;
 		},
@@ -278,3 +392,6 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 }
 
 export type Registre = ReturnType<typeof creerRegistre>;
+
+/** Le registre de la coquille, pour les pages du groupe de la carte (titre de la fiche ouverte). */
+export const [registreCourant, fournirRegistre] = createContext<Registre>();

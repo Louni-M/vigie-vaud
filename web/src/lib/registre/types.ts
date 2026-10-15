@@ -24,8 +24,12 @@ export interface Ouvert {
 	element: string;
 }
 
-/** Ce qu'on peut ouvrir : la fiche d'une commune, ou un élément d'une couche. */
-export type Cible = { commune: string } | Ouvert;
+/**
+ * Ce qu'on peut ouvrir : la fiche d'une commune, ou un élément d'une couche. Le registre ouvre l'élément dans la
+ * fiche de sa commune, qu'il trouve par `localiser`. Quand celui qui l'ouvre connaît déjà sa `position` (clic sur
+ * la carte, liste), la carte vole vers lui tout de suite, sans attendre `localiser`.
+ */
+export type Cible = { commune: string } | (Ouvert & { position?: [number, number] });
 
 /** Résultat qu'une couche fournit à la recherche du socle. */
 export interface ResultatCouche {
@@ -71,10 +75,14 @@ export interface Couche<P = unknown> {
 	codec?: Codec<P>;
 	/** Clé de requête de l'élément ouvert de cette couche (« d » pour un dossier). */
 	cleElement?: string;
+	/** Commune (slug) et position (lon, lat) d'un élément, ou `null` si la couche ne le trouve pas. */
 	localiser?(element: string): Promise<{ commune: string; position: [number, number] } | null>;
+	/** Message affiché près de la recherche quand `localiser` ne trouve pas l'élément (« Aucun dossier n° … »). */
+	introuvable?(element: string): string;
 	/** Synchrone : la recherche du socle l'appelle à chaque frappe. */
 	chercher?(texte: string): ResultatCouche[];
-	titre?(element: string): string;
+	/** Titre du document quand l'élément est ouvert ; `commune` est le nom de la commune de l'élément. */
+	titre?(element: string, commune: string): string;
 	/**
 	 * Ce que la couche montre d'une commune, pour la description de la page de la commune
 	 * (« les permis de construire à l’enquête, en direct depuis le canton »).

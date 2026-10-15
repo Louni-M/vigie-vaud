@@ -7,7 +7,7 @@ import { verifierSources } from './scripts/verifier-sources.ts';
 
 // Pages générées à l'avance : l'accueil, les pages fixes et les 300 fiches commune
 // (index swisstopo produit par pipeline/communes.py). Aucune donnée CAMAC n'est lue au build :
-// les dossiers sont chargés en direct par le navigateur, et les fiches dossier rendues côté navigateur.
+// les dossiers sont chargés en direct par le navigateur, et ouverts dans la fiche de leur commune (?d=).
 function readJson<T>(path: string, fallback: T): T {
 	return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : fallback;
 }
@@ -30,7 +30,7 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// Site entièrement statique ; 404.html sert de point d'entrée pour les fiches dossier.
+			// Site entièrement statique ; 404.html sert de page d'erreur pour les adresses inconnues.
 			adapter: adapter({ fallback: '404.html' }),
 			paths: {
 				// GitHub Pages sert le site sous /<dépôt> tant qu'il n'y a pas de domaine.

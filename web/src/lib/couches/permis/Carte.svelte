@@ -1,13 +1,15 @@
 <script lang="ts">
 	/*
-	 * Carte de la couche Permis : sources MapLibre des dossiers en cours et de l'historique, filtres, et fondu
-	 * à l'activation. L'ouverture d'un dossier (clic, anneau de sélection) viendra avec l'onglet Permis.
+	 * Carte de la couche Permis : sources MapLibre des dossiers en cours et de l'historique, filtres, fondu
+	 * à l'activation, clic qui ouvre un dossier (la carte vole vers lui tout de suite) et anneau qui marque
+	 * le dossier ouvert.
 	 */
 	import { onMount, untrack } from 'svelte';
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
-		GeoJSONSourceSpecification
+		GeoJSONSourceSpecification,
+		MapMouseEvent
 	} from 'maplibre-gl';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
 	import type { Contexte } from '#lib/registre/types.js';
@@ -21,6 +23,7 @@
 	const avant = untrack(() => ctx.avant);
 	const ACTIFS = 'permis-actifs';
 	const HISTO = 'permis-historique';
+	const SELECTION = 'permis-selection';
 	/** Fondu à l'activation et à la désactivation, sauf si le visiteur a demandé moins d'animations. */
 	const FONDU = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350;
 	/** Opacités pleines des calques ; le fondu les multiplie par 0 ou 1. */
@@ -115,12 +118,92 @@
 		avant
 	);
 
+	// Anneau du dossier ouvert, au-dessus des points.
+	const unPoint = (p: [number, number] | null): GeoJSONSourceSpecification['data'] => ({
+		type: 'FeatureCollection',
+		features: p ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: {} }] : []
+	});
+	map.addSource(SELECTION, { type: 'geojson', data: unPoint(null) });
+	map.addLayer(
+		{
+			id: SELECTION,
+			type: 'circle',
+			source: SELECTION,
+			paint: {
+				'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 9, 17, 16],
+				'circle-opacity': 0,
+				'circle-stroke-width': 3,
+				'circle-stroke-color': '#111'
+			}
+		},
+		avant
+	);
+
+	/**
+	 * Clic sur la carte : le dossier le plus proche dans quelques pixels (les points sont petits, surtout au doigt)
+	 * s'ouvre, et la carte vole vers lui sans attendre sa fiche. À égalité, les dossiers en cours l'emportent.
+	 */
+	function clic(e: MapMouseEvent) {
+		const calques = [ACTIFS, HISTO].filter((id) => map.getLayoutProperty(id, 'visibility') !== 'none');
+		if (!ctx.active || !calques.length) return;
+		const r = 8;
+		const proches = map.queryRenderedFeatures(
+			[
+				[e.point.x - r, e.point.y - r],
+				[e.point.x + r, e.point.y + r]
+			],
+			{ layers: calques }
+		);
+		const position = (f: (typeof proches)[number]) =>
+			(f.geometry as unknown as { coordinates: [number, number] }).coordinates;
+		const distance = (f: (typeof proches)[number]) => {
+			const p = map.project(position(f));
+			return Math.hypot(p.x - e.point.x, p.y - e.point.y);
+		};
+		const f = proches.sort((a, b) => distance(a) - distance(b))[0];
+		if (f?.properties?.id == null) return;
+		ctx.ouvrir({ couche: 'permis', element: String(f.properties.id), position: position(f) });
+	}
+	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
+	const sansPointeur = () => (map.getCanvas().style.cursor = '');
+	map.on('click', clic);
+	for (const id of [ACTIFS, HISTO]) {
+		map.on('mouseenter', id, pointeur);
+		map.on('mouseleave', id, sansPointeur);
+	}
+
+	/** Position du dossier ouvert : celle de son point s'il est chargé, sinon celle de sa fiche. */
+	let anneau = $state<[number, number] | null>(null);
+	$effect(() => {
+		const o = ctx.ouvert;
+		const id = o?.couche === 'permis' ? Number(o.element) : null;
+		if (id === null) return void (anneau = null);
+		const point = untrack(() => permis.actifs.find((d) => d.id === id) ?? permis.histo.find((d) => d.id === id));
+		if (point) return void (anneau = [point.lon, point.lat]);
+		let actuel = true;
+		permis.fiche(id).then(
+			(d) => actuel && (anneau = d ? [d.lon, d.lat] : null),
+			() => {}
+		);
+		return () => (actuel = false);
+	});
+	$effect(() => {
+		(map.getSource(SELECTION) as GeoJSONSource).setData(unPoint(ctx.active ? anneau : null));
+	});
+
 	onMount(() => {
 		// Un échec est signalé par le volet, qui propose de réessayer.
 		permis.chargerActifs().catch(() => {});
 		return () => {
 			// La carte du socle a pu être détruite avant cette couche (fin de la coquille).
 			try {
+				map.off('click', clic);
+				for (const id of [ACTIFS, HISTO]) {
+					map.off('mouseenter', id, pointeur);
+					map.off('mouseleave', id, sansPointeur);
+				}
+				map.removeLayer(SELECTION);
+				map.removeSource(SELECTION);
 				for (const id of [ACTIFS, HISTO]) {
 					map.removeLayer(id);
 					map.removeSource(id);
