@@ -4,10 +4,10 @@
 	 * histogramme par année et historique (« tout charger »). Le registre a déjà rendu l'en-tête et la barre
 	 * d'onglets ; il remonte l'onglet quand on change de commune. Tout est lu en direct sur le service du canton.
 	 */
-	import { onMount, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
-	import { ErreurApi } from '#lib/api.js';
+	import EchecSource from '#lib/components/EchecSource.svelte';
 	import { STATUTS, STATUTS_ORDRE } from '#lib/labels.js';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Commune, Dossier } from '#lib/types.js';
@@ -24,34 +24,34 @@
 	let actifs = $state<Dossier[] | null>(null);
 	let chiffres = $state<ChiffresCommune | null>(null);
 	let recents = $state<Dossier[] | null>(null);
-	let echec = $state('');
+	/** Les fiches de l'historique récent n'ont pas pu être chargées (la source, elle, a répondu). */
+	let echecRecents = $state(false);
 
 	const enquetes = $derived(actifs?.filter((d) => d.statut === 'enquete') ?? []);
 	const attente = $derived(actifs?.filter((d) => d.statut === 'procedure') ?? []);
 
-	const message = (e: unknown) =>
-		e instanceof ErreurApi && e.hors_ligne
-			? 'Vous semblez hors ligne : les dossiers sont lus en direct sur le service du canton.'
-			: `${e instanceof ErreurApi ? e.message : 'Les données n’ont pas pu être chargées.'} Les dossiers sont lus en direct sur ogc.vd.ch : réessayez dans un instant.`;
-
+	/** Un échec des dossiers en cours ou des chiffres est porté par l'état de la source (message et « Réessayer »). */
 	function charger() {
-		echec = '';
+		echecRecents = false;
 		permis.chargerActifs().then(
 			(ds) => (actifs = ds.filter((d) => d.slug === commune.slug)),
-			(e) => (echec = message(e))
+			() => {}
 		);
-		permis
-			.chiffres(commune)
-			.then((r) => {
+		permis.chiffres(commune).then(
+			(r) => {
 				chiffres = r;
-				return permis.fiches(r.historique.slice(0, RECENTS).map((d) => d.id));
-			})
-			.then(
-				(r) => (recents = r),
-				(e) => (echec = message(e))
-			);
+				permis.fiches(r.historique.slice(0, RECENTS).map((d) => d.id)).then(
+					(ds) => (recents = ds),
+					() => (echecRecents = true)
+				);
+			},
+			() => {}
+		);
 	}
-	onMount(charger);
+	// Au montage, et de nouveau quand l'erreur de la source est levée (« Réessayer », ici ou dans le volet).
+	$effect(() => {
+		if (!permis.source.erreur) untrack(charger);
+	});
 
 	let tout = $state<Dossier[] | null>(null);
 	let chargement = $state(false);
@@ -81,12 +81,7 @@
 	}
 </script>
 
-{#if echec}
-	<p class="erreur" role="alert">
-		{echec}
-		<button class="bouton secondaire petit" type="button" onclick={charger}>Réessayer</button>
-	</p>
-{/if}
+<EchecSource message="Les permis n’ont pas pu être chargés" etat={permis.source} />
 
 <div class="chiffres" aria-busy={!chiffres || !actifs}>
 	{#each STATUTS_ORDRE as s (s)}
@@ -140,6 +135,11 @@
 	<ul class="grille">
 		{#each tout as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
+{:else if echecRecents}
+	<p class="erreur" role="alert">
+		L’historique n’a pas pu être chargé.
+		<button class="bouton secondaire petit" type="button" onclick={charger}>Réessayer</button>
+	</p>
 {:else if !recents || !actifs}
 	<ul class="grille" aria-busy="true"><li class="attente"></li><li class="attente"></li><li class="attente"></li></ul>
 {:else}
