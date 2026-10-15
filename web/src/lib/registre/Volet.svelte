@@ -2,14 +2,15 @@
 	/*
 	 * Volet d'une couche, assemblé par le registre : interrupteur (ou « permanente »), badge de fraîcheur et
 	 * attribution de chaque source tirée de sources.json, puis le `Volet` de la couche. Le lien vers la page
-	 * Couverture viendra s'ajouter ici.
+	 * Couverture viendra s'ajouter ici. Sans `onfermer` (vue Couches du téléphone), le volet n'a pas de croix.
 	 */
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { source } from '#lib/sources.js';
 	import type { Registre } from './registre.svelte.js';
 	import type { CoucheInscrite } from './types.js';
 
-	let { couche, registre, onfermer }: { couche: CoucheInscrite; registre: Registre; onfermer: () => void } = $props();
+	let { couche, registre, onfermer }: { couche: CoucheInscrite; registre: Registre; onfermer?: () => void } =
+		$props();
 
 	const active = $derived(registre.active(couche.id));
 	const sources = $derived(couche.sources.map(source));
@@ -32,7 +33,9 @@
 				Affichée
 			</label>
 		{/if}
-		<button class="fermer" type="button" aria-label="Fermer le volet {couche.nom}" onclick={onfermer}>×</button>
+		{#if onfermer}
+			<button class="fermer" type="button" aria-label="Fermer le volet {couche.nom}" onclick={onfermer}>×</button>
+		{/if}
 	</div>
 
 	<p class="badges">
