@@ -125,11 +125,11 @@ def _commune_geocodee(ofs: int, nom: str, e: float, n: float, coordonnees: str =
     )
 
 
-def test_la_revue_signale_les_ecarts_de_plus_de_150_m_avec_osm_bien_nomme_ou_les_coordonnees_ucv(tmp_path):
+def test_la_revue_signale_les_ecarts_de_plus_de_150_m_avec_osm_ou_d_au_moins_1_km_avec_l_ucv(tmp_path):
     loin_osm = _commune_geocodee(1, "Loin-OSM", 2500000, 1150000)
     salle = _commune_geocodee(2, "Salle", 2502000, 1150000)
     proche = _commune_geocodee(3, "Proche", 2504000, 1150000, coordonnees="505000 - 151000")
-    loin_ucv = _commune_geocodee(4, "Loin-UCV", 2506000, 1150000, coordonnees="507600 - 151000")
+    loin_ucv = _commune_geocodee(4, "Loin-UCV", 2506000, 1150000, coordonnees="508200 - 151000")
     mondes = [loin_osm, salle, proche, loin_ucv]
     monde = Monde(
         communes=[c for c, _, _ in mondes],
@@ -146,7 +146,38 @@ def test_la_revue_signale_les_ecarts_de_plus_de_150_m_avec_osm_bien_nomme_ou_les
 
     assert [(r["nom"], r["motif"]) for r in revue] == [("Loin-OSM", "écart"), ("Loin-UCV", "écart")]
     assert "400 m" in revue[0]["detail"] and "OSM" in revue[0]["detail"]
-    assert "600 m" in revue[1]["detail"] and "UCV" in revue[1]["detail"]
+    assert revue[1]["detail"] == "à 1200 m des coordonnées UCV ; aucun townhall OSM bien nommé dans la commune"
+
+
+def test_un_ecart_avec_les_coordonnees_ucv_n_est_signale_que_si_osm_ne_confirme_pas_le_siege(tmp_path):
+    # Les coordonnées UCV sont arrondies à 100 m : un townhall OSM bien nommé à moins de 80 m du siège l'emporte.
+    confirmee = _commune_geocodee(1, "Confirmée", 2500000, 1150000, coordonnees="502200 - 151000")
+    eloignee = _commune_geocodee(2, "Éloignée", 2502000, 1150000, coordonnees="504200 - 151000")
+    mondes = [confirmee, eloignee]
+    monde = Monde(
+        communes=[c for c, _, _ in mondes],
+        fiches=[f for _, f, _ in mondes],
+        adresses=[a for _, _, a in mondes],
+        townhalls=[
+            Townhall("Administration communale", 2501050, 1151000),  # 50 m du siège de Confirmée
+            Townhall("Maison de commune", 2503120, 1151000),  # 120 m du siège d'Éloignée : ne confirme pas
+        ],
+    )
+
+    _, revue = executer(monde, tmp_path)
+
+    assert [(r["nom"], r["motif"]) for r in revue] == [("Éloignée", "écart")]
+    assert revue[0]["detail"] == "à 1200 m des coordonnées UCV ; townhall OSM « Maison de commune » à 120 m"
+
+
+def test_un_ecart_de_moins_d_1_km_avec_les_coordonnees_ucv_n_est_pas_signale(tmp_path):
+    # Le marqueur reste sur l'adresse officielle du bon village : à cette échelle, c'est assez pour une carte.
+    proche = _commune_geocodee(1, "Proche", 2500000, 1150000, coordonnees="501600 - 151000")
+    monde = Monde(communes=[proche[0]], fiches=[proche[1]], adresses=[proche[2]])
+
+    _, revue = executer(monde, tmp_path)
+
+    assert revue == []
 
 
 def test_aucune_donnee_osm_n_est_ecrite_dans_le_csv(tmp_path):
