@@ -13,8 +13,12 @@ export function creerChargementFil(couches: readonly CoucheInscrite[]) {
 	function lancer(c: CoucheInscrite & { fil: Fil }, d: string) {
 		etats[c.id] = 'chargement';
 		c.fil.entrees(d).then(
-			(entrees) => (etats[c.id] = { entrees }),
-			() => (etats[c.id] = 'panne')
+			(entrees) => {
+				etats[c.id] = { entrees };
+			},
+			() => {
+				etats[c.id] = 'panne';
+			}
 		);
 	}
 
