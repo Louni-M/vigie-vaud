@@ -10,11 +10,13 @@ Le passage suit quatre étapes, chacune à sa place :
    normalise en Objets et Séances de l'archive ;
 3. `lecture(archive, sources, genere)`, fonction pure, reconstruit les fichiers de lecture que le site liste
    (`lecture_conseils.py`) ;
-4. `ecrire(depot, documents, genere)` compare chaque fichier à l'ancien sans `genere` et n'écrit que ce qui change.
+4. `ecrire(depot, documents, genere)` compare chaque fichier à l'ancien sans `genere` et n'écrit que ce qui change ;
+   `supprimer_perimes(depot, documents)` retire les fichiers de lecture que `lecture` ne produit plus.
 
 `importer_conseils` enchaîne les quatre pour chaque source qui a un bloc `conseil`, et tient à jour
 `conseils/import.json` (dernier import réussi de chaque conseil). Un conseil en échec garde sa date et n'empêche
-pas les autres. L'import ne supprime rien : un élément absent d'OpenParlData reste dans l'archive.
+pas les autres. L'import ne supprime rien de l'archive : un élément absent d'OpenParlData y reste. Les fichiers de
+lecture, eux, sont reconstruits en entier et ne divergent jamais de l'archive.
 
 Usage loyal d'OpenParlData : au plus une requête par seconde, un User-Agent avec un contact, la pagination suivie
 jusqu'au bout, et jamais un paramètre répété dans une requête (le cache du serveur ne garde que sa dernière valeur).
@@ -43,7 +45,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import ValidationError
 
-from lecture_conseils import lecture
+from lecture_conseils import MOTIFS_LECTURE, lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
 from rattachement import (
     COMMUNES_JSON,
@@ -454,7 +456,7 @@ def _lien(valeur: str | None) -> str | None:
 
 def ecrire(depot: Path, documents: Mapping[str, Enveloppe], genere: datetime) -> list[str]:
     """Écrit chaque document dont le contenu, `genere` mis à part, diffère du fichier en place ; son `genere` est
-    alors celui du passage. Ne supprime rien. Renvoie les chemins écrits."""
+    alors celui du passage. Ne supprime rien (`supprimer_perimes`). Renvoie les chemins écrits."""
     ecrits = []
     for chemin, document in sorted(documents.items()):
         fichier = depot / chemin
@@ -472,6 +474,20 @@ def ecrire(depot: Path, documents: Mapping[str, Enveloppe], genere: datetime) ->
         fichier.write_text(texte + "\n", encoding="utf-8")
         ecrits.append(chemin)
     return ecrits
+
+
+def supprimer_perimes(depot: Path, documents: Mapping[str, Enveloppe]) -> list[str]:
+    """Supprime les fichiers de lecture en place (`MOTIFS_LECTURE`) qui ne sont pas dans `documents`, la lecture
+    complète de l'archive : une commune qui n'a plus d'Objet rattaché, un conseil retiré de `sources.json`. Aucun
+    fichier d'archive n'est supprimé. Renvoie les chemins supprimés."""
+    supprimes = []
+    for motif in MOTIFS_LECTURE:
+        for fichier in sorted(depot.glob(motif)):
+            chemin = fichier.relative_to(depot).as_posix()
+            if chemin not in documents:
+                fichier.unlink()
+                supprimes.append(chemin)
+    return supprimes
 
 
 # --- Le passage ------------------------------------------------------------------------------------------------
@@ -544,6 +560,7 @@ def importer_conseils(
     documents |= lecture(archive, sources, genere)
     documents[FICHIER_IMPORT] = etat
     ecrire(depot, documents, genere)
+    supprimer_perimes(depot, documents)
     return etat
 
 

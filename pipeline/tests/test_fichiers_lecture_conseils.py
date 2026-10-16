@@ -6,7 +6,8 @@ Le monde de base est celui de `test_import_conseils` ; l'horloge est fixée au v
 """
 
 from faux_openparldata import Affaire, Contributeur, Etape, HorlogeFactice, Point, Reunion
-from test_import_conseils import T0, _lire, _monde, _passer
+from schema import FichierSources
+from test_import_conseils import SOURCES, T0, _lire, _monde, _passer
 
 
 def test_les_seances_de_chaque_conseil_sont_listees_en_lignes_legeres_de_la_plus_recente_a_la_plus_ancienne(
@@ -182,6 +183,26 @@ def test_sans_objet_rattache_aucun_fichier_au_grand_conseil_n_est_ecrit(tmp_path
 
     assert _lire(tmp_path, "conseils/index.json")["communes"] == {}
     assert not (tmp_path / "conseils/communes").exists()
+
+
+def test_un_fichier_de_lecture_que_l_import_ne_produit_plus_est_supprime_jamais_un_fichier_d_archive(tmp_path):
+    horloge = HorlogeFactice(T0)
+    monde = _monde(horloge)
+    _passer(tmp_path, monde, horloge)
+    # Une commune qui n'a plus d'Objet rattaché (une correction l'a retirée, par exemple).
+    perime = tmp_path / "conseils/communes/5586.json"
+    perime.parent.mkdir(parents=True)
+    perime.write_text((tmp_path / "conseils/index.json").read_text())
+
+    # Le conseil de Prilly (5938) n'est plus déclaré.
+    sans_prilly = FichierSources(sources=[s for s in SOURCES.sources if s.id != "openparldata-5938"])
+    _passer(tmp_path, monde, horloge, sources=sans_prilly)
+
+    assert not perime.exists()
+    assert not (tmp_path / "conseils/5938/seances.json").exists()
+    assert (tmp_path / "conseils/5938/seances/2026-10-01.json").exists()
+    assert (tmp_path / "conseils/vd/seances.json").exists()
+    assert (tmp_path / "conseils/import.json").exists()
 
 
 def _entree(cle, sorte, date, titre, communes=(), type=None, points=None):

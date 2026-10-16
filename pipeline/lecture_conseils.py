@@ -45,6 +45,15 @@ Archive = Mapping[str, Objet | Seance]
 SUISSE = ZoneInfo("Europe/Zurich")
 FENETRE_FIL = timedelta(days=21)  # le fil du site en montre 14 : la marge couvre des imports manqués
 FENETRE_RECENTS = timedelta(days=14)
+# Où sont les fichiers de lecture dans le dépôt (motifs de `Path.glob`) : `lecture` produit tout ce qui doit y être,
+# le reste est périmé. Les fichiers d'archive (`conseils/<conseil>/objets/`, `…/seances/`) n'y sont pas.
+MOTIFS_LECTURE = (
+    "conseils/index.json",
+    "conseils/fil.json",
+    "conseils/communes/*.json",
+    "conseils/*/objets-*.json",
+    "conseils/*/seances.json",
+)
 
 
 def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict[str, Enveloppe]:
