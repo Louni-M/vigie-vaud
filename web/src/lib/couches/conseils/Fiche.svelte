@@ -1,8 +1,9 @@
 <script lang="ts">
 	/*
-	 * Fiche d'un Objet ou d'une Séance ouvert, dans l'onglet Conseil de sa commune : le registre a rendu le fil
-	 * « Conseils › POS25/115 » au-dessus, et la remonte pour un autre élément. Lue dans le fichier d'archive de
-	 * l'élément, déjà en mémoire le plus souvent : le registre vient de le lire pour trouver ses fiches.
+	 * Fiche d'un Objet ou d'une Séance ouvert, dans l'onglet Conseil de sa commune ou dans la fiche du Grand Conseil :
+	 * le registre a rendu le fil « Conseils › POS25/115 » au-dessus, et la remonte pour un autre élément. Lue dans le
+	 * fichier d'archive de l'élément, déjà en mémoire le plus souvent : le registre vient de le lire pour trouver ses
+	 * fiches.
 	 */
 	import { untrack } from 'svelte';
 	import type { Contexte } from '#lib/registre/types.js';

@@ -24,6 +24,27 @@ export interface Codec<P> {
  */
 export type Fiche = { commune: string } | { fiche: string };
 
+/**
+ * La fiche propre d'une couche (celle du Grand Conseil pour Conseils), rendue en colonne à la place d'une fiche
+ * commune, avec le seul onglet de sa couche. Une couche en déclare au plus une.
+ */
+export interface FichePropre {
+	/** Ce que porte `{ fiche }` dans `Fiche`, `Lieu.fiches` et `Cible`. */
+	id: string;
+	/** Chemin de sa page, relatif à la base du site, d'un seul segment (« /grand-conseil »). */
+	chemin: string;
+	/** En tête de la fiche et dans le titre du document. */
+	nom: string;
+	/** Sous le nom, à la place de l'adresse de l'hôtel de ville d'une commune. */
+	sousTitre: string;
+	/** Description de sa page pré-générée, pour l'aperçu d'un lien partagé et les moteurs de recherche. */
+	description: string;
+	/** Point (lon, lat) vers lequel vole la carte à l'ouverture de la fiche. */
+	position: [number, number];
+	/** Autres noms par lesquels la recherche la trouve. */
+	alias?: string[];
+}
+
 /** Ce que `localiser` sait d'un élément : ses fiches, dans l'ordre, et sa position (lon, lat) s'il en a une. */
 export interface Lieu {
 	/** Fiches où l'élément peut s'ouvrir ; il s'ouvre dans la première, sauf si celle du chemin en fait partie. */
@@ -38,12 +59,15 @@ export interface Ouvert {
 }
 
 /**
- * Ce qu'on peut ouvrir : la fiche d'une commune, ou un élément d'une couche. Le registre ouvre l'élément dans
+ * Ce qu'on peut ouvrir : la fiche d'une commune, une fiche propre (son identifiant), ou un élément d'une couche. Le registre ouvre l'élément dans
  * l'une de ses fiches, qu'il trouve par `localiser`. Quand celui qui l'ouvre connaît déjà sa `position` (clic sur
  * la carte, liste), la carte vole vers lui tout de suite, sans attendre `localiser`. Une fiche commune peut
  * s'ouvrir sur l'onglet d'une couche (`onglet` : son id), sinon sur l'onglet déjà choisi.
  */
-export type Cible = { commune: string; onglet?: string } | (Ouvert & { position?: [number, number] });
+export type Cible =
+	| { commune: string; onglet?: string }
+	| { fiche: string }
+	| (Ouvert & { position?: [number, number] });
 
 /** Résultat qu'une couche fournit à la recherche du socle. */
 export interface ResultatCouche {
@@ -68,6 +92,8 @@ export interface Contexte<P = unknown> {
 	readonly ouvert: Ouvert | null;
 	/** Commune dont la fiche est ouverte (celle que montre l'`Onglet`), ou `null`. */
 	readonly commune: Commune | null;
+	/** Fiche propre ouverte, où l'`Onglet` de sa couche est rendu à la place d'une commune, ou `null`. */
+	readonly fiche: FichePropre | null;
 	/** Index des communes actuelles, connu dès le rendu de la page. */
 	readonly communes: readonly Commune[];
 	/**
@@ -129,6 +155,8 @@ export interface Couche<P = unknown> {
 	/** Pastille du rail : un signe et sa couleur. */
 	icone: { signe: string; couleur: string };
 	codec?: Codec<P>;
+	/** Sa fiche propre, avec sa page (« /grand-conseil ») ; seul son `Onglet` y est rendu. */
+	fiche?: FichePropre;
 	/** Clé de requête de l'élément ouvert de cette couche (« d » pour un dossier). */
 	cleElement?: string;
 	/** Fiches et position d'un élément, ou `null` si la couche ne le trouve pas. Rejette si elle n'a pas pu chercher. */

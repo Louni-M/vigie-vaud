@@ -2,14 +2,23 @@
 	/*
 	 * « Objets récents » d'un conseil : les 8 derniers, puis « Tous les objets (n) », qui les montre tous et lit
 	 * l'année suivante ; ensuite, une année à la fois. Les listes sont lues par année (`objetsRecents`,
-	 * `objetsSuivants`).
+	 * `objetsSuivants`). Avec `puces` (fiche du Grand Conseil) : « Tous · Nomment une commune · Sans commune »
+	 * filtrent les Objets déjà lus, par leurs communes rattachées.
 	 */
 	import { untrack } from 'svelte';
 	import type { ConseilIndexe } from '#lib/schema.js';
 	import { conseils, OBJETS_RECENTS, type PageObjets } from './donnees.js';
+	import { COULEUR_CONSEILS } from './index.js';
 	import LigneObjet from './LigneObjet.svelte';
+	import { filtrerObjets, PUCES_OBJETS, type PuceObjets } from './lignes.js';
 
-	let { conseil, ouvrir }: { conseil: ConseilIndexe; ouvrir?: (cle: string) => void } = $props();
+	let {
+		conseil,
+		ouvrir,
+		puces = false
+	}: { conseil: ConseilIndexe; ouvrir?: (cle: string) => void; puces?: boolean } = $props();
+
+	let puce = $state<PuceObjets>('tous');
 
 	let page = $state.raw<PageObjets | null>(null);
 	let echec = $state(false);
@@ -41,12 +50,20 @@
 		lireSuivante();
 	}
 
-	const montres = $derived(page ? (tous ? page.objets : page.objets.slice(0, OBJETS_RECENTS)) : []);
-	const resteAMontrer = $derived(page !== null && (page.objets.length > OBJETS_RECENTS || page.suivante !== null));
+	const filtres = $derived(page ? filtrerObjets(page.objets, puce) : []);
+	const montres = $derived(tous ? filtres : filtres.slice(0, OBJETS_RECENTS));
+	const resteAMontrer = $derived(page !== null && (filtres.length > OBJETS_RECENTS || page.suivante !== null));
 </script>
 
-<section aria-labelledby="objets-{conseil.cle}">
+<section aria-labelledby="objets-{conseil.cle}" style:--c={COULEUR_CONSEILS}>
 	<h4 id="objets-{conseil.cle}">Objets récents</h4>
+	{#if puces}
+		<div class="puces" role="group" aria-label="Communes nommées">
+			{#each PUCES_OBJETS as p (p.id)}
+				<button type="button" aria-pressed={puce === p.id} onclick={() => (puce = p.id)}>{p.nom}</button>
+			{/each}
+		</div>
+	{/if}
 	{#if echec}
 		<p class="erreur" role="alert">
 			Les objets n’ont pas pu être chargés.
@@ -56,12 +73,16 @@
 		<p class="note" aria-busy="true">Lecture des objets…</p>
 	{:else if page.objets.length === 0}
 		<p class="note">Aucun objet.</p>
+	{:else if montres.length === 0 && page.suivante === null}
+		<p class="note">Aucun objet {puce === 'avec' ? 'ne nomme une commune' : 'sans commune'}.</p>
 	{:else}
 		<ul>
 			{#each montres as objet (objet.cle)}<LigneObjet {objet} {ouvrir} />{/each}
 		</ul>
 		{#if !tous && resteAMontrer}
-			<button class="plus" type="button" onclick={toutMontrer}>Tous les objets ({conseil.objets})</button>
+			<button class="plus" type="button" onclick={toutMontrer}>
+				Tous les objets{puce === 'tous' ? ` (${conseil.objets})` : ''}
+			</button>
 		{:else if tous && suite === 'attente'}
 			<p class="note" aria-busy="true">Lecture des objets de {page.suivante}…</p>
 		{:else if tous && suite === 'echec'}
@@ -89,6 +110,26 @@
 		margin: 0;
 		padding: 0;
 	}
+	.puces {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		margin: 4px 0;
+	}
+	.puces button {
+		padding: 3px 9px;
+		border: 1px solid var(--c);
+		border-radius: 999px;
+		background: var(--surface);
+		font: inherit;
+		font-size: 12px;
+		color: var(--c);
+		cursor: pointer;
+	}
+	.puces button[aria-pressed='true'] {
+		background: var(--c);
+		color: #fff;
+	}
 	.note {
 		margin: 4px 0 0;
 		font-size: 13px;
@@ -114,6 +155,7 @@
 		cursor: pointer;
 	}
 	@media (pointer: coarse) {
+		.puces button,
 		.plus,
 		.petit {
 			min-height: 44px;

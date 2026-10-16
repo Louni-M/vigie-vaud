@@ -20,9 +20,12 @@ export const PAGES_FIXES = ['/', '/couverture', '/a-propos', '/enquete-publique'
 /** Chemin de la fiche d'une commune, relatif à la base du site (ADR 0012). */
 export const cheminCommune = (slug: string) => `/commune/${slug}`;
 
-/** `sitemap.xml` : les pages fixes puis la fiche de chaque commune, en adresses canoniques. */
-export function sitemap(site: string, slugs: readonly string[]): string {
-	const chemins = [...PAGES_FIXES, ...slugs.map(cheminCommune)];
+/**
+ * `sitemap.xml` : les pages fixes, les fiches propres des couches (`fiches` : leurs chemins, « /grand-conseil »), puis
+ * la fiche de chaque commune, en adresses canoniques.
+ */
+export function sitemap(site: string, slugs: readonly string[], fiches: readonly string[] = []): string {
+	const chemins = [...PAGES_FIXES, ...fiches, ...slugs.map(cheminCommune)];
 	return [
 		'<?xml version="1.0" encoding="UTF-8"?>',
 		'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

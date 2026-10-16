@@ -24,8 +24,8 @@ describe('adresse canonique d’une page', () => {
 });
 
 describe('sitemap.xml', () => {
-	it('liste l’accueil, les pages fixes et chaque commune, en adresses absolues', () => {
-		expect(sitemap(SITE, ['pully', 'bourg-en-lavaux'])).toBe(
+	it('liste l’accueil, les pages fixes, les fiches propres et chaque commune, en adresses absolues', () => {
+		expect(sitemap(SITE, ['pully', 'bourg-en-lavaux'], ['/grand-conseil'])).toBe(
 			`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://louni-m.github.io/vigie-vaud/</loc></url>
@@ -33,6 +33,7 @@ describe('sitemap.xml', () => {
 <url><loc>https://louni-m.github.io/vigie-vaud/a-propos</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/enquete-publique</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/protection-des-donnees</loc></url>
+<url><loc>https://louni-m.github.io/vigie-vaud/grand-conseil</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/commune/pully</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/commune/bourg-en-lavaux</loc></url>
 </urlset>
@@ -40,9 +41,10 @@ describe('sitemap.xml', () => {
 		);
 	});
 
-	it('a 305 adresses pour les 300 communes, sur l’adresse publique en configuration', () => {
+	it('a 306 adresses pour les 300 communes et la fiche du Grand Conseil, sur l’adresse publique en configuration', () => {
 		const slugs = Array.from({ length: 300 }, (_, i) => `commune-${i}`);
-		expect(sitemap('https://vigievaud.ch', slugs).match(/<loc>https:\/\/vigievaud\.ch\//g)).toHaveLength(305);
+		const adresses = sitemap('https://vigievaud.ch', slugs, ['/grand-conseil']).match(/<loc>https:\/\/vigievaud\.ch\//g);
+		expect(adresses).toHaveLength(306);
 	});
 });
 

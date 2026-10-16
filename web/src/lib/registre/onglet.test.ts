@@ -10,7 +10,7 @@ import { commune } from '#tests/faux-canton.js';
 const LAUSANNE = commune(5586, 'Lausanne', [6.58, 46.5, 6.72, 46.6]);
 const BUSSIGNY = commune(5624, 'Bussigny', [6.53, 46.54, 6.57, 46.57]);
 
-const noms = (couche: CoucheInscrite, bfs: number, sources: readonly Source[] = SOURCES) =>
+const noms = (couche: CoucheInscrite, bfs: number | null, sources: readonly Source[] = SOURCES) =>
 	sourcesDeLOnglet(couche, sources, bfs).map((s) => s.nom_court);
 
 describe('badges sous le nom d’un onglet', () => {
@@ -39,6 +39,11 @@ describe('badges sous le nom d’un onglet', () => {
 
 		expect(noms(couche, 5590, sources)).toEqual(['a', 'b']);
 		expect(noms(couche, 5586, sources)).toEqual(['b']);
+	});
+
+	it('dans une fiche propre, seulement les sources qui portent sur tout le canton', () => {
+		expect(noms(coucheConseils, null)).toEqual(['Grand Conseil']);
+		expect(noms(couchePermis, null)).toEqual(['CAMAC']);
 	});
 });
 

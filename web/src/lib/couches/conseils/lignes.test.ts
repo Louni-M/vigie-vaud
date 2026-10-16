@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { auteursObjet, dateObjet, nomSeance, ordreDuJour, seancesPassees, siteDuLien, teteSeance } from './lignes.js';
+import {
+	auteursObjet,
+	dateObjet,
+	filtrerObjets,
+	nomSeance,
+	PUCES_OBJETS, ordreDuJour,
+	seancesPassees,
+	siteDuLien,
+	teteSeance
+} from './lignes.js';
 import { conseilLausanne, conseilYverdon, ligneObjet } from '#tests/faux-conseils.js';
 import type { LigneSeance } from '#lib/schema.js';
 
@@ -95,5 +104,21 @@ describe('lien vers le site du conseil', () => {
 	it('nomme le site par son hôte, sans « www. » : « Voir sur lausanne.ch › »', () => {
 		expect(siteDuLien('https://www.lausanne.ch/officiel/conseil-communal/objet.html')).toBe('lausanne.ch');
 		expect(siteDuLien('https://www.vd.ch/gc/objet?id=1')).toBe('vd.ch');
+	});
+});
+
+describe('puces des Objets récents du Grand Conseil', () => {
+	const sans = ligneObjet({ cle: 'vd/26_INT_140' });
+	const lutry = ligneObjet({ cle: 'vd/26_MOT_12', communes: [{ ofs: 5606, origine: 'titre' }] });
+	const pully = ligneObjet({ cle: 'vd/26_POS_3', communes: [{ ofs: 5590, origine: 'document' }] });
+	const objets = [sans, lutry, pully];
+
+	it('s’appellent « Tous · Nomment une commune · Sans commune »', () => {
+		expect(PUCES_OBJETS.map((p) => p.nom)).toEqual(['Tous', 'Nomment une commune', 'Sans commune']);
+	});
+	it('filtrent les Objets par leurs communes rattachées, dans leur ordre', () => {
+		expect(filtrerObjets(objets, 'tous')).toEqual([sans, lutry, pully]);
+		expect(filtrerObjets(objets, 'avec')).toEqual([lutry, pully]);
+		expect(filtrerObjets(objets, 'sans')).toEqual([sans]);
 	});
 });

@@ -4,12 +4,13 @@
 	 * zooms, il est décalé à l'écran vers le nord-est, pour qu'on puisse cliquer aussi sur l'hôtel de ville de Lausanne
 	 * tout proche ; le décalage s'annule vers le zoom 14. C'est un calque de la carte, et non un marqueur HTML : les
 	 * hôtels de ville, dessinés au-dessus de toutes les couches, restent ainsi au-dessus de lui. Fondu à l'activation.
-	 * Le clic viendra avec la fiche du Grand Conseil.
+	 * Un clic sur le marqueur ouvre la fiche du Grand Conseil, sauf si un hôtel de ville, au-dessus, est sous le clic.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import type { ExpressionSpecification } from 'maplibre-gl';
+	import type { ExpressionSpecification, MapLayerMouseEvent } from 'maplibre-gl';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { retirerDeLaCarte } from '#lib/socle/carte.js';
+	import { FICHE_GRAND_CONSEIL } from './cles.js';
 	import { COULEUR_CONSEILS, PARLEMENT } from './index.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
@@ -112,7 +113,21 @@
 		return () => clearTimeout(t);
 	});
 
+	/** Le marqueur ouvre la fiche du Grand Conseil ; l'hôtel de ville de Lausanne, dessiné au-dessus, l'emporte. */
+	function clic(e: MapLayerMouseEvent) {
+		if (!ctx.active || ctx.recouvert([e.point.x, e.point.y])) return;
+		ctx.ouvrir({ fiche: FICHE_GRAND_CONSEIL });
+	}
+	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
+	const sansPointeur = () => (map.getCanvas().style.cursor = '');
+	map.on('click', MARQUEUR, clic);
+	map.on('mouseenter', MARQUEUR, pointeur);
+	map.on('mouseleave', MARQUEUR, sansPointeur);
+
 	onMount(() => () => {
+		map.off('click', MARQUEUR, clic);
+		map.off('mouseenter', MARQUEUR, pointeur);
+		map.off('mouseleave', MARQUEUR, sansPointeur);
 		retirerDeLaCarte(map, [MARQUEUR], [SOURCE]);
 		if (map.style && map.hasImage(IMAGE)) map.removeImage(IMAGE);
 	});

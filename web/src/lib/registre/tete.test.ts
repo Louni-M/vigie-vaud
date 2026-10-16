@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { teteCommune, titreFiche } from './tete.js';
+import { teteCommune, teteFiche, titreFiche } from './tete.js';
 import type { CoucheInscrite } from './types.js';
 import { commune } from '#tests/faux-canton.js';
 import type { AncienNom } from '#lib/types.js';
@@ -78,15 +78,34 @@ describe('titre de la page, qui suit la fiche ouverte', () => {
 	const permis = couche('permis', { titre: (element, commune) => `Dossier n° ${element} – ${commune} – Vigie Vaud` });
 	const sansTitre = couche('routes');
 
-	it('est celui de la commune quand aucun élément n’est ouvert', () => {
-		expect(titreFiche(PULLY, null, [permis])).toBe('Pully – Vigie Vaud');
+	it('est celui de la fiche quand aucun élément n’est ouvert', () => {
+		expect(titreFiche('Pully', null, [permis])).toBe('Pully – Vigie Vaud');
+		expect(titreFiche('Parlement', null, [permis])).toBe('Parlement – Vigie Vaud');
 	});
-	it('est celui que la couche donne à l’élément ouvert, dans la commune du chemin', () => {
-		expect(titreFiche(PULLY, { couche: 'permis', element: '248845' }, [permis])).toBe(
+	it('est celui que la couche donne à l’élément ouvert, dans la fiche du chemin', () => {
+		expect(titreFiche('Pully', { couche: 'permis', element: '248845' }, [permis])).toBe(
 			'Dossier n° 248845 – Pully – Vigie Vaud'
 		);
+		expect(titreFiche('Parlement', { couche: 'permis', element: '248845' }, [permis])).toBe(
+			'Dossier n° 248845 – Parlement – Vigie Vaud'
+		);
 	});
-	it('reste celui de la commune pour une couche qui ne titre pas ses éléments', () => {
-		expect(titreFiche(PULLY, { couche: 'routes', element: 'A9' }, [permis, sansTitre])).toBe('Pully – Vigie Vaud');
+	it('reste celui de la fiche pour une couche qui ne titre pas ses éléments', () => {
+		expect(titreFiche('Pully', { couche: 'routes', element: 'A9' }, [permis, sansTitre])).toBe('Pully – Vigie Vaud');
+	});
+});
+
+describe('<head> d’une fiche propre', () => {
+	const fiche = {
+		id: 'parlement',
+		chemin: '/parlement',
+		nom: 'Parlement',
+		sousTitre: 'place du Château',
+		description: 'Ce que fait le parlement.',
+		position: [6.6, 46.5] as [number, number]
+	};
+
+	it('porte le nom de la fiche et la description qu’elle déclare', () => {
+		expect(teteFiche(fiche)).toEqual({ titre: 'Parlement – Vigie Vaud', description: 'Ce que fait le parlement.' });
 	});
 });

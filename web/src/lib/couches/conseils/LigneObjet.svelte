@@ -1,6 +1,6 @@
 <script lang="ts">
 	/*
-	 * Une ligne d'Objet, dans l'onglet Conseil (et plus tard la fiche du Grand Conseil) : pastille pleine, type et
+	 * Une ligne d'Objet, dans l'onglet Conseil et la fiche du Grand Conseil : pastille pleine, type et
 	 * numéro, date ; le titre sur 3 lignes au plus ; les auteur·e·s (2, puis « et al. ») avec leur parti, et le
 	 * statut. Sans `ouvrir`, la ligne n'est pas cliquable.
 	 */

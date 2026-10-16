@@ -1,6 +1,6 @@
 <script lang="ts">
 	/*
-	 * En-tête de séance, en tête de l'onglet Conseil (et plus tard de la fiche du Grand Conseil) : la prochaine
+	 * En-tête de séance, en tête de l’onglet Conseil et de la fiche du Grand Conseil : la prochaine
 	 * Séance si elle est annoncée, sinon la dernière, avec les 5 premiers points de son ordre du jour, lus dans son
 	 * fichier d'archive, et « Les N points ». Avec `ouvrir`, le nom et « Les N points » ouvrent la Séance, et un
 	 * point lié à un Objet ouvre cet Objet.
