@@ -32,6 +32,7 @@
           "description": "Numéro du point tel que la source l'affiche."
         },
         "titre": {
+          "description": "`item_title` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).",
           "type": "string"
         },
         "categorie": {
