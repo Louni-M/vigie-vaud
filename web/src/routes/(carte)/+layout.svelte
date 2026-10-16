@@ -156,8 +156,9 @@
 
 	function choix(r: Resultat) {
 		registre.oublierAvis();
-		// Chercher un lieu déplace la zone du fil ; chercher un élément, non.
-		if (r.type !== 'element') registre.deplacementVoulu();
+		// Chercher un lieu déplace la zone du fil ; chercher un élément ou une fiche propre, non : c'est le registre
+		// qui vole vers eux.
+		if (r.type === 'adresse' || r.type === 'commune') registre.deplacementVoulu();
 		if (r.type === 'adresse') {
 			repere = [r.lon, r.lat];
 			carte?.voler(r.lon, r.lat, r.categorie === 'Position' ? 15 : 16);
@@ -165,6 +166,9 @@
 			// La fiche s'ouvre, et la carte cadre la commune.
 			repere = null;
 			registre.ouvrir({ commune: r.commune.slug });
+		} else if (r.type === 'fiche') {
+			repere = null;
+			registre.ouvrir({ fiche: r.fiche });
 		} else registre.ouvrir({ couche: r.couche, element: r.element });
 	}
 

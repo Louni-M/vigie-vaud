@@ -8,6 +8,7 @@ import {
 	messageIntrouvable,
 	titreElement
 } from './cles.js';
+import { reconnaitreNumero } from './numeros.js';
 import { resumeConseils } from './resume.js';
 
 /** Sarcelle : la couleur de la couche, de son marqueur et des pastilles de ses Objets et Séances. */
@@ -47,6 +48,13 @@ export const coucheConseils: Couche<undefined> = {
 		const { conseils } = await import('./donnees.js');
 		return conseils.localiser(element);
 	},
+	// La forme du numéro suffit : rien n'est lu avant l'ouverture, où `localiser` charge le fichier d'archive.
+	chercher: (texte) =>
+		reconnaitreNumero(texte).map(({ cle, numero, nom }) => ({
+			couche: 'conseils',
+			element: cle,
+			libelle: `Objet ${numero} · ${nom}`
+		})),
 	introuvable: messageIntrouvable,
 	titre: titreElement,
 	libelle: libelleElement,

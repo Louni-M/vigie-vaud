@@ -31,3 +31,26 @@ export function chercherCommunes(communes: readonly Commune[], saisie: string): 
 		...anciens.map(({ a, c }): ResultatCommune => ({ type: 'commune', libelle: `${a.nom} → ${c.nom}`, commune: c }))
 	];
 }
+
+/**
+ * Résultats calculés sans réseau, à chaque frappe : les communes (et anciens noms), puis ce qu'apportent les
+ * couches (`chercherCouches` : fiches propres, puis éléments).
+ */
+export const resultatsLocaux = (
+	communes: readonly Commune[],
+	saisie: string,
+	chercherCouches: (texte: string) => Resultat[]
+): Resultat[] => [...chercherCommunes(communes, saisie), ...chercherCouches(saisie)];
+
+/** Nombre de résultats affichés, adresses comprises. */
+export const RESULTATS_MAX = 10;
+
+/**
+ * Les adresses et lieux swisstopo à la suite des résultats locaux. Un même lieu revient sous plusieurs catégories
+ * (sortie d'autoroute, camping…), ou porte le nom d'une commune déjà proposée : un seul suffit.
+ */
+export function avecAdresses(locaux: readonly Resultat[], adresses: readonly Resultat[]): Resultat[] {
+	const vus = new Set(locaux.map((r) => r.libelle));
+	const uniques = adresses.filter((r) => !vus.has(r.libelle) && vus.add(r.libelle));
+	return [...locaux, ...uniques].slice(0, RESULTATS_MAX);
+}

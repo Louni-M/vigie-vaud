@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chercherCommunes } from './recherche.js';
+import { avecAdresses, chercherCommunes, resultatsLocaux } from './recherche.js';
 import { commune } from '#tests/faux-canton.js';
-import type { AncienNom, Commune } from '#lib/types.js';
+import { COUCHES } from '#lib/registre/couches.js';
+import { resultatsCouches } from '#lib/registre/recherche.js';
+import type { AncienNom, Commune, Resultat } from '#lib/types.js';
 
 const ancienne = (nom: string, slug: string, annee = 2011): AncienNom => ({ nom, slug, type: 'Ancienne commune', annee });
 const avec = (c: Commune, anciens: AncienNom[]): Commune => ({ ...c, anciens });
@@ -53,5 +55,26 @@ describe('recherche des communes', () => {
 			'Labex → Ailleurs',
 			'Lobex → Ailleurs'
 		]);
+	});
+});
+
+describe('ordre des résultats de la recherche', () => {
+	const GRANDSON = commune(5561, 'Grandson', [6.6, 46.8, 6.7, 46.85]);
+	const adresse = (libelle: string): Resultat => ({ type: 'adresse', categorie: 'Adresse', libelle, lon: 6.6, lat: 46.5 });
+
+	it('donne les communes, puis les fiches propres, puis les éléments des couches, puis les adresses et lieux', () => {
+		const locaux = resultatsLocaux([PULLY, GRANDSON], 'gr', (texte) => resultatsCouches(COUCHES, texte));
+		const tous = avecAdresses(locaux, [adresse('Grand-Rue 1, 1095 Lutry')]);
+		expect(tous.map((r) => [r.type, r.libelle])).toEqual([
+			['commune', 'Grandson'],
+			['fiche', 'Grand Conseil'],
+			['adresse', 'Grand-Rue 1, 1095 Lutry']
+		]);
+	});
+
+	it('met un élément d’une couche après les communes et avant les adresses, qui ne répètent pas un libellé', () => {
+		const element: Resultat = { type: 'element', nomCouche: 'Permis', libelle: 'Dossier', couche: 'permis', element: '1' };
+		const locaux = resultatsLocaux([PULLY], 'pully', () => [element]);
+		expect(avecAdresses(locaux, [adresse('Pully'), adresse('Pully')]).map((r) => r.type)).toEqual(['commune', 'element']);
 	});
 });
