@@ -346,9 +346,12 @@ export interface Objet {
 	 * Date de dépôt (`begin_date`).
 	 */
 	depose: string | null;
+	/**
+	 * `title.fr` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).
+	 */
 	titre: string;
 	/**
-	 * Dans l'ordre de la source.
+	 * Dans l'ordre de la source ; vide pour une pétition.
 	 */
 	contributeurs: Contributeur[];
 	/**
@@ -439,6 +442,9 @@ export interface PointOrdreDuJour {
 	 * Numéro du point tel que la source l'affiche.
 	 */
 	numero: string | null;
+	/**
+	 * `item_title` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).
+	 */
 	titre: string;
 	categorie: string | null;
 	/**

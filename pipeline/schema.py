@@ -255,8 +255,8 @@ class Objet(Enveloppe):
     type: str = Field(description="Type brut de la source (`type_name`).")
     statut: Statut | None
     depose: dt.date | None = Field(description="Date de dépôt (`begin_date`).")
-    titre: str
-    contributeurs: list[Contributeur] = Field(description="Dans l'ordre de la source.")
+    titre: str = Field(description="`title.fr` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).")
+    contributeurs: list[Contributeur] = Field(description="Dans l'ordre de la source ; vide pour une pétition.")
     etapes: list[Etape] = Field(description="Étapes datées, de la plus ancienne à la plus récente.")
     documents: list[DocumentObjet]
     lien: Lien | None = Field(description="Page de l'Objet chez le conseil (`url_external`).")
@@ -269,7 +269,7 @@ DateSeance = TypeAliasType(
 
 class PointOrdreDuJour(Modele):
     numero: str | None = Field(description="Numéro du point tel que la source l'affiche.")
-    titre: str
+    titre: str = Field(description="`item_title` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).")
     categorie: str | None
     resultat: str | None = Field(description="Résultat brut (« Transmise au CE », « Renvoi en Municipalité »…).")
     objet: CleElement | None = Field(description="Clé de l'Objet du point, quand il est dans l'archive.")
