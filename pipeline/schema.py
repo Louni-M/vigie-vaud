@@ -72,7 +72,7 @@ class Enveloppe(Modele):
 
 IdSource = TypeAliasType("IdSource", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")])
 VoieAcces = TypeAliasType("VoieAcces", Literal["direct", "cron", "worker", "preparee"])
-SorteFraicheur = TypeAliasType("SorteFraicheur", Literal["donnee", "requete", "millesime"])
+SorteFraicheur = TypeAliasType("SorteFraicheur", Literal["donnee", "requete", "millesime", "import"])
 ModeCouverture = TypeAliasType("ModeCouverture", Literal["api", "scrape"])
 
 
@@ -92,8 +92,8 @@ class CouvertureDeclaree(Modele):
 class Sonde(Modele):
     """Requête de vérification envoyée par le cron, sans conserver de données.
 
-    Une seule requête GET par passage, sans nouvel essai. La réponse doit être un objet JSON dont `features` liste
-    les enregistrements (JSON ArcGIS ou GeoJSON) ; elle doit donc rester légère (un enregistrement suffit).
+    Une seule requête GET par passage, sans nouvel essai. La réponse doit être un objet JSON dont une clé
+    (`enregistrements`) liste les enregistrements ; elle doit donc rester légère (un enregistrement suffit).
     """
 
     url: Lien
@@ -101,9 +101,35 @@ class Sonde(Modele):
     champs: list[str] = Field(
         default=[],
         description="Champs que doit porter chaque enregistrement renvoyé, lus dans `attributes` (JSON ArcGIS) "
-        "ou `properties` (GeoJSON).",
+        "ou `properties` (GeoJSON), sinon à plat dans l'enregistrement (OpenParlData).",
+    )
+    enregistrements: str = Field(
+        default="features",
+        min_length=1,
+        description="Clé de la réponse qui liste les enregistrements : `features` (JSON ArcGIS, GeoJSON) ou `data` "
+        "(OpenParlData).",
     )
     jamais_vide: bool = Field(default=False, description="Une réponse sans enregistrement compte comme un échec.")
+
+
+DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "seances"])
+
+
+class Conseil(Modele):
+    """Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc."""
+
+    body_key: str = Field(
+        pattern=r"^[A-Z0-9]+$",
+        description="Clé du conseil dans OpenParlData : `VD` (Grand Conseil) ou le n° OFS de la commune. "
+        "En minuscules, c'est la clé du conseil dans le dépôt de données.",
+    )
+    donne: Annotated[list[DonneeConseil], Field(min_length=1)] = Field(
+        description="Ce que le conseil donne : ses Objets, ses Séances, ou les deux."
+    )
+    groupe: int | None = Field(
+        default=None,
+        description="`group_id` des Séances à importer : celui du Grand Conseil écarte les Séances du Conseil d'État.",
+    )
 
 
 class Source(Modele):
@@ -113,8 +139,13 @@ class Source(Modele):
     attribution: Attribution
     voie_acces: VoieAcces
     fraicheur: SorteFraicheur
-    couverture: CouvertureDeclaree
+    couverture: CouvertureDeclaree | None = Field(
+        default=None,
+        description="Absente, la source n'a pas de Couverture : elle porte sur le canton (Grand Conseil) ou ses "
+        "éléments n'appartiennent à aucune commune.",
+    )
     sonde: Sonde | None = Field(default=None, description="Sans sonde, la source n'est pas surveillée.")
+    conseil: Conseil | None = Field(default=None, description="Le conseil que donne la source, importé par le cron.")
 
 
 class FichierSources(Modele):
@@ -166,6 +197,22 @@ class EtatSources(Enveloppe):
     sources: dict[IdSource, EtatSource] = Field(description="Seules les sources qui ont un bloc `sonde` y figurent.")
 
 
+# --- Import des conseils (conseils/import.json, dépôt de données) ----------------------------------------------
+
+CleConseil = TypeAliasType("CleConseil", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+$")])
+
+
+class ImportConseils(Enveloppe):
+    """`conseils/import.json` : l'heure du dernier import réussi de chaque conseil, importé à part. C'est la
+    mémoire du cron et la base du badge de fraîcheur des sources `import`."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    conseils: dict[CleConseil, Horodatage] = Field(
+        description="Par clé de conseil (`body_key` en minuscules : `vd`, `5586`…), l'heure du dernier import "
+        "réussi. Un conseil jamais importé n'y figure pas."
+    )
+
+
 # --- Génération du JSON Schema ---------------------------------------------------------------------------------
 
 # Un JSON Schema par document : `schema/<nom>.schema.json`.
@@ -173,6 +220,7 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "sources": FichierSources,
     "enveloppe": Enveloppe,
     "etat-sources": EtatSources,
+    "import-conseils": ImportConseils,
 }
 
 

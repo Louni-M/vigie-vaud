@@ -13,7 +13,10 @@ function enumerer(parties: string[]): string {
  * puis nomme ses anciennes communes et ses anciens noms.
  */
 export function teteCommune(commune: Commune, couches: readonly CoucheInscrite[]) {
-	const resumes = couches.flatMap((c) => (c.resume ? [c.resume] : []));
+	const resumes = couches.flatMap((c) => {
+		const resume = typeof c.resume === 'function' ? c.resume(commune) : c.resume;
+		return resume ? [resume] : [];
+	});
 	// Les anciennes communes, comme dans l'en-tête de la fiche : on retrouve son village dans l'aperçu du lien.
 	const anciens = enteteFiche(commune).anciens.map((l) => ` ${l}.`);
 	return {
