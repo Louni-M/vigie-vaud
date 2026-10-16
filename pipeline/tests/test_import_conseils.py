@@ -393,3 +393,86 @@ def test_chaque_fichier_ecrit_est_valide_au_json_schema(tmp_path):
         chemin = fichier.relative_to(tmp_path)
         nom = {"conseils": "import-conseils", "objets": "objet", "seances": "seance"}[chemin.parent.name]
         jsonschema.validate(json.loads(fichier.read_text()), schemas[nom])
+
+
+def _monde_avec_petition(horloge):
+    """Le monde de base, plus une pétition de Lausanne qui nomme son pétitionnaire, une interpellation d'une élue, et
+    un point de grâce au Grand Conseil. « Exemple » ne nomme que des particuliers."""
+    monde = _monde(horloge)
+    monde.affaires += [
+        Affaire(
+            id=340950,
+            body_key="5586",
+            number="PET25/003",
+            title="Pétition de M. Paul Exemple et consorts (312 signatures) : « Pour un parc à chiens »",
+            type_name="Pétition",
+            contributeurs=[Contributeur("Paul Exemple", None, "Auteur")],
+        ),
+        Affaire(
+            id=340951,
+            body_key="5586",
+            number="INT25/020",
+            title="Interpellation de Mme Léa Conseillère : « Des bancs »",
+            contributeurs=[Contributeur("Léa Conseillère", "PS", "Auteur")],
+        ),
+    ]
+    monde.reunions[2].points += [
+        Point(2, "Pétition de M. Paul Exemple et consorts : « Pour un parc à chiens »", "PET25/003", affaire_id=340950),
+        Point(3, "Interpellation de Mme Léa CONSEILLÈRE : « Des bancs »", "INT25/020", affaire_id=340951),
+    ]
+    monde.reunions[0].points += [
+        Point(5, "Demande de grâce de M. Marc Exemple", "26_GRA_1"),
+        Point(6, "Recours en grâce Zoé Exemple"),  # sans numéro d'Objet : reconnu à son titre
+        Point(7, "Grâce aux vélos, des rues apaisées"),
+    ]
+    return monde
+
+
+def test_aucun_nom_masque_n_atteint_l_archive_et_une_petition_n_a_pas_d_auteur(tmp_path):
+    horloge = HorlogeFactice(T0)
+
+    _passer(tmp_path, _monde_avec_petition(horloge), horloge)
+
+    for fichier in tmp_path.rglob("*.json"):
+        assert "Exemple" not in fichier.read_text(encoding="utf-8"), fichier
+    petition = _lire(tmp_path, "conseils/5586/objets/PET25-003.json")
+    assert (petition["titre"], petition["contributeurs"]) == (
+        "Pétition de [particulier] et consorts (312 signatures) : « Pour un parc à chiens »",
+        [],
+    )
+    lausanne = _lire(tmp_path, "conseils/5586/seances/2026-10-06.json")["ordre_du_jour"]
+    assert [p["titre"] for p in lausanne] == [
+        "Postulat - Préaux ouverts",
+        "Pétition de [particulier] et consorts : « Pour un parc à chiens »",
+        "Interpellation de Mme Léa CONSEILLÈRE : « Des bancs »",
+    ]
+    grand_conseil = _lire(tmp_path, "conseils/vd/seances/2026-10-06.json")["ordre_du_jour"]
+    assert [p["numero"] for p in grand_conseil] == ["2", "3", "7"]
+
+
+def test_les_elus_connus_viennent_aussi_de_l_archive(tmp_path):
+    horloge = HorlogeFactice(T0)
+    monde = _monde_avec_petition(horloge)
+    _passer(tmp_path, monde, horloge)
+
+    horloge.heure = T0 + timedelta(days=1)
+    monde.reunions.append(
+        Reunion(
+            id=33002,
+            body_key="5586",
+            name="Séance",
+            begin_date="2026-10-13T00:00:00",
+            updated_at="2026-10-17",
+            points=[
+                Point(1, "Interpellation de Mme Léa Conseillère : « Des tables »"),
+                Point(2, "Pétition de M. Paul Exemple : « Des chaises »"),
+            ],
+        )
+    )
+    _passer(tmp_path, monde, horloge)
+
+    points = _lire(tmp_path, "conseils/5586/seances/2026-10-13.json")["ordre_du_jour"]
+    assert [p["titre"] for p in points] == [
+        "Interpellation de Mme Léa Conseillère : « Des tables »",
+        "Pétition de [particulier] : « Des chaises »",
+    ]
