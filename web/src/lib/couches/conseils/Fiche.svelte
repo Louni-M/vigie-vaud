@@ -29,7 +29,7 @@
 	{:else if 'ordre_du_jour' in element}
 		<FicheSeance {cle} seance={element} {ouvrir} />
 	{:else}
-		<FicheObjet {cle} objet={element} />
+		<FicheObjet {cle} objet={element} communes={ctx.communes} />
 	{/if}
 {:catch}
 	<p class="erreur" role="alert">

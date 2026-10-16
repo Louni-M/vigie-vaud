@@ -11,6 +11,7 @@ import {
 	indexConseils,
 	ligneObjet,
 	objet,
+	rattachementsCommune,
 	seance
 } from '#tests/faux-conseils.js';
 import { LUTRY, PULLY, commune } from '#tests/faux-canton.js';
@@ -268,5 +269,47 @@ describe('localiser un Objet ou une Séance', () => {
 		expect(await conseils.element('5586/POS25-115')).toMatchObject({ numero: 'POS25/115' });
 		expect(await conseils.element('5586/2026-10-06')).toMatchObject({ date: '2026-10-06' });
 		expect(await conseils.element('5586/POS25-999')).toBeNull();
+	});
+});
+
+describe('« Au Grand Conseil » d’une commune', () => {
+	const nommantPully = [
+		ligneObjet({ cle: 'vd/26_INT_140', communes: [{ ofs: PULLY.bfs, origine: 'titre' }] }),
+		ligneObjet({
+			cle: 'vd/26_MOT_012',
+			numero: '26_MOT_012',
+			communes: [
+				{ ofs: LUTRY.bfs, origine: 'titre' },
+				{ ofs: PULLY.bfs, origine: 'document' }
+			]
+		})
+	];
+
+	it('lit les Objets rattachés dans conseils/communes/<ofs>.json quand l’index en annonce', async () => {
+		const depot = fauxDepotConseils({
+			'conseils/index.json': indexConseils({ communes: { [PULLY.bfs]: 2 } }),
+			'conseils/communes/5590.json': rattachementsCommune(nommantPully)
+		});
+		const conseils = creerDonneesConseils({ fetch: depot.fetch, donnees: DONNEES });
+
+		const objets = await conseils.auGrandConseil(PULLY.bfs);
+
+		expect(objets.map((o) => o.cle)).toEqual(['vd/26_INT_140', 'vd/26_MOT_012']);
+		expect(depot.requetes).toEqual(['conseils/index.json', 'conseils/communes/5590.json']);
+	});
+
+	it('ne demande rien de plus que l’index pour une commune qu’aucun Objet ne nomme', async () => {
+		const depot = fauxDepotConseils({ 'conseils/index.json': indexConseils({ communes: { [PULLY.bfs]: 2 } }) });
+		const conseils = creerDonneesConseils({ fetch: depot.fetch, donnees: DONNEES });
+
+		expect(await conseils.auGrandConseil(LUTRY.bfs)).toEqual([]);
+		expect(depot.requetes).toEqual(['conseils/index.json']);
+	});
+
+	it('rejette si le fichier annoncé par l’index manque, plutôt que de dire la commune sans Objets', async () => {
+		const depot = fauxDepotConseils({ 'conseils/index.json': indexConseils({ communes: { [PULLY.bfs]: 2 } }) });
+		const conseils = creerDonneesConseils({ fetch: depot.fetch, donnees: DONNEES });
+
+		await expect(conseils.auGrandConseil(PULLY.bfs)).rejects.toThrow(/404/);
 	});
 });
