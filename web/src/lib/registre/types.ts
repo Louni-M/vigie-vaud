@@ -78,6 +78,41 @@ export interface Contexte<P = unknown> {
 	fermer(): void;
 }
 
+/** Un type d'entrée du fil cantonal (« Nouveaux dossiers ») : une puce et la pastille de ses entrées. */
+export interface TypeFil {
+	id: string;
+	nom: string;
+	signe: string;
+	couleur: string;
+}
+
+/** Une entrée du fil cantonal, toute faite par sa couche. */
+export interface EntreeFil {
+	/** Ce que reçoit `ouvrir()`. */
+	element: string;
+	/** Un des types déclarés par la couche. */
+	type: string;
+	/** AAAA-MM-JJ ; « À venir » si elle est dans le futur. */
+	date: string;
+	/** « Construction nouvelle », « Motion ». */
+	sorte: string;
+	/** « Lutry », « Conseil communal de Lausanne ». */
+	qui: string;
+	titre: string;
+	/** Slugs dans l'ordre du rattachement ; vide : sans commune. */
+	communes: string[];
+	/** Sinon, les hôtels de ville de ses communes. */
+	position?: [number, number];
+}
+
+/** Ce qu'une couche apporte au fil cantonal. */
+export interface Fil {
+	/** Statiques : les puces s'affichent avant les données. */
+	types: TypeFil[];
+	/** Import dynamique, comme `localiser`. Rejette en cas d'échec. `depuis` : AAAA-MM-JJ, premier jour du fil. */
+	entrees(depuis: string): Promise<EntreeFil[]>;
+}
+
 /** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */
 export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ ctx: Contexte<P> } & Props> }>;
 
@@ -109,6 +144,8 @@ export interface Couche<P = unknown> {
 	 * commune (Conseils : son conseil communal est couvert ou non) ; elle doit être connue à la construction.
 	 */
 	resume?: string | ((commune: Commune) => string);
+	/** Ce que la couche apporte au fil cantonal, quelle que soit son activation. */
+	fil?: Fil;
 	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */
 	composants: {
 		Carte: Chargeur<P>;

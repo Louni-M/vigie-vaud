@@ -10,6 +10,10 @@ import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
 import { corrigerChemin, fermeture, memeElement, mouvement, type Adresse } from './navigation.js';
 import { titreFiche } from './tete.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
+import { zoneDuFil } from '#lib/fil/fil.js';
+
+/** Volet du fil cantonal, à la place de celui d'une couche. */
+export const FIL = 'fil';
 
 /** Ce que le registre demande à la carte du socle quand l'adresse change sous lui. */
 export interface VueCarte {
@@ -46,8 +50,13 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	let zone = $state.raw<Zone | null>(null);
 	let ouvert = $state<Ouvert | null>(null);
 	let map = $state.raw<MlMap | null>(null);
-	/** Volet ouvert sur la carte (bureau) ; n'entre pas dans l'adresse. */
-	let volet = $state<string | null>(null);
+	/** Zone du fil : celle du dernier déplacement fait par la personne (`zoneDuFil`). */
+	let zoneFil = $state.raw<Zone | null>(null);
+	/**
+	 * Volet ouvert sur la carte (bureau) : l'id d'une couche, ou `'fil'` pour le fil cantonal, ouvert à l'arrivée.
+	 * Un seul à la fois ; n'entre pas dans l'adresse.
+	 */
+	let volet = $state<string | null>(FIL);
 	/** Message près de la recherche : élément introuvable (« Aucun dossier n° … ») ou impossible à localiser. */
 	let avis = $state<string | null>(null);
 	/** Couches activées au moins une fois : leur `Carte` reste montée, pour le fondu à la désactivation. */
@@ -300,9 +309,28 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		map = m;
 	}
 
-	/** Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. */
-	function deplacement(z: Zone, c: Centre, parDefaut: boolean) {
+	/** Jusqu'à cet instant (ms), les déplacements comptent comme faits par la personne : elle a cherché un lieu. */
+	let vouluJusqua = 0;
+	/** Délai laissé à la carte pour aller vers le lieu cherché (ouverture de la fiche, puis cadrage). */
+	const DELAI_VOULU = 3_000;
+
+	/**
+	 * La personne a choisi un lieu dans la recherche (commune, adresse) : les déplacements qui suivent, même lancés
+	 * par le registre ou le socle, sont les siens, et déplacent la zone du fil.
+	 */
+	function deplacementVoulu() {
+		vouluJusqua = Date.now() + DELAI_VOULU;
+	}
+
+	/**
+	 * Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. `parLaPersonne` :
+	 * elle a glissé ou zoomé ; la zone du fil ne suit que ses déplacements.
+	 */
+	function deplacement(z: Zone, c: Centre, parDefaut: boolean, parLaPersonne = false) {
+		// Tous les déplacements de ce délai comptent : la colonne de la fiche s'ouvre, puis la commune est cadrée.
+		const voulu = Date.now() < vouluJusqua;
 		zone = z;
+		zoneFil = zoneDuFil(zoneFil, z, parLaPersonne || voulu);
 		centre = c;
 		vue = parDefaut ? null : c;
 	}
@@ -378,6 +406,10 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		get zone() {
 			return zone;
 		},
+		/** Zone du fil, distincte de celle de la carte : les vols lancés par le registre ne la changent pas. */
+		get zoneFil() {
+			return zoneFil;
+		},
 		get map() {
 			return map;
 		},
@@ -414,6 +446,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		contexte,
 		carte,
 		deplacement,
+		deplacementVoulu,
 		brancherAdresse
 	};
 }
