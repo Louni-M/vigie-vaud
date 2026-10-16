@@ -2,6 +2,7 @@
 // Couverture déclarée dans `sources.json`, de l'état des sources écrit par le cron et de l'heure courante.
 import type { CoucheInscrite } from './registre/types.js';
 import type { EtatSource, EtatSources, Source } from './schema.js';
+import { libelleDonne } from './sources.js';
 
 /** Mode d'une paire (source, commune), connu à la construction. */
 export type Mode = 'api' | 'scrape' | 'non_couvert';
@@ -50,15 +51,34 @@ export interface SourceCouverte {
 	sonde: EtatSource | null;
 }
 
+/** Une colonne du tableau de la page `/couverture` : une couche qui a une Couverture. */
+export interface ColonneCouverture {
+	id: string;
+	nom: string;
+}
+
+/** Une source qui couvre la commune, dans une cellule du tableau, avec sa paire. */
+export interface Couvrante {
+	source: Source;
+	paire: Paire;
+}
+
 export interface Couverture {
-	/** Les sources des couches qui ont un onglet, dans l'ordre du registre, chacune une fois. */
+	/** Les couches qui ont une Couverture, dans l'ordre du registre : les colonnes du tableau des communes. */
+	colonnes: ColonneCouverture[];
+	/** Les sources de la couche qui couvrent la commune, dans l'ordre de la couche ; aucune : « Non couvert ». */
+	cellule(couche: string, bfs: number): Couvrante[];
+	/**
+	 * Les sources des couches qui ont une Couverture, dans l'ordre du registre, chacune une fois, y compris celles
+	 * qui n'en ont pas elles-mêmes (le Grand Conseil, qui porte sur le canton).
+	 */
 	sources: SourceCouverte[];
 	mode(source: string, bfs: number): Mode;
 	etat(source: string): EtatCouverture;
 	paire(source: string, bfs: number): Paire;
 	/**
-	 * Une couche couvre une commune dès qu'une de ses sources la couvre. Une couche sans onglet, ou dont aucune
-	 * source n'a de Couverture, n'a pas de Couverture et ne laisse donc aucune commune « non couverte ».
+	 * Une couche couvre une commune dès qu'une de ses sources la couvre : sa Couverture est l'union de celles de ses
+	 * sources. Une couche dont aucune source n'a de Couverture couvre toutes les communes et n'en grise aucune.
 	 */
 	couvre(couche: string, bfs: number): boolean;
 	/**
@@ -67,9 +87,6 @@ export interface Couverture {
 	 */
 	grisees(volet: string | null): number[];
 }
-
-/** Une couche n'a de Couverture que si elle a un onglet dans la fiche commune. */
-const aUneCouverture = (c: CoucheInscrite) => c.composants.Onglet !== undefined;
 
 export function deduireCouverture({ sources, etat, couches, communes, maintenant }: EntreeCouverture): Couverture {
 	const parId = new Map(sources.map((s) => [s.id, s]));
@@ -89,15 +106,27 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 		if (!lu) return { etat: 'inconnu' };
 		return lu.etat === 'en_panne' ? { etat: 'en_panne', depuis: lu.depuis } : { etat: 'disponible' };
 	};
-	const ids = [...new Set(couches.filter(aUneCouverture).flatMap((c) => c.sources))].filter((id) => parId.has(id));
+	/** Les sources de la couche qui ont une Couverture : celle de la couche est leur union. */
+	const couvrantes = (c: CoucheInscrite) => c.sources.filter((s) => parId.get(s)?.couverture);
+	// Une couche dont aucune source n'a de Couverture couvre toutes les communes : elle n'a pas de Couverture.
+	const avecCouverture = couches.filter((c) => couvrantes(c).length > 0);
+	const ids = [...new Set(avecCouverture.flatMap((c) => c.sources))].filter((id) => parId.has(id));
 	const couvre = (id: string, bfs: number) => {
-		const couche = couches.find((c) => c.id === id);
-		if (!couche || !aUneCouverture(couche)) return true;
-		const couvrantes = couche.sources.filter((s) => parId.get(s)?.couverture);
-		// Une couche dont aucune source n'a de Couverture couvre toutes les communes ; sinon, l'union des sources.
-		return couvrantes.length === 0 || couvrantes.some((s) => mode(s, bfs) !== 'non_couvert');
+		const couche = avecCouverture.find((c) => c.id === id);
+		return !couche || couvrantes(couche).some((s) => mode(s, bfs) !== 'non_couvert');
+	};
+	const paire = (id: string, bfs: number): Paire => {
+		const m = mode(id, bfs);
+		return { mode: m, etat: m === 'non_couvert' ? null : etatCouverture(id) };
 	};
 	return {
+		colonnes: avecCouverture.map(({ id, nom }) => ({ id, nom })),
+		cellule(id, bfs) {
+			const couche = avecCouverture.find((c) => c.id === id);
+			return (couche ? couvrantes(couche) : [])
+				.map((s) => ({ source: parId.get(s)!, paire: paire(s, bfs) }))
+				.filter((c) => c.paire.mode !== 'non_couvert');
+		},
 		sources: ids.map((id) => {
 			const source = parId.get(id)!;
 			const e = etatCouverture(id);
@@ -111,10 +140,7 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 		}),
 		mode,
 		etat: etatCouverture,
-		paire(id, bfs) {
-			const m = mode(id, bfs);
-			return { mode: m, etat: m === 'non_couvert' ? null : etatCouverture(id) };
-		},
+		paire,
 		couvre,
 		grisees: (volet) => (volet === null ? [] : communes.filter((c) => !couvre(volet, c.bfs)).map((c) => c.bfs))
 	};
@@ -154,3 +180,23 @@ export function libelleEtat(e: EtatCouverture): string {
 /** Libellé d'une paire : « API · disponible », « Scrapé · en panne depuis le 12 oct., 14 h », « Non couvert ». */
 export const libellePaire = ({ mode, etat }: Paire) =>
 	etat ? `${libelleMode(mode)} · ${libelleEtat(etat)}` : libelleMode(mode);
+
+/** Ligne Communes d'un encart : « Porte sur le canton » sans Couverture, sinon « 1 commune sur 300 »… */
+export function libelleCommunes({ source, communes }: SourceCouverte, total: number): string {
+	if (!source.couverture) return 'Porte sur le canton';
+	return `${communes} ${communes > 1 ? 'communes' : 'commune'} sur ${total}`;
+}
+
+/**
+ * Libellé d'une cellule du tableau, une ligne par source qui couvre la commune : « API · disponible »,
+ * « API · séances seulement · disponible » pour un conseil qui ne donne pas tout, ou « Non couvert ».
+ * Tant que l'état des sources n'est pas chargé (`charge` faux), l'état est remplacé par « … ».
+ */
+export function libelleCellule(couvrantes: readonly Couvrante[], charge = true): string[] {
+	if (couvrantes.length === 0) return [libelleMode('non_couvert')];
+	return couvrantes.map(({ source, paire }) => {
+		const donne = source.conseil ? libelleDonne(source.conseil) : null;
+		const etat = paire.etat && (charge ? libelleEtat(paire.etat) : '…');
+		return [libelleMode(paire.mode), donne === 'objets et séances' ? null : donne, etat].filter(Boolean).join(' · ');
+	});
+}
