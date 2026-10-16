@@ -83,7 +83,7 @@
 			</p>
 			<button type="button" class="titre" onclick={() => clic(e)}>{e.titre}</button>
 			<p class="qui">
-				{e.qui}{#if e.conseil?.auteur} · {e.conseil.auteur}{/if}{#if e.conseil?.statut} · {e.conseil.statut}{/if}
+				{e.qui}{#if e.conseil?.auteurs.length} · {e.conseil.auteurs[0].nom}{/if}{#if e.conseil?.statut} · {e.conseil.statut}{/if}
 			</p>
 			{#if e.conseil?.conseil === null && e.communes.length}
 				<p class="cites">

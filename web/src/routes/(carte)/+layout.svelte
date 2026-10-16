@@ -40,6 +40,11 @@
 	import FilA from '#lib/fil-prototype/FilA.svelte';
 	import FilB from '#lib/fil-prototype/FilB.svelte';
 	import FilC from '#lib/fil-prototype/FilC.svelte';
+	// PROTOTYPE (ticket #51) : trois variantes de la couche Conseils ; le fil est fixé sur sa variante A.
+	import VariantesConseils from '#lib/couches/conseils-prototype/Variantes.svelte';
+	import FicheGrandConseil from '#lib/couches/conseils-prototype/FicheGrandConseil.svelte';
+	import { proto, fermerGrandConseil } from '#lib/couches/conseils-prototype/proto.svelte.js';
+	Object.assign(filChoisi, { variante: 'A' });
 
 	let { data, children }: LayoutProps = $props();
 
@@ -101,7 +106,13 @@
 	let repere: [number, number] | null = $state(null);
 
 	/** Le grisage suit la couche dont le volet est ouvert, avec la mise en page du bureau seulement. */
-	const grisees = $derived(telephone.current ? [] : couvertureCourante(data.communes).grisees(registre.volet));
+	const grisees = $derived(
+		telephone.current
+			? proto.grisageMobile && registre.active('conseils')
+				? couvertureCourante(data.communes).grisees('conseils')
+				: []
+			: couvertureCourante(data.communes).grisees(registre.volet)
+	);
 
 	// Un même texte (« © swisstopo », pour le fond, les adresses et les lacs) n'est cité qu'une fois.
 	const attribution = $derived(
@@ -142,6 +153,40 @@
 	});
 	const colonneB = $derived(variante === 'B' && !telephone.current);
 
+	/* ---- PROTOTYPE (ticket #51) ---- */
+	const gcOuvert = $derived(proto.variante === 'A' && proto.gc);
+	// La fiche du Grand Conseil et la fiche commune se partagent la colonne : ouvrir l'une ferme l'autre.
+	let avantGc = false;
+	let avantCommune: string | null = null;
+	$effect(() => {
+		const gc = gcOuvert;
+		const commune = registre.commune?.slug ?? null;
+		untrack(() => {
+			if (gc && !avantGc && commune) registre.fermerCommune();
+			else if (commune && commune !== avantCommune && gc) fermerGrandConseil();
+			if (gc && !avantGc && telephone.current) affichage = 'carte';
+			avantGc = gc;
+			avantCommune = commune;
+		});
+	});
+	// Une vue demandée par la couche (marqueur du Grand Conseil, « Voir sur la carte ») : sur téléphone, la vue
+	// plein écran ; sur bureau, le volet correspondant.
+	$effect(() => {
+		const v = proto.vue;
+		if (!v) return;
+		untrack(() => {
+			proto.vue = null;
+			if (telephone.current) affichage = v as Affichage;
+			else if (v === 'fil') registre.volet = 'fil';
+			else if (v === 'couches') registre.volet = 'conseils';
+		});
+	});
+	async function voirGrandConseil() {
+		affichage = 'fiche';
+		await tick();
+		document.getElementById('gc-titre')?.focus();
+	}
+
 	function fermerVolet() {
 		const id = registre.volet;
 		registre.volet = null;
@@ -150,9 +195,9 @@
 	}
 </script>
 
-<Variantes />
+<VariantesConseils />
 
-<div class="app" class:avec-fiche={registre.commune || colonneB} data-affichage={affichage}>
+<div class="app" class:avec-fiche={registre.commune || colonneB || gcOuvert} data-affichage={affichage}>
 	<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
 
 	<Rail {registre}>
@@ -235,6 +280,22 @@
 			<a href={resolve('/protection-des-donnees')}>Protection des données</a>
 		</p>
 
+		<!-- PROTOTYPE (ticket #51) : grisage de la Couverture des Conseils sur téléphone (#44). -->
+		{#if telephone.current && proto.grisageMobile && registre.active('conseils')}
+			<p class="pastille-couverture">
+				Couverture : Conseils
+				<button type="button" aria-label="Retirer le grisage" onclick={() => (proto.grisageMobile = false)}>×</button>
+			</p>
+		{/if}
+		{#if telephone.current && gcOuvert && !registre.commune}
+			<div class="apercu" in:fly={{ y: 30, duration: 200 }}>
+				<div class="apercu-gc">
+					<button type="button" onclick={voirGrandConseil}><strong>Grand Conseil</strong> · <span>Voir la fiche ›</span></button>
+					<button type="button" class="x" aria-label="Fermer" onclick={fermerGrandConseil}>×</button>
+				</div>
+			</div>
+		{/if}
+
 		<!-- Téléphone : ce qui est ouvert s'affiche d'abord en aperçu, en bas de la carte. -->
 		{#if telephone.current && registre.commune}
 			<div class="apercu" bind:this={apercu} in:fly={{ y: 30, duration: 200 }}>
@@ -260,6 +321,10 @@
 
 	{#if colonneB}
 		<div class="colonne"><FilB {registre} communes={data.communes} /></div>
+	{:else if gcOuvert}
+		<div class="colonne" in:fly={{ x: 40, duration: 200 }}>
+			<FicheGrandConseil communes={data.communes} telephone={telephone.current} onfermer={() => (affichage = 'carte')} />
+		</div>
 	{:else if registre.commune}
 		<!-- Une seule colonne : changer de commune remplace son contenu sans la refermer. -->
 		<div class="colonne" in:fly={{ x: 40, duration: 200 }}>
@@ -280,7 +345,7 @@
 		<button
 			type="button"
 			aria-pressed={affichage === 'fiche'}
-			disabled={!registre.commune}
+			disabled={!registre.commune && !gcOuvert}
 			onclick={() => (affichage = 'fiche')}
 		>
 			Fiche
@@ -410,6 +475,66 @@
 	}
 	.barre-vues {
 		display: none;
+	}
+	/* PROTOTYPE (ticket #51) */
+	.pastille-couverture {
+		position: absolute;
+		z-index: 4;
+		top: 64px;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		margin: 0;
+		padding: 4px 4px 4px 12px;
+		border-radius: 999px;
+		background: #7a3e9d;
+		color: #fff;
+		font-size: 14px;
+		font-weight: 600;
+		box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+	}
+	.pastille-couverture button {
+		width: 30px;
+		height: 30px;
+		border: 0;
+		border-radius: 50%;
+		background: rgb(255 255 255 / 0.2);
+		color: #fff;
+		font-size: 18px;
+		cursor: pointer;
+	}
+	.apercu-gc {
+		display: flex;
+		border-radius: 10px;
+		background: var(--surface);
+		box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+	}
+	.apercu-gc button {
+		min-height: 52px;
+		padding: 12px 14px;
+		border: 0;
+		background: none;
+		font: inherit;
+		font-size: 15px;
+		text-align: left;
+		color: var(--muted);
+		cursor: pointer;
+	}
+	.apercu-gc button:first-child {
+		flex: 1;
+	}
+	.apercu-gc strong {
+		font-size: 17px;
+		color: #7a3e9d;
+	}
+	.apercu-gc span {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.apercu-gc .x {
+		font-size: 24px;
 	}
 
 	/*

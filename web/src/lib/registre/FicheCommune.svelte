@@ -19,6 +19,13 @@
 	import type { Commune } from '#lib/types.js';
 	import { enteteFiche } from './entete.js';
 	import type { Registre } from './registre.svelte.js';
+	// PROTOTYPE (ticket #51)
+	import { element as elementConseil } from '#lib/couches/conseils-prototype/donnees.svelte.js';
+	import { proto } from '#lib/couches/conseils-prototype/proto.svelte.js';
+	const libelleConseil = (id: string) => {
+		const x = elementConseil(id);
+		return x ? (x.numero ?? (x.sorte === 'seance' ? 'Séance' : x.type)) : id;
+	};
 
 	let { registre, commune }: { registre: Registre; commune: Commune } = $props();
 
@@ -26,6 +33,13 @@
 
 	const onglets = $derived(registre.couches.filter((c) => c.composants.Onglet));
 	let choisi = $state<string | null>(null);
+	// PROTOTYPE (ticket #51) : la couche qui ouvre la fiche peut demander son onglet.
+	$effect.pre(() => {
+		if (proto.onglet) {
+			choisi = proto.onglet;
+			proto.onglet = null;
+		}
+	});
 	/** Couche de l'élément ouvert, quand elle a un onglet et une `Fiche` pour l'y afficher. */
 	const avecFiche = $derived(
 		onglets.find((c) => c.id === registre.ouvert?.couche && c.composants.Fiche) ?? null
@@ -105,11 +119,15 @@
 
 	{#if courant}
 		<div class="corps" role="tabpanel" id="panneau-{courant.id}" aria-labelledby="onglet-{courant.id}" bind:this={corps}>
+			<!-- PROTOTYPE (ticket #51) : « Non couvert » en tête, et l'onglet rendu quand même (#44). -->
 			{#if !couvert}
 				<p class="non-couvert" hidden={element !== null}>
-					<strong>Non couvert</strong> : la couche {courant.nom} n’a pas de source pour {commune.nom}.
+					<strong>Non couvert</strong> : {courant.id === 'conseils' ? `OpenParlData ne donne pas le conseil communal de ${commune.nom}.` : `la couche ${courant.nom} n’a pas de source pour ${commune.nom}.`}
 					<a href={resolve('/couverture')}>Voir la Couverture</a>
 				</p>
+			{/if}
+			{#if !couvert && courant.id !== 'conseils'}
+				<!-- rien d'autre -->
 			{:else}
 				{#key `${courant.id}:${commune.slug}`}
 					<div hidden={element !== null}>
@@ -125,7 +143,7 @@
 				<nav class="fil" aria-label="Fil d’Ariane">
 					<button type="button" class="lien" onclick={registre.fermer}>{courant.nom}</button>
 					<span aria-hidden="true">›</span>
-					<span aria-current="page">n° {element.element}</span>
+					<span aria-current="page">{courant.id === 'conseils' ? libelleConseil(element.element) : `n° ${element.element}`}</span>
 				</nav>
 				{#key `${element.couche}:${element.element}`}
 					{#await registre.composant(courant, 'Fiche') then module}
@@ -221,7 +239,10 @@
 		font-size: 14px;
 	}
 	.non-couvert {
-		margin: 0;
+		margin: 0 0 10px;
+		padding: 8px 10px;
+		border-radius: 8px;
+		background: var(--surface);
 		color: var(--muted);
 	}
 	.fil {

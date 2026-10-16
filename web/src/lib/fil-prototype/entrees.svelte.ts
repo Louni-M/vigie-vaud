@@ -5,7 +5,7 @@
 import type { Map as MlMap, GeoJSONSource } from 'maplibre-gl';
 import { natureLabel } from '#lib/labels.js';
 import { permis } from '#lib/couches/permis/donnees.svelte.js';
-import { ELEMENTS, dateDe, type ElementConseil } from '#lib/couches/conseils-prototype/donnees.js';
+import { conseils, dateDe, nomConseil, type ElementConseil } from '#lib/couches/conseils-prototype/donnees.svelte.js';
 import type { Cible } from '#lib/registre/types.js';
 import type { Commune, Dossier, Zone } from '#lib/types.js';
 
@@ -41,7 +41,6 @@ const JOURS_NOUVEAU = 14;
 
 function depuisConseil(x: ElementConseil, communes: readonly Commune[]): Entree {
 	const cs = x.communes.map((s) => communes.find((c) => c.slug === s)).filter((c): c is Commune => !!c);
-	const conseil = x.conseil ? communes.find((c) => c.slug === x.conseil) : null;
 	return {
 		cle: `o:${x.id}`,
 		type: x.sorte,
@@ -49,7 +48,7 @@ function depuisConseil(x: ElementConseil, communes: readonly Commune[]): Entree 
 		avenir: x.age < 0,
 		sorte: x.type,
 		titre: x.titre,
-		qui: conseil ? `Conseil communal de ${conseil.nom}` : 'Grand Conseil',
+		qui: x.conseil ? nomConseil(x) : 'Grand Conseil',
 		communes: cs,
 		positions: cs.map((c) => c.hotel),
 		cible: cs.length ? { couche: 'conseils', element: x.id, position: cs[0].hotel } : null,
@@ -80,7 +79,9 @@ export function toutes(communes: readonly Commune[]): Entree[] {
 	limite.setDate(limite.getDate() - JOURS_NOUVEAU);
 	const seuil = limite.toISOString().slice(0, 10);
 	const dossiers = permis.actifs.filter((d) => d.statut === 'enquete' && (d.debut ?? '') >= seuil);
-	return [...ELEMENTS.map((x) => depuisConseil(x, communes)), ...dossiers.map((d) => depuisDossier(d, communes))].sort(
+	// PROTOTYPE (ticket #51) : objets et séances réels des 30 derniers jours, et les séances annoncées.
+	const xs = conseils.elements.filter((x) => x.age <= 30);
+	return [...xs.map((x) => depuisConseil(x, communes)), ...dossiers.map((d) => depuisDossier(d, communes))].sort(
 		(a, b) => Number(b.avenir) - Number(a.avenir) || (a.avenir ? +a.date - +b.date : +b.date - +a.date)
 	);
 }

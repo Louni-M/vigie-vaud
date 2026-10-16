@@ -147,26 +147,19 @@
 		},
 		{
 			"id": "openparldata-prototype",
-			"nom": "OpenParlData (PROTOTYPE, données fictives)",
+			"nom": "OpenParlData (PROTOTYPE, lu directement)",
 			"nom_court": "OpenParlData",
 			"attribution": {
 				"texte": "Source: OpenParlData.ch",
 				"lien": "https://openparldata.ch",
-				"licence": "PROTOTYPE"
+				"licence": "CC BY 4.0"
 			},
 			"voie_acces": "direct",
 			"fraicheur": "requete",
 			"couverture": {
 				"communes": [
 					5586,
-					5890,
-					5591,
-					5642,
-					5938,
-					5724,
-					5886,
-					5590,
-					5589
+					5938
 				],
 				"mode": "api"
 			}
