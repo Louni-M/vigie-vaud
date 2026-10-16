@@ -15,6 +15,10 @@
 
 	const active = $derived(registre.active(couche.id));
 	const sources = $derived(couche.sources.map(source));
+	// Une même attribution (« Source: OpenParlData.ch », pour les trois conseils) n'est citée qu'une fois.
+	const attributions = $derived(
+		sources.filter((s, i) => sources.findIndex((t) => t.attribution.texte === s.attribution.texte) === i)
+	);
 	const titre = $derived(`volet-${couche.id}`);
 </script>
 
@@ -45,7 +49,7 @@
 	</p>
 
 	<p class="attribution">
-		{#each sources as s, i (s.id)}
+		{#each attributions as s, i (s.id)}
 			{#if i > 0}<span aria-hidden="true"> · </span>{/if}
 			<a href={s.attribution.lien} target="_blank" rel="noopener">{s.attribution.texte}</a>
 		{/each}

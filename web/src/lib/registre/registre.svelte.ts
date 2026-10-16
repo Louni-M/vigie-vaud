@@ -57,6 +57,11 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	 * Un seul à la fois ; n'entre pas dans l'adresse.
 	 */
 	let volet = $state<string | null>(FIL);
+	/**
+	 * Onglet choisi dans la fiche commune (l'id de sa couche) ; `null` : le premier. Il reste quand on change de
+	 * commune, et n'entre pas dans l'adresse.
+	 */
+	let onglet = $state<string | null>(null);
 	/** Message près de la recherche : élément introuvable (« Aucun dossier n° … ») ou impossible à localiser. */
 	let avis = $state<string | null>(null);
 	/** Couches activées au moins une fois : leur `Carte` reste montée, pour le fondu à la désactivation. */
@@ -249,7 +254,10 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	}
 
 	function ouvrir(cible: Cible) {
-		if ('commune' in cible) return ouvrirCommune(cible.commune);
+		if ('commune' in cible) {
+			if (cible.onglet) onglet = cible.onglet;
+			return ouvrirCommune(cible.commune);
+		}
 		ouvrirElement(cible);
 	}
 
@@ -434,6 +442,13 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		},
 		set volet(id: string | null) {
 			volet = id;
+		},
+		/** Onglet choisi dans la fiche commune ; `null` : le premier. */
+		get onglet() {
+			return onglet;
+		},
+		set onglet(id: string | null) {
+			onglet = id;
 		},
 		/** La `Carte` de cette couche doit être montée (activée, ou désactivée après l'avoir été). */
 		montee: (id: string) => montees.has(id),

@@ -21,17 +21,14 @@ BOURG_EN_LAVAUX, NYON, MORGES, LAUSANNE = (OFS[n] for n in ("Bourg-en-Lavaux", "
 CAVES = "conseils/vd/objets/26_INT_150.json"
 
 
-def _passer(depot, monde, horloge, communes=None):
-    chemin = None
+def _passer(depot, monde, horloge, communes=None, rattrapage=False):
+    options = {"rattrapage": rattrapage}
     if communes is not None:
-        chemin = depot.parent / "communes.json"
-        chemin.write_text(json.dumps(communes, ensure_ascii=False), encoding="utf-8")
+        options["communes"] = depot.parent / "communes.json"
+        options["communes"].write_text(json.dumps(communes, ensure_ascii=False), encoding="utf-8")
     with httpx.Client(transport=monde.transport()) as http:
         opd = OpenParlData(http, horloge, attendre=horloge.attendre)
-        if chemin is None:
-            importer_conseils(depot, SOURCES, opd, horloge)
-        else:
-            importer_conseils(depot, SOURCES, opd, horloge, communes=chemin)
+        importer_conseils(depot, SOURCES, opd, horloge, **options)
 
 
 def _caves(**autres):
@@ -183,15 +180,18 @@ def test_un_ancien_nom_rattache_a_la_commune_actuelle_et_le_rattrapage_suit_une_
     _passer(tmp_path, monde, horloge, communes=COMMUNES)
     avant = _communes(tmp_path, "conseils/vd/objets/26_QUE_70.json")
 
-    # Curtilles fusionne dans Lucens : `communes.json` est mis à jour, puis on relance le rattrapage (aucun import
-    # réussi : tout l'historique est relu).
+    # Curtilles fusionne dans Lucens : `communes.json` est mis à jour, puis on relance le rattrapage, qui relit tout
+    # l'historique, même l'Objet qui n'a pas changé chez la source.
     lucens = next(c for c in COMMUNES if c["nom"] == "Lucens")
     apres_fusion = [c for c in COMMUNES if c["nom"] not in ("Curtilles", "Lucens")] + [
         {**lucens, "anciens": [*lucens["anciens"], {"nom": "Curtilles", "type": "Ancienne commune", "annee": 2027}]}
     ]
-    (tmp_path / "conseils/import.json").unlink()
     horloge.heure = T0 + timedelta(days=80)
     _passer(tmp_path, monde, horloge, communes=apres_fusion)
+    sans_rattrapage = _communes(tmp_path, "conseils/vd/objets/26_QUE_70.json")
+    _passer(tmp_path, monde, horloge, communes=apres_fusion, rattrapage=True)
+
+    assert sans_rattrapage == avant
 
     assert avant == [(OFS["Curtilles"], "titre")]
     assert _communes(tmp_path, "conseils/vd/objets/26_QUE_70.json") == [(OFS["Lucens"], "titre")]

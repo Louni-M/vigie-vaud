@@ -1,7 +1,7 @@
 // Déclaration des sources (`sources.json` à la racine du dépôt), importée à la construction. Toutes les
 // attributions affichées en viennent ; la construction échoue si le fichier est invalide (scripts/verifier-sources.ts).
 import fichier from '../../../sources.json';
-import type { Conseil, FichierSources, Source, VoieAcces } from './schema';
+import type { Conseil, DonneeConseil, FichierSources, Source, VoieAcces } from './schema';
 
 export const SOURCES: readonly Source[] = (fichier as FichierSources).sources;
 
@@ -26,7 +26,7 @@ export const SENS_VOIES: Record<VoieAcces, string> = {
 };
 
 /** Ce que donne un conseil, en toutes lettres : « objets et séances », « séances seulement » ou « objets seulement ». */
-export function libelleDonne(conseil: Conseil): string {
+export function libelleDonne(conseil: { donne: readonly DonneeConseil[] }): string {
 	const objets = conseil.donne.includes('objets');
 	const seances = conseil.donne.includes('seances');
 	return objets && seances ? 'objets et séances' : seances ? 'séances seulement' : 'objets seulement';
