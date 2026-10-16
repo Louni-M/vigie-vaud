@@ -7,7 +7,15 @@ C'est la version du cron de `web/src/lib/masquage.ts` (`masquerNoms`), elle-mêm
   épargnée que si son nom entier est celui d'un·e élu·e (à la casse et aux accents près) : un homonyme partiel est
   masqué ;
 - les **auteur·e·s d'une pétition** sont masqué·e·s même sans civilité, comme Lausanne les nomme (« Pétition de
-  Exemple Paul et crts », « Pétition déposée le 7 mai 2024 de Julie Modèle et crts : »), sauf élu·e connu·e ou entité.
+  Exemple Paul et crts », « Pétition déposée le 7 mai 2024 de Julie Modèle et crts : »), sauf élu·e connu·e ou entité ;
+- les **pétitionnaires que la source connaît** (prénom et nom des contributeurs d'une pétition) sont masqué·e·s dans
+  les textes de leur pétition sous toutes leurs formes : nom de fichier en snake_case
+  (« 2025_08_rp_petition_paul_exemple_parc.pdf »), sans civilité ni « Pétition de » (« par Exemple Paul et crts »,
+  « (Paul Exemple) »), nom de famille seul (« rapport pétition Exemple.pdf »), sauf élu·e connu·e ;
+- les **coordonnées** deviennent « [coordonnées] » : tout téléphone suisse et tout courriel, partout, et l'adresse
+  postale (voie et numéro, NPA et localité) qui suit un particulier masqué (« de [particulier] - Chemin des
+  Lilas 46 - 1004 Lausanne - 079 … : »). Ailleurs, une adresse est celle d'une entité ou d'un immeuble, sujet de
+  l'Objet (« Préavis N° 2023/44 - Chemin de la Colline 6-8 - Vente… ») : elle reste.
 
 Approche prudente, comme sur le site : en cas de doute, on masque.
 """
@@ -21,6 +29,7 @@ from collections.abc import Iterable
 from schema import Objet
 
 MASQUE = "[particulier]"
+COORDONNEES = "[coordonnées]"
 ENTITE_RE = re.compile(
     r"\b(?:S\.?A\.?|Sàrl|S\.à\.r\.l\.?|SARL|GmbH|AG|SNC|SCI|Ltd|Inc|"
     r"Swisscom|Sunrise|Salt|Orange|UPC|CFF|SBB|Migros|Coop|Banque|BCV|Raiffeisen|Poste|"
@@ -41,8 +50,8 @@ NOM = r"[A-ZÀ-Ý](?:\.(?:-[A-ZÀ-Ý]\.)?|[\w’'´-]*)"  # « Dupont », « J. 
 CIVILITE_RE = re.compile(rf"\b({CIVILITE}(?:\s+(?:et|&)\s+{CIVILITE})*\s+)({NOM}(?:\s+(?:et\s+|&\s+)?{NOM})*)")
 ENTRE_PERSONNES = re.compile(r"(\s+(?:et|&)\s+)")
 LIAISONS = {"et", "&", "de", "du", "des", "da", "dos", "von", "van", "der", "le", "la"}
-# L'auteur·e d'une pétition, sans civilité : une suite de noms propres, les particules comprises (« Jean de
-# Montmollin »), après « Pétition [au CC] [déposée le <date>] de » ; plusieurs auteur·e·s séparé·e·s par « et » ou une
+# L'auteur·e d'une pétition, sans civilité : une suite de noms propres, les particules comprises (« Paul de
+# Montexemple »), après « Pétition [au CC] [déposée le <date>] de » ; plusieurs auteur·e·s séparé·e·s par « et » ou une
 # virgule. La suite n'est prise que si un séparateur la termine (« et crts », « : », « - », « déposée »…) : « Pétition
 # de Montelly vit ! » n'est pas un nom.
 PARTICULE = r"(?:(?:de|du|des|von|van|der|da|dos|di|le|la)\s+|d[’'])"
@@ -56,11 +65,38 @@ PETITION_RE = re.compile(
 ENTRE_PETITIONNAIRES = re.compile(r"((?:\s+et|,)\s+)")
 # Un collectif qui signe une pétition reste nommé, comme une entité.
 COLLECTIF_RE = re.compile(r"^(?:Collectif|Comité|Habitant[e·]*s|Riverain[e·]*s|Parents|Amis|Groupement|Mouvement|Pro)\b")
+# Entre le prénom et le nom d'un·e pétitionnaire connu·e, ou dans un nom composé : espace, tiret ou souligné.
+ENTRE_LES_NOMS = r"[\s_-]+"
+# Un nom de famille plus court n'est masqué qu'avec le prénom : seul, ce serait un mot (« Do », « Py »).
+NOM_SEUL_MIN = 3
+# Un téléphone suisse, sous toutes ses formes : « 079 000 00 00 », « 021/000.00.00 », « +41 79 000 00 00 », « 0041 21… ».
+TELEPHONE_RE = re.compile(
+    r"(?<![\d.])(?:(?:\+|00)\s?41\s?(?:\(0\)\s?)?\d{2}|0\d{2})\s?[/.-]?\s?\d{3}\s?[.-]?\s?\d{2}\s?[.-]?\s?\d{2}(?!\d)"
+)
+COURRIEL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+# Une partie d'adresse postale, que « - » ou une virgule séparent de la suivante : voie et numéro (« Chemin des
+# Lilas 46 », « av. de la Gare 4b »), NPA et localité (« 1004 Lausanne »), case postale.
+VOIE = (
+    r"(?i:chemin|ch\.|rue|ruelle|avenue|av\.|route|rte|place|pl\.|boulevard|bd|quai|all[ée]e|sentier|impasse|"
+    r"passage|promenade|escaliers|mont[ée]e|chauss[ée]e|esplanade|clos|square|faubourg|grand-rue)"
+)
+FIN_DE_PARTIE = r"(?=\s+[-–]\s|\s*[,:;«»()\"“]|\s*$)"
+DANS_LA_PARTIE = r"(?:(?!\s[-–]\s)[^,:;«»()\"“])"
+PARTIE_D_ADRESSE = (
+    rf"(?:{VOIE}\s{DANS_LA_PARTIE}*?\d+\s?[a-zA-Z]?|(?:CH-?)?[1-9]\d{{3}}\s+[A-ZÀ-Ý]{DANS_LA_PARTIE}*?"
+    rf"|(?i:case\s+postale|CP)\s+\d+){FIN_DE_PARTIE}"
+)
+# Les coordonnées qui suivent un particulier masqué : une ou plusieurs parties, réunies en une seule.
+COORDONNEES_APRES_RE = re.compile(
+    rf"({re.escape(MASQUE)}\s*[-–,]\s*)(?:{PARTIE_D_ADRESSE}|{re.escape(COORDONNEES)})"
+    rf"(?:\s*[-–,]\s*(?:{PARTIE_D_ADRESSE}|{re.escape(COORDONNEES)}))*"
+)
 
 
-def masquer(titre: str, elus: Iterable[str] = ()) -> str:
+def masquer(titre: str, elus: Iterable[str] = (), petitionnaires: Iterable[tuple[str, str]] = ()) -> str:
     """`titre`, les noms de particuliers remplacés par « [particulier] ». Les noms de `elus` (noms complets, tels
-    que les contributeurs des Objets les donnent) restent."""
+    que les contributeurs des Objets les donnent) restent. `petitionnaires` (prénom, nom de famille) : les
+    pétitionnaires que la source connaît, masqué·e·s où qu'ils ou elles soient nommé·e·s, sauf élu·e connu·e."""
     connus = {_cle(e) for e in elus if e.strip()}
 
     def personne(m: re.Match) -> str:
@@ -89,7 +125,8 @@ def masquer(titre: str, elus: Iterable[str] = ()) -> str:
             return m[1] + MASQUE
         return m[1] + "".join(p if i % 2 or garde[i // 2] else MASQUE for i, p in enumerate(parties))
 
-    s = titre
+    s = TELEPHONE_RE.sub(COORDONNEES, titre)
+    s = COURRIEL_RE.sub(COORDONNEES, s)
     # Formes juridiques avec points (« S.A. », « A.G. », « S.à r.l. ») : sinon le point coupe le segment.
     s = re.sub(r"\bS\.\s?A\.?(?!\w)", "SA", s)
     s = re.sub(r"\bA\.\s?G\.?(?!\w)", "AG", s)
@@ -97,7 +134,48 @@ def masquer(titre: str, elus: Iterable[str] = ()) -> str:
     # Civilités d'abord (« M. Dupont ») : le point de « M. » couperait sinon le segment « pour le compte de ».
     s = CIVILITE_RE.sub(personne, s)
     s = PETITION_RE.sub(petition, s)
-    return COMPTE_RE.sub(compte, s)
+    s = COMPTE_RE.sub(compte, s)
+    s = _masquer_petitionnaires(s, petitionnaires, connus)
+    return COORDONNEES_APRES_RE.sub(lambda m: m[1] + COORDONNEES, s)
+
+
+def _masquer_petitionnaires(s: str, petitionnaires: Iterable[tuple[str, str]], connus: set[str]) -> str:
+    """`s`, chaque pétitionnaire masqué·e : prénom et nom dans un ordre ou dans l'autre, puis nom de famille seul,
+    à la casse et aux accents près. Un·e élu·e connu·e reste, et un nom de famille que porte un·e élu·e connu·e
+    n'est masqué qu'avec le prénom."""
+    mots_des_elus = {mot for e in connus for mot in re.split(r"[\s-]+", e)}
+    motifs = []
+    for prenom, nom in petitionnaires:
+        if not nom.strip() or _cle(f"{prenom} {nom}") in connus:
+            continue
+        if prenom.strip():
+            motifs += [_motif(f"{prenom} {nom}"), _motif(f"{nom} {prenom}")]
+        mots = _cle(nom).replace("-", " ").split()
+        if len("".join(mots)) >= NOM_SEUL_MIN and not mots_des_elus & set(mots):
+            motifs.append(_motif(nom))
+    if not motifs:
+        return s
+    # Le plus long d'abord : « Paul Exemple » avant « Exemple ». Un nom est entouré de non-lettres (« _ » compris).
+    motif = re.compile(rf"(?<![^\W_])(?:{'|'.join(sorted(motifs, key=len, reverse=True))})(?![^\W_])")
+    plie = _plier(s)
+    morceaux, fin = [], 0
+    for m in motif.finditer(plie):
+        morceaux += [s[fin : m.start()], MASQUE]
+        fin = m.end()
+    return "".join(morceaux) + s[fin:]
+
+
+def _motif(nom: str) -> str:
+    return ENTRE_LES_NOMS.join(re.escape(mot) for mot in re.split(ENTRE_LES_NOMS, _plier(nom.strip())))
+
+
+def _plier(s: str) -> str:
+    """`s` sans accents ni casse, caractère pour caractère : une position de `_plier(s)` est la même dans `s`."""
+    plie = []
+    for c in s.replace("’", "'"):
+        sans_accent = "".join(x for x in unicodedata.normalize("NFKD", c) if not unicodedata.combining(x)).lower()
+        plie.append(sans_accent if len(sans_accent) == 1 else c)
+    return "".join(plie)
 
 
 def _ressemble_a_un_nom(segment: str) -> bool:

@@ -37,7 +37,8 @@
 		Pour les conseils, les auteur·e·s des objets (motions, interpellations, postulats…) sont nommé·e·s, avec leur
 		parti, puisque ce sont des élu·e·s. Les autres noms de personnes qui apparaissent dans les titres des objets et
 		dans les ordres du jour des séances sont remplacés par « [particulier] » avant publication, lors de l’import
-		quotidien : ils n’atteignent jamais le dépôt de données public. Les pétitions n’affichent pas leurs
+		quotidien, et leurs coordonnées (adresse, téléphone, courriel) par « [coordonnées] » : ils n’atteignent jamais
+		le dépôt de données public. Les pétitions n’affichent pas leurs
 		auteur·e·s. Si un nom est passé à travers, écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a> : il est retiré,
 		historique du dépôt de données public compris. Le texte d’origine reste chez OpenParlData et sur le site du
 		conseil.

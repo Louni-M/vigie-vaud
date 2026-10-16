@@ -468,7 +468,17 @@ def _monde_avec_petition(horloge):
             number="PET25/003",
             title="Pétition de M. Paul Exemple et consorts (312 signatures) : « Pour un parc à chiens »",
             type_name="Pétition",
-            contributeurs=[Contributeur("Paul Exemple", None, "Auteur")],
+            # OpenParlData nomme parfois un·e pétitionnaire du nom complet d'un·e élu·e : le prénom et le nom de
+            # famille de la source l'emportent.
+            contributeurs=[Contributeur("Léa Conseillère", None, "Auteur", prenom="Paul", nom_de_famille="Exemple")],
+            documents=[
+                Document(
+                    "Pétition de Exemple Paul - chemin des Lilas 2 - 1000 Lausanne - Pour un parc à chiens",
+                    "https://www.lausanne.ch/pet25-003.pdf",
+                ),
+                Document("PET25-003 Plan du parc à chiens.pdf", "https://www.lausanne.ch/pet25-003-annexe.pdf"),
+                Document("2025_08_rp_petition_paul_exemple_parc_a_chiens.pdf v1.0", "https://www.lausanne.ch/rp.pdf"),
+            ],
         ),
         Affaire(
             id=340951,
@@ -476,11 +486,18 @@ def _monde_avec_petition(horloge):
             number="INT25/020",
             title="Interpellation de Mme Léa Conseillère : « Des bancs »",
             contributeurs=[Contributeur("Léa Conseillère", "PS", "Auteur")],
+            documents=[
+                Document("Interpellation de Mme Léa Conseillère - Des bancs", "https://www.lausanne.ch/int25-020.pdf"),
+                Document(None, "https://www.lausanne.ch/int25-020-annexe.pdf", categorie="Annexe"),
+                # Le rapport-préavis qui répond à la pétition et à l'interpellation, joint aux deux Objets.
+                Document("2025_08_rp_petition_paul_exemple_parc_a_chiens.pdf v1.0", "https://www.lausanne.ch/rp-2.pdf"),
+            ],
         ),
     ]
     monde.reunions[2].points += [
         Point(2, "Pétition de M. Paul Exemple et consorts : « Pour un parc à chiens »", "PET25/003", affaire_id=340950),
         Point(3, "Interpellation de Mme Léa CONSEILLÈRE : « Des bancs »", "INT25/020", affaire_id=340951),
+        Point(4, "Communication - Pétition du Comité des Lilas (Paul Exemple) : « Un parc »", "PET25/003", affaire_id=340950),
     ]
     monde.reunions[0].points += [
         Point(5, "Demande de grâce de M. Marc Exemple", "26_GRA_1"),
@@ -502,11 +519,25 @@ def test_aucun_nom_masque_n_atteint_l_archive_et_une_petition_n_a_pas_d_auteur(t
         "Pétition de [particulier] et consorts (312 signatures) : « Pour un parc à chiens »",
         [],
     )
+    # Les titres de documents sont masqués comme celui de l'Objet ; le ou la pétitionnaire que la source connaît l'est
+    # aussi dans un nom de fichier, et dans le même document joint à un autre Objet (ADR 0007).
+    assert [d["titre"] for d in petition["documents"]] == [
+        "Pétition de [particulier] - [coordonnées] - Pour un parc à chiens",
+        "PET25-003 Plan du parc à chiens.pdf",
+        "2025_08_rp_petition_[particulier]_parc_a_chiens.pdf v1.0",
+    ]
+    interpellation = _lire(tmp_path, "conseils/5586/objets/INT25-020.json")
+    assert [d["titre"] for d in interpellation["documents"]] == [
+        "Interpellation de Mme Léa Conseillère - Des bancs",
+        "Annexe",
+        "2025_08_rp_petition_[particulier]_parc_a_chiens.pdf v1.0",
+    ]
     lausanne = _lire(tmp_path, "conseils/5586/seances/2026-10-06.json")["ordre_du_jour"]
     assert [p["titre"] for p in lausanne] == [
         "Postulat - Préaux ouverts",
         "Pétition de [particulier] et consorts : « Pour un parc à chiens »",
         "Interpellation de Mme Léa CONSEILLÈRE : « Des bancs »",
+        "Communication - Pétition du Comité des Lilas ([particulier]) : « Un parc »",
     ]
     grand_conseil = _lire(tmp_path, "conseils/vd/seances/2026-10-06.json")["ordre_du_jour"]
     assert [p["numero"] for p in grand_conseil] == ["2", "3", "7"]
