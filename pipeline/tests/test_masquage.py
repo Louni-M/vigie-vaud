@@ -66,7 +66,7 @@ ELUS = frozenset({"Loris Socchi", "Jean Dupont", "Anne-Laure Métraux"})
         ("Pétition de G. S. - pour la restitution de mon permis.", "Pétition de [particulier] - pour la restitution de mon permis."),
         ("Pétition de Jean de Montmollin : « Un banc »", "Pétition de [particulier] : « Un banc »"),
         ("Pétition de Jean d'Ormesson et consorts", "Pétition de [particulier] et consorts"),
-        ("Pétition de Bron Alain", "Pétition de [particulier]"),
+        ("Pétition de Témoin Luc", "Pétition de [particulier]"),
         # Un·e élu·e pétitionnaire reste, à côté d'un particulier masqué ; avec sa civilité, on n'y touche plus.
         ("Pétition de Jean Dupont et Paul Exemple : « Des bancs »", "Pétition de Jean Dupont et [particulier] : « Des bancs »"),
         ("Pétition de M. Jean Dupont : « Des bancs »", None),
@@ -93,14 +93,14 @@ ELUS = frozenset({"Loris Socchi", "Jean Dupont", "Anne-Laure Métraux"})
             "Pétition au CC déposée le 29 août 2023 de [particulier] - [coordonnées] : "
             "«Comité \"Non au transit vélos\" (par [particulier] et crts) - Une zone de rencontre»",
         ),
-        ("Pétition de Bron Alain, av. de la Gare 4b, 1003 Lausanne", "Pétition de [particulier], [coordonnées]"),
-        ("Pétition de Bron Alain - 1004 Lausanne : « Un banc »", "Pétition de [particulier] - [coordonnées] : « Un banc »"),
+        ("Pétition de Témoin Luc, av. de la Gare 4b, 1003 Lausanne", "Pétition de [particulier], [coordonnées]"),
+        ("Pétition de Témoin Luc - 1004 Lausanne : « Un banc »", "Pétition de [particulier] - [coordonnées] : « Un banc »"),
         ("Recours pour le compte de Dupuis Marie, rue du Port 3", "Recours pour le compte de [particulier], [coordonnées]"),
         # Un téléphone ou un courriel est masqué partout, quelle qu'en soit la forme.
         ("Renseignements au 021 000 00 00", "Renseignements au [coordonnées]"),
         ("Pétition de M. Exemple (+41 79 000 00 00)", "Pétition de [particulier] ([coordonnées])"),
         ("Contact : 0041 21 000 00 00 ou 079/000.00.00", "Contact : [coordonnées] ou [coordonnées]"),
-        ("Pétition de Bron Alain - alain.bron@exemple.ch : « Un banc »", "Pétition de [particulier] - [coordonnées] : « Un banc »"),
+        ("Pétition de Témoin Luc - luc.temoin@exemple.ch : « Un banc »", "Pétition de [particulier] - [coordonnées] : « Un banc »"),
         # L'adresse d'une entité, ou d'un immeuble sujet de l'Objet, reste ; un nombre n'est pas un téléphone.
         (
             "Pétition déposée le 24 mai 2022 de Centre socioculturel de Bellevaux - Chemin d'Entre-Bois 10 - 1018 "
