@@ -39,6 +39,12 @@ _À éviter_ : mairie, marqueur commune
 Le panneau d'une commune, organisé en onglets (Conseil, Permis, Presse, Radio, Météo).
 _À éviter_ : page commune, profil
 
+**Fiche du Grand Conseil** :
+Le panneau du Grand Conseil, ouvert par son marqueur : ses Séances et tous ses Objets, qu'ils nomment une commune ou
+non. C'est la seule fiche qui n'est pas celle d'une commune ; les conseils communaux restent dans l'onglet Conseil de
+leur fiche commune.
+_À éviter_ : page du Grand Conseil, fiche cantonale
+
 **Dossier** :
 Une demande de permis de construire de la CAMAC, identifiée par son numéro CAMAC.
 _À éviter_ : permis (pour un dossier isolé), demande
@@ -55,8 +61,12 @@ L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa sour
 Ce qu'une source apporte à chaque commune, selon deux axes : son **mode** (API, scrapé ou non couvert), déclaré
 une fois pour toutes, et son **état** (disponible, en panne depuis une date donnée, surveillance interrompue, non
 surveillée ou inconnu), mesuré par les sondes. Seules les sources des couches qui ont un onglet dans la fiche commune
-ont une Couverture. Une couche couvre une commune dès qu'une de ses sources la couvre. Une commune **non couverte**
-par la couche dont le volet est ouvert est grisée sur la carte ; une panne ne grise rien.
+ont une Couverture, et parmi elles seulement celles dont les éléments appartiennent à une commune, par leur position
+(dossiers) ou parce qu'ils viennent de son conseil : une source dont les éléments n'atteignent une commune que par
+rattachement par nom (le Grand Conseil, la presse) **porte sur le canton** et n'a pas de Couverture. Une couche couvre
+une commune dès qu'une de ses sources la couvre ; une couche dont aucune source n'a de Couverture les couvre toutes.
+Une commune **non couverte** par la couche choisie (sur bureau, celle dont le volet est ouvert ; sur mobile, celle
+dont on a demandé à voir la Couverture) est grisée sur la carte ; une panne ne grise rien.
 _À éviter_ : disponibilité (pour la Couverture entière)
 
 ### Données
@@ -78,8 +88,11 @@ Couverture.
 _À éviter_ : ping, healthcheck, test
 
 **Rattachement** :
-L'association d'un élément à une commune, par sa position (dossiers) ou par le nom de la commune dans son titre ou
-sa description (éléments scrapés). Un élément sans rattachement n'apparaît que dans le fil cantonal.
+L'association d'un élément à une commune : par sa position (dossiers), par son conseil (Objets et Séances d'un
+conseil communal, qui n'appartiennent qu'à leur commune), ou, pour une source qui porte sur le canton (Grand Conseil,
+presse), par le nom de la commune dans son texte. Le nom d'une ancienne commune ou un ancien nom rattache à la commune
+actuelle. Un élément sans rattachement n'a pas de fiche commune : il n'apparaît que dans le fil cantonal et, s'il
+vient du Grand Conseil, dans la fiche du Grand Conseil.
 _À éviter_ : géolocalisation, affectation
 
 **Incident** :
@@ -91,11 +104,14 @@ Un événement tiré des communiqués de la police cantonale et rattaché à une
 Un organe délibérant : le Grand Conseil, ou le conseil communal ou général d'une commune.
 
 **Grand Conseil** :
-Le parlement cantonal vaudois. Il a son propre marqueur sur la carte, au Parlement (Cité, Lausanne).
+Le parlement cantonal vaudois. Il a son propre marqueur sur la carte, au Parlement (Cité, Lausanne), qui ouvre la
+fiche du Grand Conseil. Ses Objets sont rattachés aux communes qu'ils nomment ; ses Séances ne sont rattachées à aucune.
 
 **Objet** :
-Une interpellation, une motion, un postulat, un préavis ou une question soumis à un conseil, avec son type, son
-titre, son auteur·e, sa date et son statut. Correspond aux *affairs* d'OpenParlData.
+Toute affaire qu'un conseil enregistre et suit (interpellation, motion, postulat, question, préavis, pétition,
+projet de loi ou de décret, rapport…), sauf les demandes de grâce, avec son titre, ses auteur·e·s, sa date, son type
+et son statut. Le type et le statut sont ceux que le conseil leur donne, sans regroupement de notre part. Correspond
+aux *affairs* d'OpenParlData.
 _À éviter_ : affaire, intervention
 
 **Séance** :
