@@ -2,13 +2,13 @@
 	/*
 	 * Volet de la couche Conseils, sous l'interrupteur, les badges et l'attribution du registre : la légende, puis une
 	 * carte par conseil couvert, lue dans `conseils/index.json`, et la phrase sur les communes grisées. Un conseil
-	 * communal ouvre la fiche de sa commune ; le Grand Conseil ouvrira la sienne quand elle existera.
+	 * communal ouvre la fiche de sa commune, sur l'onglet Conseil ; le Grand Conseil ouvrira la sienne quand elle existera.
 	 */
 	import type { Contexte } from '#lib/registre/types.js';
 	import { listerConseils, SOURCES } from '#lib/sources.js';
 	import { carteConseil } from './cartes.js';
 	import { conseils } from './donnees.js';
-	import { COULEUR_CONSEILS } from './index.js';
+	import { COULEUR_CONSEILS, coucheConseils } from './index.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
 
@@ -46,7 +46,7 @@
 				<li>
 					{#if carte.commune}
 						{@const slug = carte.commune}
-						<button type="button" class="carte" onclick={() => ctx.ouvrir({ commune: slug })}>
+						<button type="button" class="carte" onclick={() => ctx.ouvrir({ commune: slug, onglet: coucheConseils.id })}>
 							{@render contenu(carte)}
 						</button>
 					{:else}
