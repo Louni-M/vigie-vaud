@@ -356,6 +356,10 @@
 		border-radius: 10px;
 		box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
 	}
+	/* Pendant la saisie, les résultats passent devant l'aperçu (téléphone). */
+	.recherche:focus-within {
+		z-index: 5;
+	}
 	.avis:empty {
 		display: none;
 	}
@@ -446,10 +450,10 @@
 	}
 
 	/*
-	 * Téléphone en portrait (requête TELEPHONE de lib/socle/telephone.ts) : une vue plein écran à la fois, et la
-	 * barre en bas. À l'horizontale et sur tablette, la mise en page reste celle du bureau.
+	 * Téléphone (requête TELEPHONE de lib/socle/telephone.ts, la largeur seule) : une vue plein écran à la fois, et la
+	 * barre en bas. Au-delà de 760 px (téléphone à l'horizontale, tablette), la mise en page reste celle du bureau.
 	 */
-	@media (max-width: 760px) and (min-height: 521px) {
+	@media (max-width: 760px) {
 		.app,
 		.app.avec-fiche {
 			grid-template-columns: minmax(0, 1fr);

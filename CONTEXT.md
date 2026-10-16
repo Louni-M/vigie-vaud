@@ -77,6 +77,22 @@ Une commune **non couverte** par la couche choisie (sur bureau, celle dont le vo
 dont on a demandé à voir la Couverture) est grisée sur la carte ; une panne ne grise rien.
 _À éviter_ : disponibilité (pour la Couverture entière)
 
+**Vue** :
+Sur téléphone, l'un des quatre écrans plein écran (Carte, Fil, Couches, Fiche), choisi dans la barre du bas ; une
+seule est affichée à la fois.
+_À éviter_ : onglet (réservé aux onglets d'une fiche commune), page
+
+**Aperçu** :
+Sur téléphone, la carte courte d'un élément ou d'une fiche ouverte, en bas de la vue Carte, avec « Voir la fiche › »
+qui mène à la vue Fiche.
+_À éviter_ : popup, carte (ambigu avec la carte géographique)
+
+**Recherche** :
+Le champ « Adresse, commune, n° de dossier ou d'objet » et ses résultats : communes, fiches, éléments des couches,
+adresses et lieux, et « Autour de moi ». Sur téléphone, elle s'ouvre en plein écran par-dessus la vue Carte et se
+referme sur la carte ; ce n'est pas une cinquième vue.
+_À éviter_ : barre d'adresse, géocodeur
+
 ### Données
 
 **Source** :
