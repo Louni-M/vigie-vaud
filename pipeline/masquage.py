@@ -8,6 +8,10 @@ C'est la version du cron de `web/src/lib/masquage.ts` (`masquerNoms`), elle-mêm
   masqué ;
 - les **auteur·e·s d'une pétition** sont masqué·e·s même sans civilité, comme Lausanne les nomme (« Pétition de
   Gaber Mark et crts », « Pétition déposée le 7 mai 2024 de Lya Blanc et crts : »), sauf élu·e connu·e ou entité ;
+- les **pétitionnaires que la source connaît** (prénom et nom des contributeurs d'une pétition) sont masqué·e·s dans
+  les textes de leur pétition sous toutes leurs formes : nom de fichier en snake_case
+  (« 2025_08_rp_petition_paul_exemple_parc.pdf »), sans civilité ni « Pétition de » (« par Exemple Paul et crts »,
+  « (Paul Exemple) »), nom de famille seul (« rapport pétition Exemple.pdf »), sauf élu·e connu·e ;
 - les **coordonnées** deviennent « [coordonnées] » : tout téléphone suisse et tout courriel, partout, et l'adresse
   postale (voie et numéro, NPA et localité) qui suit un particulier masqué (« de [particulier] - Chemin des
   Lilas 46 - 1004 Lausanne - 079 … : »). Ailleurs, une adresse est celle d'une entité ou d'un immeuble, sujet de
@@ -61,6 +65,10 @@ PETITION_RE = re.compile(
 ENTRE_PETITIONNAIRES = re.compile(r"((?:\s+et|,)\s+)")
 # Un collectif qui signe une pétition reste nommé, comme une entité.
 COLLECTIF_RE = re.compile(r"^(?:Collectif|Comité|Habitant[e·]*s|Riverain[e·]*s|Parents|Amis|Groupement|Mouvement|Pro)\b")
+# Entre le prénom et le nom d'un·e pétitionnaire connu·e, ou dans un nom composé : espace, tiret ou souligné.
+ENTRE_LES_NOMS = r"[\s_-]+"
+# Un nom de famille plus court n'est masqué qu'avec le prénom : seul, ce serait un mot (« Do », « Py »).
+NOM_SEUL_MIN = 3
 # Un téléphone suisse, sous toutes ses formes : « 079 000 00 00 », « 021/000.00.00 », « +41 79 000 00 00 », « 0041 21… ».
 TELEPHONE_RE = re.compile(
     r"(?<![\d.])(?:(?:\+|00)\s?41\s?(?:\(0\)\s?)?\d{2}|0\d{2})\s?[/.-]?\s?\d{3}\s?[.-]?\s?\d{2}\s?[.-]?\s?\d{2}(?!\d)"
@@ -85,9 +93,10 @@ COORDONNEES_APRES_RE = re.compile(
 )
 
 
-def masquer(titre: str, elus: Iterable[str] = ()) -> str:
+def masquer(titre: str, elus: Iterable[str] = (), petitionnaires: Iterable[tuple[str, str]] = ()) -> str:
     """`titre`, les noms de particuliers remplacés par « [particulier] ». Les noms de `elus` (noms complets, tels
-    que les contributeurs des Objets les donnent) restent."""
+    que les contributeurs des Objets les donnent) restent. `petitionnaires` (prénom, nom de famille) : les
+    pétitionnaires que la source connaît, masqué·e·s où qu'ils ou elles soient nommé·e·s, sauf élu·e connu·e."""
     connus = {_cle(e) for e in elus if e.strip()}
 
     def personne(m: re.Match) -> str:
@@ -126,7 +135,47 @@ def masquer(titre: str, elus: Iterable[str] = ()) -> str:
     s = CIVILITE_RE.sub(personne, s)
     s = PETITION_RE.sub(petition, s)
     s = COMPTE_RE.sub(compte, s)
+    s = _masquer_petitionnaires(s, petitionnaires, connus)
     return COORDONNEES_APRES_RE.sub(lambda m: m[1] + COORDONNEES, s)
+
+
+def _masquer_petitionnaires(s: str, petitionnaires: Iterable[tuple[str, str]], connus: set[str]) -> str:
+    """`s`, chaque pétitionnaire masqué·e : prénom et nom dans un ordre ou dans l'autre, puis nom de famille seul,
+    à la casse et aux accents près. Un·e élu·e connu·e reste, et un nom de famille que porte un·e élu·e connu·e
+    n'est masqué qu'avec le prénom."""
+    mots_des_elus = {mot for e in connus for mot in re.split(r"[\s-]+", e)}
+    motifs = []
+    for prenom, nom in petitionnaires:
+        if not nom.strip() or _cle(f"{prenom} {nom}") in connus:
+            continue
+        if prenom.strip():
+            motifs += [_motif(f"{prenom} {nom}"), _motif(f"{nom} {prenom}")]
+        mots = _cle(nom).replace("-", " ").split()
+        if len("".join(mots)) >= NOM_SEUL_MIN and not mots_des_elus & set(mots):
+            motifs.append(_motif(nom))
+    if not motifs:
+        return s
+    # Le plus long d'abord : « Paul Exemple » avant « Exemple ». Un nom est entouré de non-lettres (« _ » compris).
+    motif = re.compile(rf"(?<![^\W_])(?:{'|'.join(sorted(motifs, key=len, reverse=True))})(?![^\W_])")
+    plie = _plier(s)
+    morceaux, fin = [], 0
+    for m in motif.finditer(plie):
+        morceaux += [s[fin : m.start()], MASQUE]
+        fin = m.end()
+    return "".join(morceaux) + s[fin:]
+
+
+def _motif(nom: str) -> str:
+    return ENTRE_LES_NOMS.join(re.escape(mot) for mot in re.split(ENTRE_LES_NOMS, _plier(nom.strip())))
+
+
+def _plier(s: str) -> str:
+    """`s` sans accents ni casse, caractère pour caractère : une position de `_plier(s)` est la même dans `s`."""
+    plie = []
+    for c in s.replace("’", "'"):
+        sans_accent = "".join(x for x in unicodedata.normalize("NFKD", c) if not unicodedata.combining(x)).lower()
+        plie.append(sans_accent if len(sans_accent) == 1 else c)
+    return "".join(plie)
 
 
 def _ressemble_a_un_nom(segment: str) -> bool:

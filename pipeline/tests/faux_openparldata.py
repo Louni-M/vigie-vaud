@@ -37,6 +37,8 @@ class Contributeur:
     parti: str | None = None
     role: str | None = "Auteur"
     type: str = "person"
+    prenom: str | None = None  # `firstname`, s'il diffère du début de `nom`
+    nom_de_famille: str | None = None  # `lastname`
 
 
 @dataclass
@@ -87,6 +89,8 @@ class Affaire:
                 {
                     "type": c.type,
                     "fullname": c.nom,
+                    "firstname": c.prenom or c.nom.split()[0] if c.type == "person" else None,
+                    "lastname": c.nom_de_famille or " ".join(c.nom.split()[1:]) if c.type == "person" else None,
                     "party": {"fr": c.parti} if c.parti else {},
                     "role": {"fr": c.role} if c.role else {},
                     "position": i,
