@@ -80,6 +80,37 @@ ELUS = frozenset({"Loris Socchi", "Jean Dupont", "Anne-Laure Métraux"})
         ("Pétition déposée le 8 mars 2022 de Montelly vit ! : « Non à l'APEMS »", None),
         # Les titres sans nom ne bougent pas.
         ("Covid 2020 six ans pour revenir en arrière", None),
+        # Les coordonnées qui suivent un particulier masqué sont masquées avec lui : adresse et téléphone.
+        (
+            "Pétition déposée le 27 août 2024 de Exemple Paul - Chemin des Lilas 46 - 1004 Lausanne - 079 000 00 00 : "
+            "«Pétition au CC de Exemple Paul - Respect de la vie des animaux»",
+            "Pétition déposée le 27 août 2024 de [particulier] - [coordonnées] : «Pétition au CC de [particulier] - "
+            "Respect de la vie des animaux»",
+        ),
+        (
+            "Pétition au CC déposée le 29 août 2023 de Mme Paule Exemple - Chemin des Lilas 9 - 1007 Lausanne : "
+            "«Comité \"Non au transit vélos\" (par Mme Exemple Paule et crts) - Une zone de rencontre»",
+            "Pétition au CC déposée le 29 août 2023 de [particulier] - [coordonnées] : "
+            "«Comité \"Non au transit vélos\" (par [particulier] et crts) - Une zone de rencontre»",
+        ),
+        ("Pétition de Bron Alain, av. de la Gare 4b, 1003 Lausanne", "Pétition de [particulier], [coordonnées]"),
+        ("Pétition de Bron Alain - 1004 Lausanne : « Un banc »", "Pétition de [particulier] - [coordonnées] : « Un banc »"),
+        ("Recours pour le compte de Dupuis Marie, rue du Port 3", "Recours pour le compte de [particulier], [coordonnées]"),
+        # Un téléphone ou un courriel est masqué partout, quelle qu'en soit la forme.
+        ("Renseignements au 021 000 00 00", "Renseignements au [coordonnées]"),
+        ("Pétition de M. Exemple (+41 79 000 00 00)", "Pétition de [particulier] ([coordonnées])"),
+        ("Contact : 0041 21 000 00 00 ou 079/000.00.00", "Contact : [coordonnées] ou [coordonnées]"),
+        ("Pétition de Bron Alain - alain.bron@exemple.ch : « Un banc »", "Pétition de [particulier] - [coordonnées] : « Un banc »"),
+        # L'adresse d'une entité, ou d'un immeuble sujet de l'Objet, reste ; un nombre n'est pas un téléphone.
+        (
+            "Pétition déposée le 24 mai 2022 de Centre socioculturel de Bellevaux - Chemin d'Entre-Bois 10 - 1018 "
+            "Lausanne : «Pour la rénovation du terrain de foot»",
+            None,
+        ),
+        ("Préavis N° 2023/44 - Chemin de la Colline 6-8 - Vente du bien-fonds n° 7'536", None),
+        ("Interpellation urgente de M. Paul Exemple : «Rue de Genève 85 : adresse fictive»", "Interpellation urgente de [particulier] : «Rue de Genève 85 : adresse fictive»"),
+        ("Pétition Pour des aménagements de la route du Village, 1295 Mies", None),
+        ("Les Dailles - Epalinges, biens-fonds nos 272 - 344 - 366, vente de terrains", None),
     ],
 )
 def test_masquer(titre, attendu):
