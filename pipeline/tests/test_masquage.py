@@ -111,6 +111,11 @@ ELUS = frozenset({"Loris Socchi", "Jean Dupont", "Anne-Laure Métraux"})
         ("Interpellation urgente de M. Paul Exemple : «Rue de Genève 85 : adresse fictive»", "Interpellation urgente de [particulier] : «Rue de Genève 85 : adresse fictive»"),
         ("Pétition Pour des aménagements de la route du Village, 1295 Mies", None),
         ("Les Dailles - Epalinges, biens-fonds nos 272 - 344 - 366, vente de terrains", None),
+        # Les titres de documents : une URL (le Grand Conseil en met en titre) ou un nom de fichier restent ; un nom de
+        # fichier qui commence comme un titre de pétition est masqué comme lui.
+        ("https://www.exemple.ch/fr/regions/vaud/12345678-un-article-de-presse.html", None),
+        ("17_17_mai_reponse_interpellation_exemple_casino.pdf v1.0", None),
+        ("Pétition de Exemple Paul et crts - Route des Lilas 30kmh.pdf", "Pétition de [particulier] et crts - Route des Lilas 30kmh.pdf"),
     ],
 )
 def test_masquer(titre, attendu):

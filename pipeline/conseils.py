@@ -262,8 +262,8 @@ def vers_archive(
     """Les éléments de l'archive tirés de `bruts`, par clé. `archive` (les éléments déjà archivés) sert à résoudre
     l'Objet de chaque point d'ordre du jour et à départager deux Objets de même numéro (il y en a à Lausanne) : le
     plus petit identifiant l'emporte, d'un import à l'autre. Les demandes de grâce sont écartées, et leurs points
-    d'ordre du jour retirés. Les titres des Objets et des points sont masqués (ADR 0007), en épargnant les élu·e·s
-    connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`.
+    d'ordre du jour retirés. Les titres des Objets, de leurs documents et des points sont masqués (ADR 0007), en
+    épargnant les élu·e·s connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`.
 
     Pour un conseil qui porte sur le canton, chaque Objet est rattaché par le nom (ADR 0016) d'après `communes`
     (`communes.json` par défaut) : son titre masqué, puis le texte de ses documents, qui n'est pas conservé ;
@@ -291,8 +291,9 @@ def vers_archive(
     elus = elus_connus(du_conseil.values())
     for cle, objet in elements.items():
         titre = masquer(objet.titre, elus)
+        documents = [d.model_copy(update={"titre": d.titre and masquer(d.titre, elus)}) for d in objet.documents]
         rattachees = corriger(rattacher_objet(titre, textes[cle], communes), corrections.get(cle)) if canton else []
-        elements[cle] = objet.model_copy(update={"titre": titre, "communes": rattachees})
+        elements[cle] = objet.model_copy(update={"titre": titre, "documents": documents, "communes": rattachees})
     if canton:
         anciens = {cle: o for cle, o in du_conseil.items() if cle not in elements}
         elements |= corriger_archive(anciens, corrections)

@@ -469,6 +469,13 @@ def _monde_avec_petition(horloge):
             title="Pétition de M. Paul Exemple et consorts (312 signatures) : « Pour un parc à chiens »",
             type_name="Pétition",
             contributeurs=[Contributeur("Paul Exemple", None, "Auteur")],
+            documents=[
+                Document(
+                    "Pétition de Exemple Paul - chemin des Lilas 2 - 1000 Lausanne - Pour un parc à chiens",
+                    "https://www.lausanne.ch/pet25-003.pdf",
+                ),
+                Document("PET25-003 Plan du parc à chiens.pdf", "https://www.lausanne.ch/pet25-003-annexe.pdf"),
+            ],
         ),
         Affaire(
             id=340951,
@@ -476,6 +483,10 @@ def _monde_avec_petition(horloge):
             number="INT25/020",
             title="Interpellation de Mme Léa Conseillère : « Des bancs »",
             contributeurs=[Contributeur("Léa Conseillère", "PS", "Auteur")],
+            documents=[
+                Document("Interpellation de Mme Léa Conseillère - Des bancs", "https://www.lausanne.ch/int25-020.pdf"),
+                Document(None, "https://www.lausanne.ch/int25-020-annexe.pdf", categorie="Annexe"),
+            ],
         ),
     ]
     monde.reunions[2].points += [
@@ -502,6 +513,17 @@ def test_aucun_nom_masque_n_atteint_l_archive_et_une_petition_n_a_pas_d_auteur(t
         "Pétition de [particulier] et consorts (312 signatures) : « Pour un parc à chiens »",
         [],
     )
+    # Les titres de documents sont masqués comme celui de l'Objet ; un nom de fichier, qui n'a ni civilité ni
+    # « Pétition de », reste tel quel (ADR 0007).
+    assert [d["titre"] for d in petition["documents"]] == [
+        "Pétition de [particulier] - [coordonnées] - Pour un parc à chiens",
+        "PET25-003 Plan du parc à chiens.pdf",
+    ]
+    interpellation = _lire(tmp_path, "conseils/5586/objets/INT25-020.json")
+    assert [d["titre"] for d in interpellation["documents"]] == [
+        "Interpellation de Mme Léa Conseillère - Des bancs",
+        "Annexe",
+    ]
     lausanne = _lire(tmp_path, "conseils/5586/seances/2026-10-06.json")["ordre_du_jour"]
     assert [p["titre"] for p in lausanne] == [
         "Postulat - Préaux ouverts",
