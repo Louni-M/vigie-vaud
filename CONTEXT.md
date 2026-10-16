@@ -50,9 +50,15 @@ Une demande de permis de construire de la CAMAC, identifiée par son numéro CAM
 _À éviter_ : permis (pour un dossier isolé), demande
 
 **Fil cantonal** :
-La colonne qui liste les nouveautés de toutes les sources, filtrable par type et limitée à la zone visible de la
-carte.
+La colonne qui liste les nouveautés de toutes les sources des 14 derniers jours (Objets déposés, Séances tenues,
+nouveaux dossiers), plus les Séances à venir, groupées par jour. Elle est filtrable par type et limitée à la zone
+visible de la carte ou étendue à tout le canton. Elle ne dépend pas des couches activées : l'interrupteur d'une couche
+gouverne la carte, pas le fil.
 _À éviter_ : flux, timeline, actualités
+
+**Nouveau dossier** :
+Un dossier dont l'enquête publique a débuté depuis moins de 14 jours.
+_À éviter_ : nouveau permis
 
 **Badge de fraîcheur** :
 L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »).
