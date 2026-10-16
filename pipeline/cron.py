@@ -9,8 +9,9 @@ ce qui a manqué.
 
 Les sondes tournent à chaque passage (toutes les 30 minutes). Chaque conseil, lui, s'importe une fois par jour, au
 premier passage après 7 h à Lausanne, depuis le jour de son dernier import réussi ; un import en échec est refait au
-passage suivant. Quand aucun import d'un conseil n'a réussi depuis plus de 24 h, le passage ouvre son issue
-`import-conseils`, qu'il commente et ferme au premier import réussi. Seules les sondes mettent une source en panne :
+passage suivant. Quand aucun import d'un conseil n'a réussi depuis plus de 24 h, ou dès le premier échec d'un
+conseil qui n'a jamais été importé, le passage ouvre son issue `import-conseils`, qu'il commente et ferme au premier
+import réussi. Seules les sondes mettent une source en panne :
 un import en échec ne touche pas à l'état des sources.
 
 En local, contre un clone du dépôt de données (depuis `pipeline/`) :
@@ -75,9 +76,9 @@ class ClientIssues(Protocol):
         voit pas les issues : le passage lui signale alors chaque conseil en échec, à chaque passage, et le retour
         de ceux qui étaient en échec avant lui."""
 
-    def import_en_echec(self, conseil: Source, dernier: datetime) -> None:
+    def import_en_echec(self, conseil: Source, dernier: datetime | None) -> None:
         """Aucun import du conseil n'a réussi depuis plus de 24 h, sans issue ouverte ; `dernier` est l'heure du
-        dernier import réussi."""
+        dernier import réussi, `None` pour un conseil qui n'a encore jamais été importé."""
 
     def import_retour(self, conseil: Source, dernier: datetime) -> None:
         """Le conseil qui a une issue ouverte a de nouveau été importé, à `dernier`."""
@@ -98,8 +99,9 @@ class IssuesAffichees:
     def imports_signales(self, conseils: list[Source]) -> None:
         return None
 
-    def import_en_echec(self, conseil: Source, dernier: datetime) -> None:
-        print(f"{titre_import(conseil)} (dernier import réussi {dernier:%Y-%m-%d %H:%M}Z)")
+    def import_en_echec(self, conseil: Source, dernier: datetime | None) -> None:
+        reussi = f"dernier import réussi {dernier:%Y-%m-%d %H:%M}Z" if dernier else "aucun import réussi"
+        print(f"{titre_import(conseil)} ({reussi})")
 
     def import_retour(self, conseil: Source, dernier: datetime) -> None:
         print(f"Import de retour : {conseil.nom} (importé {dernier:%Y-%m-%d %H:%M}Z)")
@@ -147,10 +149,13 @@ class IssuesGitHub:
         titres = {i["title"] for i in self._issues_ouvertes(ETIQUETTE_IMPORT)}
         return {s.id for s in conseils if titre_import(s) in titres}
 
-    def import_en_echec(self, conseil: Source, dernier: datetime) -> None:
+    def import_en_echec(self, conseil: Source, dernier: datetime | None) -> None:
+        if dernier is None:
+            constat = f"Aucun import de {conseil.nom} n'a encore réussi."
+        else:
+            constat = f"Aucun import de {conseil.nom} n'a réussi depuis le {dernier:%Y-%m-%d à %H:%M} UTC."
         corps = (
-            f"Aucun import de {conseil.nom} n'a réussi depuis le {dernier:%Y-%m-%d à %H:%M} UTC. Le cron le "
-            "réessaie à chaque passage ; le journal du workflow donne la cause de chaque échec.\n\n"
+            f"{constat} Le cron le réessaie à chaque passage ; le journal du workflow donne la cause de chaque échec.\n\n"
             "La source n'est pas en panne pour autant : le site garde les données déjà importées et seul le badge "
             "de fraîcheur vieillit. Le cron commentera puis fermera cette issue au premier import réussi."
         )
@@ -428,19 +433,20 @@ def _accorder_issues_import(
     heure: datetime,
 ) -> None:
     """Ouvre l'issue de chaque conseil sans import réussi depuis plus de 24 h qui n'en a pas, et ferme celle de
-    chaque conseil importé depuis. Un conseil jamais importé n'a pas de date d'où compter : il n'en ouvre pas."""
+    chaque conseil importé depuis. Un conseil qui n'a jamais été importé n'a pas de date d'où compter : il est dû à
+    chaque passage, et son issue s'ouvre dès qu'il manque encore à `apres`."""
 
-    def en_echec(imports: Mapping[str, datetime], conseil: Source) -> bool:
+    def perime(imports: Mapping[str, datetime], conseil: Source) -> bool:
         dernier = imports.get(cle_conseil(conseil.conseil))
         return dernier is not None and heure - dernier > DELAI_AVANT_ISSUE_IMPORT
 
     signales = issues.imports_signales(conseils)
     for conseil in conseils:
         dernier = apres.get(cle_conseil(conseil.conseil))
-        if en_echec(apres, conseil):
+        if dernier is None or perime(apres, conseil):
             if signales is None or conseil.id not in signales:
                 issues.import_en_echec(conseil, dernier)
-        elif dernier is not None and (conseil.id in signales if signales is not None else en_echec(avant, conseil)):
+        elif conseil.id in signales if signales is not None else perime(avant, conseil):
             issues.import_retour(conseil, dernier)
 
 

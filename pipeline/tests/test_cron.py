@@ -83,7 +83,7 @@ class IssuesFactices:
         return None
 
     def import_en_echec(self, conseil, dernier):
-        self.signalements.append(("import_en_echec", conseil.id, dernier.isoformat()))
+        self.signalements.append(("import_en_echec", conseil.id, dernier and dernier.isoformat()))
 
     def import_retour(self, conseil, dernier):
         self.signalements.append(("import_retour", conseil.id, dernier.isoformat()))
@@ -803,6 +803,22 @@ def test_plus_de_24_h_sans_import_reussi_ouvrent_une_seule_issue_import_conseils
     ]
     etat = json.loads((tmp_path / "etat-sources.json").read_text())
     assert {e["etat"] for e in etat["sources"].values()} == {"disponible"}
+
+
+def test_un_conseil_jamais_importe_ouvre_son_issue_import_conseils_des_le_premier_echec(tmp_path):
+    monde, github = _monde_conseils(), GitHubFactice()
+    _passer_conseils_avec_github(tmp_path, monde, github, [VEILLE, VEILLE + timedelta(minutes=30)], en_echec={"VD"})
+    (ouverte,) = [dict(i) for i in github.issues]
+    _passer_conseils_avec_github(tmp_path, monde, github, [VEILLE + timedelta(minutes=60)])
+
+    assert ouverte["title"] == "Import en échec : Grand Conseil (OpenParlData)"
+    assert ouverte["state"] == "open"
+    assert "Aucun import de Grand Conseil (OpenParlData) n'a encore réussi." in ouverte["body"]
+    (issue,) = github.issues
+    assert issue["state"] == "closed"
+    assert issue["commentaires"] == [
+        "Grand Conseil (OpenParlData) est de nouveau importé : import réussi le 2026-10-15 à 06:17 UTC."
+    ]
 
 
 def test_en_mode_local_sans_push_l_echec_et_le_retour_d_un_import_sont_affiches_sans_rien_demander_a_github(
