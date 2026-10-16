@@ -36,9 +36,10 @@
 		onpret?: (map: MlMap) => void;
 		/**
 		 * Fin d'un déplacement. `parDefaut` : la vue du canton (au chargement, ou rétablie par `vueCanton`),
-		 * qui n'est pas un choix du visiteur.
+		 * qui n'est pas un choix du visiteur. `parLaPersonne` : le visiteur a glissé, zoomé (molette, doigts,
+		 * clavier ou boutons) ; faux pour les vols et cadrages demandés à la carte.
 		 */
-		onvue?: (zone: Zone, centre: Centre, parDefaut: boolean) => void;
+		onvue?: (zone: Zone, centre: Centre, parDefaut: boolean, parLaPersonne: boolean) => void;
 	}
 
 	let { repere = null, attribution = [], bounds = CANTON, interactive = true, onpret, onvue }: Props = $props();
@@ -66,7 +67,7 @@
 		};
 	}
 
-	function emitView(parDefaut = false) {
+	function emitView(parDefaut = false, parLaPersonne = false) {
 		if (!map || !onvue) return;
 		parDefaut ||= versDefaut;
 		versDefaut = false;
@@ -75,7 +76,8 @@
 		onvue(
 			[b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
 			{ lon: c.lng, lat: c.lat, zoom: map.getZoom() },
-			parDefaut
+			parDefaut,
+			parLaPersonne
 		);
 	}
 
@@ -183,7 +185,13 @@
 					}
 				});
 
-				m.on('moveend', () => emitView());
+				// MapLibre joint l'évènement du navigateur aux déplacements faits par le visiteur, pas aux vols demandés
+				// ni aux changements de taille. Il l'omet parfois pour la molette : un tour de molette juste avant compte.
+				let geste = false;
+				let molette = -Infinity;
+				container.addEventListener('wheel', () => (molette = performance.now()), { capture: true, passive: true });
+				m.on('movestart', (e) => (geste = !!e.originalEvent || performance.now() - molette < 500));
+				m.on('moveend', (e) => emitView(false, geste || !!e.originalEvent));
 				map = m;
 				// Vue demandée pendant le chargement du style.
 				// Une vue demandée (lien partagé) est un choix du visiteur : elle reste dans l'adresse.

@@ -1,8 +1,9 @@
 <script lang="ts">
 	/*
 	 * Coquille de la carte, commune à `/` et à `/commune/<slug>` : elle garde la carte montée pendant la
-	 * navigation. Rail des couches à gauche, volet posé sur la carte, recherche flottante en haut, et la fiche
-	 * commune en colonne à droite quand une commune est ouverte. Les pages du groupe ne portent que le <head>.
+	 * navigation. Rail des couches à gauche, volet posé sur la carte (celui d'une couche, ou le fil cantonal, ouvert à
+	 * l'arrivée), recherche flottante en haut, et la fiche commune en colonne à droite quand une commune est ouverte.
+	 * Les pages du groupe ne portent que le <head>.
 	 *
 	 * Sur téléphone (requête `telephone`), une seule vue plein écran à la fois, choisie dans la barre Carte ·
 	 * Couches · Fiche : la vue Couches empile les volets de toutes les couches, et ce qu'on ouvre depuis la carte
@@ -17,7 +18,9 @@
 	import { COUCHES } from '#lib/registre/couches.js';
 	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { ancre } from '#lib/registre/recouvrement.js';
-	import { creerRegistre, fournirRegistre, type VueCarte } from '#lib/registre/registre.svelte.js';
+	import { creerRegistre, fournirRegistre, FIL, type VueCarte } from '#lib/registre/registre.svelte.js';
+	import Fil from '#lib/fil/Fil.svelte';
+	import { creerChargementFil } from '#lib/fil/chargement.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
@@ -39,6 +42,8 @@
 	let { data, children }: LayoutProps = $props();
 
 	const registre = creerRegistre(COUCHES, () => data.communes);
+	/** Entrées du fil cantonal, lues à sa première ouverture et gardées pendant la visite. */
+	const fil = creerChargementFil(COUCHES);
 	let carte: ReturnType<typeof Map> | undefined = $state();
 
 	/* ---- Téléphone ---- */
@@ -110,6 +115,8 @@
 
 	function choix(r: Resultat) {
 		registre.oublierAvis();
+		// Chercher un lieu déplace la zone du fil ; chercher un élément, non.
+		if (r.type !== 'element') registre.deplacementVoulu();
 		if (r.type === 'adresse') {
 			repere = [r.lon, r.lat];
 			carte?.voler(r.lon, r.lat, r.categorie === 'Position' ? 15 : 16);
@@ -187,6 +194,18 @@
 				</div>
 			{/if}
 		{/each}
+
+		<!-- Le fil cantonal, à la place des volets : ouvert à l'arrivée, sa colonne de fiche reste ouvrable à droite. -->
+		{#if registre.volet === FIL && !telephone.current}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="volet volet-fil"
+				transition:fly={{ x: -20, duration: 160 }}
+				onkeydown={(e) => e.key === 'Escape' && fermerVolet()}
+			>
+				<Fil {registre} chargement={fil} communes={data.communes} onfermer={fermerVolet} />
+			</div>
+		{/if}
 
 		<p class="liens">
 			<a href={resolve('/a-propos')}>À propos</a> ·
@@ -301,6 +320,10 @@
 		/* Le volet est à la hauteur de son contenu, sans dépasser le bas de la carte. */
 		height: fit-content;
 		max-height: calc(100% - 100px);
+	}
+	/* Le fil, un peu plus large qu'un volet. */
+	.volet-fil {
+		width: min(380px, calc(100% - 20px));
 	}
 	.liens {
 		position: absolute;

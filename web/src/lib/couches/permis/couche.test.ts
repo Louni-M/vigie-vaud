@@ -5,6 +5,9 @@ import { entite, fauxCanton } from '#tests/faux-canton.js';
 // Le client du canton refuse de partir ailleurs que dans un navigateur.
 vi.mock('$app/env', () => ({ browser: true }));
 
+// Horloge fixée avant l'import : le module de données partagé lit la date du jour à sa création.
+vi.hoisted(() => vi.useFakeTimers({ now: new Date('2026-10-16T10:00:00Z'), toFake: ['Date'] }));
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('couche Permis', () => {
@@ -19,6 +22,47 @@ describe('couche Permis', () => {
 			fiches: [{ commune: 'lutry' }],
 			position: [6.72, 46.5]
 		});
+	});
+
+	it('donne au fil les nouveaux dossiers : enquête débutée depuis `depuis`, quel que soit leur statut', async () => {
+		vi.stubGlobal(
+			'fetch',
+			fauxCanton([
+				entite(250001, { DATE_ENQUETE: 'Du 05.10.2026 au 04.11.2026', DESCRIPTION: 'Villa de 2 logements' }),
+				entite(
+					250002,
+					{ DATE_ENQUETE: 'Du 02.10.2026 au 01.11.2026', ETAT: 'Procédure en cours', NATURE: 'Transformation' },
+					[6.72, 46.5]
+				),
+				entite(250003, { DATE_ENQUETE: 'Du 01.10.2026 au 31.10.2026' })
+			]).fetch
+		);
+
+		expect(couchePermis.fil?.types.map((t) => [t.id, t.nom, t.signe])).toEqual([
+			['nouveaux', 'Nouveaux dossiers', 'P']
+		]);
+		expect(await couchePermis.fil?.entrees('2026-10-02')).toEqual([
+			{
+				element: '250001',
+				type: 'nouveaux',
+				date: '2026-10-05',
+				sorte: 'Construction nouvelle',
+				qui: 'Pully',
+				titre: 'Villa de 2 logements',
+				communes: ['pully'],
+				position: [6.67, 46.5]
+			},
+			{
+				element: '250002',
+				type: 'nouveaux',
+				date: '2026-10-02',
+				sorte: 'Transformation',
+				qui: 'Lutry',
+				titre: 'Transformation',
+				communes: ['lutry'],
+				position: [6.72, 46.5]
+			}
+		]);
 	});
 
 	it('ne localise pas un n° inconnu du canton', async () => {

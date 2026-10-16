@@ -1,9 +1,10 @@
 <script lang="ts">
 	/*
 	 * Rail des couches : une icône par couche inscrite, dans l'ordre du registre, pleine si la couche est
-	 * activée et cerclée sinon. Un clic ouvre ou ferme son volet.
+	 * activée et cerclée sinon. Un clic ouvre ou ferme son volet. En tête, séparée des couches, l'entrée « Fil »
+	 * ouvre le fil cantonal à la place des volets.
 	 */
-	import type { Registre } from './registre.svelte.js';
+	import { FIL, type Registre } from './registre.svelte.js';
 
 	let { registre }: { registre: Registre } = $props();
 
@@ -11,6 +12,19 @@
 </script>
 
 <nav class="rail" aria-label="Couches">
+	<button
+		type="button"
+		class="fil"
+		data-couche={FIL}
+		class:ouvert={registre.volet === FIL}
+		aria-expanded={registre.volet === FIL}
+		aria-controls={registre.volet === FIL ? 'volet-fil' : undefined}
+		title="Fil cantonal : ce qui est nouveau"
+		onclick={() => basculer(FIL)}
+	>
+		<span class="icone-fil" aria-hidden="true">≡</span>
+		<span class="nom">Fil</span>
+	</button>
 	{#each registre.couches as c (c.id)}
 		{@const active = registre.active(c.id)}
 		<button
@@ -59,6 +73,23 @@
 	}
 	button.ouvert {
 		background: #e8edf5;
+	}
+	.fil {
+		margin-bottom: 6px;
+		padding-bottom: 10px;
+		border-bottom: 1px solid var(--line);
+		border-radius: 8px 8px 0 0;
+		font-weight: 600;
+	}
+	.icone-fil {
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		border-radius: 8px;
+		background: var(--text);
+		color: #fff;
+		font-size: 18px;
 	}
 	.icone {
 		display: grid;
