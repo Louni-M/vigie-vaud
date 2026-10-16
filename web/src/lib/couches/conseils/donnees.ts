@@ -11,6 +11,7 @@ import type {
 	ListeObjets,
 	ListeSeances,
 	Objet,
+	RattachementsCommune,
 	Seance,
 	Source
 } from '#lib/schema.js';
@@ -69,6 +70,12 @@ export interface DonneesConseils {
 	 * (AAAA-MM-JJ), dont les Séances à venir. Rejette si le fichier n'a pas pu être lu.
 	 */
 	entreesFil(depuis: string): Promise<EntreeFil[]>;
+	/**
+	 * « Au Grand Conseil » : les Objets du Grand Conseil rattachés à la commune (n° OFS), par date de dernière étape
+	 * décroissante. `conseils/communes/<ofs>.json` n'est lu que si l'index en annonce au moins un : sinon, une liste
+	 * vide sans autre requête. Rejette si l'un des deux fichiers n'a pas pu être lu.
+	 */
+	auGrandConseil(ofs: number): Promise<LigneObjet[]>;
 }
 
 export interface Options {
@@ -142,8 +149,14 @@ export function creerDonneesConseils({
 		return { objets: [...page.objets, ...liste.objets], suivante: reste[0] ?? null };
 	}
 
+	const index = () => lireUneFois<IndexConseils>('conseils/index.json');
+
 	return {
-		index: () => lireUneFois<IndexConseils>('conseils/index.json'),
+		index,
+		async auGrandConseil(ofs) {
+			if (!((await index()).communes[ofs] > 0)) return [];
+			return (await lireUneFois<RattachementsCommune>(`conseils/communes/${ofs}.json`)).objets;
+		},
 		objetsAnnee,
 		async objetsRecents(conseil) {
 			let page: PageObjets = { objets: [], suivante: annees(conseil)[0] ?? null };

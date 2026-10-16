@@ -5,8 +5,8 @@
 	 * change de fiche. Le conseil est lu dans `conseils/index.json`.
 	 *
 	 * Commune dont le conseil est couvert : le nom du conseil (et, s'il ne donne que ses Séances, « OpenParlData ne
-	 * donne que ses séances »), l'en-tête de séance, « Objets récents », « Séances passées ». « Au Grand Conseil »
-	 * viendra après, pour toutes les communes.
+	 * donne que ses séances »), l'en-tête de séance, « Objets récents », « Séances passées », puis, après un
+	 * séparateur, « Au Grand Conseil ». Commune non couverte : « Au Grand Conseil » seul, sous « Non couvert ».
 	 *
 	 * Fiche du Grand Conseil : l'en-tête de séance, « Objets récents » avec les puces « Tous · Nomment une commune ·
 	 * Sans commune », « Séances passées », aux mêmes longueurs que dans l'onglet d'une commune.
@@ -17,6 +17,7 @@
 	import { untrack } from 'svelte';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { ConseilIndexe, IndexConseils } from '#lib/schema.js';
+	import AuGrandConseil from './AuGrandConseil.svelte';
 	import { FICHE_GRAND_CONSEIL } from './cles.js';
 	import { conseils } from './donnees.js';
 	import { coucheConseils } from './index.js';
@@ -45,16 +46,22 @@
 	<p class="note" aria-busy="true">Lecture du conseil…</p>
 {:then index}
 	{@const conseil = conseilDeLaFiche(index)}
-	{#if conseil && grandConseil}
-		<TeteSeance {conseil} {ouvrir} />
-		<ObjetsRecents {conseil} {ouvrir} puces />
-		<SeancesPassees {conseil} {ouvrir} />
-	{:else if conseil}
-		<h3>{conseil.nom}</h3>
-		{#if !conseil.donne.includes('objets')}<p class="note">OpenParlData ne donne que ses séances.</p>{/if}
-		<TeteSeance {conseil} {ouvrir} />
-		{#if conseil.donne.includes('objets')}<ObjetsRecents {conseil} {ouvrir} />{/if}
-		{#if conseil.donne.includes('seances')}<SeancesPassees {conseil} {ouvrir} />{/if}
+	{#if grandConseil}
+		{#if conseil}
+			<TeteSeance {conseil} {ouvrir} />
+			<ObjetsRecents {conseil} {ouvrir} puces communes={ctx.communes} />
+			<SeancesPassees {conseil} {ouvrir} />
+		{/if}
+	{:else}
+		{#if conseil}
+			<h3>{conseil.nom}</h3>
+			{#if !conseil.donne.includes('objets')}<p class="note">OpenParlData ne donne que ses séances.</p>{/if}
+			<TeteSeance {conseil} {ouvrir} />
+			{#if conseil.donne.includes('objets')}<ObjetsRecents {conseil} {ouvrir} />{/if}
+			{#if conseil.donne.includes('seances')}<SeancesPassees {conseil} {ouvrir} />{/if}
+			<hr />
+		{/if}
+		{#if commune}<AuGrandConseil {commune} communes={ctx.communes} {ouvrir} />{/if}
 	{/if}
 {:catch}
 	<p class="erreur" role="alert">
@@ -69,6 +76,11 @@
 	h3 {
 		margin: 0 0 2px;
 		font-size: 16px;
+	}
+	hr {
+		margin: 22px 0 12px;
+		border: 0;
+		border-top: 2px solid var(--line);
 	}
 	.note {
 		margin: 2px 0 6px;
