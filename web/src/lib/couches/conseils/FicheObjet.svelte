@@ -3,16 +3,22 @@
 	 * Fiche d'un Objet : en tête, son type, son numéro et son conseil, puis son titre ; un tableau (déposé le,
 	 * auteur·e·s avec leur parti, statut et sa date) ; ses étapes datées et ses documents ; « Voir sur lausanne.ch › »
 	 * et la source. Le type et le statut sont ceux que le conseil leur donne. Une pétition n'a aucun·e auteur·e.
+	 * Pour un Objet du Grand Conseil, après le tableau, les communes nommées (même aucune : une commune peut
+	 * manquer), avec « rattachement automatique · signaler une erreur », un courriel pré-rempli.
 	 */
 	import type { Objet } from '#lib/schema.js';
-	import { lireCle, nomConseil } from './cles.js';
+	import type { Commune } from '#lib/types.js';
+	import { CLE_GRAND_CONSEIL, lireCle, nomConseil } from './cles.js';
 	import { COULEUR_CONSEILS } from './index.js';
 	import { dateCourte, dateLongue, siteDuLien } from './lignes.js';
+	import { communesNommees, signalement } from './rattachements.js';
 	import Source from './SourceElement.svelte';
 
-	let { cle, objet }: { cle: string; objet: Objet } = $props();
+	let { cle, objet, communes = [] }: { cle: string; objet: Objet; communes?: readonly Commune[] } = $props();
 
 	const conseil = $derived(nomConseil(lireCle(cle)?.conseil ?? ''));
+	const duGrandConseil = $derived(lireCle(cle)?.conseil === CLE_GRAND_CONSEIL);
+	const nommees = $derived(communesNommees(objet.communes, communes));
 	const auteurs = $derived(objet.contributeurs.map((a) => (a.parti ? `${a.nom} (${a.parti})` : a.nom)));
 </script>
 
@@ -33,6 +39,15 @@
 			<dd>{objet.statut.libelle}{objet.statut.date ? `, ${dateLongue(objet.statut.date)}` : ''}</dd>
 		{/if}
 	</dl>
+
+	{#if duGrandConseil}
+		<div class="communes">
+			<p><span class="etiquette">Communes nommées</span> {nommees.length ? nommees.join(', ') : 'aucune'}</p>
+			<p class="aide">
+				rattachement automatique · <a href={signalement(cle, nommees)}>signaler une erreur</a>
+			</p>
+		</div>
+	{/if}
 
 	{#if objet.etapes.length}
 		<h4>Étapes</h4>
@@ -99,6 +114,25 @@
 	}
 	dd {
 		margin: 0;
+	}
+	.communes {
+		display: grid;
+		gap: 2px;
+		padding: 8px 10px;
+		border-radius: 8px;
+		background: #e3f2f4;
+		font-size: 14px;
+	}
+	.communes p {
+		margin: 0;
+	}
+	.etiquette {
+		margin-right: 6px;
+		color: var(--muted);
+	}
+	.aide {
+		font-size: 12px;
+		color: var(--muted);
 	}
 	h4 {
 		margin: 8px 0 0;

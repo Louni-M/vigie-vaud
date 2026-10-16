@@ -5,6 +5,7 @@ import type {
 	IndexConseils,
 	LigneObjet,
 	Objet,
+	RattachementsCommune,
 	Seance
 } from '#lib/schema.js';
 
@@ -100,6 +101,11 @@ export function indexConseils(champs: Partial<IndexConseils> = {}): IndexConseil
 		communes: {},
 		...champs
 	};
+}
+
+/** `conseils/communes/<ofs>.json` : les Objets du Grand Conseil rattachés à la commune (Pully par défaut). */
+export function rattachementsCommune(objets: LigneObjet[], commune = 5590): RattachementsCommune {
+	return { version: 1, genere: GENERE, commune, objets };
 }
 
 /** Une entrée de `conseils/fil.json` ; par défaut, l'Objet de `ligneObjet()`. */
