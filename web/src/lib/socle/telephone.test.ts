@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { affichageApres, affichageArrivee, decalageAuDessus } from './telephone.js';
+import { affichageApres, affichageArrivee, decalageAuDessus, recherchePleine, texteApresRecherche } from './telephone.js';
 
 const RIEN = { fiche: null, element: null };
 const PULLY = { fiche: 'commune:pully', element: null };
@@ -57,5 +57,35 @@ describe('décalage d’un dossier vers lequel la carte vole sur téléphone', (
 	});
 	it('ne le décale pas quand le haut et le bas sont couverts autant l’un que l’autre', () => {
 		expect(decalageAuDessus(80, 80)).toBe(0);
+	});
+});
+
+describe('Recherche plein écran sur téléphone', () => {
+	it('s’affiche par-dessus la vue Carte une fois ouverte', () => {
+		expect(recherchePleine(true, 'carte', true)).toBe(true);
+		expect(recherchePleine(true, 'carte', false)).toBe(false);
+	});
+	it('ne s’ouvre que depuis la vue Carte', () => {
+		expect(recherchePleine(true, 'fil', true)).toBe(false);
+		expect(recherchePleine(true, 'couches', true)).toBe(false);
+		expect(recherchePleine(true, 'fiche', true)).toBe(false);
+	});
+	it('ne s’ouvre jamais sur bureau, ni au-delà de 760 px de large', () => {
+		expect(recherchePleine(false, 'carte', true)).toBe(false);
+	});
+});
+
+describe('texte du champ de la carte quand la Recherche se referme', () => {
+	it('« Annuler » et le retour arrière effacent ce qu’on a tapé et rendent le champ d’avant l’ouverture', () => {
+		expect(texteApresRecherche('annuler', '', 'pull')).toBe('');
+		expect(texteApresRecherche('retour', '', 'pull')).toBe('');
+		expect(texteApresRecherche('annuler', 'Pully', 'Lutry')).toBe('Pully');
+		expect(texteApresRecherche('retour', 'Pully', '')).toBe('Pully');
+	});
+	it('choisir un résultat laisse son nom dans le champ, comme sur bureau', () => {
+		expect(texteApresRecherche('choix', '', 'Bourg-en-Lavaux')).toBe('Bourg-en-Lavaux');
+		expect(texteApresRecherche('choix', 'Pully', 'Avenue de Lavaux 1, 1009 Pully')).toBe(
+			'Avenue de Lavaux 1, 1009 Pully'
+		);
 	});
 });
