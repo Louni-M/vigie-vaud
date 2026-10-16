@@ -30,6 +30,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    RootModel,
     StringConstraints,
     model_validator,
 )
@@ -245,6 +246,19 @@ class DocumentObjet(Modele):
     lien: Lien = Field(description="Le document chez la source (PDF, page ou vidéo).")
 
 
+OrigineCommune = TypeAliasType("OrigineCommune", Literal["titre", "document", "correction"])
+
+
+class CommuneRattachee(Modele):
+    """Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement."""
+
+    ofs: NumeroOfs
+    origine: OrigineCommune = Field(
+        description="`titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée "
+        "à la main par `corrections.json`."
+    )
+
+
 class Objet(Enveloppe):
     """`conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est
     `<conseil>/<numéro>`, la barre oblique du numéro devenant `-` (`vd/26_INT_140`, `5586/POS25-115`)."""
@@ -260,6 +274,11 @@ class Objet(Enveloppe):
     etapes: list[Etape] = Field(description="Étapes datées, de la plus ancienne à la plus récente.")
     documents: list[DocumentObjet]
     lien: Lien | None = Field(description="Page de l'Objet chez le conseil (`url_external`).")
+    communes: list[CommuneRattachee] = Field(
+        description="Grand Conseil : les communes rattachées par le nom (ADR 0016), dans l'ordre du rattachement "
+        "(titre, puis documents de la plus à la moins citée, puis corrections), `corrections.json` appliqué. Vide "
+        "pour un conseil communal, dont les Objets n'appartiennent qu'à leur commune."
+    )
 
 
 DateSeance = TypeAliasType(
@@ -286,21 +305,24 @@ class Seance(Enveloppe):
     ordre_du_jour: list[PointOrdreDuJour]
 
 
+class Correction(Modele):
+    """Une correction de rattachement écrite à la main dans `corrections.json` (ADR 0016)."""
+
+    objet: CleElement = Field(description="Clé de l'Objet corrigé (`vd/26_INT_140`).")
+    retirer: list[NumeroOfs] = Field(default=[], description="Communes à retirer du rattachement par le nom.")
+    ajouter: list[NumeroOfs] = Field(
+        default=[], description="Communes à ajouter, en fin de liste, avec l'origine `correction`."
+    )
+    note: str = Field(min_length=1, description="La raison de la correction, pour qui la relit.")
+
+
+class Corrections(RootModel[list[Correction]]):
+    """`corrections.json`, à la racine du dépôt de données : les corrections de rattachement, écrites à la main et
+    appliquées à chaque import comme au rattrapage. Sans enveloppe : le cron ne l'écrit jamais."""
+
+
 # --- Fichiers de lecture des conseils (conseils/*.json, dépôt de données ; ADR 0017) ---------------------------
 # Reconstruits en entier depuis l'archive à chaque import : c'est ce que le site lit pour lister.
-
-
-OrigineCommune = TypeAliasType("OrigineCommune", Literal["titre", "document", "correction"])
-
-
-class CommuneRattachee(Modele):
-    """Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement."""
-
-    ofs: NumeroOfs
-    origine: OrigineCommune = Field(
-        description="`titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée "
-        "à la main par `corrections.json`."
-    )
 
 
 class Auteur(Modele):
@@ -444,6 +466,7 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "fil-conseils": FilConseils,
     "index-conseils": IndexConseils,
     "rattachements-commune": RattachementsCommune,
+    "corrections": Corrections,
 }
 
 

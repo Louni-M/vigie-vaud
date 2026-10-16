@@ -125,9 +125,8 @@ def ligne_objet(cle: str, objet: Objet) -> LigneObjet:
 
 
 def communes(objet: Objet) -> list[CommuneRattachee]:
-    """Les communes rattachées à l'Objet, dans l'ordre du rattachement. L'Objet ne les porte qu'à partir du
-    rattachement par le nom (ticket #67) ; d'ici là, aucune."""
-    return list(getattr(objet, "communes", None) or [])
+    """Les communes rattachées à l'Objet par le nom, dans l'ordre du rattachement (vide hors du Grand Conseil)."""
+    return list(objet.communes)
 
 
 def _de(cle: str, conseil: str) -> bool:

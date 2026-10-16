@@ -8,9 +8,9 @@
   "has_more": false,
   "next_page": null,
   "prev_page": null,
-  "first_page": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud&offset=0&limit=500",
-  "last_page": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud&offset=0&limit=500",
-  "self": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud"
+  "first_page": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category%2Cdocs.text&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud&offset=0&limit=500",
+  "last_page": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category%2Cdocs.text&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud&offset=0&limit=500",
+  "self": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category%2Cdocs.text&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud"
  },
  "data": [
   {
@@ -144,12 +144,13 @@
     },
     "data": [
      {
-      "url": "https://sieldocs.vd.ch/ecm/app18/service/siel/getContent?ID=2308844",
-      "date": "2025-05-28T00:00:00",
-      "name": "EMPL sur l'organisation de la prévention des radicalisations (LPREV) - Texte adopté par CE - EMPL sur l'organisation de la prévention des radicalisations (LPREV) - publié",
       "category": {
        "fr": "Document CE"
-      }
+      },
+      "date": "2025-05-28T00:00:00",
+      "name": "EMPL sur l'organisation de la prévention des radicalisations (LPREV) - Texte adopté par CE - EMPL sur l'organisation de la prévention des radicalisations (LPREV) - publié",
+      "text": "MAI 2025 24_LEG_152 \n\n \n\n \n \n \n\n EXPOSE DES MOTIFS ET PROJET DE LOI  \nsur l’organisation de la prévention des radicalisations (LPREV) \n\n \n \n \n \n \n \n\n \n \n\n \n\n\n\n \n\n2 \n \n\n1. INTRODUCTION \n\n1.1 Préambule  \n \nDans le Canton de Vaud, un dispositif de prévention de la radicalisation et de l’extrémisme violent (ci-\naprès, le Dispositif) a été mis en place dès 2018, notamment en réponse aux objets parlementaires \nClaire Richard et consorts – Mise en place d’une permanence téléphonique (\"helpline\") comme ",
+      "url": "https://sieldocs.vd.ch/ecm/app18/service/siel/getContent?ID=2308844"
      }
     ]
    }

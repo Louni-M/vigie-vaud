@@ -2,6 +2,7 @@
  * Pour changer le schéma commun, modifier les modèles Pydantic puis relancer `pnpm schema`. */
 
 export type DocumentCommun =
+	| Corrections
 	| Enveloppe
 	| EtatSources
 	| FilConseils
@@ -13,12 +14,17 @@ export type DocumentCommun =
 	| RattachementsCommune
 	| Seance
 	| FichierSources;
+export type NumeroOfs = number;
+/**
+ * `corrections.json`, à la racine du dépôt de données : les corrections de rattachement, écrites à la main et
+ * appliquées à chaque import comme au rattrapage. Sans enveloppe : le cron ne l'écrit jamais.
+ */
+export type Corrections = Correction[];
 export type EtatSonde = 'disponible' | 'en_panne';
 export type Horodatage = string;
 export type CleElement = string;
 export type CleConseil = string;
 export type SorteElement = 'objet' | 'seance';
-export type NumeroOfs = number;
 export type DonneeConseil = 'objets' | 'seances';
 export type DateSeance = string;
 export type SorteContributeur = 'personne' | 'groupe';
@@ -27,6 +33,27 @@ export type VoieAcces = 'direct' | 'cron' | 'worker' | 'preparee';
 export type SorteFraicheur = 'donnee' | 'requete' | 'millesime' | 'import';
 export type ModeCouverture = 'api' | 'scrape';
 
+/**
+ * Une correction de rattachement écrite à la main dans `corrections.json` (ADR 0016).
+ */
+export interface Correction {
+	/**
+	 * Clé de l'Objet corrigé (`vd/26_INT_140`).
+	 */
+	objet: string;
+	/**
+	 * Communes à retirer du rattachement par le nom.
+	 */
+	retirer?: NumeroOfs[];
+	/**
+	 * Communes à ajouter, en fin de liste, avec l'origine `correction`.
+	 */
+	ajouter?: NumeroOfs[];
+	/**
+	 * La raison de la correction, pour qui la relit.
+	 */
+	note: string;
+}
 /**
  * Enveloppe de chaque fichier du dépôt de données.
  */
@@ -363,6 +390,10 @@ export interface Objet {
 	 * Page de l'Objet chez le conseil (`url_external`).
 	 */
 	lien: Lien | null;
+	/**
+	 * Grand Conseil : les communes rattachées par le nom (ADR 0016), dans l'ordre du rattachement (titre, puis documents de la plus à la moins citée, puis corrections), `corrections.json` appliqué. Vide pour un conseil communal, dont les Objets n'appartiennent qu'à leur commune.
+	 */
+	communes: CommuneRattachee[];
 }
 export interface Contributeur {
 	nom: string;

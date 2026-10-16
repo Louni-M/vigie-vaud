@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CleElement": {
+      "pattern": "^[a-z0-9]+/[^/\\s]+$",
+      "type": "string"
+    },
+    "Correction": {
+      "additionalProperties": false,
+      "description": "Une correction de rattachement écrite à la main dans `corrections.json` (ADR 0016).",
+      "properties": {
+        "objet": {
+          "$ref": "#/$defs/CleElement",
+          "description": "Clé de l'Objet corrigé (`vd/26_INT_140`)."
+        },
+        "retirer": {
+          "default": [],
+          "description": "Communes à retirer du rattachement par le nom.",
+          "items": {
+            "$ref": "#/$defs/NumeroOfs"
+          },
+          "type": "array"
+        },
+        "ajouter": {
+          "default": [],
+          "description": "Communes à ajouter, en fin de liste, avec l'origine `correction`.",
+          "items": {
+            "$ref": "#/$defs/NumeroOfs"
+          },
+          "type": "array"
+        },
+        "note": {
+          "description": "La raison de la correction, pour qui la relit.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "objet",
+        "note"
+      ],
+      "title": "Correction",
+      "type": "object"
+    },
+    "NumeroOfs": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "description": "`corrections.json`, à la racine du dépôt de données : les corrections de rattachement, écrites à la main et\nappliquées à chaque import comme au rattrapage. Sans enveloppe : le cron ne l'écrit jamais.",
+  "items": {
+    "$ref": "#/$defs/Correction"
+  },
+  "title": "Corrections",
+  "type": "array"
+}
