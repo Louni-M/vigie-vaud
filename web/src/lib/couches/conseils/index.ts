@@ -71,7 +71,8 @@ export const coucheConseils: Couche<undefined> = {
 		async entrees(depuis) {
 			const { conseils } = await import('./donnees.js');
 			return conseils.entreesFil(depuis);
-		}
+		},
+		sansCommune: 'Grand Conseil, sans commune nommée'
 	},
 	composants: {
 		Carte: () => import('./Carte.svelte'),

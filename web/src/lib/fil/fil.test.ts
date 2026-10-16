@@ -167,6 +167,17 @@ describe('fil cantonal', () => {
 		expect(v.compteur).toBe(0);
 	});
 
+	it('montre « Sans commune » dès qu’une couche en déclare l’aide, même sans aucune entrée sans commune', () => {
+		const conseils = { ...source('conseils', [entree('a-pully')]), sansCommune: 'Grand Conseil, sans commune nommée' };
+		const autre = { ...source('autre', []), sansCommune: 'Autre, sans commune' };
+
+		const v = calculerFil([source('permis', [entree('1')]), conseils, autre], REGLAGES, CONTEXTE);
+
+		expect(v.sansCommune).toEqual([]);
+		expect(v.aideSansCommune).toBe('Grand Conseil, sans commune nommée · Autre, sans commune');
+		expect(calculerFil([source('permis', [entree('1')])], REGLAGES, CONTEXTE).aideSansCommune).toBeNull();
+	});
+
 	it('a une puce par type déclaré, avant même les données, et une puce éteinte retire ses entrées partout', () => {
 		const conseils = source(
 			'conseils',

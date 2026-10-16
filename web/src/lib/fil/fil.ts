@@ -12,6 +12,8 @@ export interface SourceFil {
 	nom: string;
 	types: TypeFil[];
 	etat: { entrees: EntreeFil[] } | 'chargement' | 'panne';
+	/** L'aide de « Sans commune » que déclare la couche (`Fil.sansCommune`). */
+	sansCommune?: string;
 }
 
 /** Choix de la personne dans le fil : ni dans l'adresse, ni retenus d'une visite à l'autre. */
@@ -63,6 +65,11 @@ export interface VueFil {
 	puces: PuceFil[];
 	/** Entrées sans commune, quelle que soit la zone, dans le même ordre que le reste du fil. */
 	sansCommune: LigneFil[];
+	/**
+	 * L'aide de la section « Sans commune », celles des couches qui en déclarent une, dans l'ordre du rail ; `null`
+	 * si aucune n'en déclare : la section n'est pas affichée. Sinon elle l'est toujours, même vide.
+	 */
+	aideSansCommune: string | null;
 	/** Daté du futur, le plus proche d'abord, quelle que soit la fenêtre. */
 	avenir: LigneFil[];
 	/** Les jours de la fenêtre, le plus récent d'abord. */
@@ -153,6 +160,7 @@ export function calculerFil(sources: readonly SourceFil[], reglages: ReglagesFil
 		chargement: sources.some((s) => s.etat === 'chargement'),
 		puces,
 		sansCommune,
+		aideSansCommune: sources.flatMap((s) => s.sansCommune ?? []).join(' · ') || null,
 		avenir: gardees.filter(avenir),
 		jours,
 		compteur: gardees.length

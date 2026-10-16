@@ -29,7 +29,8 @@ export function creerChargementFil(couches: readonly CoucheInscrite[]) {
 				couche: c.id,
 				nom: c.nom,
 				types: c.fil.types,
-				etat: etats[c.id] ?? 'chargement'
+				etat: etats[c.id] ?? 'chargement',
+				sansCommune: c.fil.sansCommune
 			}));
 		},
 		/** Première ouverture du fil : chaque couche est lue une fois, depuis le premier jour du fil. */

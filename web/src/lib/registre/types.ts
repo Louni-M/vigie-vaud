@@ -138,6 +138,11 @@ export interface Fil {
 	types: TypeFil[];
 	/** Import dynamique, comme `localiser`. Rejette en cas d'échec. `depuis` : AAAA-MM-JJ, premier jour du fil. */
 	entrees(depuis: string): Promise<EntreeFil[]>;
+	/**
+	 * L'aide de la section « Sans commune » pour celles de ses entrées qui n'ont pas de commune (« Grand Conseil,
+	 * sans commune nommée »). Une couche qui la déclare fait toujours afficher la section, même vide.
+	 */
+	sansCommune?: string;
 }
 
 /** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */

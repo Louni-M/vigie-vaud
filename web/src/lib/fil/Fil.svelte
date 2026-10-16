@@ -157,7 +157,7 @@
 		</label>
 	</div>
 
-	{#if vue.sansCommune.length}
+	{#if vue.aideSansCommune !== null}
 		<div class="sans">
 			<button
 				type="button"
@@ -166,9 +166,9 @@
 				onclick={() => (sansCommuneOuvert = !sansCommuneOuvert)}
 			>
 				<span aria-hidden="true">{sansCommuneOuvert ? '▾' : '▸'}</span> Sans commune ({vue.sansCommune.length})
-				<span class="aide">Grand Conseil, sans commune nommée</span>
+				<span class="aide">{vue.aideSansCommune}</span>
 			</button>
-			{#if sansCommuneOuvert}
+			{#if sansCommuneOuvert && vue.sansCommune.length}
 				<ul>
 					{#each vue.sansCommune as l (l.cle)}{@render ligne(l, true)}{/each}
 				</ul>
