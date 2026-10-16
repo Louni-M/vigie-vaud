@@ -6,7 +6,9 @@ import {
 	GENERE,
 	conseilLausanne,
 	conseilYverdon,
+	entreeFil,
 	fauxDepotConseils,
+	filConseils,
 	grandConseil,
 	indexConseils,
 	ligneObjet,
@@ -268,5 +270,123 @@ describe('localiser un Objet ou une Séance', () => {
 		expect(await conseils.element('5586/POS25-115')).toMatchObject({ numero: 'POS25/115' });
 		expect(await conseils.element('5586/2026-10-06')).toMatchObject({ date: '2026-10-06' });
 		expect(await conseils.element('5586/POS25-999')).toBeNull();
+	});
+});
+
+describe('entrées du fil cantonal', () => {
+	const MORGES = commune(5642, 'Morges', [6.47, 46.49, 6.52, 46.53]);
+	/** Les données des conseils sur un faux dépôt qui ne sert que ce `conseils/fil.json`. */
+	function filSur(entrees: Parameters<typeof filConseils>[0]) {
+		const depot = fauxDepotConseils({ 'conseils/fil.json': filConseils(entrees) });
+		const communes = async () => [PULLY, LUTRY, LAUSANNE, YVERDON, MORGES];
+		return { depot, conseils: creerDonneesConseils({ fetch: depot.fetch, donnees: DONNEES, communes }) };
+	}
+
+	it('donne un Objet d’un conseil communal : son type brut, le nom de son conseil, son titre et sa commune', async () => {
+		const { depot, conseils } = filSur([
+			entreeFil({
+				cle: '5586/POS26-012',
+				conseil: '5586',
+				type: 'Postulat',
+				date: '2026-10-07',
+				titre: 'Pour des préaux ouverts le week-end',
+				communes: [5586]
+			})
+		]);
+
+		expect(await conseils.entreesFil('2026-10-02')).toEqual([
+			{
+				element: '5586/POS26-012',
+				type: 'objets',
+				date: '2026-10-07',
+				sorte: 'Postulat',
+				qui: 'Conseil communal de Lausanne',
+				titre: 'Pour des préaux ouverts le week-end',
+				communes: ['lausanne']
+			}
+		]);
+		expect(depot.requetes).toEqual(['conseils/fil.json']);
+	});
+
+	it('ne garde que les entrées datées au moins de `depuis`, et les Séances à venir', async () => {
+		const { conseils } = filSur([
+			entreeFil({ cle: 'vd/26_INT_140', date: '2026-10-02' }),
+			entreeFil({ cle: 'vd/26_INT_120', date: '2026-10-01' }),
+			entreeFil({ cle: 'vd/26_MOT_009', date: '2026-09-20' }),
+			entreeFil({ cle: 'vd/2026-11-03', sorte: 'seance', type: null, date: '2026-11-03', points: 0 })
+		]);
+
+		const entrees = await conseils.entreesFil('2026-10-02');
+
+		expect(entrees.map((e) => e.element)).toEqual(['vd/26_INT_140', 'vd/2026-11-03']);
+	});
+
+	it('donne un Objet du Grand Conseil avec ses communes rattachées dans leur ordre, ou sans commune', async () => {
+		const { conseils } = filSur([
+			entreeFil({ cle: 'vd/26_INT_140', communes: [5642, 5586] }),
+			entreeFil({ cle: 'vd/26_INT_141', communes: [] })
+		]);
+
+		const [nommant, sans] = await conseils.entreesFil('2026-10-02');
+
+		expect(nommant).toMatchObject({ sorte: 'Interpellation', qui: 'Grand Conseil', communes: ['morges', 'lausanne'] });
+		expect(sans).toMatchObject({ qui: 'Grand Conseil', communes: [] });
+		expect(nommant.position).toBeUndefined();
+	});
+
+	it('donne une Séance : son nom composé et son nombre de points, sa commune ou aucune pour le Grand Conseil', async () => {
+		const { conseils } = filSur([
+			entreeFil({
+				cle: '5586/2026-10-06',
+				conseil: '5586',
+				sorte: 'seance',
+				type: null,
+				date: '2026-10-06T18:00',
+				titre: 'Séance du Conseil communal',
+				communes: [5586],
+				points: 12
+			}),
+			entreeFil({ cle: 'vd/2026-10-20', sorte: 'seance', type: null, date: '2026-10-20', communes: [], points: 1 }),
+			entreeFil({ cle: 'vd/2026-11-03', sorte: 'seance', type: null, date: '2026-11-03', communes: [], points: 0 })
+		]);
+
+		expect(await conseils.entreesFil('2026-10-02')).toEqual([
+			{
+				element: '5586/2026-10-06',
+				type: 'seances',
+				date: '2026-10-06',
+				sorte: 'Séance',
+				qui: 'Conseil communal de Lausanne',
+				titre: 'Séance du mardi 6 octobre 2026 à 18 h · 12 points',
+				communes: ['lausanne']
+			},
+			{
+				element: 'vd/2026-10-20',
+				type: 'seances',
+				date: '2026-10-20',
+				sorte: 'Séance',
+				qui: 'Grand Conseil',
+				titre: 'Séance du mardi 20 octobre 2026 · 1 point',
+				communes: []
+			},
+			{
+				element: 'vd/2026-11-03',
+				type: 'seances',
+				date: '2026-11-03',
+				sorte: 'Séance',
+				qui: 'Grand Conseil',
+				titre: 'Séance du mardi 3 novembre 2026',
+				communes: []
+			}
+		]);
+	});
+
+	it('rejette quand conseils/fil.json n’a pas pu être lu, et le relit à la demande suivante', async () => {
+		const { depot, conseils } = filSur([entreeFil()]);
+		depot.panne(503);
+		await expect(conseils.entreesFil('2026-10-02')).rejects.toThrow(/503/);
+
+		depot.panne(null);
+		expect(await conseils.entreesFil('2026-10-02')).toHaveLength(1);
 	});
 });

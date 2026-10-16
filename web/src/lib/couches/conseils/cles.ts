@@ -12,6 +12,10 @@ export const CLE_GRAND_CONSEIL = 'vd';
 /** Identifiant de la fiche propre du Grand Conseil, que déclare la couche (`/grand-conseil`). */
 export const FICHE_GRAND_CONSEIL = 'grand-conseil';
 
+/** Les types d'entrées que la couche déclare au fil cantonal : ses Objets et ses Séances. */
+export const TYPE_OBJETS = 'objets';
+export const TYPE_SEANCES = 'seances';
+
 export interface CleLue {
 	conseil: string;
 	sorte: 'objet' | 'seance';

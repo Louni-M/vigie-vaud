@@ -63,6 +63,12 @@
 		return s[0].toUpperCase() + s.slice(1);
 	}
 
+	/** « Motion · Grand Conseil → Morges, Lausanne », avec la date courte hors des jours (« · 20 oct. »). */
+	function meta(l: LigneFil, date: boolean) {
+		const qui = l.nommees.length ? `${l.qui} → ${l.nommees.join(', ')}` : l.qui;
+		return [l.sorte, qui, ...(date ? [fmtCourt.format(midi(l.date))] : [])].join(' · ');
+	}
+
 	/* ---- Survol : l'entrée est surlignée sur la carte, à sa position ou à l'hôtel de ville de ses communes ---- */
 
 	const CALQUE = 'fil-survol';
@@ -107,7 +113,7 @@
 		>
 			<span class="signe" style:--c={l.couleur} title={l.nomType}>{l.signe}</span>
 			<span class="texte">
-				<span class="meta">{[l.sorte, l.qui, ...(date ? [fmtCourt.format(midi(l.date))] : [])].join(' · ')}</span>
+				<span class="meta">{meta(l, date)}</span>
 				<span class="titre">{l.titre}</span>
 			</span>
 			<span class="fleche" aria-hidden="true">›</span>

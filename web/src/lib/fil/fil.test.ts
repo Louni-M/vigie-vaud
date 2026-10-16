@@ -214,6 +214,26 @@ describe('fil cantonal', () => {
 		expect(v.chargement).toBe(true);
 		expect(jours(v)).toEqual([['2026-10-10', ['conseils:o1']]]);
 	});
+
+	it('nomme les communes d’une entrée dans leur ordre quand « qui » ne nomme aucune d’elles', () => {
+		const v = calculerFil(
+			[
+				source('conseils', [
+					entree('gc', { qui: 'Grand Conseil', communes: ['lutry', 'pully'] }),
+					entree('cc', { qui: 'Conseil communal de Pully', communes: ['pully'] }),
+					entree('sans', { qui: 'Grand Conseil', communes: [] })
+				]),
+				source('permis', [entree('1', { qui: 'Lutry', communes: ['lutry'] })])
+			],
+			REGLAGES,
+			CONTEXTE
+		);
+
+		const nommees = Object.fromEntries(
+			[...v.jours.flatMap((j) => j.entrees), ...v.sansCommune].map((l) => [l.element, l.nommees])
+		);
+		expect(nommees).toEqual({ gc: ['Lutry', 'Pully'], cc: [], sans: [], '1': [] });
+	});
 });
 
 describe('zone du fil', () => {
