@@ -7,7 +7,7 @@ C'est la version du cron de `web/src/lib/masquage.ts` (`masquerNoms`), elle-mêm
   épargnée que si son nom entier est celui d'un·e élu·e (à la casse et aux accents près) : un homonyme partiel est
   masqué ;
 - les **auteur·e·s d'une pétition** sont masqué·e·s même sans civilité, comme Lausanne les nomme (« Pétition de
-  Gaber Mark et crts », « Pétition déposée le 7 mai 2024 de Lya Blanc et crts : »), sauf élu·e connu·e ou entité.
+  Exemple Paul et crts », « Pétition déposée le 7 mai 2024 de Julie Modèle et crts : »), sauf élu·e connu·e ou entité.
 
 Approche prudente, comme sur le site : en cas de doute, on masque.
 """
