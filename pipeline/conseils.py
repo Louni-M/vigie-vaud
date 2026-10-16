@@ -3,9 +3,11 @@ données, un fichier par élément.
 
 Le passage suit quatre étapes, chacune à sa place :
 
-1. `importer(opd, conseil, depuis)` lit les changements bruts d'un conseil chez OpenParlData ;
-2. `vers_archive(bruts, archive, genere)`, fonction pure, les masque (`masquage.py`, ADR 0007) et les normalise en
-   Objets et Séances de l'archive ;
+1. `importer(opd, conseil, depuis)` lit les changements bruts d'un conseil chez OpenParlData, et pour le Grand
+   Conseil les Objets dont un document a changé depuis ;
+2. `vers_archive(bruts, archive, genere, communes, corrections)`, fonction pure, les masque (`masquage.py`,
+   ADR 0007), rattache les Objets du Grand Conseil aux communes qu'ils nomment (`rattachement.py`, ADR 0016) et les
+   normalise en Objets et Séances de l'archive ;
 3. `lecture(archive, sources, genere)`, fonction pure, reconstruit les fichiers de lecture que le site liste
    (`lecture_conseils.py`) ;
 4. `ecrire(depot, documents, genere)` compare chaque fichier à l'ancien sans `genere` et n'écrit que ce qui change.
@@ -43,10 +45,20 @@ from pydantic import ValidationError
 
 from lecture_conseils import lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
+from rattachement import (
+    COMMUNES_JSON,
+    Repertoire,
+    corriger,
+    corriger_archive,
+    lire_corrections,
+    porte_sur_le_canton,
+    rattacher_objet,
+)
 from schema import (
     RACINE,
     Conseil,
     Contributeur,
+    Correction,
     DocumentObjet,
     Enveloppe,
     Etape,
@@ -67,6 +79,7 @@ TAILLE_PAGE = 200
 # Plafond de chaque relation développée (`expand`) : au-delà, l'import du conseil échoue plutôt que de tronquer.
 TAILLE_RELATION = 1000
 RECOUVREMENT = timedelta(days=1)
+PAR_IDENTIFIANTS = 50  # Objets relus par requête (`id=1,2,…`) pour leurs documents tardifs
 FICHIER_IMPORT = "conseils/import.json"
 
 # Les demandes de grâce ne sont pas des Objets : elles nomment un particulier. L'exclusion est une liste de types.
@@ -145,7 +158,8 @@ def parametres_objets(conseil: Conseil, depuis: date | None) -> dict[str, str]:
     p = {
         "body_key": conseil.body_key,
         "expand": "contributors,events,docs",
-        "fields": CHAMPS_OBJETS,
+        # Le texte des documents ne sert qu'au rattachement par le nom : téléchargé, jamais conservé.
+        "fields": CHAMPS_OBJETS + (",docs.text" if porte_sur_le_canton(conseil) else ""),
         "sort_by": "id",
         "contributors_limit": str(TAILLE_RELATION),
         "events_limit": str(TAILLE_RELATION),
@@ -173,6 +187,8 @@ def importer(opd: OpenParlData, conseil: Conseil, depuis: date | None) -> Bruts:
     bruts = Bruts(conseil)
     if "objets" in conseil.donne:
         bruts.objets = opd.lister("affairs", parametres_objets(conseil, depuis))
+        if depuis is not None and porte_sur_le_canton(conseil):
+            bruts.objets += _objets_aux_documents_tardifs(opd, conseil, depuis, {o["id"] for o in bruts.objets})
         for objet in bruts.objets:
             _verifier_relations(objet, ("contributors", "events", "docs"))
     if "seances" in conseil.donne:
@@ -181,6 +197,27 @@ def importer(opd: OpenParlData, conseil: Conseil, depuis: date | None) -> Bruts:
         for seance in bruts.seances:
             _verifier_relations(seance, ("agendas",))
     return bruts
+
+
+def _objets_aux_documents_tardifs(opd: OpenParlData, conseil: Conseil, depuis: date, lus: set[int]) -> list[dict]:
+    """Les Objets dont un document a changé depuis `depuis` sans que l'Objet lui-même change (un document arrive
+    souvent après l'Objet), relus en entier pour recalculer leur rattachement. `lus` : les Objets déjà relus."""
+    documents = opd.lister(
+        "docs",
+        {
+            "body_key": conseil.body_key,
+            "parent_type": "affair",
+            "fields": "id,affair_id",
+            "sort_by": "id",
+            "from_updated_at": depuis.isoformat(),
+        },
+    )
+    ids = sorted({d["affair_id"] for d in documents if isinstance(d.get("affair_id"), int)} - lus)
+    objets = []
+    for i in range(0, len(ids), PAR_IDENTIFIANTS):
+        par_id = ",".join(str(x) for x in ids[i : i + PAR_IDENTIFIANTS])
+        objets += opd.lister("affairs", parametres_objets(conseil, None) | {"id": par_id})
+    return objets
 
 
 def _verifier_relations(enregistrement: dict, relations: Iterable[str]) -> None:
@@ -214,14 +251,27 @@ def chemin_element(cle: str, element: Element) -> str:
     return f"conseils/{conseil}/{dossier}/{nom}.json"
 
 
-def vers_archive(bruts: Bruts, archive: Archive, genere: datetime) -> dict[str, Element]:
+def vers_archive(
+    bruts: Bruts,
+    archive: Archive,
+    genere: datetime,
+    communes: Repertoire | None = None,
+    corrections: Mapping[str, Correction] | None = None,
+) -> dict[str, Element]:
     """Les éléments de l'archive tirés de `bruts`, par clé. `archive` (les éléments déjà archivés) sert à résoudre
     l'Objet de chaque point d'ordre du jour et à départager deux Objets de même numéro (il y en a à Lausanne) : le
     plus petit identifiant l'emporte, d'un import à l'autre. Les demandes de grâce sont écartées, et leurs points
     d'ordre du jour retirés. Les titres des Objets et des points sont masqués (ADR 0007), en épargnant les élu·e·s
-    connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`."""
+    connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`.
+
+    Pour un conseil qui porte sur le canton, chaque Objet est rattaché par le nom (ADR 0016) d'après `communes`
+    (`communes.json` par défaut) : son titre masqué, puis le texte de ses documents, qui n'est pas conservé ;
+    `corrections` (par clé d'Objet) l'emporte, et s'applique aussi aux Objets déjà archivés."""
     conseil = cle_conseil(bruts.conseil)
+    canton = porte_sur_le_canton(bruts.conseil)
+    corrections = corrections or {}
     elements: dict[str, Element] = {}
+    textes: dict[str, list[str]] = {}
     graces: set[str] = set()
     for brut in sorted(bruts.objets, key=lambda o: o["id"]):
         if _fr(brut.get("type_name")) in TYPES_ECARTES or not brut.get("number"):
@@ -233,12 +283,18 @@ def vers_archive(bruts: Bruts, archive: Archive, genere: datetime) -> dict[str, 
         if isinstance(deja, Objet) and deja.id < brut["id"]:
             continue
         elements[cle] = _objet(brut, genere)
+        textes[cle] = [d["text"] for d in _relation(brut, "docs") if isinstance(d.get("text"), str)]
 
     connus = {**archive, **elements}
     du_conseil = {cle: e for cle, e in connus.items() if isinstance(e, Objet) and cle.startswith(conseil + "/")}
     elus = elus_connus(du_conseil.values())
     for cle, objet in elements.items():
-        elements[cle] = objet.model_copy(update={"titre": masquer(objet.titre, elus)})
+        titre = masquer(objet.titre, elus)
+        rattachees = corriger(rattacher_objet(titre, textes[cle], communes), corrections.get(cle)) if canton else []
+        elements[cle] = objet.model_copy(update={"titre": titre, "communes": rattachees})
+    if canton:
+        anciens = {cle: o for cle, o in du_conseil.items() if cle not in elements}
+        elements |= corriger_archive(anciens, corrections)
 
     par_id = {e.id: cle for cle, e in du_conseil.items()}
     for brut in sorted(bruts.seances, key=lambda s: s["id"]):
@@ -276,6 +332,7 @@ def _objet(brut: dict, genere: datetime) -> Objet:
         etapes=etapes,
         documents=_documents(_relation(brut, "docs")),
         lien=_lien(_fr(brut.get("url_external"))),
+        communes=[],  # rattachées par `vers_archive`, après le masquage du titre
     )
 
 
@@ -445,13 +502,19 @@ def importer_conseils(
     *,
     dus: Collection[str] | None = None,
     rattrapage: bool = False,
+    communes: Path = COMMUNES_JSON,
 ) -> ImportConseils:
     """Importe chaque conseil déclaré dans `sources` dans `depot`, un clone du dépôt de données, ou seulement ceux
     dont la clé est dans `dus`. Chaque conseil repart du jour de son dernier import réussi moins un jour de
     recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
     `rattrapage`. Un conseil en échec est signalé, garde sa date, et les autres continuent. Le commit et le push
-    sont l'affaire de l'appelant."""
+    sont l'affaire de l'appelant.
+
+    Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; un
+    `corrections.json` invalide lève `pydantic.ValidationError` avant tout import."""
     genere = horloge().astimezone(UTC).replace(microsecond=0)
+    repertoire = Repertoire.lire(communes)
+    corrections = lire_corrections(depot)
     imports = lire_imports(depot)
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
@@ -465,7 +528,7 @@ def importer_conseils(
             debut = depuis or (imports[cle].date() - RECOUVREMENT if cle in imports else None)
         try:
             bruts = importer(opd, source.conseil, debut)
-            elements = vers_archive(bruts, archive, genere)
+            elements = vers_archive(bruts, archive, genere, repertoire, corrections)
         except (httpx.HTTPError, ValueError) as e:
             print(f"Import en échec : {source.nom} ({e})", file=sys.stderr)
             continue

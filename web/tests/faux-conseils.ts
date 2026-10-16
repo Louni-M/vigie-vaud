@@ -137,6 +137,7 @@ export function objet(champs: Partial<Objet> = {}): Objet {
 		etapes: [{ date: '2026-10-06', libelle: 'Dépôt' }],
 		documents: [],
 		lien: null,
+		communes: [],
 		...champs
 	};
 }

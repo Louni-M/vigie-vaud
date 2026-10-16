@@ -2,9 +2,9 @@
 
 Un `Monde` décrit en quelques lignes les Objets (*affairs*) et les Séances (*meetings*) que renverrait l'API, avec
 leurs relations ; `transport()` les sert à `httpx` sans réseau, à la forme des réponses réelles (libellés imbriqués
-`{"fr": …}`, enveloppe de pagination `meta`). Le faux honore ce que l'import utilise : `body_key`, `group_id`,
-`from_updated_at` (au jour près), `offset` et `limit`, ce dernier plafonné à `taille_page` pour forcer la
-pagination. Chaque requête est notée avec l'heure de l'horloge factice.
+`{"fr": …}`, enveloppe de pagination `meta`), ainsi que les documents des Objets (*docs*). Le faux honore ce que
+l'import utilise : `body_key`, `group_id`, `id` (liste séparée par des virgules), `from_updated_at` (au jour près),
+`offset` et `limit`, ce dernier plafonné à `taille_page` pour forcer la pagination. Chaque requête est notée avec l'heure de l'horloge factice.
 """
 
 from __future__ import annotations
@@ -52,6 +52,8 @@ class Document:
     url: str
     date: str | None = None
     categorie: str | None = None
+    texte: str | None = None  # `text`, extrait du PDF par OpenParlData
+    mis_a_jour: str | None = None  # `updated_at` ; par défaut, celui de son Objet
 
 
 @dataclass
@@ -106,10 +108,30 @@ class Affaire:
                     "url": d.url,
                     "date": f"{d.date}T00:00:00" if d.date else None,
                     "category": {"fr": d.categorie} if d.categorie else {},
+                    "text": d.texte,
                 }
                 for d in self.documents
             ),
         }
+
+    def docs(self) -> list[Doc]:
+        return [
+            Doc(self.id * 100 + i, self.body_key, self.id, d.mis_a_jour or self.updated_at)
+            for i, d in enumerate(self.documents)
+        ]
+
+
+@dataclass
+class Doc:
+    """Un document tel que `/v1/docs/` le liste, rattaché à son Objet par `affair_id`."""
+
+    id: int
+    body_key: str
+    affair_id: int
+    updated_at: str
+
+    def brut(self) -> dict:
+        return {"id": self.id, "affair_id": self.affair_id, "updated_at": f"{self.updated_at}T04:10:58"}
 
 
 @dataclass
@@ -185,6 +207,11 @@ class Monde:
             return httpx.Response(503)
         if requete.url.path == "/v1/affairs/":
             elements = self.affaires
+            if "id" in p:
+                ids = {int(i) for i in p["id"].split(",")}
+                elements = [e for e in elements if e.id in ids]
+        elif requete.url.path == "/v1/docs/":
+            elements = [d for a in self.affaires for d in a.docs()]
         elif requete.url.path == "/v1/meetings/":
             elements = [r for r in self.reunions if "group_id" not in p or r.group_id == int(p["group_id"])]
         else:

@@ -392,6 +392,7 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
     ecrits = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if p.is_file())
     assert ecrits == [
         "etat-sources.json",
+        "schema/corrections.schema.json",
         "schema/enveloppe.schema.json",
         "schema/etat-sources.schema.json",
         "schema/fil-conseils.schema.json",

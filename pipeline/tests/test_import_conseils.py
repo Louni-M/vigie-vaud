@@ -176,6 +176,7 @@ def test_le_premier_import_ecrit_chaque_objet_dans_l_archive_normalise(tmp_path)
             {"titre": "Annexe", "date": None, "lien": "https://www.vd.ch/fileadmin/annexe.pdf"},
         ],
         "lien": "https://www.vd.ch/gc/point/4291d7bb",
+        "communes": [],
     }
 
 
