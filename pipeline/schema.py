@@ -286,6 +286,149 @@ class Seance(Enveloppe):
     ordre_du_jour: list[PointOrdreDuJour]
 
 
+# --- Fichiers de lecture des conseils (conseils/*.json, dépôt de données ; ADR 0017) ---------------------------
+# Reconstruits en entier depuis l'archive à chaque import : c'est ce que le site lit pour lister.
+
+
+OrigineCommune = TypeAliasType("OrigineCommune", Literal["titre", "document", "correction"])
+
+
+class CommuneRattachee(Modele):
+    """Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement."""
+
+    ofs: NumeroOfs
+    origine: OrigineCommune = Field(
+        description="`titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée "
+        "à la main par `corrections.json`."
+    )
+
+
+class Auteur(Modele):
+    nom: str
+    parti: str | None
+
+
+class LigneObjet(Modele):
+    """Un Objet en ligne légère, commune aux listes par année, à « Au Grand Conseil » et à l'index : de quoi
+    l'afficher dans une liste. Le détail est dans son fichier d'archive."""
+
+    cle: CleElement = Field(description="`<conseil>/<numéro>` : le fichier d'archive de l'Objet.")
+    numero: str
+    type: str
+    depose: dt.date | None
+    titre: str
+    auteurs: list[Auteur] = Field(description="Les deux premiers contributeurs, dans l'ordre de la source.")
+    nombre_auteurs: Annotated[int, Field(ge=0)] = Field(description="Nombre de tous les contributeurs.")
+    statut: Statut | None
+    derniere_etape: dt.date | None = Field(description="Date de la dernière étape datée.")
+    communes: list[CommuneRattachee] = Field(
+        description="Grand Conseil : les communes rattachées, dans l'ordre du rattachement. Vide pour un conseil "
+        "communal, dont les Objets n'appartiennent qu'à sa commune."
+    )
+
+
+class ListeObjets(Enveloppe):
+    """`conseils/<conseil>/objets-<année>.json` : les Objets du conseil déposés cette année-là, du plus récent au
+    plus ancien. Un Objet sans date de dépôt est classé à l'année de sa première étape datée ; sans aucune date, il
+    n'est dans aucune liste (son fichier d'archive reste ouvrable)."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    conseil: CleConseil
+    annee: int
+    objets: list[LigneObjet]
+
+
+class LigneSeance(Modele):
+    """Une Séance en ligne légère : de quoi l'afficher dans une liste, sans son ordre du jour."""
+
+    cle: CleElement = Field(description="`<conseil>/<jour>` : le fichier d'archive de la Séance.")
+    date: DateSeance
+    points: Annotated[int, Field(ge=0)] = Field(description="Nombre de points de l'ordre du jour.")
+
+
+class ListeSeances(Enveloppe):
+    """`conseils/<conseil>/seances.json` : toutes les Séances du conseil, de la plus récente à la plus ancienne."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    conseil: CleConseil
+    seances: list[LigneSeance]
+
+
+SorteElement = TypeAliasType("SorteElement", Literal["objet", "seance"])
+
+
+class EntreeFil(Modele):
+    """Un Objet ou une Séance, à la forme d'une entrée du fil cantonal."""
+
+    cle: CleElement
+    conseil: CleConseil
+    sorte: SorteElement
+    type: str | None = Field(description="Objet : son type brut. Séance : `null`.")
+    date: DateSeance = Field(
+        description="Objet : jour de dépôt, sinon de sa première étape datée. Séance : son jour, avec l'heure "
+        "quand la source la donne."
+    )
+    titre: str = Field(description="Objet : son titre masqué. Séance : son nom brut (le site compose le sien).")
+    communes: list[NumeroOfs] = Field(
+        description="Conseil communal : sa commune. Grand Conseil : les communes rattachées à l'Objet, dans l'ordre "
+        "du rattachement ; aucune pour une Séance."
+    )
+    points: Annotated[int, Field(ge=0)] | None = Field(
+        description="Séance : nombre de points de l'ordre du jour. Objet : `null`."
+    )
+
+
+class FilConseils(Enveloppe):
+    """`conseils/fil.json` : les Objets et les Séances de tous les conseils datés des 21 derniers jours (heure de
+    Suisse, marge pour des imports manqués) ou après, donc toutes les Séances à venir, du plus récent au plus ancien.
+    Le site filtre lui-même sur sa fenêtre."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    entrees: list[EntreeFil]
+
+
+class RattachementsCommune(Enveloppe):
+    """`conseils/communes/<ofs>.json` (« Au Grand Conseil ») : les Objets du Grand Conseil rattachés à la commune,
+    par date de dernière étape décroissante. Écrit seulement s'il y en a au moins un."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    commune: NumeroOfs
+    objets: list[LigneObjet]
+
+
+class ConseilIndexe(Modele):
+    """Un conseil dans l'index : de quoi remplir le volet et les compteurs sans autre requête."""
+
+    cle: CleConseil
+    source: IdSource = Field(description="La source qui donne le conseil, dans `sources.json`.")
+    nom: str = Field(description="Nom du conseil, tiré du nom de sa source (« Conseil communal de Lausanne »).")
+    commune: NumeroOfs | None = Field(description="La commune d'un conseil communal ; `null` pour le Grand Conseil.")
+    donne: list[DonneeConseil]
+    objets: Annotated[int, Field(ge=0)] = Field(description="Nombre d'Objets listés, toutes années confondues.")
+    objets_par_annee: dict[str, Annotated[int, Field(ge=1)]] = Field(
+        description="Nombre d'Objets par année (« 2026 »), une par fichier `objets-<année>.json`."
+    )
+    recents: list[LigneObjet] = Field(
+        description="Les Objets des 14 derniers jours (date de dépôt, sinon de la première étape datée), du plus "
+        "récent au plus ancien."
+    )
+    seances: Annotated[int, Field(ge=0)] = Field(description="Nombre de Séances.")
+    prochaine_seance: CleElement | None = Field(description="La première Séance du jour du passage ou après.")
+    derniere_seance: CleElement | None = Field(description="La dernière Séance avant le jour du passage.")
+
+
+class IndexConseils(Enveloppe):
+    """`conseils/index.json` : chaque conseil importé, dans l'ordre de `sources.json`, et le nombre d'Objets du
+    Grand Conseil rattachés à chaque commune."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    conseils: list[ConseilIndexe]
+    communes: dict[str, Annotated[int, Field(ge=1)]] = Field(
+        description="Par n° OFS de commune (« 5586 »), le nombre d'Objets du Grand Conseil qui lui sont rattachés. "
+        "Une commune absente n'en a aucun : « Au Grand Conseil » est vide sans autre requête."
+    )
+
+
 # --- Génération du JSON Schema ---------------------------------------------------------------------------------
 
 # Un JSON Schema par document : `schema/<nom>.schema.json`.
@@ -296,6 +439,11 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "import-conseils": ImportConseils,
     "objet": Objet,
     "seance": Seance,
+    "liste-objets": ListeObjets,
+    "liste-seances": ListeSeances,
+    "fil-conseils": FilConseils,
+    "index-conseils": IndexConseils,
+    "rattachements-commune": RattachementsCommune,
 }
 
 
