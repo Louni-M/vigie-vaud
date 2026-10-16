@@ -1,17 +1,13 @@
 // Reconnaissance d'un numéro d'Objet tapé dans la recherche, par sa seule forme : aucune donnée n'est lue, le
 // fichier d'archive ne l'est qu'à l'ouverture (`localiser`). Chaque conseil a sa forme et ses préfixes, relevés
 // dans OpenParlData (tous les numéros du Grand Conseil et de Lausanne, octobre 2026) : un préfixe inconnu n'est
-// pas un numéro, et « 25 rue 12 » reste une adresse.
+// pas un numéro, et « 25 rue 12 » reste une adresse. Le conseil, sa clé et son nom viennent de `sources.json` ; un
+// conseil dont aucune forme n'est relevée ici n'est simplement pas cherchable par numéro.
 import type { Source } from '#lib/schema.js';
-import { SOURCES } from '#lib/sources.js';
-import { sourceDuConseil } from './cles.js';
+import { SOURCES, cleConseil } from '#lib/sources.js';
 
 /** La forme des numéros d'un conseil, telle qu'OpenParlData les donne. */
 export interface FormeNumero {
-	/** Clé du conseil dans le dépôt de données. */
-	conseil: string;
-	/** Ce que le résultat dit du conseil : « Grand Conseil », « Lausanne ». */
-	nom: string;
 	/**
 	 * `annee-prefixe` : `26_INT_140` (Grand Conseil, numéro sans zéro de tête) ;
 	 * `prefixe-annee` : `INT26/056` (Lausanne, numéro sur 3 chiffres).
@@ -25,30 +21,27 @@ export interface FormeNumero {
 	reguliereDepuis?: number;
 }
 
-export const FORMES_NUMEROS: readonly FormeNumero[] = [
-	{
-		conseil: 'vd',
-		nom: 'Grand Conseil',
+/** Les formes relevées, par `body_key` du conseil dans `sources.json`. */
+export const FORMES_NUMEROS: Readonly<Record<string, FormeNumero>> = {
+	VD: {
 		ordre: 'annee-prefixe',
 		prefixes: ['INT', 'HQU', 'QUE', 'MOT', 'POS', 'LEG', 'RAP', 'PAR', 'PET', 'RES', 'INI', 'DET', 'GRA', 'REP'],
 		reguliereDepuis: 21
 	},
-	{
-		conseil: '5586',
-		nom: 'Lausanne',
+	'5586': {
 		ordre: 'prefixe-annee',
 		// Postulat, interpellation, préavis, question écrite, pétition, divers (COMC, PD), compte d'attente, projet
 		// de règlement, motion.
 		prefixes: ['POS', 'INT', 'PREA', 'Q', 'PE', 'COMC', 'CA', 'PR', 'MOT', 'PD']
 	}
-];
+};
 
 /** Un numéro reconnu : la clé de l'Objet et ce qu'affiche la recherche. */
 export interface NumeroReconnu {
 	cle: string;
 	/** À la forme canonique du conseil : `26_INT_140`, `INT26/056`. */
 	numero: string;
-	/** Nom du conseil pour la recherche : « Grand Conseil », « Lausanne ». */
+	/** Nom du conseil pour la recherche, le nom court de sa source : « Grand Conseil », « Conseil de Lausanne ». */
 	nom: string;
 }
 
@@ -78,7 +71,8 @@ function canonique(forme: FormeNumero, morceaux: string[]): string | null {
 }
 
 /**
- * Les Objets dont la saisie a la forme du numéro, un par conseil qui donne des Objets dans `sources.json`. Tolère
+ * Les Objets dont la saisie a la forme du numéro, un par conseil qui donne des Objets dans `sources.json`, dans
+ * l'ordre de ce fichier. Tolère
  * les espaces, tirets, barres, points et soulignés, la casse et les zéros de tête (`26 int 140`, `26-INT-140`,
  * `int 26/56`).
  */
@@ -86,9 +80,9 @@ export function reconnaitreNumero(saisie: string, sources: readonly Source[] = S
 	const texte = saisie.trim().toUpperCase();
 	if (!/^[A-Z0-9][A-Z0-9\s_\-/.]*$/.test(texte)) return [];
 	const morceaux = texte.match(/[A-Z]+|\d+/g) ?? [];
-	return FORMES_NUMEROS.flatMap((forme) => {
-		if (!sourceDuConseil(forme.conseil, sources)?.conseil?.donne.includes('objets')) return [];
-		const numero = canonique(forme, morceaux);
-		return numero ? [{ cle: cleObjet(forme.conseil, numero), numero, nom: forme.nom }] : [];
+	return sources.flatMap(({ conseil, nom_court }) => {
+		const forme = conseil?.donne.includes('objets') ? FORMES_NUMEROS[conseil.body_key] : undefined;
+		const numero = forme && canonique(forme, morceaux);
+		return numero ? [{ cle: cleObjet(cleConseil(conseil!), numero), numero, nom: nom_court }] : [];
 	});
 }

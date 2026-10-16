@@ -15,6 +15,19 @@ describe('numéros d’Objet et sources.json', () => {
 		);
 		expect(reconnaitreNumero('int 26/56', seancesSeulement)).toEqual([]);
 	});
+
+	it('nomme le conseil par le nom court de sa source', () => {
+		const renomme = SOURCES.map((s): Source => (s.id === 'openparldata-vd' ? { ...s, nom_court: 'Parlement' } : s));
+		expect(reconnaitreNumero('26 int 140', renomme).map((r) => r.nom)).toEqual(['Parlement']);
+		expect(reconnaitreNumero('int 26/56').map((r) => r.nom)).toEqual(['Conseil de Lausanne']);
+	});
+
+	it('ne cherche pas par numéro un conseil dont aucun préfixe n’est connu', () => {
+		const yverdon = SOURCES.map(
+			(s): Source => (s.id === 'openparldata-5938' && s.conseil ? { ...s, conseil: { ...s.conseil, donne: ['objets'] } } : s)
+		);
+		expect(reconnaitreNumero('int 26/56', yverdon).map((r) => r.cle)).toEqual(['5586/INT26-056']);
+	});
 });
 
 // Les mêmes cas que `cle_objet` du cron (`pipeline/tests/test_import_conseils.py`), qui nomme le fichier d'archive
