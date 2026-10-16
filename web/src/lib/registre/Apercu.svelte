@@ -1,14 +1,15 @@
 <script lang="ts">
 	/*
 	 * Aperçu de ce qui est ouvert, en bas de la carte sur téléphone : il laisse choisir avant d'ouvrir la fiche.
-	 * Le registre rend celui d'une commune (« Pully · Voir la fiche › », sans résumé par couche en J0) ; l'`Apercu`
-	 * de la couche rend celui de l'élément ouvert. La croix ferme la fiche, et l'aperçu avec elle.
+	 * Le registre rend celui de la fiche ouverte, d'une commune ou propre (« Pully · Voir la fiche › », « Grand
+	 * Conseil · Voir la fiche › », sans résumé par couche) ; l'`Apercu` de la couche rend celui de l'élément ouvert.
+	 * La croix ferme la fiche, et l'aperçu avec elle.
 	 */
-	import type { Commune } from '#lib/types.js';
 	import type { Registre } from './registre.svelte.js';
 	import type { Chargeur } from './types.js';
 
-	let { registre, commune, onvoir }: { registre: Registre; commune: Commune; onvoir: () => void } = $props();
+	/** `nom` : celui de la fiche ouverte (« Pully », « Grand Conseil »). */
+	let { registre, nom, onvoir }: { registre: Registre; nom: string; onvoir: () => void } = $props();
 
 	const couche = $derived(
 		registre.couches.find((c) => c.id === registre.ouvert?.couche && c.composants.Apercu) ?? null
@@ -24,16 +25,16 @@
 				<module.default ctx={registre.contexte(couche)} voir={onvoir} />
 			{:catch}
 				<button class="commune" type="button" onclick={onvoir}>
-					<strong>{commune.nom}</strong> · <span>Voir la fiche ›</span>
+					<strong>{nom}</strong> · <span>Voir la fiche ›</span>
 				</button>
 			{/await}
 		{/key}
 	{:else}
 		<button class="commune" type="button" onclick={onvoir}>
-			<strong>{commune.nom}</strong> · <span>Voir la fiche ›</span>
+			<strong>{nom}</strong> · <span>Voir la fiche ›</span>
 		</button>
 	{/if}
-	<button class="fermer" type="button" aria-label="Fermer l’aperçu de {commune.nom}" onclick={registre.fermerFiche}>
+	<button class="fermer" type="button" aria-label="Fermer l’aperçu de {nom}" onclick={registre.fermerFiche}>
 		×
 	</button>
 </div>
