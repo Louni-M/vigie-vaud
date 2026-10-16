@@ -64,29 +64,49 @@ describe('mouvement de la carte quand l’adresse change', () => {
 });
 
 describe('correction du chemin d’un élément ouvert', () => {
-	it('mène à la commune de l’élément depuis l’adresse nue ou une autre commune', () => {
-		expect(corrigerChemin(null, { commune: 'lutry' })).toEqual({ commune: 'lutry' });
-		expect(corrigerChemin('pully', { commune: 'lutry' })).toEqual({ commune: 'lutry' });
+	const LUTRY = { commune: 'lutry' };
+	const PULLY = { commune: 'pully' };
+	const PROPRE = { fiche: 'propre' };
+
+	it('mène à la fiche de l’élément depuis l’adresse nue ou une autre commune', () => {
+		expect(corrigerChemin(null, { fiches: [LUTRY] })).toEqual(LUTRY);
+		expect(corrigerChemin(PULLY, { fiches: [LUTRY] })).toEqual(LUTRY);
 	});
-	it('garde le chemin qui porte déjà la commune de l’élément', () => {
-		expect(corrigerChemin('lutry', { commune: 'lutry' })).toBeNull();
+	it('garde le chemin qui porte déjà la fiche de l’élément', () => {
+		expect(corrigerChemin(LUTRY, { fiches: [LUTRY] })).toBeNull();
+	});
+	it('garde la fiche du chemin quand elle fait partie de celles de l’élément, même après la première', () => {
+		expect(corrigerChemin(PULLY, { fiches: [LUTRY, PULLY, PROPRE] })).toBeNull();
+		expect(corrigerChemin(PROPRE, { fiches: [LUTRY, PULLY, PROPRE] })).toBeNull();
+	});
+	it('mène à la première fiche de l’élément quand celle du chemin n’en fait pas partie', () => {
+		expect(corrigerChemin({ commune: 'morges' }, { fiches: [LUTRY, PULLY, PROPRE] })).toEqual(LUTRY);
+		expect(corrigerChemin(null, { fiches: [PROPRE, LUTRY] })).toEqual(PROPRE);
+		expect(corrigerChemin({ commune: 'propre' }, { fiches: [LUTRY, PROPRE] })).toEqual(LUTRY);
 	});
 	it('retire l’élément que la couche ne trouve pas', () => {
-		expect(corrigerChemin('pully', null)).toBe('retirer');
+		expect(corrigerChemin(PULLY, null)).toBe('retirer');
 		expect(corrigerChemin(null, null)).toBe('retirer');
+		expect(corrigerChemin(null, { fiches: [] })).toBe('retirer');
 	});
 });
 
 describe('fermeture d’un élément', () => {
-	it('revient en arrière quand l’application a ouvert l’élément depuis la fiche de la même commune', () => {
-		expect(fermeture({ element: { depuis: 'lutry' } }, 'lutry')).toBe('retour');
+	const LUTRY = { commune: 'lutry' };
+	const PROPRE = { fiche: 'propre' };
+
+	it('revient en arrière quand l’application a ouvert l’élément depuis la même fiche', () => {
+		expect(fermeture({ element: { depuis: { commune: 'lutry' } } }, LUTRY)).toBe('retour');
+		expect(fermeture({ element: { depuis: { fiche: 'propre' } } }, PROPRE)).toBe('retour');
 	});
 	it('remplace l’adresse pour un élément ouvert par un lien direct', () => {
-		expect(fermeture({}, 'lutry')).toBe('remplacer');
+		expect(fermeture({}, LUTRY)).toBe('remplacer');
 	});
-	it('remplace l’adresse quand l’entrée précédente est une autre commune ou la carte seule', () => {
-		// Revenir en arrière quitterait la fiche de la commune de l'élément au lieu de revenir à son onglet.
-		expect(fermeture({ element: { depuis: 'pully' } }, 'lutry')).toBe('remplacer');
-		expect(fermeture({ element: { depuis: null } }, 'lutry')).toBe('remplacer');
+	it('remplace l’adresse quand l’entrée précédente est une autre fiche ou la carte seule', () => {
+		// Revenir en arrière quitterait la fiche où l'élément est ouvert au lieu de revenir à son onglet.
+		expect(fermeture({ element: { depuis: { commune: 'pully' } } }, LUTRY)).toBe('remplacer');
+		expect(fermeture({ element: { depuis: PROPRE } }, LUTRY)).toBe('remplacer');
+		expect(fermeture({ element: { depuis: { commune: 'propre' } } }, PROPRE)).toBe('remplacer');
+		expect(fermeture({ element: { depuis: null } }, LUTRY)).toBe('remplacer');
 	});
 });

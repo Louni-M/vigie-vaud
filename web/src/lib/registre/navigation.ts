@@ -1,5 +1,5 @@
 import type { Centre } from '#lib/types.js';
-import type { Ouvert } from './types.js';
+import type { Fiche, Lieu, Ouvert } from './types.js';
 
 /** Ce que l'adresse dit de la carte : la commune du chemin, la vue et l'élément de la requête. */
 export interface Adresse {
@@ -35,25 +35,30 @@ export function mouvement(avant: Pick<Adresse, 'commune' | 'ouvert'>, apres: Adr
 	return initial ? null : 'canton';
 }
 
+/** Les deux désignent la même fiche. */
+export const memeFiche = (a: Fiche | null | undefined, b: Fiche | null | undefined) =>
+	a != null &&
+	b != null &&
+	('commune' in a ? 'commune' in b && a.commune === b.commune : 'fiche' in b && a.fiche === b.fiche);
+
 /**
- * Quand l'adresse porte un élément, son chemin porte toujours la commune de l'élément. D'après `localiser`, on
- * mène l'adresse à cette commune (`/?d=…`, `/commune/pully?d=…` → `/commune/<commune du dossier>?d=…`), on la
- * garde (`null`), ou on retire l'élément que la couche ne trouve pas. `commune` est celle du chemin.
+ * Quand l'adresse porte un élément, son chemin porte toujours l'une de ses fiches. Règle unique : l'élément s'ouvre
+ * dans la fiche du chemin si elle fait partie de celles que donne `localiser`, sinon dans la première. On garde donc
+ * le chemin (`null`), on le mène à cette première fiche (`/?d=…`, `/commune/pully?d=…` → `/commune/<commune du
+ * dossier>?d=…`), ou on retire l'élément que la couche ne trouve pas. `chemin` est la fiche du chemin.
  */
-export function corrigerChemin(
-	commune: string | null,
-	lieu: { commune: string } | null
-): { commune: string } | 'retirer' | null {
-	if (!lieu) return 'retirer';
-	return lieu.commune === commune ? null : { commune: lieu.commune };
+export function corrigerChemin(chemin: Fiche | null, lieu: Pick<Lieu, 'fiches'> | null): Fiche | 'retirer' | null {
+	const premiere = lieu?.fiches[0];
+	if (!premiere) return 'retirer';
+	return lieu.fiches.some((f) => memeFiche(f, chemin)) ? null : premiere;
 }
 
 /**
- * Fermer un élément (« Permis » dans le fil) ramène à l'onglet de sa couche dans la fiche de sa commune. Si
- * l'application a poussé l'entrée d'historique depuis la fiche de cette même commune, on revient en arrière
- * (`retour`) ; sinon (lien direct, ou élément ouvert depuis la carte seule ou une autre commune), revenir en
- * arrière quitterait la fiche ou le site : on remplace l'adresse par le chemin de la commune, sans l'élément.
+ * Fermer un élément (« Permis » dans le fil) ramène à l'onglet de sa couche dans la fiche où il est ouvert. Si
+ * l'application a poussé l'entrée d'historique depuis cette même fiche, on revient en arrière (`retour`) ; sinon
+ * (lien direct, ou élément ouvert depuis la carte seule ou une autre fiche), revenir en arrière quitterait la fiche
+ * ou le site : on remplace l'adresse par le chemin de la fiche, sans l'élément.
  */
-export function fermeture(etat: App.PageState, commune: string | null): 'retour' | 'remplacer' {
-	return etat.element && etat.element.depuis === commune ? 'retour' : 'remplacer';
+export function fermeture(etat: App.PageState, fiche: Fiche | null): 'retour' | 'remplacer' {
+	return etat.element && memeFiche(etat.element.depuis, fiche) ? 'retour' : 'remplacer';
 }
