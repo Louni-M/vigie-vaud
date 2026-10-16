@@ -24,8 +24,8 @@ export function teteCommune(commune: Commune, couches: readonly CoucheInscrite[]
 
 /**
  * Titre du document quand une fiche est ouverte : « Pully – Vigie Vaud » pour une commune, ou le `titre` que la
- * couche donne à l'élément ouvert (« Dossier n° 248845 – Lutry – Vigie Vaud »). L'élément est toujours dans la
- * commune du chemin.
+ * couche donne à l'élément ouvert (« Dossier n° 248845 – Lutry – Vigie Vaud »), qui reçoit le nom de la fiche du
+ * chemin, où l'élément est ouvert.
  */
 export function titreFiche(commune: Commune, ouvert: Ouvert | null, couches: readonly CoucheInscrite[]): string {
 	const titre = ouvert && couches.find((c) => c.id === ouvert.couche)?.titre;

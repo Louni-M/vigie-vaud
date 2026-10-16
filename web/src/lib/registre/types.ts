@@ -18,6 +18,19 @@ export interface Codec<P> {
 	ecrire(parametres: P): [string, string][];
 }
 
+/**
+ * Une fiche de la colonne : celle d'une commune (son slug), ou la fiche propre d'une couche (son identifiant). La
+ * fiche ouverte est l'une ou l'autre, jamais les deux.
+ */
+export type Fiche = { commune: string } | { fiche: string };
+
+/** Ce que `localiser` sait d'un élément : ses fiches, dans l'ordre, et sa position (lon, lat) s'il en a une. */
+export interface Lieu {
+	/** Fiches où l'élément peut s'ouvrir ; il s'ouvre dans la première, sauf si celle du chemin en fait partie. */
+	fiches: Fiche[];
+	position?: [number, number];
+}
+
 /** L'élément ouvert : un seul à la fois, dans toute l'application. */
 export interface Ouvert {
 	couche: string;
@@ -25,8 +38,8 @@ export interface Ouvert {
 }
 
 /**
- * Ce qu'on peut ouvrir : la fiche d'une commune, ou un élément d'une couche. Le registre ouvre l'élément dans la
- * fiche de sa commune, qu'il trouve par `localiser`. Quand celui qui l'ouvre connaît déjà sa `position` (clic sur
+ * Ce qu'on peut ouvrir : la fiche d'une commune, ou un élément d'une couche. Le registre ouvre l'élément dans
+ * l'une de ses fiches, qu'il trouve par `localiser`. Quand celui qui l'ouvre connaît déjà sa `position` (clic sur
  * la carte, liste), la carte vole vers lui tout de suite, sans attendre `localiser`.
  */
 export type Cible = { commune: string } | (Ouvert & { position?: [number, number] });
@@ -82,14 +95,14 @@ export interface Couche<P = unknown> {
 	codec?: Codec<P>;
 	/** Clé de requête de l'élément ouvert de cette couche (« d » pour un dossier). */
 	cleElement?: string;
-	/** Commune (slug) et position (lon, lat) d'un élément, ou `null` si la couche ne le trouve pas. */
-	localiser?(element: string): Promise<{ commune: string; position: [number, number] } | null>;
+	/** Fiches et position d'un élément, ou `null` si la couche ne le trouve pas. Rejette si elle n'a pas pu chercher. */
+	localiser?(element: string): Promise<Lieu | null>;
 	/** Message affiché près de la recherche quand `localiser` ne trouve pas l'élément (« Aucun dossier n° … »). */
 	introuvable?(element: string): string;
 	/** Synchrone : la recherche du socle l'appelle à chaque frappe. */
 	chercher?(texte: string): ResultatCouche[];
-	/** Titre du document quand l'élément est ouvert ; `commune` est le nom de la commune de l'élément. */
-	titre?(element: string, commune: string): string;
+	/** Titre du document quand l'élément est ouvert ; `nomDeLaFiche` est le nom de la fiche où il est ouvert. */
+	titre?(element: string, nomDeLaFiche: string): string;
 	/**
 	 * Ce que la couche montre d'une commune, pour la description de la page de la commune
 	 * (« les permis de construire à l’enquête, en direct depuis le canton »).
