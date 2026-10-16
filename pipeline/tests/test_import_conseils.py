@@ -349,7 +349,11 @@ def test_un_objet_modifie_seul_son_fichier_est_reecrit_et_rien_n_est_supprime(tm
 
     apres = _genere_de_chaque_fichier(tmp_path)
     assert set(apres) == set(avant)
-    assert {c for c in apres if apres[c] != avant[c]} == {"conseils/import.json", "conseils/vd/objets/25_LEG_12.json"}
+    assert {c for c in apres if apres[c] != avant[c]} == {
+        "conseils/import.json",
+        "conseils/vd/objets/25_LEG_12.json",
+        "conseils/vd/objets-2025.json",  # sa ligne légère, qui porte son statut
+    }
     assert _lire(tmp_path, "conseils/vd/objets/25_LEG_12.json")["statut"]["libelle"] == "Retiré"
     assert _lire(tmp_path, "conseils/vd/objets/26_INT_140.json")["numero"] == "26_INT_140"
 
@@ -378,18 +382,26 @@ def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path)
     assert not (tmp_path / "conseils/vd/objets/26_MOT_20.json").exists()
 
 
+def _schema_du_fichier(chemin):
+    """Le document du schéma commun que doit suivre un fichier du dossier `conseils/`."""
+    if chemin.parent.name in ("objets", "seances"):
+        return {"objets": "objet", "seances": "seance"}[chemin.parent.name]
+    if chemin.parent.name == "communes":
+        return "rattachements-commune"
+    if chemin.name.startswith("objets-"):
+        return "liste-objets"
+    noms = {"import.json": "import-conseils", "index.json": "index-conseils", "fil.json": "fil-conseils"}
+    return noms.get(chemin.name, "liste-seances" if chemin.name == "seances.json" else None)
+
+
 def test_chaque_fichier_ecrit_est_valide_au_json_schema(tmp_path):
     horloge = HorlogeFactice(T0)
 
     _passer(tmp_path, _monde(horloge), horloge)
 
-    schemas = {
-        nom: json.loads((DOSSIER_SCHEMA / f"{nom}.schema.json").read_text())
-        for nom in ("objet", "seance", "import-conseils")
-    }
     fichiers = sorted(tmp_path.rglob("*.json"))
-    assert len(fichiers) == 7
+    assert len(fichiers) == 15  # 7 d'archive et d'import, 8 de lecture
     for fichier in fichiers:
-        chemin = fichier.relative_to(tmp_path)
-        nom = {"conseils": "import-conseils", "objets": "objet", "seances": "seance"}[chemin.parent.name]
-        jsonschema.validate(json.loads(fichier.read_text()), schemas[nom])
+        nom = _schema_du_fichier(fichier.relative_to(tmp_path))
+        schema = json.loads((DOSSIER_SCHEMA / f"{nom}.schema.json").read_text())
+        jsonschema.validate(json.loads(fichier.read_text()), schema)

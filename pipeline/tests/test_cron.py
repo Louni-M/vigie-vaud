@@ -379,8 +379,13 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
         "etat-sources.json",
         "schema/enveloppe.schema.json",
         "schema/etat-sources.schema.json",
+        "schema/fil-conseils.schema.json",
         "schema/import-conseils.schema.json",
+        "schema/index-conseils.schema.json",
+        "schema/liste-objets.schema.json",
+        "schema/liste-seances.schema.json",
         "schema/objet.schema.json",
+        "schema/rattachements-commune.schema.json",
         "schema/seance.schema.json",
         "schema/sources.schema.json",
     ]

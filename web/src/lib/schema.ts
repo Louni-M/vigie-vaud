@@ -1,17 +1,31 @@
 /* Fichier généré par `pnpm schema` depuis pipeline/schema.py : ne pas modifier.
  * Pour changer le schéma commun, modifier les modèles Pydantic puis relancer `pnpm schema`. */
 
-export type DocumentCommun = Enveloppe | EtatSources | ImportConseils | Objet | Seance | FichierSources;
+export type DocumentCommun =
+	| Enveloppe
+	| EtatSources
+	| FilConseils
+	| ImportConseils
+	| IndexConseils
+	| ListeObjets
+	| ListeSeances
+	| Objet
+	| RattachementsCommune
+	| Seance
+	| FichierSources;
 export type EtatSonde = 'disponible' | 'en_panne';
 export type Horodatage = string;
+export type CleElement = string;
+export type CleConseil = string;
+export type SorteElement = 'objet' | 'seance';
+export type NumeroOfs = number;
+export type DonneeConseil = 'objets' | 'seances';
+export type DateSeance = string;
 export type SorteContributeur = 'personne' | 'groupe';
 export type Lien = string;
-export type CleElement = string;
 export type VoieAcces = 'direct' | 'cron' | 'worker' | 'preparee';
 export type SorteFraicheur = 'donnee' | 'requete' | 'millesime' | 'import';
-export type NumeroOfs = number;
 export type ModeCouverture = 'api' | 'scrape';
-export type DonneeConseil = 'objets' | 'seances';
 
 /**
  * Enveloppe de chaque fichier du dépôt de données.
@@ -71,6 +85,50 @@ export interface EtatSource {
 	motif: string | null;
 }
 /**
+ * `conseils/fil.json` : les Objets et les Séances de tous les conseils datés des 21 derniers jours (heure de
+ * Suisse, marge pour des imports manqués) ou après, donc toutes les Séances à venir, du plus récent au plus ancien.
+ * Le site filtre lui-même sur sa fenêtre.
+ */
+export interface FilConseils {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	entrees: EntreeFil[];
+}
+/**
+ * Un Objet ou une Séance, à la forme d'une entrée du fil cantonal.
+ */
+export interface EntreeFil {
+	cle: CleElement;
+	conseil: CleConseil;
+	sorte: SorteElement;
+	/**
+	 * Objet : son type brut. Séance : `null`.
+	 */
+	type: string | null;
+	/**
+	 * Objet : jour de dépôt, sinon de sa première étape datée. Séance : son jour, avec l'heure quand la source la donne.
+	 */
+	date: string;
+	/**
+	 * Objet : son titre masqué. Séance : son nom brut (le site compose le sien).
+	 */
+	titre: string;
+	/**
+	 * Conseil communal : sa commune. Grand Conseil : les communes rattachées à l'Objet, dans l'ordre du rattachement ; aucune pour une Séance.
+	 */
+	communes: NumeroOfs[];
+	/**
+	 * Séance : nombre de points de l'ordre du jour. Objet : `null`.
+	 */
+	points: number | null;
+}
+/**
  * `conseils/import.json` : l'heure du dernier import réussi de chaque conseil, importé à part. C'est la
  * mémoire du cron et la base du badge de fraîcheur des sources `import`.
  */
@@ -89,6 +147,174 @@ export interface ImportConseils {
 	conseils: {
 		[k: string]: Horodatage;
 	};
+}
+/**
+ * `conseils/index.json` : chaque conseil importé, dans l'ordre de `sources.json`, et le nombre d'Objets du
+ * Grand Conseil rattachés à chaque commune.
+ */
+export interface IndexConseils {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	conseils: ConseilIndexe[];
+	/**
+	 * Par n° OFS de commune (« 5586 »), le nombre d'Objets du Grand Conseil qui lui sont rattachés. Une commune absente n'en a aucun : « Au Grand Conseil » est vide sans autre requête.
+	 */
+	communes: {
+		[k: string]: number;
+	};
+}
+/**
+ * Un conseil dans l'index : de quoi remplir le volet et les compteurs sans autre requête.
+ */
+export interface ConseilIndexe {
+	cle: CleConseil;
+	/**
+	 * La source qui donne le conseil, dans `sources.json`.
+	 */
+	source: string;
+	/**
+	 * Nom du conseil, tiré du nom de sa source (« Conseil communal de Lausanne »).
+	 */
+	nom: string;
+	/**
+	 * La commune d'un conseil communal ; `null` pour le Grand Conseil.
+	 */
+	commune: NumeroOfs | null;
+	donne: DonneeConseil[];
+	/**
+	 * Nombre d'Objets listés, toutes années confondues.
+	 */
+	objets: number;
+	/**
+	 * Nombre d'Objets par année (« 2026 »), une par fichier `objets-<année>.json`.
+	 */
+	objets_par_annee: {
+		[k: string]: number;
+	};
+	/**
+	 * Les Objets des 14 derniers jours (date de dépôt, sinon de la première étape datée), du plus récent au plus ancien.
+	 */
+	recents: LigneObjet[];
+	/**
+	 * Nombre de Séances.
+	 */
+	seances: number;
+	/**
+	 * La première Séance du jour du passage ou après.
+	 */
+	prochaine_seance: CleElement | null;
+	/**
+	 * La dernière Séance avant le jour du passage.
+	 */
+	derniere_seance: CleElement | null;
+}
+/**
+ * Un Objet en ligne légère, commune aux listes par année, à « Au Grand Conseil » et à l'index : de quoi
+ * l'afficher dans une liste. Le détail est dans son fichier d'archive.
+ */
+export interface LigneObjet {
+	/**
+	 * `<conseil>/<numéro>` : le fichier d'archive de l'Objet.
+	 */
+	cle: string;
+	numero: string;
+	type: string;
+	depose: string | null;
+	titre: string;
+	/**
+	 * Les deux premiers contributeurs, dans l'ordre de la source.
+	 */
+	auteurs: Auteur[];
+	/**
+	 * Nombre de tous les contributeurs.
+	 */
+	nombre_auteurs: number;
+	statut: Statut | null;
+	/**
+	 * Date de la dernière étape datée.
+	 */
+	derniere_etape: string | null;
+	/**
+	 * Grand Conseil : les communes rattachées, dans l'ordre du rattachement. Vide pour un conseil communal, dont les Objets n'appartiennent qu'à sa commune.
+	 */
+	communes: CommuneRattachee[];
+}
+export interface Auteur {
+	nom: string;
+	parti: string | null;
+}
+export interface Statut {
+	/**
+	 * Le `state_name` brut de la source quand il existe, sinon le libellé de la dernière étape datée.
+	 */
+	libelle: string;
+	/**
+	 * Date de la dernière étape datée ; `null` si aucune étape n'est datée.
+	 */
+	date: string | null;
+}
+/**
+ * Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement.
+ */
+export interface CommuneRattachee {
+	ofs: NumeroOfs;
+	/**
+	 * `titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée à la main par `corrections.json`.
+	 */
+	origine: 'titre' | 'document' | 'correction';
+}
+/**
+ * `conseils/<conseil>/objets-<année>.json` : les Objets du conseil déposés cette année-là, du plus récent au
+ * plus ancien. Un Objet sans date de dépôt est classé à l'année de sa première étape datée ; sans aucune date, il
+ * n'est dans aucune liste (son fichier d'archive reste ouvrable).
+ */
+export interface ListeObjets {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	conseil: CleConseil;
+	annee: number;
+	objets: LigneObjet[];
+}
+/**
+ * `conseils/<conseil>/seances.json` : toutes les Séances du conseil, de la plus récente à la plus ancienne.
+ */
+export interface ListeSeances {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	conseil: CleConseil;
+	seances: LigneSeance[];
+}
+/**
+ * Une Séance en ligne légère : de quoi l'afficher dans une liste, sans son ordre du jour.
+ */
+export interface LigneSeance {
+	/**
+	 * `<conseil>/<jour>` : le fichier d'archive de la Séance.
+	 */
+	cle: string;
+	date: DateSeance;
+	/**
+	 * Nombre de points de l'ordre du jour.
+	 */
+	points: number;
 }
 /**
  * `conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est
@@ -135,16 +361,6 @@ export interface Objet {
 	 */
 	lien: Lien | null;
 }
-export interface Statut {
-	/**
-	 * Le `state_name` brut de la source quand il existe, sinon le libellé de la dernière étape datée.
-	 */
-	libelle: string;
-	/**
-	 * Date de la dernière étape datée ; `null` si aucune étape n'est datée.
-	 */
-	date: string | null;
-}
 export interface Contributeur {
 	nom: string;
 	/**
@@ -174,6 +390,22 @@ export interface DocumentObjet {
 	 * Le document chez la source (PDF, page ou vidéo).
 	 */
 	lien: string;
+}
+/**
+ * `conseils/communes/<ofs>.json` (« Au Grand Conseil ») : les Objets du Grand Conseil rattachés à la commune,
+ * par date de dernière étape décroissante. Écrit seulement s'il y en a au moins un.
+ */
+export interface RattachementsCommune {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	commune: NumeroOfs;
+	objets: LigneObjet[];
 }
 /**
  * `conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`.

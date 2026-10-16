@@ -5,7 +5,8 @@ Le passage suit quatre étapes, chacune à sa place :
 
 1. `importer(opd, conseil, depuis)` lit les changements bruts d'un conseil chez OpenParlData ;
 2. `vers_archive(bruts, archive, genere)`, fonction pure, les normalise en Objets et Séances de l'archive ;
-3. `lecture(archive)`, fonction pure, reconstruit les fichiers de lecture que le site liste ;
+3. `lecture(archive, sources, genere)`, fonction pure, reconstruit les fichiers de lecture que le site liste
+   (`lecture_conseils.py`) ;
 4. `ecrire(depot, documents, genere)` compare chaque fichier à l'ancien sans `genere` et n'écrit que ce qui change.
 
 `importer_conseils` enchaîne les quatre pour chaque source qui a un bloc `conseil`, et tient à jour
@@ -39,6 +40,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import ValidationError
 
+from lecture_conseils import lecture
 from schema import (
     RACINE,
     Conseil,
@@ -369,14 +371,6 @@ def _lien(valeur: str | None) -> str | None:
     return valeur if valeur.startswith(("http://", "https://")) else None
 
 
-# --- 3. Fichiers de lecture ------------------------------------------------------------------------------------
-
-
-def lecture(archive: Archive) -> dict[str, Enveloppe]:
-    """Les fichiers de lecture reconstruits depuis l'archive, par chemin. Aucun pour l'instant (ticket #65)."""
-    return {}
-
-
 # --- 4. Écriture -----------------------------------------------------------------------------------------------
 
 
@@ -453,7 +447,7 @@ def importer_conseils(
 
     etat = ImportConseils(version=1, genere=genere, conseils=imports)
     documents: dict[str, Enveloppe] = {chemin_element(cle, e): e for cle, e in nouveaux.items()}
-    documents |= lecture(archive)
+    documents |= lecture(archive, sources, genere)
     documents[FICHIER_IMPORT] = etat
     ecrire(depot, documents, genere)
     return etat

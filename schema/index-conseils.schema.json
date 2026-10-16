@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Auteur": {
+      "additionalProperties": false,
+      "properties": {
+        "nom": {
+          "type": "string"
+        },
+        "parti": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "nom",
+        "parti"
+      ],
+      "title": "Auteur",
+      "type": "object"
+    },
+    "CleConseil": {
+      "pattern": "^[a-z0-9]+$",
+      "type": "string"
+    },
+    "CleElement": {
+      "pattern": "^[a-z0-9]+/[^/\\s]+$",
+      "type": "string"
+    },
+    "CommuneRattachee": {
+      "additionalProperties": false,
+      "description": "Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement.",
+      "properties": {
+        "ofs": {
+          "$ref": "#/$defs/NumeroOfs"
+        },
+        "origine": {
+          "$ref": "#/$defs/OrigineCommune",
+          "description": "`titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée à la main par `corrections.json`."
+        }
+      },
+      "required": [
+        "ofs",
+        "origine"
+      ],
+      "title": "CommuneRattachee",
+      "type": "object"
+    },
+    "ConseilIndexe": {
+      "additionalProperties": false,
+      "description": "Un conseil dans l'index : de quoi remplir le volet et les compteurs sans autre requête.",
+      "properties": {
+        "cle": {
+          "$ref": "#/$defs/CleConseil"
+        },
+        "source": {
+          "$ref": "#/$defs/IdSource",
+          "description": "La source qui donne le conseil, dans `sources.json`."
+        },
+        "nom": {
+          "description": "Nom du conseil, tiré du nom de sa source (« Conseil communal de Lausanne »).",
+          "type": "string"
+        },
+        "commune": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NumeroOfs"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "La commune d'un conseil communal ; `null` pour le Grand Conseil."
+        },
+        "donne": {
+          "items": {
+            "$ref": "#/$defs/DonneeConseil"
+          },
+          "type": "array"
+        },
+        "objets": {
+          "description": "Nombre d'Objets listés, toutes années confondues.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "objets_par_annee": {
+          "additionalProperties": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "description": "Nombre d'Objets par année (« 2026 »), une par fichier `objets-<année>.json`.",
+          "type": "object"
+        },
+        "recents": {
+          "description": "Les Objets des 14 derniers jours (date de dépôt, sinon de la première étape datée), du plus récent au plus ancien.",
+          "items": {
+            "$ref": "#/$defs/LigneObjet"
+          },
+          "type": "array"
+        },
+        "seances": {
+          "description": "Nombre de Séances.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "prochaine_seance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CleElement"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "La première Séance du jour du passage ou après."
+        },
+        "derniere_seance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CleElement"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "La dernière Séance avant le jour du passage."
+        }
+      },
+      "required": [
+        "cle",
+        "source",
+        "nom",
+        "commune",
+        "donne",
+        "objets",
+        "objets_par_annee",
+        "recents",
+        "seances",
+        "prochaine_seance",
+        "derniere_seance"
+      ],
+      "title": "ConseilIndexe",
+      "type": "object"
+    },
+    "DonneeConseil": {
+      "enum": [
+        "objets",
+        "seances"
+      ],
+      "type": "string"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "IdSource": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "LigneObjet": {
+      "additionalProperties": false,
+      "description": "Un Objet en ligne légère, commune aux listes par année, à « Au Grand Conseil » et à l'index : de quoi\nl'afficher dans une liste. Le détail est dans son fichier d'archive.",
+      "properties": {
+        "cle": {
+          "$ref": "#/$defs/CleElement",
+          "description": "`<conseil>/<numéro>` : le fichier d'archive de l'Objet."
+        },
+        "numero": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "depose": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "titre": {
+          "type": "string"
+        },
+        "auteurs": {
+          "description": "Les deux premiers contributeurs, dans l'ordre de la source.",
+          "items": {
+            "$ref": "#/$defs/Auteur"
+          },
+          "type": "array"
+        },
+        "nombre_auteurs": {
+          "description": "Nombre de tous les contributeurs.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "statut": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Statut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "derniere_etape": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Date de la dernière étape datée."
+        },
+        "communes": {
+          "description": "Grand Conseil : les communes rattachées, dans l'ordre du rattachement. Vide pour un conseil communal, dont les Objets n'appartiennent qu'à sa commune.",
+          "items": {
+            "$ref": "#/$defs/CommuneRattachee"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "cle",
+        "numero",
+        "type",
+        "depose",
+        "titre",
+        "auteurs",
+        "nombre_auteurs",
+        "statut",
+        "derniere_etape",
+        "communes"
+      ],
+      "title": "LigneObjet",
+      "type": "object"
+    },
+    "NumeroOfs": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "OrigineCommune": {
+      "enum": [
+        "titre",
+        "document",
+        "correction"
+      ],
+      "type": "string"
+    },
+    "Statut": {
+      "additionalProperties": false,
+      "properties": {
+        "libelle": {
+          "description": "Le `state_name` brut de la source quand il existe, sinon le libellé de la dernière étape datée.",
+          "type": "string"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Date de la dernière étape datée ; `null` si aucune étape n'est datée."
+        }
+      },
+      "required": [
+        "libelle",
+        "date"
+      ],
+      "title": "Statut",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/index.json` : chaque conseil importé, dans l'ordre de `sources.json`, et le nombre d'Objets du\nGrand Conseil rattachés à chaque commune.",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "conseils": {
+      "items": {
+        "$ref": "#/$defs/ConseilIndexe"
+      },
+      "type": "array"
+    },
+    "communes": {
+      "additionalProperties": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "description": "Par n° OFS de commune (« 5586 »), le nombre d'Objets du Grand Conseil qui lui sont rattachés. Une commune absente n'en a aucun : « Au Grand Conseil » est vide sans autre requête.",
+      "type": "object"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "conseils",
+    "communes"
+  ],
+  "title": "IndexConseils",
+  "type": "object"
+}
