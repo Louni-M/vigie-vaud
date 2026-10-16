@@ -529,8 +529,10 @@ def importer_conseils(
         try:
             bruts = importer(opd, source.conseil, debut)
             elements = vers_archive(bruts, archive, genere, repertoire, corrections)
-        except (httpx.HTTPError, ValueError) as e:
-            print(f"Import en échec : {source.nom} ({e})", file=sys.stderr)
+        except Exception as e:
+            # Toute erreur, prévue (HTTP, relation tronquée) ou non (réponse d'une forme inattendue), ne vaut
+            # qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
+            print(f"Import en échec : {source.nom} ({type(e).__name__} : {e})", file=sys.stderr)
             continue
         nouveaux |= elements
         archive = {**archive, **elements}

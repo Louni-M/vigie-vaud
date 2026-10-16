@@ -383,6 +383,34 @@ def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path)
     assert not (tmp_path / "conseils/vd/objets/26_MOT_20.json").exists()
 
 
+def test_une_erreur_imprevue_d_un_conseil_n_empeche_pas_d_ecrire_les_autres(tmp_path, capsys):
+    horloge = HorlogeFactice(T0)
+    monde = _monde(horloge)
+    _passer(tmp_path, monde, horloge)
+
+    horloge.heure = T0 + timedelta(days=1)
+    monde.reunions.append(
+        Reunion(id=33002, body_key="5586", name="Séance", begin_date="2026-10-13T00:00:00", updated_at="2026-10-17")
+    )
+
+    def repondre(requete):
+        # Une réponse d'une forme inattendue pour le Grand Conseil : ni erreur HTTP, ni `ValueError`.
+        if requete.url.params.get("body_key") == "VD":
+            return httpx.Response(200, json={"meta": {"has_more": False}, "data": [42]})
+        return monde.transport().handle_request(requete)
+
+    with httpx.Client(transport=httpx.MockTransport(repondre)) as http:
+        importer_conseils(tmp_path, SOURCES, OpenParlData(http, horloge, attendre=horloge.attendre), horloge)
+
+    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {
+        "vd": "2026-10-16T07:05:00Z",
+        "5586": "2026-10-17T07:05:00Z",
+        "5938": "2026-10-17T07:05:00Z",
+    }
+    assert (tmp_path / "conseils/5586/seances/2026-10-13.json").exists()
+    assert "Import en échec : Conseil VD (OpenParlData)" in capsys.readouterr().err
+
+
 def _schema_du_fichier(chemin):
     """Le document du schéma commun que doit suivre un fichier du dossier `conseils/`."""
     if chemin.parent.name in ("objets", "seances"):
