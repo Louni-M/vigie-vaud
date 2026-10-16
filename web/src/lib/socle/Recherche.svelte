@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { normaliser } from '#lib/labels.js';
 	import type { Commune, Resultat } from '#lib/types.js';
-	import { chercherCommunes } from './recherche.js';
+	import { avecAdresses, resultatsLocaux } from './recherche.js';
 
 	/*
-	 * Recherche flottante du socle : communes, adresses et lieux swisstopo, résultats des couches (`chercher`),
-	 * et « Autour de moi ». La position du visiteur n'est envoyée à personne : elle n'est rendue qu'à `onchoix`.
+	 * Recherche flottante du socle : communes, résultats des couches (fiches propres et `chercher`), adresses et
+	 * lieux swisstopo, dans cet ordre, et « Autour de moi ». La position du visiteur n'est envoyée à personne : elle n'est rendue qu'à `onchoix`.
 	 */
 	let {
 		communes,
@@ -15,8 +15,8 @@
 	}: {
 		communes: Commune[];
 		onchoix: (r: Resultat) => void;
-		/** Résultats des couches pour une saisie, synchrones (n° de dossier…). */
-		chercherCouches?: (texte: string) => Extract<Resultat, { type: 'element' }>[];
+		/** Résultats des couches pour une saisie, synchrones : fiches propres, puis éléments (n° de dossier…). */
+		chercherCouches?: (texte: string) => Resultat[];
 		texte?: string;
 	} = $props();
 
@@ -58,8 +58,8 @@
 	/** Texte pour lequel `resultats` a été calculé. */
 	let cherche = '';
 
-	// Communes actuelles, puis anciennes communes et anciens noms (« Cully → Bourg-en-Lavaux »).
-	const locaux = (q: string): Resultat[] => [...chercherCouches(q), ...chercherCommunes(communes, q)];
+	// Communes actuelles, anciennes communes et anciens noms (« Cully → Bourg-en-Lavaux »), puis les couches.
+	const locaux = (q: string): Resultat[] => resultatsLocaux(communes, q, chercherCouches);
 
 	interface Lieu {
 		attrs: { origin: string; label: string; detail?: string; lat: number; lon: number };
@@ -120,10 +120,7 @@
 				lon: a.lon,
 				lat: a.lat
 			}));
-			// Un même lieu revient sous plusieurs catégories (sortie d'autoroute, camping…) : un seul suffit.
-			const vus = new Set(local.map((r) => r.libelle));
-			const uniques = adresses.filter((r) => !vus.has(r.libelle) && vus.add(r.libelle));
-			resultats = [...local, ...uniques].slice(0, 10);
+			resultats = avecAdresses(local, adresses);
 		} catch {
 			/* hors ligne : on garde les résultats locaux */
 		}
@@ -206,8 +203,8 @@
 		<input
 			bind:this={champ}
 			type="search"
-			placeholder="Adresse, commune ou n° de dossier"
-			aria-label="Rechercher une adresse, une commune ou un numéro de dossier"
+			placeholder="Adresse, commune, n° de dossier ou d’objet"
+			aria-label="Rechercher une adresse, une commune, un numéro de dossier ou d’objet"
 			autocomplete="off"
 			bind:value={texte}
 			oninput={saisie}

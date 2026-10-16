@@ -1,6 +1,7 @@
 import { resolve } from '$app/paths';
 import type { Centre } from '#lib/types.js';
 import { COUCHES } from './couches.js';
+import { fichePropre } from './fiches.js';
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
 
 /*
@@ -9,6 +10,13 @@ import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
 
 /** La fiche d'une commune. */
 export const lienCommune = (slug: string) => resolve('/(carte)/commune/[slug]', { slug });
+
+/** La page d'une fiche propre, par son identifiant (`grand-conseil` → « /grand-conseil »). */
+export function lienFiche(id: string): string {
+	const declaree = fichePropre(COUCHES, id);
+	if (!declaree) throw new Error(`Aucune couche ne déclare la fiche « ${id} »`);
+	return resolve('/(carte)/[fiche]', { fiche: declaree.fiche.chemin.slice(1) });
+}
 
 /** La carte, avec ce qui diffère de l'état par défaut. */
 export function lienCarte(etat: Partial<EtatUrl> = {}): string {
