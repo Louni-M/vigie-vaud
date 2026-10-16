@@ -1,18 +1,28 @@
-"""Un passage du cron (ADR 0005 et 0014) : sondes des sources et état des sources.
+"""Un passage du cron (ADR 0005, 0014 et 0015) : sondes et état des sources, puis import quotidien des conseils.
 
 Le passage relit `sources.json` et l'état précédent dans un clone du dépôt de données, sonde chaque source qui a
-un bloc `sonde`, écrit `etat-sources.json`, copie `schema/`, puis committe (l'historique sert d'archive) et pousse.
-Il ouvre l'issue `panne-source` d'une source en panne et ferme celle d'une source disponible, dans le dépôt de
-données. Une erreur de l'API des issues ne fait pas échouer le passage : l'état est tout de même écrit et publié, et
-le passage suivant, qui compare de nouveau l'état aux issues ouvertes, refait ce qui a manqué.
+un bloc `sonde`, écrit `etat-sources.json`, copie `schema/`, importe les conseils dus (`conseils.py`), puis committe
+(l'historique sert d'archive) et pousse. Il ouvre l'issue `panne-source` d'une source en panne et ferme celle d'une
+source disponible, dans le dépôt de données. Une erreur de l'API des issues ne fait pas échouer le passage : l'état
+est tout de même écrit et publié, et le passage suivant, qui compare de nouveau l'état aux issues ouvertes, refait
+ce qui a manqué.
+
+Les sondes tournent à chaque passage (toutes les 30 minutes). Chaque conseil, lui, s'importe une fois par jour, au
+premier passage après 7 h à Lausanne, depuis le jour de son dernier import réussi ; un import en échec est refait au
+passage suivant. Quand aucun import d'un conseil n'a réussi depuis plus de 24 h, le passage ouvre son issue
+`import-conseils`, qu'il commente et ferme au premier import réussi. Seules les sondes mettent une source en panne :
+un import en échec ne touche pas à l'état des sources.
 
 En local, contre un clone du dépôt de données (depuis `pipeline/`) :
 
     uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push
+    uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push --rattrapage
 
-`--sans-push` écrit l'état et committe sans pousser, et affiche les issues au lieu de les ouvrir. En production, le
-workflow réutilisable `.github/workflows/cron.yml` lance la même commande sans cette option, avec le `GITHUB_TOKEN`
-et le `GITHUB_REPOSITORY` du dépôt de données dans l'environnement, puis publie le dépôt sur Pages.
+`--sans-push` écrit l'état et committe sans pousser, et affiche les issues au lieu de les ouvrir. `--rattrapage`
+importe tous les conseils depuis tout l'historique, à toute heure (le même chemin, `depuis` vide). En production,
+le workflow réutilisable `.github/workflows/cron.yml` lance la même commande sans `--sans-push`, avec le
+`GITHUB_TOKEN` et le `GITHUB_REPOSITORY` du dépôt de données dans l'environnement, puis publie le dépôt sur Pages ;
+un lancement manuel (`workflow_dispatch`) avec l'entrée `rattrapage` y ajoute `--rattrapage`.
 """
 
 from __future__ import annotations
@@ -24,14 +34,19 @@ import shutil
 import ssl
 import subprocess
 import sys
+import time
+import traceback
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
+from datetime import time as time_du_jour
 from pathlib import Path
 from typing import Protocol
+from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
 
+from conseils import OpenParlData, cle_conseil, importer_conseils, lire_imports
 from schema import DOSSIER_SCHEMA, RACINE, EtatSource, EtatSources, FichierSources, Sonde, Source, lire_sources
 
 FICHIER_ETAT = "etat-sources.json"
@@ -55,6 +70,18 @@ class ClientIssues(Protocol):
         """La source qui a une issue ouverte est disponible depuis `etat.depuis`. `panne` est son état en panne
         quand elle revient à ce passage, `None` quand son retour date d'un passage précédent."""
 
+    def imports_signales(self, conseils: list[Source]) -> set[str] | None:
+        """Identifiants des `conseils` qui ont une issue `import-conseils` ouverte, ou `None` pour un client qui ne
+        voit pas les issues : le passage lui signale alors chaque conseil en échec, à chaque passage, et le retour
+        de ceux qui étaient en échec avant lui."""
+
+    def import_en_echec(self, conseil: Source, dernier: datetime) -> None:
+        """Aucun import du conseil n'a réussi depuis plus de 24 h, sans issue ouverte ; `dernier` est l'heure du
+        dernier import réussi."""
+
+    def import_retour(self, conseil: Source, dernier: datetime) -> None:
+        """Le conseil qui a une issue ouverte a de nouveau été importé, à `dernier`."""
+
 
 class IssuesAffichees:
     """Client d'issues du mode local : il affiche ce qu'il signalerait, sans rien ouvrir."""
@@ -68,13 +95,23 @@ class IssuesAffichees:
     def retour(self, source: Source, panne: EtatSource | None, etat: EtatSource) -> None:
         print(f"Retour : {source.nom} (disponible depuis {etat.depuis:%Y-%m-%d %H:%M}Z)")
 
+    def imports_signales(self, conseils: list[Source]) -> None:
+        return None
+
+    def import_en_echec(self, conseil: Source, dernier: datetime) -> None:
+        print(f"{titre_import(conseil)} (dernier import réussi {dernier:%Y-%m-%d %H:%M}Z)")
+
+    def import_retour(self, conseil: Source, dernier: datetime) -> None:
+        print(f"Import de retour : {conseil.nom} (importé {dernier:%Y-%m-%d %H:%M}Z)")
+
 
 ETIQUETTE_PANNE = "panne-source"
+ETIQUETTE_IMPORT = "import-conseils"
 
 
 class IssuesGitHub:
-    """Client d'issues du cron : il ouvre et ferme les issues `panne-source` du dépôt de données `depot`
-    (« propriétaire/nom ») avec le `GITHUB_TOKEN` de ce dépôt (ADR 0014)."""
+    """Client d'issues du cron : il ouvre et ferme les issues `panne-source` et `import-conseils` du dépôt de
+    données `depot` (« propriétaire/nom ») avec le `GITHUB_TOKEN` de ce dépôt (ADR 0014)."""
 
     def __init__(self, client: httpx.Client, depot: str, jeton: str) -> None:
         self._client = client
@@ -87,7 +124,7 @@ class IssuesGitHub:
         }
 
     def signalees(self, sources: list[Source]) -> set[str]:
-        titres = {i["title"] for i in self._issues_ouvertes()}
+        titres = {i["title"] for i in self._issues_ouvertes(ETIQUETTE_PANNE)}
         return {s.id for s in sources if titre_panne(s) in titres}
 
     def panne(self, source: Source, etat: EtatSource) -> None:
@@ -104,16 +141,35 @@ class IssuesGitHub:
             commentaire = f"{source.nom} est de nouveau disponible après {duree(etat.depuis - panne.depuis)}."
         else:
             commentaire = f"{source.nom} est de nouveau disponible depuis le {etat.depuis:%Y-%m-%d à %H:%M} UTC."
-        for numero in self._ouvertes(source):
+        self._fermer(ETIQUETTE_PANNE, titre_panne(source), commentaire)
+
+    def imports_signales(self, conseils: list[Source]) -> set[str]:
+        titres = {i["title"] for i in self._issues_ouvertes(ETIQUETTE_IMPORT)}
+        return {s.id for s in conseils if titre_import(s) in titres}
+
+    def import_en_echec(self, conseil: Source, dernier: datetime) -> None:
+        corps = (
+            f"Aucun import de {conseil.nom} n'a réussi depuis le {dernier:%Y-%m-%d à %H:%M} UTC. Le cron le "
+            "réessaie à chaque passage ; le journal du workflow donne la cause de chaque échec.\n\n"
+            "La source n'est pas en panne pour autant : le site garde les données déjà importées et seul le badge "
+            "de fraîcheur vieillit. Le cron commentera puis fermera cette issue au premier import réussi."
+        )
+        self._requete(
+            "POST", self._api, json={"title": titre_import(conseil), "body": corps, "labels": [ETIQUETTE_IMPORT]}
+        )
+
+    def import_retour(self, conseil: Source, dernier: datetime) -> None:
+        commentaire = f"{conseil.nom} est de nouveau importé : import réussi le {dernier:%Y-%m-%d à %H:%M} UTC."
+        self._fermer(ETIQUETTE_IMPORT, titre_import(conseil), commentaire)
+
+    def _fermer(self, etiquette: str, titre: str, commentaire: str) -> None:
+        """Commente puis ferme les issues ouvertes `etiquette` de ce titre."""
+        for numero in [i["number"] for i in self._issues_ouvertes(etiquette) if i["title"] == titre]:
             self._requete("POST", f"{self._api}/{numero}/comments", json={"body": commentaire})
             self._requete("PATCH", f"{self._api}/{numero}", json={"state": "closed", "state_reason": "completed"})
 
-    def _ouvertes(self, source: Source) -> list[int]:
-        """Numéros des issues `panne-source` ouvertes pour `source`, retrouvées par leur titre."""
-        return [i["number"] for i in self._issues_ouvertes() if i["title"] == titre_panne(source)]
-
-    def _issues_ouvertes(self) -> list[dict]:
-        params = {"labels": ETIQUETTE_PANNE, "state": "open", "per_page": 100}
+    def _issues_ouvertes(self, etiquette: str) -> list[dict]:
+        params = {"labels": etiquette, "state": "open", "per_page": 100}
         issues = self._requete("GET", self._api, params=params).json()
         return [i for i in issues if "pull_request" not in i]
 
@@ -138,6 +194,10 @@ def titre_panne(source: Source) -> str:
     return f"Panne : {source.nom}"
 
 
+def titre_import(conseil: Source) -> str:
+    return f"Import en échec : {conseil.nom}"
+
+
 def duree(ecart: timedelta) -> str:
     """Durée d'une panne à la minute : « 3 h 10 », « 2 h », « 40 min »."""
     heures, minutes = divmod(int(ecart.total_seconds()) // 60, 60)
@@ -152,11 +212,14 @@ def passage(
     client: httpx.Client,
     horloge: Callable[[], datetime],
     issues: ClientIssues,
+    attendre: Callable[[float], None] = time.sleep,
+    rattrapage: bool = False,
 ) -> EtatSources:
     """Sonde chaque source qui a un bloc `sonde`, puis écrit `etat-sources.json` et copie `schema/` dans `depot`,
     un clone du dépôt de données. L'état précédent est relu dans ce clone ; absent, illisible ou d'une autre
     version, le passage repart de zéro. Les issues sont ensuite accordées à l'état écrit ; une erreur de leur API
-    est affichée sans faire échouer le passage. Le commit et le push sont l'affaire de l'appelant."""
+    est affichée sans faire échouer le passage. Vient ensuite l'import des conseils dus (`importer_les_conseils`),
+    qui ne touche pas à l'état des sources. Le commit et le push sont l'affaire de l'appelant."""
     genere = _a_la_seconde(horloge())
     precedent = _lire_etat(depot / FICHIER_ETAT)
     etats: dict[str, EtatSource] = {}
@@ -174,6 +237,8 @@ def passage(
         _accorder_issues(issues, [s for s in sources.sources if s.id in etats], precedent, etats)
     except httpx.HTTPError as e:
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
+
+    importer_les_conseils(depot, sources, OpenParlData(client, horloge, attendre), horloge, issues, rattrapage)
     return etat
 
 
@@ -295,6 +360,90 @@ def _suivant(avant: EtatSource | None, heure: datetime, motif: str | None) -> Et
     )
 
 
+# --- Import quotidien des conseils (ADR 0015) ------------------------------------------------------------------
+
+FUSEAU = ZoneInfo("Europe/Zurich")
+HEURE_IMPORT = time_du_jour(7)  # à Lausanne
+
+
+def dernier_seuil(heure: datetime) -> datetime:
+    """Le dernier 7 h passé à Lausanne, à `heure` ou avant."""
+    locale = heure.astimezone(FUSEAU)
+    seuil = datetime.combine(locale.date(), HEURE_IMPORT, tzinfo=FUSEAU)
+    if seuil > locale:
+        seuil = datetime.combine(locale.date() - timedelta(days=1), HEURE_IMPORT, tzinfo=FUSEAU)
+    return seuil
+
+
+def conseils_dus(conseils: list[Source], imports: Mapping[str, datetime], heure: datetime) -> set[str]:
+    """Les clés des conseils à importer à `heure` : ceux dont le dernier import réussi précède le dernier 7 h
+    passé à Lausanne, et ceux qui n'ont jamais été importés. Un conseil s'importe ainsi au premier passage après
+    7 h, une fois par jour, et un import en échec est refait au passage suivant."""
+    seuil = dernier_seuil(heure)
+    cles = (cle_conseil(s.conseil) for s in conseils if s.conseil is not None)
+    return {c for c in cles if c not in imports or imports[c] < seuil}
+
+
+def importer_les_conseils(
+    depot: Path,
+    sources: FichierSources,
+    opd: OpenParlData,
+    horloge: Callable[[], datetime],
+    issues: ClientIssues,
+    rattrapage: bool,
+) -> None:
+    """Importe les conseils dus (tous, depuis tout l'historique, pour un `rattrapage`), puis accorde les issues
+    `import-conseils` aux dates d'import. Seules les sondes décident d'une panne : l'import ne touche pas à l'état
+    des sources, et une erreur de l'API des issues est affichée sans faire échouer le passage."""
+    conseils = [s for s in sources.sources if s.conseil is not None]
+    if not conseils:
+        return
+    heure = _a_la_seconde(horloge())
+    avant = lire_imports(depot)
+    dus = {cle_conseil(s.conseil) for s in conseils} if rattrapage else conseils_dus(conseils, avant, heure)
+    apres = avant
+    if dus:
+        try:
+            apres = importer_conseils(depot, sources, opd, horloge, dus=dus, rattrapage=rattrapage).conseils
+        except Exception:
+            # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus : l'état des
+            # sources est tout de même publié, et l'issue `import-conseils` s'ouvrira au-delà de 24 h.
+            print("Import des conseils en échec, le passage suivant réessaiera :", file=sys.stderr)
+            traceback.print_exc()
+
+    try:
+        _accorder_issues_import(issues, conseils, avant, apres, heure)
+    except httpx.HTTPError as e:
+        print(f"Issues import-conseils non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
+
+
+DELAI_AVANT_ISSUE_IMPORT = timedelta(hours=24)
+
+
+def _accorder_issues_import(
+    issues: ClientIssues,
+    conseils: list[Source],
+    avant: Mapping[str, datetime],
+    apres: Mapping[str, datetime],
+    heure: datetime,
+) -> None:
+    """Ouvre l'issue de chaque conseil sans import réussi depuis plus de 24 h qui n'en a pas, et ferme celle de
+    chaque conseil importé depuis. Un conseil jamais importé n'a pas de date d'où compter : il n'en ouvre pas."""
+
+    def en_echec(imports: Mapping[str, datetime], conseil: Source) -> bool:
+        dernier = imports.get(cle_conseil(conseil.conseil))
+        return dernier is not None and heure - dernier > DELAI_AVANT_ISSUE_IMPORT
+
+    signales = issues.imports_signales(conseils)
+    for conseil in conseils:
+        dernier = apres.get(cle_conseil(conseil.conseil))
+        if en_echec(apres, conseil):
+            if signales is None or conseil.id not in signales:
+                issues.import_en_echec(conseil, dernier)
+        elif dernier is not None and (conseil.id in signales if signales is not None else en_echec(avant, conseil)):
+            issues.import_retour(conseil, dernier)
+
+
 # --- Commit et push (hors du point de test : l'option sans push sert de vérification locale) -------------------
 
 NOUVEAUX_ESSAIS_PUSH = 2
@@ -305,7 +454,8 @@ def _git(depot: Path, *args: str, verifier: bool = True) -> subprocess.Completed
 
 
 def committer(depot: Path, etat: EtatSources) -> None:
-    _git(depot, "add", "--all", "--", FICHIER_ETAT, "schema")
+    chemins = [FICHIER_ETAT, "schema"] + (["conseils"] if (depot / "conseils").is_dir() else [])
+    _git(depot, "add", "--all", "--", *chemins)
     _git(depot, "commit", "--quiet", "-m", f"Passage du cron du {etat.genere:%Y-%m-%d %H:%M}Z")
 
 
@@ -329,6 +479,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--depot", type=Path, required=True, help="clone local du dépôt de données")
     parser.add_argument("--sources", type=Path, default=RACINE / "sources.json", help="déclaration des sources")
     parser.add_argument("--sans-push", action="store_true", help="écrire l'état et committer sans pousser")
+    parser.add_argument(
+        "--rattrapage", action="store_true", help="importer tous les conseils depuis tout l'historique, à toute heure"
+    )
     args = parser.parse_args(argv)
 
     depot = args.depot.resolve()
@@ -336,7 +489,8 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(f"{depot} n'est pas un clone git du dépôt de données")
     with httpx.Client() as client, httpx.Client(timeout=30) as client_github:
         issues = client_issues(args.sans_push, os.environ, client_github)
-        etat = passage(depot, lire_sources(args.sources), client, lambda: datetime.now(UTC), issues)
+        horloge = lambda: datetime.now(UTC)  # noqa: E731
+        etat = passage(depot, lire_sources(args.sources), client, horloge, issues, rattrapage=args.rattrapage)
     for id_source, e in etat.sources.items():
         print(f"{id_source} : {e.etat}" + (f" ({e.motif}, {e.echecs_consecutifs} échec(s))" if e.motif else ""))
 
