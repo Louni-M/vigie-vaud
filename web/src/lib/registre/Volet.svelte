@@ -2,7 +2,8 @@
 	/*
 	 * Volet d'une couche, assemblé par le registre : interrupteur (ou « permanente »), badge de fraîcheur de chaque
 	 * source et lien vers la page Couverture, attribution de chaque source tirée de sources.json, puis le `Volet` de
-	 * la couche. Sans `onfermer` (vue Couches du téléphone), le volet n'a pas de croix.
+	 * la couche. Sans `onfermer` (vue Couches du téléphone), le volet n'a pas de croix. Avec `onvoir` (téléphone, couche
+	 * qui grise au moins une commune), il a en tête un bouton « Voir sur la carte », qui montre ce grisage.
 	 */
 	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
@@ -10,8 +11,12 @@
 	import type { Registre } from './registre.svelte.js';
 	import type { CoucheInscrite } from './types.js';
 
-	let { couche, registre, onfermer }: { couche: CoucheInscrite; registre: Registre; onfermer?: () => void } =
-		$props();
+	let {
+		couche,
+		registre,
+		onfermer,
+		onvoir
+	}: { couche: CoucheInscrite; registre: Registre; onfermer?: () => void; onvoir?: () => void } = $props();
 
 	const active = $derived(registre.active(couche.id));
 	const sources = $derived(couche.sources.map(source));
@@ -42,6 +47,10 @@
 			<button class="fermer" type="button" aria-label="Fermer le volet {couche.nom}" onclick={onfermer}>×</button>
 		{/if}
 	</div>
+
+	{#if onvoir}
+		<button class="bouton secondaire voir" type="button" onclick={onvoir}>Voir sur la carte</button>
+	{/if}
 
 	<p class="badges">
 		{#each sources as s (s.id)}<BadgeFraicheur source={s} />{/each}
@@ -116,6 +125,11 @@
 	}
 	.fermer:hover {
 		background: var(--bg);
+	}
+	.voir {
+		align-self: flex-start;
+		min-height: 44px;
+		margin-top: -2px;
 	}
 	.badges {
 		display: flex;

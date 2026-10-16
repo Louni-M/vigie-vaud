@@ -7,6 +7,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import type { ConseilIndexe } from '#lib/schema.js';
+	import type { Commune } from '#lib/types.js';
 	import { conseils, OBJETS_RECENTS, type PageObjets } from './donnees.js';
 	import { COULEUR_CONSEILS } from './index.js';
 	import LigneObjet from './LigneObjet.svelte';
@@ -15,8 +16,15 @@
 	let {
 		conseil,
 		ouvrir,
-		puces = false
-	}: { conseil: ConseilIndexe; ouvrir?: (cle: string) => void; puces?: boolean } = $props();
+		puces = false,
+		communes = []
+	}: {
+		conseil: ConseilIndexe;
+		ouvrir?: (cle: string) => void;
+		puces?: boolean;
+		/** L'index des communes, pour nommer celles que nomment les Objets du Grand Conseil. */
+		communes?: readonly Commune[];
+	} = $props();
 
 	let puce = $state<PuceObjets>('tous');
 
@@ -77,7 +85,7 @@
 		<p class="note">Aucun objet {puce === 'avec' ? 'ne nomme une commune' : 'sans commune'}.</p>
 	{:else}
 		<ul>
-			{#each montres as objet (objet.cle)}<LigneObjet {objet} {ouvrir} />{/each}
+			{#each montres as objet (objet.cle)}<LigneObjet {objet} {ouvrir} {communes} />{/each}
 		</ul>
 		{#if !tous && resteAMontrer}
 			<button class="plus" type="button" onclick={toutMontrer}>

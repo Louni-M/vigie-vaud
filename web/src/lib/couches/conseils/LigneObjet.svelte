@@ -2,16 +2,31 @@
 	/*
 	 * Une ligne d'Objet, dans l'onglet Conseil et la fiche du Grand Conseil : pastille pleine, type et
 	 * numéro, date ; le titre sur 3 lignes au plus ; les auteur·e·s (2, puis « et al. ») avec leur parti, et le
-	 * statut. Sans `ouvrir`, la ligne n'est pas cliquable.
+	 * statut. Pour un Objet du Grand Conseil, avec l'index `communes`, « → communes nommées » ; avec `origine`
+	 * (dans « Au Grand Conseil »), comment il est rattaché à la commune de l'onglet. Sans `ouvrir`, la ligne n'est
+	 * pas cliquable.
 	 */
 	import type { LigneObjet } from '#lib/schema.js';
+	import type { Commune } from '#lib/types.js';
 	import { COULEUR_CONSEILS } from './index.js';
 	import { auteursObjet, dateObjet } from './lignes.js';
+	import { communesNommees } from './rattachements.js';
 
-	let { objet, ouvrir }: { objet: LigneObjet; ouvrir?: (cle: string) => void } = $props();
+	let {
+		objet,
+		ouvrir,
+		communes = [],
+		origine = null
+	}: {
+		objet: LigneObjet;
+		ouvrir?: (cle: string) => void;
+		communes?: readonly Commune[];
+		origine?: string | null;
+	} = $props();
 
 	const auteurs = $derived(auteursObjet(objet));
 	const date = $derived(dateObjet(objet));
+	const nommees = $derived(communesNommees(objet.communes, communes));
 </script>
 
 <li style:--c={COULEUR_CONSEILS}>
@@ -30,6 +45,8 @@
 			{auteurs}{#if objet.statut}{auteurs ? ' · ' : ''}<em>{objet.statut.libelle}</em>{/if}
 		</span>
 	{/if}
+	{#if nommees.length}<span class="sous">→ {nommees.join(', ')}</span>{/if}
+	{#if origine}<span class="origine">{origine}</span>{/if}
 {/snippet}
 
 <style>
@@ -81,5 +98,10 @@
 	.sous {
 		font-size: 12px;
 		color: var(--muted);
+	}
+	.origine {
+		font-size: 12px;
+		font-style: italic;
+		color: var(--c);
 	}
 </style>

@@ -1,6 +1,13 @@
 import type { Couche } from '#lib/registre/types.js';
 import { SOURCES } from '#lib/sources.js';
-import { FICHE_GRAND_CONSEIL, libelleElement, messageIntrouvable, titreElement } from './cles.js';
+import {
+	FICHE_GRAND_CONSEIL,
+	TYPE_OBJETS,
+	TYPE_SEANCES,
+	libelleElement,
+	messageIntrouvable,
+	titreElement
+} from './cles.js';
 import { reconnaitreNumero } from './numeros.js';
 import { resumeConseils } from './resume.js';
 
@@ -53,10 +60,23 @@ export const coucheConseils: Couche<undefined> = {
 	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
 	nonCouvert: (commune) => `OpenParlData ne donne pas le conseil communal de ${commune.nom}.`,
+	// Les Objets déposés et les Séances, lus dans le seul `conseils/fil.json` ; sans position, une entrée est dans
+	// la zone par les hôtels de ville de ses communes, et sans commune elle s'ouvre dans la fiche du Grand Conseil.
+	fil: {
+		types: [
+			{ id: TYPE_OBJETS, nom: 'Objets', signe: '§', couleur: COULEUR_CONSEILS },
+			{ id: TYPE_SEANCES, nom: 'Séances', signe: '◷', couleur: COULEUR_CONSEILS }
+		],
+		async entrees(depuis) {
+			const { conseils } = await import('./donnees.js');
+			return conseils.entreesFil(depuis);
+		}
+	},
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),
 		Onglet: () => import('./Onglet.svelte'),
-		Fiche: () => import('./Fiche.svelte')
+		Fiche: () => import('./Fiche.svelte'),
+		Apercu: () => import('./Apercu.svelte')
 	}
 };
