@@ -6,7 +6,9 @@
 	 */
 	import type { Contexte } from '#lib/registre/types.js';
 	import { listerConseils, SOURCES } from '#lib/sources.js';
-	import { carteConseil } from './cartes.js';
+	import { MediaQuery } from 'svelte/reactivity';
+	import { TELEPHONE } from '#lib/socle/telephone.js';
+	import { carteConseil, noteAutresCommunes } from './cartes.js';
 	import { FICHE_GRAND_CONSEIL } from './cles.js';
 	import { conseils } from './donnees.js';
 	import { COULEUR_CONSEILS, coucheConseils } from './index.js';
@@ -22,6 +24,8 @@
 		)
 	);
 	const autres = $derived(ctx.communes.filter((c) => !couvertes.has(c.bfs)).length);
+	/** Sur téléphone, le grisage ne suit pas le volet mais « Voir sur la carte » : la phrase le dit. */
+	const telephone = new MediaQuery(TELEPHONE, false);
 </script>
 
 <ul class="legende" style:--c={COULEUR_CONSEILS}>
@@ -66,10 +70,7 @@
 			</button>
 		</p>
 	{/await}
-	<p class="note">
-		Les {autres} autres communes : pas de conseil couvert, grisées tant que ce volet est ouvert. Leur onglet Conseil
-		montre ce que le Grand Conseil dit d’elles.
-	</p>
+	<p class="note">{noteAutresCommunes(autres, telephone.current)}</p>
 </section>
 
 {#snippet contenu(carte: ReturnType<typeof carteConseil>)}
