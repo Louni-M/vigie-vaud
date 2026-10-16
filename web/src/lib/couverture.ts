@@ -57,8 +57,8 @@ export interface Couverture {
 	etat(source: string): EtatCouverture;
 	paire(source: string, bfs: number): Paire;
 	/**
-	 * Une couche couvre une commune dès qu'une de ses sources la couvre. Une couche sans onglet n'a pas de
-	 * Couverture et ne laisse donc aucune commune « non couverte ».
+	 * Une couche couvre une commune dès qu'une de ses sources la couvre. Une couche sans onglet, ou dont aucune
+	 * source n'a de Couverture, n'a pas de Couverture et ne laisse donc aucune commune « non couverte ».
 	 */
 	couvre(couche: string, bfs: number): boolean;
 	/**
@@ -74,9 +74,10 @@ const aUneCouverture = (c: CoucheInscrite) => c.composants.Onglet !== undefined;
 export function deduireCouverture({ sources, etat, couches, communes, maintenant }: EntreeCouverture): Couverture {
 	const parId = new Map(sources.map((s) => [s.id, s]));
 	const mode = (id: string, bfs: number): Mode => {
-		const s = parId.get(id);
-		if (!s) return 'non_couvert';
-		const { communes, mode } = s.couverture;
+		// Une source sans Couverture (le Grand Conseil, qui porte sur le canton) ne couvre aucune commune.
+		const couverture = parId.get(id)?.couverture;
+		if (!couverture) return 'non_couvert';
+		const { communes, mode } = couverture;
 		return communes === 'canton' || communes.includes(bfs) ? mode : 'non_couvert';
 	};
 	const interrompue = etat !== null && maintenant.getTime() - Date.parse(etat.genere) > INTERRUPTION;
@@ -92,7 +93,9 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 	const couvre = (id: string, bfs: number) => {
 		const couche = couches.find((c) => c.id === id);
 		if (!couche || !aUneCouverture(couche)) return true;
-		return couche.sources.some((s) => mode(s, bfs) !== 'non_couvert');
+		const couvrantes = couche.sources.filter((s) => parId.get(s)?.couverture);
+		// Une couche dont aucune source n'a de Couverture couvre toutes les communes ; sinon, l'union des sources.
+		return couvrantes.length === 0 || couvrantes.some((s) => mode(s, bfs) !== 'non_couvert');
 	};
 	return {
 		sources: ids.map((id) => {

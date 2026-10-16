@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CleConseil": {
+      "pattern": "^[a-z0-9]+$",
+      "type": "string"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/import.json` : l'heure du dernier import réussi de chaque conseil, importé à part. C'est la\nmémoire du cron et la base du badge de fraîcheur des sources `import`.",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "conseils": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Horodatage"
+      },
+      "description": "Par clé de conseil (`body_key` en minuscules : `vd`, `5586`…), l'heure du dernier import réussi. Un conseil jamais importé n'y figure pas.",
+      "propertyNames": {
+        "$ref": "#/$defs/CleConseil"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "conseils"
+  ],
+  "title": "ImportConseils",
+  "type": "object"
+}

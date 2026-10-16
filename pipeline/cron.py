@@ -225,7 +225,7 @@ def sonder(client: httpx.Client, sonde: Sonde) -> str | None:
     # ArcGIS répond 200 avec un objet `error` quand la requête est refusée.
     if isinstance(corps.get("error"), dict):
         return f"erreur du service ({corps['error'].get('code', '?')})"
-    enregistrements = corps.get("features")
+    enregistrements = corps.get(sonde.enregistrements)
     if not isinstance(enregistrements, list):
         return "réponse sans enregistrements"
     if not enregistrements:
@@ -238,13 +238,14 @@ def sonder(client: httpx.Client, sonde: Sonde) -> str | None:
 
 
 def _champs(enregistrement: object) -> dict:
-    """Champs d'un enregistrement : `attributes` (JSON ArcGIS) ou `properties` (GeoJSON)."""
+    """Champs d'un enregistrement : `attributes` (JSON ArcGIS) ou `properties` (GeoJSON), sinon l'enregistrement
+    lui-même, à plat (OpenParlData)."""
     if not isinstance(enregistrement, dict):
         return {}
     for cle in ("attributes", "properties"):
         if isinstance(enregistrement.get(cle), dict):
             return enregistrement[cle]
-    return {}
+    return enregistrement
 
 
 def _cause_tls(erreur: BaseException) -> bool:

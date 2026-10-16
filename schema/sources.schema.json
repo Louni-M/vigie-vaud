@@ -25,6 +25,43 @@
       "title": "Attribution",
       "type": "object"
     },
+    "Conseil": {
+      "additionalProperties": false,
+      "description": "Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc.",
+      "properties": {
+        "body_key": {
+          "description": "Clé du conseil dans OpenParlData : `VD` (Grand Conseil) ou le n° OFS de la commune. En minuscules, c'est la clé du conseil dans le dépôt de données.",
+          "pattern": "^[A-Z0-9]+$",
+          "type": "string"
+        },
+        "donne": {
+          "description": "Ce que le conseil donne : ses Objets, ses Séances, ou les deux.",
+          "items": {
+            "$ref": "#/$defs/DonneeConseil"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "groupe": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "`group_id` des Séances à importer : celui du Grand Conseil écarte les Séances du Conseil d'État."
+        }
+      },
+      "required": [
+        "body_key",
+        "donne"
+      ],
+      "title": "Conseil",
+      "type": "object"
+    },
     "CouvertureDeclaree": {
       "additionalProperties": false,
       "properties": {
@@ -55,6 +92,13 @@
       "title": "CouvertureDeclaree",
       "type": "object"
     },
+    "DonneeConseil": {
+      "enum": [
+        "objets",
+        "seances"
+      ],
+      "type": "string"
+    },
     "IdSource": {
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "type": "string"
@@ -77,7 +121,7 @@
     },
     "Sonde": {
       "additionalProperties": false,
-      "description": "Requête de vérification envoyée par le cron, sans conserver de données.\n\nUne seule requête GET par passage, sans nouvel essai. La réponse doit être un objet JSON dont `features` liste\nles enregistrements (JSON ArcGIS ou GeoJSON) ; elle doit donc rester légère (un enregistrement suffit).",
+      "description": "Requête de vérification envoyée par le cron, sans conserver de données.\n\nUne seule requête GET par passage, sans nouvel essai. La réponse doit être un objet JSON dont une clé\n(`enregistrements`) liste les enregistrements ; elle doit donc rester légère (un enregistrement suffit).",
       "properties": {
         "url": {
           "$ref": "#/$defs/Lien"
@@ -90,11 +134,17 @@
         },
         "champs": {
           "default": [],
-          "description": "Champs que doit porter chaque enregistrement renvoyé, lus dans `attributes` (JSON ArcGIS) ou `properties` (GeoJSON).",
+          "description": "Champs que doit porter chaque enregistrement renvoyé, lus dans `attributes` (JSON ArcGIS) ou `properties` (GeoJSON), sinon à plat dans l'enregistrement (OpenParlData).",
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "enregistrements": {
+          "default": "features",
+          "description": "Clé de la réponse qui liste les enregistrements : `features` (JSON ArcGIS, GeoJSON) ou `data` (OpenParlData).",
+          "minLength": 1,
+          "type": "string"
         },
         "jamais_vide": {
           "default": false,
@@ -113,7 +163,8 @@
       "enum": [
         "donnee",
         "requete",
-        "millesime"
+        "millesime",
+        "import"
       ],
       "type": "string"
     },
@@ -143,7 +194,16 @@
           "$ref": "#/$defs/SorteFraicheur"
         },
         "couverture": {
-          "$ref": "#/$defs/CouvertureDeclaree"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CouvertureDeclaree"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Absente, la source n'a pas de Couverture : elle porte sur le canton (Grand Conseil) ou ses éléments n'appartiennent à aucune commune."
         },
         "sonde": {
           "anyOf": [
@@ -156,6 +216,18 @@
           ],
           "default": null,
           "description": "Sans sonde, la source n'est pas surveillée."
+        },
+        "conseil": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Conseil"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Le conseil que donne la source, importé par le cron."
         }
       },
       "required": [
@@ -164,8 +236,7 @@
         "nom_court",
         "attribution",
         "voie_acces",
-        "fraicheur",
-        "couverture"
+        "fraicheur"
       ],
       "title": "Source",
       "type": "object"
