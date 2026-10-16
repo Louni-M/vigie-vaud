@@ -63,3 +63,21 @@ export function corrigerChemin(chemin: Fiche | null, lieu: Pick<Lieu, 'fiches'> 
 export function fermeture(etat: App.PageState, fiche: Fiche | null): 'retour' | 'remplacer' {
 	return etat.element && memeFiche(etat.element.depuis, fiche) ? 'retour' : 'remplacer';
 }
+
+/**
+ * Les navigations vers une autre page que lance le registre (`goto`). Tant qu'une n'a pas abouti, réussie ou non,
+ * `enCours` est vrai et l'état n'écrit pas l'adresse : la carte qui finit un déplacement réécrirait l'adresse de la
+ * page qu'on quitte, et annulerait la navigation (ouvrir un élément dans une autre fiche).
+ */
+export function creerNavigations<O>(goto: (url: string, options: O) => Promise<void>) {
+	let enRoute = 0;
+	return {
+		naviguer(url: string, options: O): Promise<void> {
+			enRoute++;
+			return goto(url, options).finally(() => enRoute--);
+		},
+		get enCours() {
+			return enRoute > 0;
+		}
+	};
+}
