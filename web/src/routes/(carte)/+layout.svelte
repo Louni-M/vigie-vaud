@@ -10,12 +10,16 @@
 	 * Couches · Fiche : la vue Fil rend le fil cantonal, la vue Couches empile les volets de toutes les couches, et ce
 	 * qu'on ouvre depuis la carte ou le fil s'affiche d'abord en aperçu, en bas de la carte. L'arrivée sur une fiche
 	 * (`/commune/<slug>`, `/grand-conseil`) se fait dans la vue Fiche. Le grisage d'une couche n'y suit pas le volet
-	 * ouvert : « Voir sur la carte », en tête de son volet, le montre sur la carte (`grisage-mobile`).
+	 * ouvert : « Voir sur la carte », en tête de son volet, le montre sur la carte (`grisage-mobile`). Toucher la
+	 * recherche de la vue Carte ouvre la Recherche plein écran, qui masque tout le reste et se referme sur la carte
+	 * telle qu'on l'a laissée.
 	 */
 	import { tick, untrack } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { MediaQuery } from 'svelte/reactivity';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { navigating, page } from '$app/state';
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
 	import Recherche from '#lib/socle/Recherche.svelte';
 	import { COUCHES } from '#lib/registre/couches.js';
@@ -37,7 +41,10 @@
 		affichageApres,
 		affichageArrivee,
 		decalageAuDessus,
+		recherchePleine,
+		texteApresRecherche,
 		type Affichage,
+		type FinRecherche,
 		type Ouverture
 	} from '#lib/socle/telephone.js';
 	import { attributionHtml, source } from '#lib/sources.js';
@@ -172,6 +179,83 @@
 		} else registre.ouvrir({ couche: r.couche, element: r.element });
 	}
 
+	/* ---- Recherche plein écran (téléphone) ---- */
+
+	/**
+	 * Ouverte, elle a poussé une entrée d'historique (même adresse) : le retour arrière du téléphone la retire et
+	 * referme la Recherche, sans fermer l'aperçu ni quitter la page. On suit l'événement du navigateur plutôt que
+	 * `page.state` : la carte qui finit un déplacement réécrit l'adresse, et SvelteKit abandonne alors la mise à jour.
+	 */
+	let ouverte = $state(false);
+	const pleine = $derived(recherchePleine(telephone.current, affichage, ouverte));
+	let texteRecherche = $state('');
+	/** Texte du champ de la carte à l'ouverture, rendu par « Annuler » et le retour arrière. */
+	let texteAvant = '';
+	/** Ce qui referme la Recherche, sauf le retour arrière ; le résultat choisi attend qu'elle soit refermée. */
+	let fin: { fin: Exclude<FinRecherche, 'retour'>; resultat?: Resultat } | null = null;
+
+	function ouvrirRecherche() {
+		if (ouverte || !recherchePleine(telephone.current, affichage, true)) return;
+		// La Recherche s'ouvre vide, sur « Autour de moi » et la ligne d'aide ; « Annuler » rend le texte du champ.
+		texteAvant = texteRecherche;
+		texteRecherche = '';
+		ouverte = true;
+		goto(`${location.pathname}${location.search}`, { shallow: true, state: page.state });
+	}
+
+	$effect(() => {
+		const retour = () => (ouverte = false);
+		addEventListener('popstate', retour);
+		return () => removeEventListener('popstate', retour);
+	});
+
+	/** « Annuler » ou un résultat choisi retirent l'entrée de la Recherche : elle se referme au retour. */
+	function quitterRecherche(f: NonNullable<typeof fin>) {
+		if (fin) return;
+		fin = f;
+		history.back();
+	}
+
+	let pleineAvant = false;
+	$effect(() => {
+		const p = pleine;
+		untrack(() => {
+			if (pleineAvant && !p) refermee();
+			pleineAvant = p;
+		});
+	});
+
+	/**
+	 * La Recherche est refermée : rien n'a bougé dessous (aperçu, vue de la carte), le champ reprend son texte, et le
+	 * résultat choisi s'ouvre comme depuis la vue Carte.
+	 */
+	function refermee() {
+		const f = fin;
+		fin = null;
+		// Refermée sans retour (téléphone tourné au-delà de 760 px de large) : son entrée est retirée.
+		if (ouverte) {
+			ouverte = false;
+			history.back();
+		}
+		texteRecherche = texteApresRecherche(f?.fin ?? 'retour', texteAvant, texteRecherche);
+		// SvelteKit lance la navigation du retour quelques instants après lui : on la laisse partir.
+		if (f?.resultat) setTimeout(() => (choisi = f.resultat!));
+	}
+
+	/**
+	 * Résultat choisi dans la Recherche, ouvert une fois traité le retour qui l'a refermée. Quand l'entrée d'en
+	 * dessous porte une autre adresse de page, SvelteKit y navigue, et une navigation lancée entre-temps serait annulée.
+	 */
+	let choisi = $state<Resultat | null>(null);
+	$effect(() => {
+		if (!choisi || navigating.to) return;
+		const r = choisi;
+		choisi = null;
+		untrack(() => choix(r));
+	});
+
+	const choixRecherche = (r: Resultat) => (pleine ? quitterRecherche({ fin: 'choix', resultat: r }) : choix(r));
+
 	/** Lien d'évitement : le clavier n'a pas à traverser le rail et la recherche pour atteindre la carte. */
 	async function allerCarte(e: MouseEvent) {
 		e.preventDefault();
@@ -188,7 +272,12 @@
 	}
 </script>
 
-<div class="app" class:avec-fiche={registre.commune ?? registre.propre} data-affichage={affichage}>
+<div
+	class="app"
+	class:avec-fiche={registre.commune ?? registre.propre}
+	class:recherche-pleine={pleine}
+	data-affichage={affichage}
+>
 	<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
 
 	<Rail {registre} />
@@ -216,7 +305,15 @@
 		{/if}
 
 		<div class="recherche" bind:this={recherche}>
-			<Recherche communes={data.communes} {chercherCouches} onchoix={choix} />
+			<Recherche
+				communes={data.communes}
+				{chercherCouches}
+				bind:texte={texteRecherche}
+				plein={pleine}
+				onchoix={choixRecherche}
+				onouvrir={ouvrirRecherche}
+				onannuler={() => quitterRecherche({ fin: 'annuler' })}
+			/>
 			<!-- Élément introuvable (« Aucun dossier n° … »), près de la recherche qui permet d'en chercher un autre. -->
 			<p class="avis" role="status">
 				{#if registre.avis}
@@ -536,6 +633,30 @@
 		.barre-vues button:disabled {
 			opacity: 0.4;
 			cursor: default;
+		}
+		/*
+		 * Recherche plein écran : le champ à la place de l'en-tête, et les résultats sur tout l'écran. L'en-tête, la
+		 * carte, l'aperçu, les liens, les sources et la barre des vues sont masqués, et sortent de l'ordre de tabulation.
+		 */
+		.recherche-pleine .recherche {
+			position: fixed;
+			inset: 0;
+			z-index: 20;
+			width: auto;
+			border-radius: 0;
+			box-shadow: none;
+			visibility: visible;
+		}
+		.recherche-pleine .zone-carte,
+		.recherche-pleine .barre-vues,
+		.recherche-pleine .evitement,
+		:global(header:has(~ .app.recherche-pleine)) {
+			visibility: hidden;
+		}
+		.recherche-pleine .zone-carte :global(.maplibregl-control-container),
+		.recherche-pleine .avis,
+		.recherche-pleine .pastille-couverture {
+			display: none;
 		}
 	}
 	.evitement {

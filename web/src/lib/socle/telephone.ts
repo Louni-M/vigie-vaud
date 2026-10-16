@@ -40,3 +40,20 @@ export const affichageArrivee = (ouverture: Ouverture): Affichage => (ouverture.
  * la carte : `haut` px couverts en haut (recherche), `bas` px en bas (aperçu).
  */
 export const decalageAuDessus = (haut: number, bas: number) => (bas - haut) / 2;
+
+/**
+ * La Recherche `ouverte` s'affiche en plein écran par-dessus la vue Carte, et depuis elle seule ; ce n'est pas une
+ * cinquième vue. Le bureau ne l'ouvre jamais.
+ */
+export const recherchePleine = (telephone: boolean, affichage: Affichage, ouverte: boolean) =>
+	telephone && affichage === 'carte' && ouverte;
+
+/** Ce qui referme la Recherche plein écran : un résultat choisi, « Annuler », ou le retour arrière du téléphone. */
+export type FinRecherche = 'choix' | 'annuler' | 'retour';
+
+/**
+ * Texte du champ de la carte quand la Recherche se referme. « Annuler » et le retour arrière effacent ce qu'on a tapé
+ * et rendent le texte d'avant l'ouverture (`avant`) ; un résultat choisi laisse son nom (`champ`), comme sur bureau.
+ */
+export const texteApresRecherche = (fin: FinRecherche, avant: string, champ: string) =>
+	fin === 'choix' ? champ : avant;
