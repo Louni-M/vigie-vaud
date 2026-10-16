@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal
@@ -132,6 +133,23 @@ class Conseil(Modele):
         default=None,
         description="`group_id` des Séances à importer : celui du Grand Conseil écarte les Séances du Conseil d'État.",
     )
+
+    @property
+    def cle(self) -> str:
+        """Clé du conseil dans le dépôt de données : `body_key` en minuscules (`vd`, `5586`), comme `cleConseil`
+        du site."""
+        return self.body_key.lower()
+
+    @property
+    def commune(self) -> int | None:
+        """N° OFS de la commune d'un conseil communal (`body_key` numérique) ; `None` pour le Grand Conseil."""
+        return int(self.body_key) if self.body_key.isdigit() else None
+
+
+def nom_du_conseil(nom_source: str) -> str:
+    """Nom du conseil, tiré du nom de sa source : sans la mention finale entre parenthèses, l'apostrophe
+    typographique (« Conseil communal d’Yverdon-les-Bains »). La même règle que `nomDuConseil` du site."""
+    return re.sub(r"\s*\([^()]*\)$", "", nom_source).replace("'", "’")
 
 
 class Source(Modele):

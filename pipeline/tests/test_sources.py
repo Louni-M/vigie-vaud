@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from schema import lire_sources
+from schema import Conseil, lire_sources, nom_du_conseil
 
 RACINE = Path(__file__).resolve().parents[2]
 
@@ -149,3 +149,30 @@ def test_une_source_sans_couverture_qui_donne_un_conseil_est_lue(tmp_path):
 def test_une_declaration_invalide_est_refusee(tmp_path, sources):
     with pytest.raises(ValidationError):
         lire_sources(_ecrire(tmp_path, sources))
+
+
+@pytest.mark.parametrize(
+    ("body_key", "cle", "commune"),
+    [("VD", "vd", None), ("5586", "5586", 5586), ("5938", "5938", 5938)],
+)
+def test_la_cle_et_la_commune_d_un_conseil_se_tirent_de_son_body_key(body_key, cle, commune):
+    conseil = Conseil(body_key=body_key, donne=["objets"])
+
+    assert (conseil.cle, conseil.commune) == (cle, commune)
+
+
+# Les mêmes cas que `nomDuConseil` du site (`web/src/lib/sources.test.ts`) : le nom de l'index est celui que le site
+# affiche ailleurs. Un cas ajouté d'un côté s'ajoute de l'autre.
+@pytest.mark.parametrize(
+    ("nom_source", "nom"),
+    [
+        ("Grand Conseil (OpenParlData)", "Grand Conseil"),
+        ("Conseil communal de Lausanne (OpenParlData)", "Conseil communal de Lausanne"),
+        ("Conseil communal d'Yverdon-les-Bains (OpenParlData)", "Conseil communal d’Yverdon-les-Bains"),
+        ("Conseil général de Nyon (OpenParlData, essai)", "Conseil général de Nyon"),
+        ("Conseil communal (CC) de Morges", "Conseil communal (CC) de Morges"),
+        ("Conseil communal de Pully", "Conseil communal de Pully"),
+    ],
+)
+def test_le_nom_d_un_conseil_est_celui_de_sa_source_sans_la_mention_finale_entre_parentheses(nom_source, nom):
+    assert nom_du_conseil(nom_source) == nom

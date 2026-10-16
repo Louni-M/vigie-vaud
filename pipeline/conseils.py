@@ -239,10 +239,6 @@ Element = Objet | Seance
 Archive = Mapping[str, Element]
 
 
-def cle_conseil(conseil: Conseil) -> str:
-    return conseil.body_key.lower()
-
-
 def cle_objet(conseil: str, numero: str) -> str:
     """`vd/26_INT_140`, `5586/POS25-115` : la barre oblique du numéro devient `-`, et un espace `_`
     (`V 1.9.2026`, au Grand Conseil, donne `vd/V_1.9.2026`)."""
@@ -272,7 +268,7 @@ def vers_archive(
     Pour un conseil qui porte sur le canton, chaque Objet est rattaché par le nom (ADR 0016) d'après `communes`
     (`communes.json` par défaut) : son titre masqué, puis le texte de ses documents, qui n'est pas conservé ;
     `corrections` (par clé d'Objet) l'emporte, et s'applique aussi aux Objets déjà archivés."""
-    conseil = cle_conseil(bruts.conseil)
+    conseil = bruts.conseil.cle
     canton = porte_sur_le_canton(bruts.conseil)
     corrections = corrections or {}
     elements: dict[str, Element] = {}
@@ -538,9 +534,9 @@ def importer_conseils(
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
     for source in sources.sources:
-        if source.conseil is None or (dus is not None and cle_conseil(source.conseil) not in dus):
+        if source.conseil is None or (dus is not None and source.conseil.cle not in dus):
             continue
-        cle = cle_conseil(source.conseil)
+        cle = source.conseil.cle
         if rattrapage:
             debut = None
         else:

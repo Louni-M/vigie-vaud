@@ -47,7 +47,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from pydantic import ValidationError
 
-from conseils import OpenParlData, cle_conseil, importer_conseils, lire_imports
+from conseils import OpenParlData, importer_conseils, lire_imports
 from schema import DOSSIER_SCHEMA, RACINE, EtatSource, EtatSources, FichierSources, Sonde, Source, lire_sources
 
 FICHIER_ETAT = "etat-sources.json"
@@ -385,7 +385,7 @@ def conseils_dus(conseils: list[Source], imports: Mapping[str, datetime], heure:
     passé à Lausanne, et ceux qui n'ont jamais été importés. Un conseil s'importe ainsi au premier passage après
     7 h, une fois par jour, et un import en échec est refait au passage suivant."""
     seuil = dernier_seuil(heure)
-    cles = (cle_conseil(s.conseil) for s in conseils if s.conseil is not None)
+    cles = (s.conseil.cle for s in conseils if s.conseil is not None)
     return {c for c in cles if c not in imports or imports[c] < seuil}
 
 
@@ -405,7 +405,7 @@ def importer_les_conseils(
         return
     heure = _a_la_seconde(horloge())
     avant = lire_imports(depot)
-    dus = {cle_conseil(s.conseil) for s in conseils} if rattrapage else conseils_dus(conseils, avant, heure)
+    dus = {s.conseil.cle for s in conseils} if rattrapage else conseils_dus(conseils, avant, heure)
     apres = avant
     if dus:
         try:
@@ -437,12 +437,12 @@ def _accorder_issues_import(
     chaque passage, et son issue s'ouvre dès qu'il manque encore à `apres`."""
 
     def perime(imports: Mapping[str, datetime], conseil: Source) -> bool:
-        dernier = imports.get(cle_conseil(conseil.conseil))
+        dernier = imports.get(conseil.conseil.cle)
         return dernier is not None and heure - dernier > DELAI_AVANT_ISSUE_IMPORT
 
     signales = issues.imports_signales(conseils)
     for conseil in conseils:
-        dernier = apres.get(cle_conseil(conseil.conseil))
+        dernier = apres.get(conseil.conseil.cle)
         if dernier is None or perime(apres, conseil):
             if signales is None or conseil.id not in signales:
                 issues.import_en_echec(conseil, dernier)

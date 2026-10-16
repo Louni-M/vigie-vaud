@@ -2,6 +2,7 @@
 // lu par le navigateur pour le badge de fraîcheur des sources `import`. On n'y valide rien au-delà de `version`.
 import { DONNEES } from './config.js';
 import type { ImportConseils, Source } from './schema.js';
+import { cleConseil } from './sources.js';
 
 /** Seule version du format que le site connaît. */
 export const VERSION_IMPORTS = 1;
@@ -23,8 +24,8 @@ export async function chargerImports(f: typeof fetch, donnees: string = DONNEES)
 	}
 }
 
-/** Heure du dernier import réussi du conseil de cette source (clé : `body_key` en minuscules), ou `null`. */
+/** Heure du dernier import réussi du conseil de cette source (par sa clé, `cleConseil`), ou `null`. */
 export function dernierImport(imports: ImportConseils | null, source: Source): Date | null {
-	const quand = source.conseil && imports?.conseils?.[source.conseil.body_key.toLowerCase()];
+	const quand = source.conseil && imports?.conseils?.[cleConseil(source.conseil)];
 	return quand ? new Date(quand) : null;
 }

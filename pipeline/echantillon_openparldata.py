@@ -52,7 +52,7 @@ def telecharger(http: httpx.Client) -> list[Path]:
             page = reponse.json()
             for enregistrement in page["data"]:
                 _couper(enregistrement, ids)
-            chemin = DOSSIER / f"{entite}-{body_key.lower()}.json"
+            chemin = DOSSIER / f"{entite}-{conseil.cle}.json"
             chemin.parent.mkdir(parents=True, exist_ok=True)
             chemin.write_text(json.dumps(page, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
             ecrits.append(chemin)
