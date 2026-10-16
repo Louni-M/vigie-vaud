@@ -26,6 +26,7 @@ export const PARLEMENT: [number, number] = [6.63596, 46.52358];
 export const coucheConseils: Couche<undefined> = {
 	id: 'conseils',
 	nom: 'Conseils',
+	nomOnglet: 'Conseil',
 	// Toutes les sources qui ont un bloc `conseil` : ajouter un conseil, c'est ajouter son entrée à `sources.json`.
 	sources: listerConseils(SOURCES).map((c) => c.source.id),
 	permanente: false,

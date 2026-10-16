@@ -151,7 +151,10 @@ export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ c
 /** Description légère d'une couche, inscrite au registre. */
 export interface Couche<P = unknown> {
 	id: string;
+	/** Nom du rail et du volet (« Conseils »). */
 	nom: string;
+	/** Nom de son onglet dans une fiche et du fil d'Ariane de l'élément ouvert (« Conseil ») ; sinon `nom`. */
+	nomOnglet?: string;
 	/** Identifiants de `sources.json`. */
 	sources: string[];
 	/** Toujours affichée, sans interrupteur. */

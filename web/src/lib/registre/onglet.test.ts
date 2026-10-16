@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { messageNonCouvert, sourcesDeLOnglet } from './onglet.js';
+import { messageNonCouvert, nomOnglet, sourcesDeLOnglet } from './onglet.js';
 import { coucheConseils } from '#lib/couches/conseils/index.js';
 import { couchePermis } from '#lib/couches/permis/index.js';
 import type { Source } from '#lib/schema.js';
@@ -56,5 +56,15 @@ describe('« Non couvert » en tête de l’onglet', () => {
 
 	it('sinon, que la couche n’a pas de source pour la commune', () => {
 		expect(messageNonCouvert(couchePermis, BUSSIGNY)).toBe('la couche Permis n’a pas de source pour Bussigny.');
+	});
+});
+
+describe('nom d’un onglet et du fil d’Ariane', () => {
+	it('est le libellé d’onglet de la couche : « Conseil », quand le volet et le rail disent « Conseils »', () => {
+		expect([coucheConseils.nom, nomOnglet(coucheConseils)]).toEqual(['Conseils', 'Conseil']);
+	});
+
+	it('est à défaut le nom de la couche', () => {
+		expect(nomOnglet(couchePermis)).toBe('Permis');
 	});
 });
