@@ -1,0 +1,54 @@
+{
+ "meta": {
+  "offset": 0,
+  "limit": 500,
+  "total_records": 1,
+  "total_pages": 1,
+  "current_page": 1,
+  "has_more": false,
+  "next_page": null,
+  "prev_page": null,
+  "first_page": "https://api.openparldata.ch/v1/meetings/?body_key=5586&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33891&client=vigie-vaud&offset=0&limit=500",
+  "last_page": "https://api.openparldata.ch/v1/meetings/?body_key=5586&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33891&client=vigie-vaud&offset=0&limit=500",
+  "self": "https://api.openparldata.ch/v1/meetings/?body_key=5586&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33891&client=vigie-vaud"
+ },
+ "data": [
+  {
+   "id": 33891,
+   "url_external": {
+    "fr": "https://www.lausanne.ch/apps/agir/seance/S_2fc8406c312a4db5900bd6d40a96688d.html"
+   },
+   "name": {
+    "fr": "Séance - Mardi 06 octobre 2026 2026 à 18:00 & 20:30"
+   },
+   "begin_date": "2026-10-06T00:00:00",
+   "group_id": 1044,
+   "agendas": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 108,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/meetings/33891?expand=agendas&agendas_offset=0&agendas_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/meetings/33891?expand=agendas&agendas_offset=0&agendas_limit=1000",
+     "self": "https://api.openparldata.ch/v1/meetings/33891?expand=agendas&agendas_offset=0&agendas_limit=1000"
+    },
+    "data": [
+     {
+      "item_number": 15,
+      "item_affair_number": "POS25/008",
+      "item_result": "Reporté",
+      "item_title": "Postulat de M. Loris SOCCHI : « Nos beaux murs gris». (FIM)",
+      "item_number_display": "15",
+      "item_affair_id": 120534,
+      "item_category": "OPÉRATIONS PRÉLIMINAIRES"
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,84 @@
+{
+ "meta": {
+  "offset": 0,
+  "limit": 500,
+  "total_records": 2,
+  "total_pages": 1,
+  "current_page": 1,
+  "has_more": false,
+  "next_page": null,
+  "prev_page": null,
+  "first_page": "https://api.openparldata.ch/v1/meetings/?body_key=VD&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33895%2C33926&client=vigie-vaud&offset=0&limit=500",
+  "last_page": "https://api.openparldata.ch/v1/meetings/?body_key=VD&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33895%2C33926&client=vigie-vaud&offset=0&limit=500",
+  "self": "https://api.openparldata.ch/v1/meetings/?body_key=VD&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33895%2C33926&client=vigie-vaud"
+ },
+ "data": [
+  {
+   "id": 33895,
+   "url_external": {
+    "fr": "https://www.vd.ch/gc/seances-du-grand-conseil/detail-seance/seance-gc/1033712"
+   },
+   "name": {
+    "fr": "Séance du Grand Conseil du mardi 6 octobre 2026"
+   },
+   "begin_date": "2026-10-06T00:00:00",
+   "group_id": 1965,
+   "agendas": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 52,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/meetings/33895?expand=agendas&agendas_offset=0&agendas_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/meetings/33895?expand=agendas&agendas_offset=0&agendas_limit=1000",
+     "self": "https://api.openparldata.ch/v1/meetings/33895?expand=agendas&agendas_offset=0&agendas_limit=1000"
+    },
+    "data": [
+     {
+      "item_number": 2,
+      "item_affair_number": "26_QUE_88",
+      "item_result": null,
+      "item_title": "Simple question Laurence Cretegny et consorts - Valorisation lors du démantèlement de la galère La Liberté.",
+      "item_number_display": "2",
+      "item_affair_id": null,
+      "item_category": null
+     },
+     {
+      "item_number": 11,
+      "item_affair_number": "26_POS_54",
+      "item_result": "Renvoyé à commission",
+      "item_title": "Postulat Didier Lohri et consorts - Pour une souveraineté numérique et open source dans l'école vaudoise : transition planifiée vers le logiciel libre et protection des données scolaires (Développement et demande de renvoi à commission avec au moins 20 signatures).",
+      "item_number_display": "11",
+      "item_affair_id": null,
+      "item_category": null
+     },
+     {
+      "item_number": 18,
+      "item_affair_number": "24_LEG_152",
+      "item_result": "Adopté par le GC",
+      "item_title": "EMPL (1er débat) sur l'organisation de la prévention des radicalisations (LPREV).",
+      "item_number_display": "18",
+      "item_affair_id": null,
+      "item_category": null
+     }
+    ]
+   }
+  },
+  {
+   "id": 33926,
+   "url_external": {
+    "fr": "https://www.vd.ch/actualites/decisions-du-conseil-detat/seance-du-conseil-detat/seance/1033002"
+   },
+   "name": {
+    "fr": "Séance du Conseil d'Etat du 7 octobre 2026"
+   },
+   "begin_date": "2026-10-07T00:00:00",
+   "group_id": 3726,
+   "agendas": null
+  }
+ ]
+}
