@@ -30,7 +30,7 @@ import json
 import re
 import sys
 import time
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -413,7 +413,8 @@ def lire_archive(depot: Path) -> dict[str, Element]:
     return archive
 
 
-def _lire_imports(depot: Path) -> dict[str, datetime]:
+def lire_imports(depot: Path) -> dict[str, datetime]:
+    """Le dernier import réussi de chaque conseil, par clé, lu dans `conseils/import.json` (vide s'il manque)."""
     try:
         return dict(ImportConseils.model_validate_json((depot / FICHIER_IMPORT).read_bytes()).conseils)
     except (FileNotFoundError, ValidationError):
@@ -426,20 +427,27 @@ def importer_conseils(
     opd: OpenParlData,
     horloge: Callable[[], datetime],
     depuis: date | None = None,
+    *,
+    dus: Collection[str] | None = None,
+    rattrapage: bool = False,
 ) -> ImportConseils:
-    """Importe chaque conseil déclaré dans `sources` dans `depot`, un clone du dépôt de données. Chaque conseil
-    repart du jour de son dernier import réussi moins un jour de recouvrement (`depuis` l'impose à tous), ou de
-    tout l'historique s'il n'a jamais été importé. Un conseil en échec est signalé, garde sa date, et les autres
-    continuent. Le commit et le push sont l'affaire de l'appelant."""
+    """Importe chaque conseil déclaré dans `sources` dans `depot`, un clone du dépôt de données, ou seulement ceux
+    dont la clé est dans `dus`. Chaque conseil repart du jour de son dernier import réussi moins un jour de
+    recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
+    `rattrapage`. Un conseil en échec est signalé, garde sa date, et les autres continuent. Le commit et le push
+    sont l'affaire de l'appelant."""
     genere = horloge().astimezone(UTC).replace(microsecond=0)
-    imports = _lire_imports(depot)
+    imports = lire_imports(depot)
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
     for source in sources.sources:
-        if source.conseil is None:
+        if source.conseil is None or (dus is not None and cle_conseil(source.conseil) not in dus):
             continue
         cle = cle_conseil(source.conseil)
-        debut = depuis or (imports[cle].date() - RECOUVREMENT if cle in imports else None)
+        if rattrapage:
+            debut = None
+        else:
+            debut = depuis or (imports[cle].date() - RECOUVREMENT if cle in imports else None)
         try:
             bruts = importer(opd, source.conseil, debut)
             elements = vers_archive(bruts, archive, genere)
