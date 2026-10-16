@@ -149,6 +149,19 @@ passage puis publie le dépôt de données sur Pages, avec son seul `GITHUB_TOKE
 déjà ouverte), puis est commentée et fermée à son retour. Une erreur de l'API des issues ne fait pas échouer le
 passage : l'état est publié quand même, et le passage suivant ouvre ou ferme ce qui a manqué.
 
+Le même passage importe les conseils (ADR 0015) : chacun une fois par jour, au premier passage après 7 h à Lausanne,
+depuis le jour de son dernier import réussi (`conseils/import.json`), et de nouveau au passage suivant si l'import a
+échoué. Quand aucun import d'un conseil n'a réussi depuis plus de 24 h, une issue `import-conseils` « Import en
+échec : <nom de la source> » s'ouvre, puis est commentée et fermée au premier import réussi ; la source n'est pas
+mise en panne pour autant, seules les sondes en décident. Le rattrapage de tout l'historique suit le même chemin
+avec `--rattrapage`, en local sans rien pousser :
+
+```bash
+cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push --rattrapage
+```
+
+ou dans le dépôt de données, par un lancement manuel du workflow « Cron » avec la case `rattrapage` cochée.
+
 ## Configuration
 
 Les adresses du dépôt, du courriel de contact, du site public et des Pages du dépôt de données sont écrites une

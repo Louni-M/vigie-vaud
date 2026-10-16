@@ -6,11 +6,19 @@ name: Cron
 
 on:
   schedule:
-    # Toutes les 30 minutes, en UTC, à des minutes décalées du début de l'heure.
+    # Toutes les 30 minutes, en UTC, à des minutes décalées du début de l'heure. Les conseils ne s'importent qu'au
+    # premier passage après 7 h à Lausanne.
     - cron: '17,47 * * * *'
+  # Un lancement manuel fait un passage ordinaire, ou, avec `rattrapage`, importe tous les conseils depuis tout
+  # l'historique.
   workflow_dispatch:
+    inputs:
+      rattrapage:
+        description: Rattrapage de tout l'historique des conseils
+        type: boolean
+        default: false
 
-# Un passage attend la fin du précédent, sans l'annuler.
+# Un passage attend la fin du précédent, sans l'annuler (un rattrapage retient donc les passages planifiés).
 concurrency:
   group: cron
   cancel-in-progress: false
@@ -24,3 +32,6 @@ permissions:
 jobs:
   passage:
     uses: Louni-M/vigie-vaud/.github/workflows/cron.yml@main
+    with:
+      # `inputs.rattrapage` est vide pour un passage planifié, qui n'est donc pas un rattrapage.
+      rattrapage: ${{ inputs.rattrapage == true }}
