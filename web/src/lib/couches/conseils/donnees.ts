@@ -2,7 +2,20 @@
 // les Pages du dépôt de données (fichiers de lecture et archive, ADR 0015). Le site n'y vérifie que `version` : le
 // contenu est valide au JSON Schema dès l'écriture, côté cron.
 import { DONNEES } from '#lib/config.js';
-import type { ConseilIndexe, IndexConseils, LigneObjet, ListeObjets, ListeSeances, Seance } from '#lib/schema.js';
+import type { Fiche, Lieu } from '#lib/registre/types.js';
+import type {
+	ConseilIndexe,
+	IndexConseils,
+	LigneObjet,
+	ListeObjets,
+	ListeSeances,
+	Objet,
+	Seance,
+	Source
+} from '#lib/schema.js';
+import { SOURCES } from '#lib/sources.js';
+import type { Commune } from '#lib/types.js';
+import { FICHE_GRAND_CONSEIL, lireCle, sourceDuConseil } from './cles.js';
 
 /** Seule version des fichiers des conseils que le site connaît. */
 export const VERSION_CONSEILS = 1;
@@ -36,13 +49,33 @@ export interface DonneesConseils {
 	seances(cle: string): Promise<ListeSeances>;
 	/** Le fichier d'archive d'une Séance, par sa clé (`5586/2026-10-06` : `conseils/5586/seances/2026-10-06.json`). */
 	seance(cle: string): Promise<Seance>;
+	/**
+	 * Le fichier d'archive d'un Objet ou d'une Séance, par sa clé (`5586/POS25-115` :
+	 * `conseils/5586/objets/POS25-115.json`) ; `null` si la clé ne désigne rien, sans requête quand ce n'est pas une
+	 * clé d'un conseil connu. Rejette si le fichier n'a pas pu être lu.
+	 */
+	element(cle: string): Promise<Objet | Seance | null>;
+	/**
+	 * Les fiches où l'élément s'ouvre, dans l'ordre, une fois son archive lue (aucun n'a de position) : la commune
+	 * d'un conseil communal ; pour un Objet du Grand Conseil, ses communes rattachées puis la fiche du Grand Conseil ;
+	 * pour une Séance du Grand Conseil, sa seule fiche. `null` si l'élément n'existe pas ; rejette si son archive n'a
+	 * pas pu être lue.
+	 */
+	localiser(cle: string): Promise<Lieu | null>;
 }
 
 export interface Options {
 	fetch: typeof fetch;
 	/** Adresse de base des Pages du dépôt de données, sans barre finale. */
 	donnees?: string;
+	/** L'index des communes, pour passer du n° OFS d'une commune à sa fiche ; par défaut, `communes.json` du site. */
+	communes?: () => Promise<readonly Commune[]>;
+	/** `sources.json` : le conseil d'une clé, et la commune qu'il couvre. */
+	sources?: readonly Source[];
 }
+
+/** L'index des communes du site, importé seulement quand on localise un élément. */
+const communesDuSite = async () => (await import('#lib/socle/communes.js')).getCommunes((e, i) => fetch(e, i));
 
 /** Les années d'Objets d'un conseil, de la plus récente à la plus ancienne. */
 const annees = (conseil: ConseilIndexe) =>
@@ -55,10 +88,19 @@ const annees = (conseil: ConseilIndexe) =>
  * Chaque fichier est lu une fois par visite ; une lecture rejette s'il est injoignable, absent ou d'une version
  * inconnue, et la demande suivante le relit.
  */
-export function creerDonneesConseils({ fetch: f, donnees = DONNEES }: Options): DonneesConseils {
-	/** Un fichier du dépôt de données, par son chemin ; rejette s'il n'est pas lisible dans une version connue. */
-	async function lire<T>(chemin: string): Promise<T> {
+export function creerDonneesConseils({
+	fetch: f,
+	donnees = DONNEES,
+	communes = communesDuSite,
+	sources = SOURCES
+}: Options): DonneesConseils {
+	/**
+	 * Un fichier du dépôt de données, par son chemin ; rejette s'il n'est pas lisible dans une version connue.
+	 * `absent` : ce que vaut un fichier qui n'existe pas (404), au lieu de rejeter.
+	 */
+	async function lire<T>(chemin: string, absent?: { vaut: T }): Promise<T> {
 		const reponse = await f(`${donnees}/${chemin}`);
+		if (reponse.status === 404 && absent) return absent.vaut;
 		if (!reponse.ok) throw new Error(`${chemin} : HTTP ${reponse.status}`);
 		const contenu = (await reponse.json()) as { version?: unknown } | null;
 		if (contenu?.version !== VERSION_CONSEILS)
@@ -67,10 +109,10 @@ export function creerDonneesConseils({ fetch: f, donnees = DONNEES }: Options): 
 	}
 
 	const lus = new Map<string, Promise<unknown>>();
-	function lireUneFois<T>(chemin: string): Promise<T> {
+	function lireUneFois<T>(chemin: string, absent?: { vaut: T }): Promise<T> {
 		let lecture = lus.get(chemin) as Promise<T> | undefined;
 		if (!lecture) {
-			const l = lire<T>(chemin);
+			const l = lire<T>(chemin, absent);
 			l.catch(() => {
 				if (lus.get(chemin) === l) lus.delete(chemin);
 			});
@@ -102,8 +144,34 @@ export function creerDonneesConseils({ fetch: f, donnees = DONNEES }: Options): 
 		seance(cle) {
 			const [conseil, jour] = cle.split('/');
 			return lireUneFois<Seance>(`conseils/${conseil}/seances/${jour}.json`);
+		},
+		element,
+		async localiser(cle) {
+			const lu = await element(cle);
+			if (!lu) return null;
+			const { conseil } = lireCle(cle)!;
+			const couverture = sourceDuConseil(conseil, sources)?.couverture;
+			const index = await communes();
+			const fiche = (ofs: number): Fiche[] => {
+				const c = index.find((c) => c.bfs === ofs);
+				return c ? [{ commune: c.slug }] : [];
+			};
+			if (couverture) {
+				const ofs = couverture.communes === 'canton' ? [] : couverture.communes;
+				return { fiches: ofs.flatMap(fiche) };
+			}
+			// Le Grand Conseil : un Objet s'ouvre aussi dans les communes qu'il nomme, une Séance dans sa seule fiche.
+			const rattachees = 'ordre_du_jour' in lu ? [] : lu.communes;
+			return { fiches: [...rattachees.flatMap((c) => fiche(c.ofs)), { fiche: FICHE_GRAND_CONSEIL }] };
 		}
 	};
+
+	function element(cle: string): Promise<Objet | Seance | null> {
+		const lue = lireCle(cle);
+		if (!lue || !sourceDuConseil(lue.conseil, sources)) return Promise.resolve(null);
+		const dossier = lue.sorte === 'seance' ? 'seances' : 'objets';
+		return lireUneFois<Objet | Seance | null>(`conseils/${lue.conseil}/${dossier}/${lue.nom}.json`, { vaut: null });
+	}
 }
 
 /** Les données des conseils de la visite en cours. */

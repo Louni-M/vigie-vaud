@@ -53,9 +53,9 @@ export function ecrireUrl(couches: readonly CoucheInscrite[], e: EtatUrl): strin
 
 	if (e.vue) paires.push(['vue', [e.vue.lat.toFixed(5), e.vue.lon.toFixed(5), e.vue.zoom.toFixed(2)].join(',')]);
 	for (const c of couches) if (c.codec && c.id in e.parametres) paires.push(...c.codec.ecrire(e.parametres[c.id]));
-	// Virgules laissées en clair : l'adresse reste lisible.
-	return paires.length
-		? `?${paires.map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%2C/g, ',')}`).join('&')}`
+	// Virgules et barres obliques laissées en clair (`?c=vd/26_INT_140`) : l'adresse reste lisible.
+	const valeur = (v: string) => encodeURIComponent(v).replace(/%2C/g, ',').replace(/%2F/g, '/');
+	return paires.length ? `?${paires.map(([k, v]) => `${k}=${valeur(v)}`).join('&')}`
 		: '';
 }
 

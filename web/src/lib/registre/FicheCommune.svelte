@@ -33,6 +33,11 @@
 	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === registre.onglet) ?? onglets[0]);
 	const element = $derived(avecFiche === courant ? registre.ouvert : null);
 	const couvert = $derived(!courant || couvertureCourante().couvre(courant.id, commune.bfs));
+	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil, retour du navigateur) y ramène,
+	// même quand on est arrivé par un lien.
+	$effect(() => {
+		if (avecFiche) registre.onglet = avecFiche.id;
+	});
 
 	/** Défilement de l'onglet quand l'élément s'ouvre, rétabli quand il se ferme. */
 	let corps: HTMLElement | undefined = $state();
@@ -124,7 +129,7 @@
 				<nav class="fil" aria-label="Fil d’Ariane">
 					<button type="button" class="lien" onclick={registre.fermer}>{courant.nom}</button>
 					<span aria-hidden="true">›</span>
-					<span aria-current="page">n° {element.element}</span>
+					<span aria-current="page">{courant.libelle?.(element.element) ?? `n° ${element.element}`}</span>
 				</nav>
 				{#key `${element.couche}:${element.element}`}
 					{#await registre.composant(courant, 'Fiche') then module}
