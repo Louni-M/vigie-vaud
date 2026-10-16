@@ -33,7 +33,9 @@ export function lireCle(cle: string): CleLue | null {
 
 /**
  * Le numéro d'un Objet à la forme canonique de son conseil, tiré de sa clé : celle du Grand Conseil telle quelle
- * (`26_INT_140`), celle d'un conseil communal avec sa barre oblique (`POS25-115` → `POS25/115`).
+ * (`26_INT_140`), celle d'un conseil communal avec sa barre oblique (`POS25-115` → `POS25/115`). L'inverse de
+ * `cleObjet` n'est exact que pour les formes de `FORMES_NUMEROS` (ni espace, ni tiret d'origine) : ailleurs
+ * (`vd/V_1.9.2026` pour `V 1.9.2026`) le numéro est approché, et l'Objet ouvert montre le sien (`objet.numero`).
  */
 export function numeroObjet({ conseil, nom }: CleLue): string {
 	return conseil === CLE_GRAND_CONSEIL ? nom : nom.replace(/-/g, '/');
