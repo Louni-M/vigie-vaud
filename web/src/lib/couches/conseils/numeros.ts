@@ -1,10 +1,12 @@
 // Reconnaissance d'un numéro d'Objet tapé dans la recherche, par sa seule forme : aucune donnée n'est lue, le
 // fichier d'archive ne l'est qu'à l'ouverture (`localiser`). Chaque conseil a sa forme et ses préfixes, relevés
 // dans OpenParlData (tous les numéros du Grand Conseil et de Lausanne, octobre 2026) : un préfixe inconnu n'est
-// pas un numéro, et « 25 rue 12 » reste une adresse. Le conseil, sa clé et son nom viennent de `sources.json` ; un
-// conseil dont aucune forme n'est relevée ici n'est simplement pas cherchable par numéro.
+// pas un numéro, et « 25 rue 12 » reste une adresse. Le conseil et sa clé viennent de `sources.json`, le nom de sa
+// commune des communes de la visite ; un conseil dont aucune forme n'est relevée ici n'est simplement pas cherchable
+// par numéro.
 import type { Source } from '#lib/schema.js';
-import { SOURCES, cleConseil } from '#lib/sources.js';
+import { SOURCES, cleConseil, communeDuConseil } from '#lib/sources.js';
+import type { Commune } from '#lib/types.js';
 
 /** La forme des numéros d'un conseil, telle qu'OpenParlData les donne. */
 export interface FormeNumero {
@@ -41,7 +43,10 @@ export interface NumeroReconnu {
 	cle: string;
 	/** À la forme canonique du conseil : `26_INT_140`, `INT26/056`. */
 	numero: string;
-	/** Nom du conseil pour la recherche, le nom court de sa source : « Grand Conseil », « Conseil de Lausanne ». */
+	/**
+	 * Ce que la recherche dit du conseil : le nom de sa commune pour un conseil communal (« Lausanne »), sinon le nom
+	 * court de sa source (« Grand Conseil »), comme aussi tant que la commune n'est pas connue.
+	 */
 	nom: string;
 }
 
@@ -76,13 +81,20 @@ function canonique(forme: FormeNumero, morceaux: string[]): string | null {
  * les espaces, tirets, barres, points et soulignés, la casse et les zéros de tête (`26 int 140`, `26-INT-140`,
  * `int 26/56`).
  */
-export function reconnaitreNumero(saisie: string, sources: readonly Source[] = SOURCES): NumeroReconnu[] {
+export function reconnaitreNumero(
+	saisie: string,
+	sources: readonly Source[] = SOURCES,
+	communes: readonly Pick<Commune, 'bfs' | 'nom'>[] = []
+): NumeroReconnu[] {
 	const texte = saisie.trim().toUpperCase();
 	if (!/^[A-Z0-9][A-Z0-9\s_\-/.]*$/.test(texte)) return [];
 	const morceaux = texte.match(/[A-Z]+|\d+/g) ?? [];
 	return sources.flatMap(({ conseil, nom_court }) => {
 		const forme = conseil?.donne.includes('objets') ? FORMES_NUMEROS[conseil.body_key] : undefined;
 		const numero = forme && canonique(forme, morceaux);
-		return numero ? [{ cle: cleObjet(cleConseil(conseil!), numero), numero, nom: nom_court }] : [];
+		if (!numero) return [];
+		const ofs = communeDuConseil(conseil!);
+		const nom = communes.find((c) => c.bfs === ofs)?.nom ?? nom_court;
+		return [{ cle: cleObjet(cleConseil(conseil!), numero), numero, nom }];
 	});
 }

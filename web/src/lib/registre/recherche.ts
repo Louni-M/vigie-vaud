@@ -1,5 +1,5 @@
 import { normaliser } from '#lib/labels.js';
-import type { Resultat } from '#lib/types.js';
+import type { Commune, Resultat } from '#lib/types.js';
 import { fichesPropres } from './fiches.js';
 import type { CoucheInscrite } from './types.js';
 
@@ -28,10 +28,14 @@ export function chercherFiches(couches: readonly CoucheInscrite[], texte: string
  * Résultats du registre pour une saisie, tels que les affiche la recherche du socle : les fiches propres, puis les
  * éléments des couches (`chercher`). Le registre trouve les fiches sans passer par `chercher`.
  */
-export const resultatsCouches = (couches: readonly CoucheInscrite[], texte: string): ResultatRegistre[] => [
+export const resultatsCouches = (
+	couches: readonly CoucheInscrite[],
+	texte: string,
+	communes: readonly Commune[]
+): ResultatRegistre[] => [
 	...chercherFiches(couches, texte),
 	...couches.flatMap((c) =>
-		(c.chercher?.(texte) ?? []).map((r) => ({
+		(c.chercher?.(texte, communes) ?? []).map((r) => ({
 			type: 'element' as const,
 			nomCouche: c.nom,
 			libelle: r.libelle,

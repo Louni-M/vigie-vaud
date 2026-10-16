@@ -16,9 +16,14 @@ describe('numéros d’Objet et sources.json', () => {
 		expect(reconnaitreNumero('int 26/56', seancesSeulement)).toEqual([]);
 	});
 
-	it('nomme le conseil par le nom court de sa source', () => {
+	it('nomme un conseil communal par sa commune, le Grand Conseil par le nom court de sa source', () => {
+		const communes = [{ bfs: 5586, nom: 'Lausanne' }];
 		const renomme = SOURCES.map((s): Source => (s.id === 'openparldata-vd' ? { ...s, nom_court: 'Parlement' } : s));
-		expect(reconnaitreNumero('26 int 140', renomme).map((r) => r.nom)).toEqual(['Parlement']);
+		expect(reconnaitreNumero('26 int 140', renomme, communes).map((r) => r.nom)).toEqual(['Parlement']);
+		expect(reconnaitreNumero('int 26/56', SOURCES, communes).map((r) => r.nom)).toEqual(['Lausanne']);
+	});
+
+	it('nomme un conseil communal par le nom court de sa source tant que sa commune n’est pas connue', () => {
 		expect(reconnaitreNumero('int 26/56').map((r) => r.nom)).toEqual(['Conseil de Lausanne']);
 	});
 

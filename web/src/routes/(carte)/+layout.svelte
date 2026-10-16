@@ -152,7 +152,7 @@
 			.map(attributionHtml)
 	);
 
-	const chercherCouches = (texte: string) => resultatsCouches(COUCHES, texte);
+	const chercherCouches = (texte: string) => resultatsCouches(COUCHES, texte, data.communes);
 
 	function choix(r: Resultat) {
 		registre.oublierAvis();

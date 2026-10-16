@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { commune } from '#tests/faux-canton.js';
 import { coucheConseils } from './index.js';
 
 describe('couche Conseils', () => {
@@ -39,7 +40,8 @@ describe('élément introuvable', () => {
 });
 
 describe('recherche d’un Objet par son numéro', () => {
-	const cherche = (texte: string) => coucheConseils.chercher?.(texte) ?? [];
+	const LAUSANNE = commune(5586, 'Lausanne', [6.58, 46.5, 6.72, 46.6]);
+	const cherche = (texte: string) => coucheConseils.chercher?.(texte, [LAUSANNE]) ?? [];
 
 	it('reconnaît un numéro du Grand Conseil et le donne à sa forme canonique', () => {
 		expect(cherche('26 int 140')).toEqual([
@@ -52,11 +54,11 @@ describe('recherche d’un Objet par son numéro', () => {
 		['26_int_0140', 'vd/26_INT_140', 'Objet 26_INT_140 · Grand Conseil'],
 		['  26INT140 ', 'vd/26_INT_140', 'Objet 26_INT_140 · Grand Conseil'],
 		['25 hqu 7', 'vd/25_HQU_7', 'Objet 25_HQU_7 · Grand Conseil'],
-		['int 26/56', '5586/INT26-056', 'Objet INT26/056 · Conseil de Lausanne'],
-		['POS25/115', '5586/POS25-115', 'Objet POS25/115 · Conseil de Lausanne'],
-		['prea 20 12', '5586/PREA20-012', 'Objet PREA20/012 · Conseil de Lausanne'],
-		['Q22-3', '5586/Q22-003', 'Objet Q22/003 · Conseil de Lausanne'],
-		['comc24014', '5586/COMC24-014', 'Objet COMC24/014 · Conseil de Lausanne']
+		['int 26/56', '5586/INT26-056', 'Objet INT26/056 · Lausanne'],
+		['POS25/115', '5586/POS25-115', 'Objet POS25/115 · Lausanne'],
+		['prea 20 12', '5586/PREA20-012', 'Objet PREA20/012 · Lausanne'],
+		['Q22-3', '5586/Q22-003', 'Objet Q22/003 · Lausanne'],
+		['comc24014', '5586/COMC24-014', 'Objet COMC24/014 · Lausanne']
 	])('« %s » : %s', (texte, element, libelle) => {
 		expect(cherche(texte)).toEqual([{ couche: 'conseils', element, libelle }]);
 	});

@@ -66,7 +66,7 @@
 	{/if}
 	{#if communes.length}
 		<div class="recherche">
-			<Recherche {communes} chercherCouches={(texte) => resultatsCouches(COUCHES, texte)} onchoix={choix} />
+			<Recherche {communes} chercherCouches={(texte) => resultatsCouches(COUCHES, texte, communes)} onchoix={choix} />
 		</div>
 	{/if}
 	<p class="actions">

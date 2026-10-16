@@ -171,8 +171,11 @@ export interface Couche<P = unknown> {
 	localiser?(element: string): Promise<Lieu | null>;
 	/** Message affiché près de la recherche quand `localiser` ne trouve pas l'élément (« Aucun dossier n° … »). */
 	introuvable?(element: string): string;
-	/** Synchrone : la recherche du socle l'appelle à chaque frappe. */
-	chercher?(texte: string): ResultatCouche[];
+	/**
+	 * Synchrone : la recherche du socle l'appelle à chaque frappe. `communes` sont les communes de la visite, pour
+	 * nommer un résultat sans rien charger.
+	 */
+	chercher?(texte: string, communes: readonly Commune[]): ResultatCouche[];
 	/** Ce que le fil d'Ariane dit de l'élément ouvert (« Permis › n° 248845 ») ; sinon « n° <élément> ». */
 	libelle?(element: string): string;
 	/** Titre du document quand l'élément est ouvert ; `nomDeLaFiche` est le nom de la fiche où il est ouvert. */

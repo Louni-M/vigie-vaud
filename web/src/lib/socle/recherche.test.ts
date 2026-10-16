@@ -63,7 +63,7 @@ describe('ordre des résultats de la recherche', () => {
 	const adresse = (libelle: string): Resultat => ({ type: 'adresse', categorie: 'Adresse', libelle, lon: 6.6, lat: 46.5 });
 
 	it('donne les communes, puis les fiches propres, puis les éléments des couches, puis les adresses et lieux', () => {
-		const locaux = resultatsLocaux([PULLY, GRANDSON], 'gr', (texte) => resultatsCouches(COUCHES, texte));
+		const locaux = resultatsLocaux([PULLY, GRANDSON], 'gr', (texte) => resultatsCouches(COUCHES, texte, [PULLY, GRANDSON]));
 		const tous = avecAdresses(locaux, [adresse('Grand-Rue 1, 1095 Lutry')]);
 		expect(tous.map((r) => [r.type, r.libelle])).toEqual([
 			['commune', 'Grandson'],

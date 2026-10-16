@@ -51,8 +51,8 @@ export const coucheConseils: Couche<undefined> = {
 		return conseils.localiser(element);
 	},
 	// La forme du numéro suffit : rien n'est lu avant l'ouverture, où `localiser` charge le fichier d'archive.
-	chercher: (texte) =>
-		reconnaitreNumero(texte).map(({ cle, numero, nom }) => ({
+	chercher: (texte, communes) =>
+		reconnaitreNumero(texte, SOURCES, communes).map(({ cle, numero, nom }) => ({
 			couche: coucheConseils.id,
 			element: cle,
 			libelle: `Objet ${numero} · ${nom}`
