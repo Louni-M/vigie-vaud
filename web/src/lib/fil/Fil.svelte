@@ -16,12 +16,15 @@
 		registre,
 		chargement,
 		communes,
-		onfermer
+		onfermer,
+		onouvert
 	}: {
 		registre: Registre;
 		chargement: ChargementFil;
 		communes: readonly Commune[];
 		onfermer?: () => void;
+		/** Une entrée vient d'être ouverte (téléphone : retour à la vue Carte, pour son aperçu). */
+		onouvert?: () => void;
 	} = $props();
 
 	const aujourdhui = jourDe(new Date());
@@ -48,6 +51,7 @@
 
 	function ouvrir(l: LigneFil) {
 		registre.ouvrir({ couche: l.couche, element: l.element, position: l.position });
+		onouvert?.();
 	}
 
 	/* ---- Jours : « Aujourd’hui », « Hier », « Mardi 7 oct. » ---- */

@@ -49,6 +49,7 @@ export const coucheConseils: Couche<undefined> = {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),
 		Onglet: () => import('./Onglet.svelte'),
-		Fiche: () => import('./Fiche.svelte')
+		Fiche: () => import('./Fiche.svelte'),
+		Apercu: () => import('./Apercu.svelte')
 	}
 };
