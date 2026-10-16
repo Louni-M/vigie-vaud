@@ -1,10 +1,12 @@
 /* Fichier généré par `pnpm schema` depuis pipeline/schema.py : ne pas modifier.
  * Pour changer le schéma commun, modifier les modèles Pydantic puis relancer `pnpm schema`. */
 
-export type DocumentCommun = Enveloppe | EtatSources | ImportConseils | FichierSources;
+export type DocumentCommun = Enveloppe | EtatSources | ImportConseils | Objet | Seance | FichierSources;
 export type EtatSonde = 'disponible' | 'en_panne';
 export type Horodatage = string;
+export type SorteContributeur = 'personne' | 'groupe';
 export type Lien = string;
+export type CleElement = string;
 export type VoieAcces = 'direct' | 'cron' | 'worker' | 'preparee';
 export type SorteFraicheur = 'donnee' | 'requete' | 'millesime' | 'import';
 export type NumeroOfs = number;
@@ -87,6 +89,134 @@ export interface ImportConseils {
 	conseils: {
 		[k: string]: Horodatage;
 	};
+}
+/**
+ * `conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est
+ * `<conseil>/<numéro>`, la barre oblique du numéro devenant `-` (`vd/26_INT_140`, `5586/POS25-115`).
+ */
+export interface Objet {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	/**
+	 * Identifiant de l'Objet dans OpenParlData.
+	 */
+	id: number;
+	/**
+	 * Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).
+	 */
+	numero: string;
+	/**
+	 * Type brut de la source (`type_name`).
+	 */
+	type: string;
+	statut: Statut | null;
+	/**
+	 * Date de dépôt (`begin_date`).
+	 */
+	depose: string | null;
+	titre: string;
+	/**
+	 * Dans l'ordre de la source.
+	 */
+	contributeurs: Contributeur[];
+	/**
+	 * Étapes datées, de la plus ancienne à la plus récente.
+	 */
+	etapes: Etape[];
+	documents: DocumentObjet[];
+	/**
+	 * Page de l'Objet chez le conseil (`url_external`).
+	 */
+	lien: Lien | null;
+}
+export interface Statut {
+	/**
+	 * Le `state_name` brut de la source quand il existe, sinon le libellé de la dernière étape datée.
+	 */
+	libelle: string;
+	/**
+	 * Date de la dernière étape datée ; `null` si aucune étape n'est datée.
+	 */
+	date: string | null;
+}
+export interface Contributeur {
+	nom: string;
+	/**
+	 * Abréviation du parti, telle que la source la donne.
+	 */
+	parti: string | null;
+	/**
+	 * Rôle brut (« Auteur », « Cosignataires », « Federführung »…).
+	 */
+	role: string | null;
+	sorte: SorteContributeur;
+}
+export interface Etape {
+	date: string;
+	/**
+	 * `title.fr` de la source, sinon `title_harmonized.fr`, brut.
+	 */
+	libelle: string;
+}
+export interface DocumentObjet {
+	/**
+	 * Nom du document, sinon sa catégorie.
+	 */
+	titre: string | null;
+	date: string | null;
+	/**
+	 * Le document chez la source (PDF, page ou vidéo).
+	 */
+	lien: string;
+}
+/**
+ * `conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`.
+ */
+export interface Seance {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	/**
+	 * Identifiant de la Séance dans OpenParlData.
+	 */
+	id: number;
+	/**
+	 * Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).
+	 */
+	date: string;
+	/**
+	 * Nom brut de la source ; le site affiche un nom composé à partir de la date.
+	 */
+	nom: string;
+	lien: Lien | null;
+	ordre_du_jour: PointOrdreDuJour[];
+}
+export interface PointOrdreDuJour {
+	/**
+	 * Numéro du point tel que la source l'affiche.
+	 */
+	numero: string | null;
+	titre: string;
+	categorie: string | null;
+	/**
+	 * Résultat brut (« Transmise au CE », « Renvoi en Municipalité »…).
+	 */
+	resultat: string | null;
+	/**
+	 * Clé de l'Objet du point, quand il est dans l'archive.
+	 */
+	objet: CleElement | null;
 }
 /**
  * `sources.json` : chaque source y est déclarée une seule fois, pour le site et pour le cron.

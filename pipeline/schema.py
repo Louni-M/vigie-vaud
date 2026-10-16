@@ -18,6 +18,7 @@ Usage : `uv run python schema.py` écrit les JSON Schema dans `schema/`.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -213,6 +214,78 @@ class ImportConseils(Enveloppe):
     )
 
 
+# --- Archive des conseils (conseils/<conseil>/objets|seances/*.json, dépôt de données ; ADR 0017) --------------
+
+CleElement = TypeAliasType("CleElement", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+/[^/\s]+$")])
+SorteContributeur = TypeAliasType("SorteContributeur", Literal["personne", "groupe"])
+
+
+class Statut(Modele):
+    libelle: str = Field(
+        description="Le `state_name` brut de la source quand il existe, sinon le libellé de la dernière étape datée."
+    )
+    date: dt.date | None = Field(description="Date de la dernière étape datée ; `null` si aucune étape n'est datée.")
+
+
+class Contributeur(Modele):
+    nom: str
+    parti: str | None = Field(description="Abréviation du parti, telle que la source la donne.")
+    role: str | None = Field(description="Rôle brut (« Auteur », « Cosignataires », « Federführung »…).")
+    sorte: SorteContributeur
+
+
+class Etape(Modele):
+    date: dt.date
+    libelle: str = Field(description="`title.fr` de la source, sinon `title_harmonized.fr`, brut.")
+
+
+class DocumentObjet(Modele):
+    titre: str | None = Field(description="Nom du document, sinon sa catégorie.")
+    date: dt.date | None
+    lien: Lien = Field(description="Le document chez la source (PDF, page ou vidéo).")
+
+
+class Objet(Enveloppe):
+    """`conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est
+    `<conseil>/<numéro>`, la barre oblique du numéro devenant `-` (`vd/26_INT_140`, `5586/POS25-115`)."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    id: int = Field(description="Identifiant de l'Objet dans OpenParlData.")
+    numero: str = Field(min_length=1, description="Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).")
+    type: str = Field(description="Type brut de la source (`type_name`).")
+    statut: Statut | None
+    depose: dt.date | None = Field(description="Date de dépôt (`begin_date`).")
+    titre: str
+    contributeurs: list[Contributeur] = Field(description="Dans l'ordre de la source.")
+    etapes: list[Etape] = Field(description="Étapes datées, de la plus ancienne à la plus récente.")
+    documents: list[DocumentObjet]
+    lien: Lien | None = Field(description="Page de l'Objet chez le conseil (`url_external`).")
+
+
+DateSeance = TypeAliasType(
+    "DateSeance", Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$")]
+)
+
+
+class PointOrdreDuJour(Modele):
+    numero: str | None = Field(description="Numéro du point tel que la source l'affiche.")
+    titre: str
+    categorie: str | None
+    resultat: str | None = Field(description="Résultat brut (« Transmise au CE », « Renvoi en Municipalité »…).")
+    objet: CleElement | None = Field(description="Clé de l'Objet du point, quand il est dans l'archive.")
+
+
+class Seance(Enveloppe):
+    """`conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    id: int = Field(description="Identifiant de la Séance dans OpenParlData.")
+    date: DateSeance = Field(description="Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).")
+    nom: str = Field(description="Nom brut de la source ; le site affiche un nom composé à partir de la date.")
+    lien: Lien | None
+    ordre_du_jour: list[PointOrdreDuJour]
+
+
 # --- Génération du JSON Schema ---------------------------------------------------------------------------------
 
 # Un JSON Schema par document : `schema/<nom>.schema.json`.
@@ -221,6 +294,8 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "enveloppe": Enveloppe,
     "etat-sources": EtatSources,
     "import-conseils": ImportConseils,
+    "objet": Objet,
+    "seance": Seance,
 }
 
 

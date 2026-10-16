@@ -1,0 +1,153 @@
+{
+ "meta": {
+  "offset": 0,
+  "limit": 500,
+  "total_records": 1,
+  "total_pages": 1,
+  "current_page": 1,
+  "has_more": false,
+  "next_page": null,
+  "prev_page": null,
+  "first_page": "https://api.openparldata.ch/v1/affairs/?body_key=5586&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=120534&client=vigie-vaud&offset=0&limit=500",
+  "last_page": "https://api.openparldata.ch/v1/affairs/?body_key=5586&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=120534&client=vigie-vaud&offset=0&limit=500",
+  "self": "https://api.openparldata.ch/v1/affairs/?body_key=5586&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=120534&client=vigie-vaud"
+ },
+ "data": [
+  {
+   "state_name": {},
+   "number": "POS25/008",
+   "type_name": {
+    "fr": "Postulat"
+   },
+   "id": 120534,
+   "url_external": {
+    "fr": "https://www.lausanne.ch/apps/agir/affaire/6e/106f254838b4467ebc9ff5301905be6e.htm"
+   },
+   "title": {
+    "fr": "Nos beaux murs gris"
+   },
+   "begin_date": "2025-02-04T00:00:00",
+   "contributors": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 1,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/120534?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/120534?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/120534?expand=contributors&contributors_offset=0&contributors_limit=1000"
+    },
+    "data": [
+     {
+      "firstname": "Loris",
+      "position": 0,
+      "fullname": "Loris Socchi",
+      "lastname": "Socchi",
+      "party": {
+       "fr": "EàG"
+      },
+      "role": {
+       "fr": "Auteur"
+      },
+      "type": "person"
+     }
+    ]
+   },
+   "events": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 3,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/120534?expand=events&events_offset=0&events_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/120534?expand=events&events_offset=0&events_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/120534?expand=events&events_offset=0&events_limit=1000"
+    },
+    "data": [
+     {
+      "position": 1,
+      "title": {
+       "de": "Eingereicht"
+      },
+      "date": "2025-02-04T00:00:00",
+      "title_harmonized": {
+       "de": "Eingereicht",
+       "fr": "Déposé",
+       "it": "Presentato",
+       "en": "Submitted"
+      }
+     },
+     {
+      "position": 2,
+      "title": {
+       "de": "Überwiesen",
+       "fr": "Décision : Renvoi en Municipalité"
+      },
+      "date": "2025-02-04T00:00:00",
+      "title_harmonized": {
+       "de": "Überwiesen",
+       "fr": "Transférer",
+       "it": "Trasmesso",
+       "en": "Transferred"
+      }
+     },
+     {
+      "position": 3,
+      "title": {
+       "de": "Behandelt vom Parlament",
+       "fr": "Décision : Renvoi en commission"
+      },
+      "date": "2025-03-04T00:00:00",
+      "title_harmonized": {
+       "de": "Behandelt vom Parlament",
+       "fr": "Traiter par le Parlement",
+       "it": "Trattato in Parlamento",
+       "en": "Dealt with by Parliament"
+      }
+     }
+    ]
+   },
+   "docs": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 2,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/120534?expand=docs&docs_offset=0&docs_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/120534?expand=docs&docs_offset=0&docs_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/120534?expand=docs&docs_offset=0&docs_limit=1000"
+    },
+    "data": [
+     {
+      "url": "https://www.lausanne.ch/apps/agir/affaire/doc/ca/cac17da62ade4556a7e406b435540603.pdf",
+      "date": null,
+      "name": "Rapport de commission n° 82",
+      "category": {
+       "fr": "Rapport"
+      }
+     },
+     {
+      "url": "https://www.lausanne.ch/apps/agir/affaire/doc/13/138899530931405dbfc91dc17124bcc9.pdf",
+      "date": null,
+      "name": "Postulat de Socchi Loris - Nos beaux murs gris",
+      "category": {
+       "fr": "Initiative"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}
