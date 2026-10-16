@@ -29,14 +29,14 @@ describe('<head> d’une commune', () => {
 		);
 	});
 
-	it('énumère les couches dans l’ordre du registre, et ignore celles qui ne résument rien', () => {
+	it('joint les résumés par « ; », dans l’ordre du registre, et ignore les couches qui ne résument rien', () => {
 		const couches = [
 			couche('a', { resume: 'les permis' }),
 			couche('h'),
 			couche('b', { resume: 'les routes' }),
 			couche('c', { resume: 'les trains' })
 		];
-		expect(teteCommune(PULLY, couches).description).toBe('Pully (VD) sur Vigie Vaud : les permis, les routes et les trains.');
+		expect(teteCommune(PULLY, couches).description).toBe('Pully (VD) sur Vigie Vaud : les permis ; les routes ; les trains.');
 	});
 
 	it('demande son résumé à une couche dont le résumé dépend de la commune', () => {
@@ -46,10 +46,10 @@ describe('<head> d’une commune', () => {
 		});
 		const couches = [couche('permis', { resume: 'les permis' }), conseils];
 		expect(teteCommune(LAUSANNE, couches).description).toBe(
-			'Lausanne (VD) sur Vigie Vaud : les permis et les séances de son Conseil communal.'
+			'Lausanne (VD) sur Vigie Vaud : les permis ; les séances de son Conseil communal.'
 		);
 		expect(teteCommune(PULLY, couches).description).toBe(
-			'Pully (VD) sur Vigie Vaud : les permis et les objets du Grand Conseil qui la nomment.'
+			'Pully (VD) sur Vigie Vaud : les permis ; les objets du Grand Conseil qui la nomment.'
 		);
 		expect(teteCommune(LAUSANNE, couches).titre).toBe('Lausanne – Vigie Vaud');
 	});

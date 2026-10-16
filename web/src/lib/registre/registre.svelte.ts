@@ -7,8 +7,17 @@ import type { Map as MlMap } from 'maplibre-gl';
 import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
 import type { Chargeur, Cible, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert } from './types.js';
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
-import { corrigerChemin, fermeture, memeElement, memeFiche, mouvement, type Adresse } from './navigation.js';
+import {
+	corrigerChemin,
+	creerNavigations,
+	fermeture,
+	memeElement,
+	memeFiche,
+	mouvement,
+	type Adresse
+} from './navigation.js';
 import { ficheDuChemin, fichePropre } from './fiches.js';
+import { cheminFiche } from './liens.js';
 import { titreFiche } from './tete.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
 import { zoneDuFil } from '#lib/fil/fil.js';
@@ -149,17 +158,9 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		if (position) carteSocle()?.voler(position[0], position[1], ZOOM_ELEMENT, true);
 	}
 
-	/** Navigations vers une autre page lancées par le registre et pas encore abouties. */
-	let enRoute = 0;
-
-	/**
-	 * Change de page. Tant que la navigation n'a pas abouti, l'état n'écrit pas l'adresse : la carte qui finit un
-	 * déplacement réécrirait l'adresse de la page qu'on quitte, et annulerait la navigation.
-	 */
-	function naviguer(url: string, options: Parameters<typeof goto>[1]) {
-		enRoute++;
-		goto(url, options).finally(() => enRoute--);
-	}
+	/** Change de page ; tant que la navigation n'a pas abouti, l'état n'écrit pas l'adresse (`creerNavigations`). */
+	const navigations = creerNavigations(goto);
+	const naviguer = (url: string, options: Parameters<typeof goto>[1]) => void navigations.naviguer(url, options);
 
 	/**
 	 * Ouvrir une fiche, commune ou propre, crée une entrée d'historique. La nouvelle adresse garde les couches et
@@ -168,7 +169,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	function ouvrirFiche(f: Fiche) {
 		if (memeFiche(f, fiche)) return cadrerFiche(f, true);
 		const q = ecrireUrl(couches, { ...etat(), vue: null, ouvert: null });
-		naviguer(`${cheminFiche(f)}${q}`, { reset: false });
+		naviguer(`${cheminFiche(couches, f)}${q}`, { reset: false });
 	}
 
 	/** Fermer la fiche, commune ou propre, ramène à « / », sans bouger la carte. */
@@ -184,14 +185,6 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	let suivi: Pick<Adresse, 'fiche' | 'ouvert'> = { fiche: null, ouvert: null };
 	/** Dernier élément demandé : une demande plus ancienne qui aboutit après lui est ignorée. */
 	let demande: Ouvert | null = null;
-
-	/** Chemin d'une fiche, sans la requête. */
-	function cheminFiche(f: Fiche): string {
-		if ('commune' in f) return resolve(ROUTE_COMMUNE, { slug: f.commune });
-		const declaree = fichePropre(couches, f.fiche);
-		if (!declaree) throw new Error(`Aucune couche ne déclare la fiche « ${f.fiche} »`);
-		return resolve(ROUTE_FICHE, { fiche: declaree.fiche.chemin.slice(1) });
-	}
 
 	/**
 	 * Montre l'élément ouvert dans la fiche `dans` : la carte va vers sa position (d'un saut si `saut`), ou cadre
@@ -249,7 +242,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		// Autre fiche : une nouvelle entrée, sans la vue (la carte vole vers l'élément). L'état suivra l'adresse,
 		// et la carte ne bougera pas une seconde fois.
 		const depuis = fiche;
-		const chemin = cheminFiche(k);
+		const chemin = cheminFiche(couches, k);
 		suivi = { fiche: k, ouvert: o };
 		const q = ecrireUrl(couches, { ...etat(), vue: null, ouvert: o });
 		naviguer(`${chemin}${q}`, {
@@ -277,7 +270,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		}
 		if (montrer) montrerElement(lieu!, k ?? fiche!, initial);
 		if (k === null) return;
-		const chemin = cheminFiche(k);
+		const chemin = cheminFiche(couches, k);
 		suivi = { fiche: k, ouvert: o };
 		naviguer(`${chemin}${ecrireUrl(couches, etat())}`, {
 			replace: true,
@@ -420,7 +413,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			untrack(() => {
 				const push = nouvelleEntree;
 				nouvelleEntree = false;
-				if (synchro === null || enRoute > 0 || q === location.search) return;
+				if (synchro === null || navigations.enCours || q === location.search) return;
 				synchro = location.pathname + q;
 				suivi = { fiche, ouvert };
 				goto(`${location.pathname}${q}`, {

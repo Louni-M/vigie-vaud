@@ -40,3 +40,12 @@ export function carteConseil(conseil: ConseilIndexe, communes: readonly Commune[
 		commune: conseil.commune === null ? null : (communes.find((c) => c.bfs === conseil.commune)?.slug ?? null)
 	};
 }
+
+/**
+ * La phrase sous les cartes des conseils couverts, sur les communes grisées : sur bureau, le grisage suit le volet
+ * ouvert ; sur téléphone, il suit « Voir sur la carte » (`grisage-mobile`).
+ */
+export function noteAutresCommunes(autres: number, telephone: boolean): string {
+	const quand = telephone ? 'sur la carte par « Voir sur la carte »' : 'tant que ce volet est ouvert';
+	return `Les ${autres} autres communes : pas de conseil couvert, grisées ${quand}. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.`;
+}

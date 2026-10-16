@@ -24,7 +24,7 @@
 	import type { Commune } from '#lib/types.js';
 	import { enteteFiche } from './entete.js';
 	import type { FicheDeCouche } from './fiches.js';
-	import { messageNonCouvert, sourcesDeLOnglet } from './onglet.js';
+	import { messageNonCouvert, nomOnglet, sourcesDeLOnglet } from './onglet.js';
 	import type { Registre } from './registre.svelte.js';
 
 	let { registre, ouverte }: { registre: Registre; ouverte: Commune | FicheDeCouche } = $props();
@@ -121,7 +121,7 @@
 				tabindex={c === courant ? 0 : -1}
 				onclick={() => choisir(c.id)}
 			>
-				{c.nom}
+				{nomOnglet(c)}
 				{#each sourcesDeLOnglet(c, SOURCES, commune?.bfs ?? null) as s (s.id)}<BadgeFraicheur source={s} />{/each}
 			</button>
 		{/each}
@@ -146,7 +146,7 @@
 			{/key}
 			{#if element}
 				<nav class="fil" aria-label="Fil d’Ariane">
-					<button type="button" class="lien" onclick={registre.fermer}>{courant.nom}</button>
+					<button type="button" class="lien" onclick={registre.fermer}>{nomOnglet(courant)}</button>
 					<span aria-hidden="true">›</span>
 					<span aria-current="page">{courant.libelle?.(element.element) ?? `n° ${element.element}`}</span>
 				</nav>

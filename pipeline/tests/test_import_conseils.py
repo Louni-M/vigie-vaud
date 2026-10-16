@@ -10,8 +10,9 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import jsonschema
+import pytest
 
-from conseils import OpenParlData, importer_conseils
+from conseils import OpenParlData, cle_objet, importer_conseils
 from schema import DOSSIER_SCHEMA, FichierSources
 from faux_openparldata import (
     Affaire,
@@ -242,6 +243,26 @@ def test_un_numero_a_espaces_donne_une_cle_sans_espace(tmp_path):
     assert _lire(tmp_path, "conseils/vd/seances/2026-10-06.json")["ordre_du_jour"][-1]["objet"] == "vd/V_1.9.2026"
 
 
+# Les mêmes cas que `cleObjet` du site (`web/src/lib/couches/conseils/numeros.test.ts`), qui ouvre un Objet par la
+# clé que le cron a donnée à son fichier : un cas ajouté d'un côté s'ajoute de l'autre.
+@pytest.mark.parametrize(
+    ("conseil", "numero", "cle"),
+    [
+        ("vd", "26_INT_140", "vd/26_INT_140"),
+        ("vd", "8_LEG_124", "vd/8_LEG_124"),
+        ("vd", "V 1.9.2026", "vd/V_1.9.2026"),
+        ("vd", "  21_POS_3 ", "vd/21_POS_3"),
+        ("5586", "POS25/115", "5586/POS25-115"),
+        ("5586", "INT26/056", "5586/INT26-056"),
+        ("5586", "PR 25/3/bis", "5586/PR_25-3-bis"),
+        ("5586", "INT \t 26/056", "5586/INT_26-056"),
+        ("5586", "INT 26/056", "5586/INT_26-056"),
+    ],
+)
+def test_la_cle_d_un_objet_est_celle_que_le_site_calcule(conseil, numero, cle):
+    assert cle_objet(conseil, numero) == cle
+
+
 def test_a_numero_egal_l_objet_au_plus_petit_identifiant_l_emporte_d_un_import_a_l_autre(tmp_path):
     horloge = HorlogeFactice(T0)
     monde = _monde(horloge)
@@ -381,6 +402,34 @@ def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path)
     }
     assert (tmp_path / "conseils/5586/seances/2026-10-13.json").exists()
     assert not (tmp_path / "conseils/vd/objets/26_MOT_20.json").exists()
+
+
+def test_une_erreur_imprevue_d_un_conseil_n_empeche_pas_d_ecrire_les_autres(tmp_path, capsys):
+    horloge = HorlogeFactice(T0)
+    monde = _monde(horloge)
+    _passer(tmp_path, monde, horloge)
+
+    horloge.heure = T0 + timedelta(days=1)
+    monde.reunions.append(
+        Reunion(id=33002, body_key="5586", name="Séance", begin_date="2026-10-13T00:00:00", updated_at="2026-10-17")
+    )
+
+    def repondre(requete):
+        # Une réponse d'une forme inattendue pour le Grand Conseil : ni erreur HTTP, ni `ValueError`.
+        if requete.url.params.get("body_key") == "VD":
+            return httpx.Response(200, json={"meta": {"has_more": False}, "data": [42]})
+        return monde.transport().handle_request(requete)
+
+    with httpx.Client(transport=httpx.MockTransport(repondre)) as http:
+        importer_conseils(tmp_path, SOURCES, OpenParlData(http, horloge, attendre=horloge.attendre), horloge)
+
+    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {
+        "vd": "2026-10-16T07:05:00Z",
+        "5586": "2026-10-17T07:05:00Z",
+        "5938": "2026-10-17T07:05:00Z",
+    }
+    assert (tmp_path / "conseils/5586/seances/2026-10-13.json").exists()
+    assert "Import en échec : Conseil VD (OpenParlData)" in capsys.readouterr().err
 
 
 def _schema_du_fichier(chemin):

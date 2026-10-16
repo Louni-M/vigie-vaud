@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { corrigerChemin, fermeture, mouvement } from './navigation.js';
+import { corrigerChemin, creerNavigations, fermeture, mouvement } from './navigation.js';
 import type { Fiche, Ouvert } from './types.js';
 
 const VUE = { lat: 46.5, lon: 6.6, zoom: 13 };
@@ -161,5 +161,47 @@ describe('fermeture d’un élément', () => {
 		expect(fermeture({ element: { depuis: PROPRE } }, LUTRY)).toBe('remplacer');
 		expect(fermeture({ element: { depuis: { commune: 'propre' } } }, PROPRE)).toBe('remplacer');
 		expect(fermeture({ element: { depuis: null } }, LUTRY)).toBe('remplacer');
+	});
+});
+
+describe('navigations lancées par le registre', () => {
+	/** Un `goto` factice : chaque navigation attend qu'on la fasse aboutir ou échouer. */
+	function fauxGoto() {
+		const lancees: { url: string; aboutir: () => void; echouer: () => void }[] = [];
+		const goto = (url: string) =>
+			new Promise<void>((aboutir, echouer) => lancees.push({ url, aboutir, echouer: () => echouer(new Error(url)) }));
+		return { goto, lancees };
+	}
+	const fin = () => new Promise((r) => setTimeout(r));
+
+	it('tiennent l’écriture de l’adresse (la carte qui finit un déplacement) jusqu’à ce que toutes aient abouti', async () => {
+		const { goto, lancees } = fauxGoto();
+		const navigations = creerNavigations(goto);
+		expect(navigations.enCours).toBe(false);
+
+		navigations.naviguer('/grand-conseil?c=vd%2F26_INT_140', {});
+		navigations.naviguer('/commune/pully', {});
+		expect(lancees.map((l) => l.url)).toEqual(['/grand-conseil?c=vd%2F26_INT_140', '/commune/pully']);
+		expect(navigations.enCours).toBe(true);
+
+		lancees[0].aboutir();
+		await fin();
+		expect(navigations.enCours).toBe(true);
+
+		lancees[1].aboutir();
+		await fin();
+		expect(navigations.enCours).toBe(false);
+	});
+
+	it('rendent l’adresse à l’état après une navigation qui échoue', async () => {
+		const { goto, lancees } = fauxGoto();
+		const navigations = creerNavigations(goto);
+
+		const navigation = navigations.naviguer('/grand-conseil', {});
+		lancees[0].echouer();
+		await expect(navigation).rejects.toThrow('/grand-conseil');
+		await fin();
+
+		expect(navigations.enCours).toBe(false);
 	});
 });

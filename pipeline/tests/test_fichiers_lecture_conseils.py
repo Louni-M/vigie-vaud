@@ -5,8 +5,12 @@ données », fichiers de lecture ; ADR 0017).
 Le monde de base est celui de `test_import_conseils` ; l'horloge est fixée au vendredi 16 octobre 2026, 7 h 05 UTC.
 """
 
+from datetime import timedelta
+
+from conseils import reconstruire
 from faux_openparldata import Affaire, Contributeur, Etape, HorlogeFactice, Point, Reunion
-from test_import_conseils import T0, _lire, _monde, _passer
+from schema import FichierSources
+from test_import_conseils import SOURCES, T0, _lire, _monde, _passer
 
 
 def test_les_seances_de_chaque_conseil_sont_listees_en_lignes_legeres_de_la_plus_recente_a_la_plus_ancienne(
@@ -182,6 +186,51 @@ def test_sans_objet_rattache_aucun_fichier_au_grand_conseil_n_est_ecrit(tmp_path
 
     assert _lire(tmp_path, "conseils/index.json")["communes"] == {}
     assert not (tmp_path / "conseils/communes").exists()
+
+
+def test_un_fichier_de_lecture_que_l_import_ne_produit_plus_est_supprime_jamais_un_fichier_d_archive(tmp_path):
+    horloge = HorlogeFactice(T0)
+    monde = _monde(horloge)
+    _passer(tmp_path, monde, horloge)
+    # Une commune qui n'a plus d'Objet rattaché (une correction l'a retirée, par exemple).
+    perime = tmp_path / "conseils/communes/5586.json"
+    perime.parent.mkdir(parents=True)
+    perime.write_text((tmp_path / "conseils/index.json").read_text())
+
+    # Le conseil de Prilly (5938) n'est plus déclaré.
+    sans_prilly = FichierSources(sources=[s for s in SOURCES.sources if s.id != "openparldata-5938"])
+    _passer(tmp_path, monde, horloge, sources=sans_prilly)
+
+    assert not perime.exists()
+    assert not (tmp_path / "conseils/5938/seances.json").exists()
+    assert (tmp_path / "conseils/5938/seances/2026-10-01.json").exists()
+    assert (tmp_path / "conseils/vd/seances.json").exists()
+    assert (tmp_path / "conseils/import.json").exists()
+
+
+def test_la_reconstruction_refait_les_fichiers_de_lecture_depuis_l_archive_sans_rien_importer(tmp_path):
+    horloge = HorlogeFactice(T0)
+    _passer(tmp_path, _monde(horloge), horloge)
+    import_avant = (tmp_path / "conseils/import.json").read_text()
+    # Un titre réécrit à la main dans l'archive (ADR 0007), un fichier de lecture perdu, un autre périmé.
+    objet = tmp_path / "conseils/vd/objets/26_INT_140.json"
+    objet.write_text(objet.read_text().replace("six ans pour revenir", "[nom retiré]"))
+    archive_avant = objet.read_text()
+    (tmp_path / "conseils/fil.json").unlink()
+    perime = tmp_path / "conseils/communes/5586.json"
+    perime.parent.mkdir(parents=True)
+    perime.write_text("{}")
+
+    horloge.heure = T0 + timedelta(days=3)
+    reconstruire(tmp_path, SOURCES, horloge)
+
+    (ligne,) = [o for o in _lire(tmp_path, "conseils/vd/objets-2026.json")["objets"] if o["numero"] == "26_INT_140"]
+    assert ligne["titre"] == "Covid 2020 [nom retiré] en arrière"
+    assert _lire(tmp_path, "conseils/vd/objets-2026.json")["genere"] == "2026-10-19T07:05:00Z"
+    assert _lire(tmp_path, "conseils/fil.json")["genere"] == "2026-10-19T07:05:00Z"
+    assert not perime.exists()
+    assert objet.read_text() == archive_avant
+    assert (tmp_path / "conseils/import.json").read_text() == import_avant
 
 
 def _entree(cle, sorte, date, titre, communes=(), type=None, points=None):

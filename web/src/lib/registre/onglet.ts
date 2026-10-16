@@ -19,6 +19,9 @@ export function sourcesDeLOnglet(couche: CoucheInscrite, sources: readonly Sourc
 	return [...couvrent, ...canton];
 }
 
+/** Nom de l'onglet de la couche dans une fiche, et du fil d'Ariane de son élément ouvert (« Conseil › … »). */
+export const nomOnglet = (couche: Pick<CoucheInscrite, 'nom' | 'nomOnglet'>) => couche.nomOnglet ?? couche.nom;
+
 /** Ce qui suit « Non couvert : » en tête de l'onglet d'une commune que la couche ne couvre pas. */
 export function messageNonCouvert(couche: CoucheInscrite, commune: Commune): string {
 	return couche.nonCouvert?.(commune) ?? `la couche ${couche.nom} n’a pas de source pour ${commune.nom}.`;

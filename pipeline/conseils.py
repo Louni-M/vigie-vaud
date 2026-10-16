@@ -10,11 +10,13 @@ Le passage suit quatre étapes, chacune à sa place :
    normalise en Objets et Séances de l'archive ;
 3. `lecture(archive, sources, genere)`, fonction pure, reconstruit les fichiers de lecture que le site liste
    (`lecture_conseils.py`) ;
-4. `ecrire(depot, documents, genere)` compare chaque fichier à l'ancien sans `genere` et n'écrit que ce qui change.
+4. `ecrire(depot, documents, genere)` compare chaque fichier à l'ancien sans `genere` et n'écrit que ce qui change ;
+   `supprimer_perimes(depot, documents)` retire les fichiers de lecture que `lecture` ne produit plus.
 
 `importer_conseils` enchaîne les quatre pour chaque source qui a un bloc `conseil`, et tient à jour
 `conseils/import.json` (dernier import réussi de chaque conseil). Un conseil en échec garde sa date et n'empêche
-pas les autres. L'import ne supprime rien : un élément absent d'OpenParlData reste dans l'archive.
+pas les autres. L'import ne supprime rien de l'archive : un élément absent d'OpenParlData y reste. Les fichiers de
+lecture, eux, sont reconstruits en entier et ne divergent jamais de l'archive.
 
 Usage loyal d'OpenParlData : au plus une requête par seconde, un User-Agent avec un contact, la pagination suivie
 jusqu'au bout, et jamais un paramètre répété dans une requête (le cache du serveur ne garde que sa dernière valeur).
@@ -24,7 +26,10 @@ En local, contre un clone du dépôt de données (depuis `pipeline/`), sans rien
     uv run python conseils.py --depot ../../vigie-vaud-donnees --depuis 2026-10-10
 
 Sans `--depuis`, chaque conseil repart du jour de son dernier import réussi, ou de tout l'historique s'il n'a
-jamais été importé.
+jamais été importé. `--reconstruire` refait seulement les fichiers de lecture depuis l'archive (après un changement
+de leur forme ou une réécriture à la main de l'archive), sans aucune requête à OpenParlData :
+
+    uv run python conseils.py --depot ../../vigie-vaud-donnees --reconstruire
 """
 
 from __future__ import annotations
@@ -43,7 +48,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import ValidationError
 
-from lecture_conseils import lecture
+from lecture_conseils import MOTIFS_LECTURE, lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
 from rattachement import (
     COMMUNES_JSON,
@@ -234,10 +239,6 @@ Element = Objet | Seance
 Archive = Mapping[str, Element]
 
 
-def cle_conseil(conseil: Conseil) -> str:
-    return conseil.body_key.lower()
-
-
 def cle_objet(conseil: str, numero: str) -> str:
     """`vd/26_INT_140`, `5586/POS25-115` : la barre oblique du numéro devient `-`, et un espace `_`
     (`V 1.9.2026`, au Grand Conseil, donne `vd/V_1.9.2026`)."""
@@ -267,7 +268,7 @@ def vers_archive(
     Pour un conseil qui porte sur le canton, chaque Objet est rattaché par le nom (ADR 0016) d'après `communes`
     (`communes.json` par défaut) : son titre masqué, puis le texte de ses documents, qui n'est pas conservé ;
     `corrections` (par clé d'Objet) l'emporte, et s'applique aussi aux Objets déjà archivés."""
-    conseil = cle_conseil(bruts.conseil)
+    conseil = bruts.conseil.cle
     canton = porte_sur_le_canton(bruts.conseil)
     corrections = corrections or {}
     elements: dict[str, Element] = {}
@@ -454,7 +455,7 @@ def _lien(valeur: str | None) -> str | None:
 
 def ecrire(depot: Path, documents: Mapping[str, Enveloppe], genere: datetime) -> list[str]:
     """Écrit chaque document dont le contenu, `genere` mis à part, diffère du fichier en place ; son `genere` est
-    alors celui du passage. Ne supprime rien. Renvoie les chemins écrits."""
+    alors celui du passage. Ne supprime rien (`supprimer_perimes`). Renvoie les chemins écrits."""
     ecrits = []
     for chemin, document in sorted(documents.items()):
         fichier = depot / chemin
@@ -472,6 +473,20 @@ def ecrire(depot: Path, documents: Mapping[str, Enveloppe], genere: datetime) ->
         fichier.write_text(texte + "\n", encoding="utf-8")
         ecrits.append(chemin)
     return ecrits
+
+
+def supprimer_perimes(depot: Path, documents: Mapping[str, Enveloppe]) -> list[str]:
+    """Supprime les fichiers de lecture en place (`MOTIFS_LECTURE`) qui ne sont pas dans `documents`, la lecture
+    complète de l'archive : une commune qui n'a plus d'Objet rattaché, un conseil retiré de `sources.json`. Aucun
+    fichier d'archive n'est supprimé. Renvoie les chemins supprimés."""
+    supprimes = []
+    for motif in MOTIFS_LECTURE:
+        for fichier in sorted(depot.glob(motif)):
+            chemin = fichier.relative_to(depot).as_posix()
+            if chemin not in documents:
+                fichier.unlink()
+                supprimes.append(chemin)
+    return supprimes
 
 
 # --- Le passage ------------------------------------------------------------------------------------------------
@@ -519,9 +534,9 @@ def importer_conseils(
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
     for source in sources.sources:
-        if source.conseil is None or (dus is not None and cle_conseil(source.conseil) not in dus):
+        if source.conseil is None or (dus is not None and source.conseil.cle not in dus):
             continue
-        cle = cle_conseil(source.conseil)
+        cle = source.conseil.cle
         if rattrapage:
             debut = None
         else:
@@ -529,8 +544,10 @@ def importer_conseils(
         try:
             bruts = importer(opd, source.conseil, debut)
             elements = vers_archive(bruts, archive, genere, repertoire, corrections)
-        except (httpx.HTTPError, ValueError) as e:
-            print(f"Import en échec : {source.nom} ({e})", file=sys.stderr)
+        except Exception as e:
+            # Toute erreur, prévue (HTTP, relation tronquée) ou non (réponse d'une forme inattendue), ne vaut
+            # qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
+            print(f"Import en échec : {source.nom} ({type(e).__name__} : {e})", file=sys.stderr)
             continue
         nouveaux |= elements
         archive = {**archive, **elements}
@@ -542,7 +559,17 @@ def importer_conseils(
     documents |= lecture(archive, sources, genere)
     documents[FICHIER_IMPORT] = etat
     ecrire(depot, documents, genere)
+    supprimer_perimes(depot, documents)
     return etat
+
+
+def reconstruire(depot: Path, sources: FichierSources, horloge: Callable[[], datetime]) -> list[str]:
+    """Reconstruit les fichiers de lecture des conseils de `sources` depuis l'archive de `depot`, sans rien
+    importer : ni requête à OpenParlData, ni changement de l'archive ou de `conseils/import.json`. Renvoie les
+    chemins écrits ou supprimés."""
+    genere = horloge().astimezone(UTC).replace(microsecond=0)
+    documents = lecture(lire_archive(depot), sources, genere)
+    return ecrire(depot, documents, genere) + supprimer_perimes(depot, documents)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -550,9 +577,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--depot", type=Path, required=True, help="clone local du dépôt de données")
     parser.add_argument("--sources", type=Path, default=RACINE / "sources.json", help="déclaration des sources")
     parser.add_argument("--depuis", type=date.fromisoformat, help="jour de départ imposé à tous les conseils")
+    parser.add_argument(
+        "--reconstruire", action="store_true", help="refaire les fichiers de lecture depuis l'archive, sans import"
+    )
     args = parser.parse_args(argv)
 
     horloge = lambda: datetime.now(UTC)  # noqa: E731
+    if args.reconstruire:
+        changes = reconstruire(args.depot.resolve(), lire_sources(args.sources), horloge)
+        print(f"Fichiers de lecture reconstruits : {len(changes)} écrit(s) ou supprimé(s)")
+        return
     with httpx.Client() as http:
         opd = OpenParlData(http, horloge)
         importer_conseils(args.depot.resolve(), lire_sources(args.sources), opd, horloge, args.depuis)

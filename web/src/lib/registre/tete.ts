@@ -2,15 +2,11 @@ import type { Commune } from '#lib/types.js';
 import { enteteFiche } from './entete.js';
 import type { CoucheInscrite, FichePropre, Ouvert } from './types.js';
 
-/** « a », « a et b », « a, b et c ». */
-function enumerer(parties: string[]): string {
-	return parties.length > 1 ? `${parties.slice(0, -1).join(', ')} et ${parties.at(-1)}` : (parties[0] ?? '');
-}
-
 /**
  * Titre et description de la page d'une commune (`/commune/<slug>`), pré-générée : c'est ce qu'affiche l'aperçu
  * d'un lien partagé. La description dit ce que les couches inscrites montrent de la commune, dans l'ordre du registre,
- * puis nomme ses anciennes communes et ses anciens noms.
+ * puis nomme ses anciennes communes et ses anciens noms. Les résumés sont joints par « ; » : celui d'une couche peut
+ * avoir ses propres « et » (« les objets et les séances de son Conseil communal, et les objets du Grand Conseil… »).
  */
 export function teteCommune(commune: Commune, couches: readonly CoucheInscrite[]) {
 	const resumes = couches.flatMap((c) => {
@@ -21,7 +17,7 @@ export function teteCommune(commune: Commune, couches: readonly CoucheInscrite[]
 	const anciens = enteteFiche(commune).anciens.map((l) => ` ${l}.`);
 	return {
 		titre: titreFiche(commune.nom, null, couches),
-		description: `${commune.nom} (VD) sur Vigie Vaud : ${enumerer(resumes)}.${anciens.join('')}`
+		description: `${commune.nom} (VD) sur Vigie Vaud : ${resumes.join(' ; ')}.${anciens.join('')}`
 	};
 }
 

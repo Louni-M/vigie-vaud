@@ -13,8 +13,12 @@ export function creerChargementFil(couches: readonly CoucheInscrite[]) {
 	function lancer(c: CoucheInscrite & { fil: Fil }, d: string) {
 		etats[c.id] = 'chargement';
 		c.fil.entrees(d).then(
-			(entrees) => (etats[c.id] = { entrees }),
-			() => (etats[c.id] = 'panne')
+			(entrees) => {
+				etats[c.id] = { entrees };
+			},
+			() => {
+				etats[c.id] = 'panne';
+			}
 		);
 	}
 
@@ -25,7 +29,8 @@ export function creerChargementFil(couches: readonly CoucheInscrite[]) {
 				couche: c.id,
 				nom: c.nom,
 				types: c.fil.types,
-				etat: etats[c.id] ?? 'chargement'
+				etat: etats[c.id] ?? 'chargement',
+				sansCommune: c.fil.sansCommune
 			}));
 		},
 		/** Première ouverture du fil : chaque couche est lue une fois, depuis le premier jour du fil. */

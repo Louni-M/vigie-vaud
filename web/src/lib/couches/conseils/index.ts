@@ -1,5 +1,5 @@
 import type { Couche } from '#lib/registre/types.js';
-import { SOURCES } from '#lib/sources.js';
+import { SOURCES, listerConseils } from '#lib/sources.js';
 import {
 	FICHE_GRAND_CONSEIL,
 	TYPE_OBJETS,
@@ -26,7 +26,9 @@ export const PARLEMENT: [number, number] = [6.63596, 46.52358];
 export const coucheConseils: Couche<undefined> = {
 	id: 'conseils',
 	nom: 'Conseils',
-	sources: ['openparldata-vd', 'openparldata-5586', 'openparldata-5938'],
+	nomOnglet: 'Conseil',
+	// Toutes les sources qui ont un bloc `conseil` : ajouter un conseil, c'est ajouter son entrée à `sources.json`.
+	sources: listerConseils(SOURCES).map((c) => c.source.id),
 	permanente: false,
 	activeParDefaut: true,
 	icone: { signe: 'C', couleur: COULEUR_CONSEILS },
@@ -51,7 +53,7 @@ export const coucheConseils: Couche<undefined> = {
 	// La forme du numéro suffit : rien n'est lu avant l'ouverture, où `localiser` charge le fichier d'archive.
 	chercher: (texte) =>
 		reconnaitreNumero(texte).map(({ cle, numero, nom }) => ({
-			couche: 'conseils',
+			couche: coucheConseils.id,
 			element: cle,
 			libelle: `Objet ${numero} · ${nom}`
 		})),
@@ -70,7 +72,8 @@ export const coucheConseils: Couche<undefined> = {
 		async entrees(depuis) {
 			const { conseils } = await import('./donnees.js');
 			return conseils.entreesFil(depuis);
-		}
+		},
+		sansCommune: 'Grand Conseil, sans commune nommée'
 	},
 	composants: {
 		Carte: () => import('./Carte.svelte'),

@@ -138,6 +138,11 @@ export interface Fil {
 	types: TypeFil[];
 	/** Import dynamique, comme `localiser`. Rejette en cas d'échec. `depuis` : AAAA-MM-JJ, premier jour du fil. */
 	entrees(depuis: string): Promise<EntreeFil[]>;
+	/**
+	 * L'aide de la section « Sans commune » pour celles de ses entrées qui n'ont pas de commune (« Grand Conseil,
+	 * sans commune nommée »). Une couche qui la déclare fait toujours afficher la section, même vide.
+	 */
+	sansCommune?: string;
 }
 
 /** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */
@@ -146,7 +151,10 @@ export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ c
 /** Description légère d'une couche, inscrite au registre. */
 export interface Couche<P = unknown> {
 	id: string;
+	/** Nom du rail et du volet (« Conseils »). */
 	nom: string;
+	/** Nom de son onglet dans une fiche et du fil d'Ariane de l'élément ouvert (« Conseil ») ; sinon `nom`. */
+	nomOnglet?: string;
 	/** Identifiants de `sources.json`. */
 	sources: string[];
 	/** Toujours affichée, sans interrupteur. */

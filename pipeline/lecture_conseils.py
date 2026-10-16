@@ -15,7 +15,6 @@ de lecture (son fichier d'archive reste ouvrable). Les jours se comptent à l'he
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta
@@ -23,7 +22,6 @@ from zoneinfo import ZoneInfo
 
 from schema import (
     Auteur,
-    CommuneRattachee,
     ConseilIndexe,
     EntreeFil,
     Enveloppe,
@@ -38,6 +36,7 @@ from schema import (
     RattachementsCommune,
     Seance,
     Source,
+    nom_du_conseil,
 )
 
 Archive = Mapping[str, Objet | Seance]
@@ -45,6 +44,15 @@ Archive = Mapping[str, Objet | Seance]
 SUISSE = ZoneInfo("Europe/Zurich")
 FENETRE_FIL = timedelta(days=21)  # le fil du site en montre 14 : la marge couvre des imports manqués
 FENETRE_RECENTS = timedelta(days=14)
+# Où sont les fichiers de lecture dans le dépôt (motifs de `Path.glob`) : `lecture` produit tout ce qui doit y être,
+# le reste est périmé. Les fichiers d'archive (`conseils/<conseil>/objets/`, `…/seances/`) n'y sont pas.
+MOTIFS_LECTURE = (
+    "conseils/index.json",
+    "conseils/fil.json",
+    "conseils/communes/*.json",
+    "conseils/*/objets-*.json",
+    "conseils/*/seances.json",
+)
 
 
 def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict[str, Enveloppe]:
@@ -58,8 +66,7 @@ def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict
     for source in sources.sources:
         if source.conseil is None:
             continue
-        conseil = source.conseil.body_key.lower()
-        commune = int(source.conseil.body_key) if source.conseil.body_key.isdigit() else None
+        conseil, commune = source.conseil.cle, source.conseil.commune
         objets = _par_date([(c, e) for c, e in archive.items() if isinstance(e, Objet) and _de(c, conseil)])
         seances = sorted(
             ((c, e) for c, e in archive.items() if isinstance(e, Seance) and _de(c, conseil)),
@@ -82,9 +89,9 @@ def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict
             seances=[LigneSeance(cle=c, date=s.date, points=len(s.ordre_du_jour)) for c, s in seances],
         )
 
-        fil += [_entree_objet(c, o, commune) for c, o in objets if date_de_reference(o) >= depuis]
-        fil += [_entree_seance(c, s, commune) for c, s in seances if _jour(s) >= depuis]
-        index.append(_conseil_indexe(source, commune, par_annee, seances, aujourdhui))
+        fil += [_entree_objet(conseil, c, o, commune) for c, o in objets if date_de_reference(o) >= depuis]
+        fil += [_entree_seance(conseil, c, s, commune) for c, s in seances if _jour(s) >= depuis]
+        index.append(_conseil_indexe(source, par_annee, seances, aujourdhui))
 
     fil.sort(key=lambda e: e.cle)
     fil.sort(key=lambda e: e.date, reverse=True)
@@ -120,13 +127,8 @@ def ligne_objet(cle: str, objet: Objet) -> LigneObjet:
         nombre_auteurs=len(objet.contributeurs),
         statut=objet.statut,
         derniere_etape=_derniere_etape(objet),
-        communes=communes(objet),
+        communes=list(objet.communes),
     )
-
-
-def communes(objet: Objet) -> list[CommuneRattachee]:
-    """Les communes rattachées à l'Objet par le nom, dans l'ordre du rattachement (vide hors du Grand Conseil)."""
-    return list(objet.communes)
 
 
 def _de(cle: str, conseil: str) -> bool:
@@ -151,7 +153,7 @@ def _rattaches(objets: list[tuple[str, Objet]]) -> dict[int, list[tuple[str, Obj
     """Par n° OFS, les Objets rattachés à la commune, par date de dernière étape décroissante."""
     par_commune: dict[int, list[tuple[str, Objet]]] = defaultdict(list)
     for cle, objet in objets:
-        for ofs in dict.fromkeys(c.ofs for c in communes(objet)):
+        for ofs in dict.fromkeys(c.ofs for c in objet.communes):
             par_commune[ofs].append((cle, objet))
     for liste in par_commune.values():
         liste.sort(key=lambda co: (_derniere_etape(co[1]) or date_de_reference(co[1]), co[0]), reverse=True)
@@ -160,7 +162,6 @@ def _rattaches(objets: list[tuple[str, Objet]]) -> dict[int, list[tuple[str, Obj
 
 def _conseil_indexe(
     source: Source,
-    commune: int | None,
     par_annee: Mapping[int, list[tuple[str, Objet]]],
     seances: list[tuple[str, Seance]],
     aujourdhui: date,
@@ -171,11 +172,10 @@ def _conseil_indexe(
     a_venir = [c for c, s in seances if _jour(s) >= aujourdhui]
     passees = [c for c, s in seances if _jour(s) < aujourdhui]
     return ConseilIndexe(
-        cle=source.conseil.body_key.lower(),
+        cle=source.conseil.cle,
         source=source.id,
-        # « Conseil communal de Lausanne (OpenParlData) » : le nom du conseil, sans la mention de la source.
-        nom=re.sub(r"\s*\([^()]*\)$", "", source.nom),
-        commune=commune,
+        nom=nom_du_conseil(source.nom),
+        commune=source.conseil.commune,
         donne=source.conseil.donne,
         objets=sum(len(liste) for liste in par_annee.values()),
         objets_par_annee={str(annee): len(liste) for annee, liste in sorted(par_annee.items())},
@@ -186,23 +186,23 @@ def _conseil_indexe(
     )
 
 
-def _entree_objet(cle: str, objet: Objet, commune: int | None) -> EntreeFil:
+def _entree_objet(conseil: str, cle: str, objet: Objet, commune: int | None) -> EntreeFil:
     return EntreeFil(
         cle=cle,
-        conseil=cle.split("/")[0],
+        conseil=conseil,
         sorte="objet",
         type=objet.type,
         date=date_de_reference(objet).isoformat(),
         titre=objet.titre,
-        communes=[commune] if commune is not None else [c.ofs for c in communes(objet)],
+        communes=[commune] if commune is not None else [c.ofs for c in objet.communes],
         points=None,
     )
 
 
-def _entree_seance(cle: str, seance: Seance, commune: int | None) -> EntreeFil:
+def _entree_seance(conseil: str, cle: str, seance: Seance, commune: int | None) -> EntreeFil:
     return EntreeFil(
         cle=cle,
-        conseil=cle.split("/")[0],
+        conseil=conseil,
         sorte="seance",
         type=None,
         date=seance.date,

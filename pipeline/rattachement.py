@@ -250,7 +250,7 @@ _ENTRE_DOCUMENTS = "\n¦\n"  # ni un nom, ni une virgule : rien ne se lit à che
 
 def porte_sur_le_canton(conseil: Conseil) -> bool:
     """Le Grand Conseil (`VD`) porte sur le canton ; un conseil communal (son n° OFS) sur sa seule commune."""
-    return not conseil.body_key.isdigit()
+    return conseil.commune is None
 
 
 def rattacher_objet(

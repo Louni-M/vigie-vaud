@@ -3,7 +3,7 @@
 // et `5586/POS25-115` pour un Objet (la barre oblique du numéro devenue `-`, un espace `_`), `5586/2026-10-06` pour
 // une Séance. Le conseil est la clé du conseil dans le dépôt de données : `vd`, ou le n° OFS de la commune.
 import type { Source } from '#lib/schema.js';
-import { SOURCES } from '#lib/sources.js';
+import { SOURCES, cleConseil, nomDuConseil } from '#lib/sources.js';
 import { dateLongue } from './lignes.js';
 
 /** Clé du Grand Conseil dans le dépôt de données. */
@@ -33,7 +33,9 @@ export function lireCle(cle: string): CleLue | null {
 
 /**
  * Le numéro d'un Objet à la forme canonique de son conseil, tiré de sa clé : celle du Grand Conseil telle quelle
- * (`26_INT_140`), celle d'un conseil communal avec sa barre oblique (`POS25-115` → `POS25/115`).
+ * (`26_INT_140`), celle d'un conseil communal avec sa barre oblique (`POS25-115` → `POS25/115`). L'inverse de
+ * `cleObjet` n'est exact que pour les formes de `FORMES_NUMEROS` (ni espace, ni tiret d'origine) : ailleurs
+ * (`vd/V_1.9.2026` pour `V 1.9.2026`) le numéro est approché, et l'Objet ouvert montre le sien (`objet.numero`).
  */
 export function numeroObjet({ conseil, nom }: CleLue): string {
 	return conseil === CLE_GRAND_CONSEIL ? nom : nom.replace(/-/g, '/');
@@ -57,12 +59,12 @@ export const titreElement = (cle: string, nomDeLaFiche: string) => `${nomElement
 
 /** La source qui donne ce conseil (`vd`, `5586`), dans `sources.json`. */
 export const sourceDuConseil = (conseil: string, sources: readonly Source[] = SOURCES) =>
-	sources.find((s) => s.conseil?.body_key.toLowerCase() === conseil);
+	sources.find((s) => s.conseil && cleConseil(s.conseil) === conseil);
 
-/** Nom du conseil, tiré du nom de sa source, comme dans l'index : « Conseil communal de Lausanne ». */
+/** Nom du conseil, tiré du nom de sa source par la règle de l'index : « Conseil communal de Lausanne ». */
 export function nomConseil(conseil: string, sources: readonly Source[] = SOURCES): string | null {
-	const nom = sourceDuConseil(conseil, sources)?.nom;
-	return nom ? nom.replace(/\s*\(OpenParlData\)$/, '').replace(/'/g, '’') : null;
+	const source = sourceDuConseil(conseil, sources);
+	return source ? nomDuConseil(source.nom) : null;
 }
 
 /**
