@@ -40,8 +40,7 @@
 				"licence": "Géodonnées gratuites OGD de swisstopo"
 			},
 			"voie_acces": "direct",
-			"fraicheur": "requete",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"fraicheur": "requete"
 		},
 		{
 			"id": "swisstopo-recherche",
@@ -53,8 +52,7 @@
 				"licence": "Géodonnées gratuites OGD de swisstopo"
 			},
 			"voie_acces": "direct",
-			"fraicheur": "requete",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"fraicheur": "requete"
 		},
 		{
 			"id": "swisstopo-limites",
@@ -66,8 +64,7 @@
 				"licence": "Géodonnées gratuites OGD de swisstopo"
 			},
 			"voie_acces": "preparee",
-			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"fraicheur": "millesime"
 		},
 		{
 			"id": "ucv-annuaire",
@@ -79,8 +76,7 @@
 				"licence": "Sans licence de réutilisation : seule l'adresse du siège de chaque commune est reprise"
 			},
 			"voie_acces": "preparee",
-			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "scrape" }
+			"fraicheur": "millesime"
 		},
 		{
 			"id": "swisstopo-adresses",
@@ -92,8 +88,7 @@
 				"licence": "Géodonnées gratuites OGD de swisstopo"
 			},
 			"voie_acces": "preparee",
-			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"fraicheur": "millesime"
 		},
 		{
 			"id": "swisstopo-lacs",
@@ -105,8 +100,7 @@
 				"licence": "Géodonnées gratuites OGD de swisstopo"
 			},
 			"voie_acces": "preparee",
-			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"fraicheur": "millesime"
 		},
 		{
 			"id": "ofs-communes-historique",
@@ -118,8 +112,69 @@
 				"licence": "Données ouvertes (OGD)"
 			},
 			"voie_acces": "preparee",
-			"fraicheur": "millesime",
-			"couverture": { "communes": "canton", "mode": "api" }
+			"fraicheur": "millesime"
+		},
+		{
+			"id": "openparldata-vd",
+			"nom": "Grand Conseil (OpenParlData)",
+			"nom_court": "Grand Conseil",
+			"attribution": {
+				"texte": "Source: OpenParlData.ch",
+				"lien": "https://openparldata.ch",
+				"licence": "CC BY 4.0"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"conseil": { "body_key": "VD", "donne": ["objets", "seances"], "groupe": 1965 },
+			"sonde": {
+				"url": "https://api.openparldata.ch/v1/affairs/?body_key=VD&limit=1&fields=id,number,title&client=vigie-vaud",
+				"delai": 20,
+				"champs": ["id", "number", "title"],
+				"enregistrements": "data",
+				"jamais_vide": true
+			}
+		},
+		{
+			"id": "openparldata-5586",
+			"nom": "Conseil communal de Lausanne (OpenParlData)",
+			"nom_court": "Conseil de Lausanne",
+			"attribution": {
+				"texte": "Source: OpenParlData.ch",
+				"lien": "https://openparldata.ch",
+				"licence": "CC BY 4.0"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5586], "mode": "api" },
+			"conseil": { "body_key": "5586", "donne": ["objets", "seances"] },
+			"sonde": {
+				"url": "https://api.openparldata.ch/v1/affairs/?body_key=5586&limit=1&fields=id,number,title&client=vigie-vaud",
+				"delai": 20,
+				"champs": ["id", "number", "title"],
+				"enregistrements": "data",
+				"jamais_vide": true
+			}
+		},
+		{
+			"id": "openparldata-5938",
+			"nom": "Conseil communal d'Yverdon-les-Bains (OpenParlData)",
+			"nom_court": "Conseil d'Yverdon",
+			"attribution": {
+				"texte": "Source: OpenParlData.ch",
+				"lien": "https://openparldata.ch",
+				"licence": "CC BY 4.0"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5938], "mode": "api" },
+			"conseil": { "body_key": "5938", "donne": ["seances"] },
+			"sonde": {
+				"url": "https://api.openparldata.ch/v1/meetings/?body_key=5938&limit=1&fields=id,begin_date&client=vigie-vaud",
+				"delai": 20,
+				"champs": ["id", "begin_date"],
+				"enregistrements": "data",
+				"jamais_vide": true
+			}
 		}
 	]
 }

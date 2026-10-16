@@ -8,6 +8,7 @@ const ilYa = (minutes: number) => new Date(maintenant.getTime() - minutes * 60_0
 const camac = { fraicheur: 'requete', nom_court: 'CAMAC' } as const;
 const dgmr = { fraicheur: 'donnee', nom_court: 'DGMR' } as const;
 const ucv = { fraicheur: 'millesime', nom_court: 'UCV' } as const;
+const gc = { fraicheur: 'import', nom_court: 'Grand Conseil' } as const;
 
 describe('libellé du badge de fraîcheur', () => {
 	it('donne l’heure de la requête pour une source consultée en direct', () => {
@@ -20,6 +21,16 @@ describe('libellé du badge de fraîcheur', () => {
 
 	it('donne l’édition d’une source préparée', () => {
 		expect(libelleBadge(ucv, { derniere: 2025, erreur: null }, maintenant)).toBe('édition 2025 · UCV');
+	});
+
+	it('donne l’âge du dernier import réussi d’un conseil', () => {
+		expect(libelleBadge(gc, { derniere: ilYa(6 * 60 + 10), erreur: null }, maintenant)).toBe(
+			'importé il y a 6 h · Grand Conseil'
+		);
+	});
+
+	it('dit le dernier import inconnu tant que import.json manque ou ne cite pas le conseil', () => {
+		expect(libelleBadge(gc, { derniere: null, erreur: null }, maintenant)).toBe('dernier import inconnu · Grand Conseil');
 	});
 
 	it('passe des minutes aux heures puis aux jours', () => {

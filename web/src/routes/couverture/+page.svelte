@@ -62,8 +62,10 @@
 					</dd>
 					<dt>Voie d’accès</dt>
 					<dd>{libelleVoie(s.source)}</dd>
-					<dt>Mode</dt>
-					<dd>{libelleMode(s.source.couverture.mode)}</dd>
+					{#if s.source.couverture}
+						<dt>Mode</dt>
+						<dd>{libelleMode(s.source.couverture.mode)}</dd>
+					{/if}
 					<dt>Communes</dt>
 					<dd>{s.communes} communes sur {data.communes.length}</dd>
 					<dt>Dernière sonde</dt>

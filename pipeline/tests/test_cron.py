@@ -13,7 +13,7 @@ import jsonschema
 import pytest
 
 from cron import IssuesGitHub, client_issues, passage
-from schema import FichierSources
+from schema import RACINE, FichierSources, lire_sources
 
 T0 = datetime(2026, 10, 14, 12, 17, tzinfo=UTC)
 URL_SONDE = "https://sonde.exemple.ch/query?f=json"
@@ -295,6 +295,72 @@ def test_les_champs_se_lisent_aussi_dans_les_proprietes_geojson(tmp_path):
     assert etat["sources"]["camac-permis"]["motif"] is None
 
 
+def _conseil(id, sonde):
+    """Un conseil d'OpenParlData : voie Cron, fraîcheur `import`, sans Couverture."""
+    source = {k: v for k, v in _source(id=id).items() if k != "couverture"}
+    return source | {
+        "nom": f"Conseil {id}",
+        "voie_acces": "cron",
+        "fraicheur": "import",
+        "conseil": {"body_key": "VD", "donne": ["objets", "seances"]},
+        "sonde": {"url": "https://api.openparldata.ch/v1/affairs/?body_key=VD", "delai": 20} | sonde,
+    }
+
+
+SONDE_OPENPARLDATA = {"champs": ["id", "number", "title"], "enregistrements": "data", "jamais_vide": True}
+
+
+def _objets(*enregistrements):
+    """Réponse d'OpenParlData : les enregistrements à plat dans `data`, avec l'enveloppe de pagination."""
+    return {"meta": {"total_records": len(enregistrements), "has_more": False}, "data": list(enregistrements)}
+
+
+OBJET = {"id": 1, "number": "26_INT_140", "title": "Interpellation"}
+
+
+def test_la_sonde_d_un_conseil_lit_les_champs_a_plat_dans_data(tmp_path):
+    etat, _ = _passer(tmp_path, _sources(_conseil("openparldata-vd", SONDE_OPENPARLDATA)), _objets(OBJET))
+
+    assert etat["sources"]["openparldata-vd"]["etat"] == "disponible"
+    assert etat["sources"]["openparldata-vd"]["motif"] is None
+
+
+@pytest.mark.parametrize(
+    ("reponse", "motif"),
+    [
+        pytest.param(_objets({"id": 1, "number": "26_INT_140"}), "champs absents : title", id="un champ absent"),
+        pytest.param(_objets(), "réponse vide", id="vide"),
+        pytest.param(_dossiers(DOSSIER), "réponse sans enregistrements", id="features au lieu de data"),
+    ],
+)
+def test_la_sonde_d_un_conseil_echoue_sans_ses_champs_ou_sans_enregistrement(tmp_path, reponse, motif):
+    etat, _ = _passer(tmp_path, _sources(_conseil("openparldata-vd", SONDE_OPENPARLDATA)), reponse)
+
+    assert etat["sources"]["openparldata-vd"]["motif"] == motif
+
+
+def test_un_passage_sonde_les_trois_conseils_de_sources_json_et_les_donne_disponibles(tmp_path):
+    sources = lire_sources(RACINE / "sources.json")
+    reponses = {"affairs": _objets(OBJET), "meetings": _objets({"id": 7, "begin_date": "2026-10-06T18:00:00"})}
+
+    def traiter(requete):
+        if requete.url.host != "api.openparldata.ch":
+            return httpx.Response(200, json=_dossiers(DOSSIER))
+        assert requete.url.params["client"] == "vigie-vaud"
+        return httpx.Response(200, json=reponses[requete.url.path.split("/")[2]])
+
+    with httpx.Client(transport=httpx.MockTransport(traiter)) as client:
+        passage(tmp_path, sources, client, horloge=lambda: T0, issues=IssuesFactices())
+
+    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    conseils = {id: e for id, e in etat["sources"].items() if id.startswith("openparldata-")}
+    assert {id: (e["etat"], e["motif"]) for id, e in conseils.items()} == {
+        "openparldata-vd": ("disponible", None),
+        "openparldata-5586": ("disponible", None),
+        "openparldata-5938": ("disponible", None),
+    }
+
+
 def test_la_sonde_est_une_seule_requete_avec_son_delai_et_le_user_agent_du_depot(tmp_path):
     lente = _source(sonde={"delai": 7})
 
@@ -313,6 +379,7 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
         "etat-sources.json",
         "schema/enveloppe.schema.json",
         "schema/etat-sources.schema.json",
+        "schema/import-conseils.schema.json",
         "schema/sources.schema.json",
     ]
     assert "987654" not in (tmp_path / "etat-sources.json").read_text()

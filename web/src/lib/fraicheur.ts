@@ -2,7 +2,7 @@
 // sans agrégat, sous le nom de chaque onglet et dans le volet de la couche (décisions de #2).
 import { SvelteMap } from 'svelte/reactivity';
 import { dateHeure, type EtatCouverture } from './couverture.js';
-import type { Source } from './schema';
+import type { SorteFraicheur, Source } from './schema';
 
 /** Pourquoi le dernier chargement d'une source a échoué, vu du navigateur. */
 export type CauseEchec = 'hors_ligne' | 'indisponible';
@@ -34,9 +34,22 @@ function age(date: Date, maintenant: Date): string {
 	return `il y a ${Math.floor(minutes / (24 * 60))} j`;
 }
 
+type SansMillesime = Exclude<SorteFraicheur, 'millesime'>;
+
+/** Ce qui précède l'âge de la dernière donnée. */
+const PREFIXES: Record<SansMillesime, string> = { requete: 'consulté ', donnee: '', import: 'importé ' };
+
+/** Tant que rien n'a été obtenu ; pour un conseil, `conseils/import.json` manque ou ne le cite pas. */
+const PAS_ENCORE: Record<SansMillesime, string> = {
+	requete: 'pas encore consulté',
+	donnee: 'pas encore chargé',
+	import: 'dernier import inconnu'
+};
+
 /**
  * Libellé du badge d'une source, suivi de son nom court : « consulté il y a 2 min · CAMAC » (`requete`),
- * « il y a 4 min · DGMR » (`donnee`), « édition 2025 · UCV » (`millesime`), ou la cause d'un échec.
+ * « il y a 4 min · DGMR » (`donnee`), « édition 2025 · UCV » (`millesime`), « importé il y a 6 h · Grand
+ * Conseil » (`import`, dernier import réussi du conseil), ou la cause d'un échec.
  */
 export function libelleBadge(
 	source: Pick<Source, 'fraicheur' | 'nom_court'>,
@@ -48,10 +61,10 @@ export function libelleBadge(
 	if (erreur) quand = CAUSES[erreur];
 	else if (source.fraicheur === 'millesime')
 		quand = derniere == null ? 'édition inconnue' : `édition ${typeof derniere === 'number' ? derniere : derniere.getFullYear()}`;
-	else if (derniere == null) quand = source.fraicheur === 'requete' ? 'pas encore consulté' : 'pas encore chargé';
+	else if (derniere == null) quand = PAS_ENCORE[source.fraicheur];
 	else {
 		const date = typeof derniere === 'number' ? new Date(derniere, 0, 1) : derniere;
-		quand = source.fraicheur === 'requete' ? `consulté ${age(date, maintenant)}` : age(date, maintenant);
+		quand = `${PREFIXES[source.fraicheur]}${age(date, maintenant)}`;
 	}
 	return `${quand} · ${source.nom_court}`;
 }

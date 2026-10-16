@@ -148,6 +148,36 @@ describe('Couverture déduite', () => {
 		expect(c.couvre('hotels-de-ville', 5889)).toBe(true);
 	});
 
+	it("ne donne aucune commune à une source sans Couverture : la couche est couverte par l'union des autres", () => {
+		const c = deduireCouverture({
+			sources: [
+				source('canton', null),
+				source('ouest', { communes: [5586], mode: 'api' }),
+				source('est', { communes: [5889], mode: 'api' })
+			],
+			etat: etat({ canton: disponible, ouest: disponible, est: disponible }),
+			couches: [couche('conseils', ['canton', 'ouest', 'est'])],
+			communes: COMMUNES,
+			maintenant: MAINTENANT
+		});
+		expect(COMMUNES.map((x) => c.mode('canton', x.bfs))).toEqual(['non_couvert', 'non_couvert', 'non_couvert']);
+		expect(c.paire('canton', 5586)).toEqual({ mode: 'non_couvert', etat: null });
+		expect(COMMUNES.map((x) => c.couvre('conseils', x.bfs))).toEqual([true, false, true]);
+		expect(c.grisees('conseils')).toEqual([5590]);
+	});
+
+	it('couvre toutes les communes par une couche dont aucune source n’a de Couverture, et ne grise rien', () => {
+		const c = deduireCouverture({
+			sources: [source('canton', null), source('presse', undefined)],
+			etat: etat({}),
+			couches: [couche('presse', ['canton', 'presse'])],
+			communes: COMMUNES,
+			maintenant: MAINTENANT
+		});
+		expect(COMMUNES.map((x) => c.couvre('presse', x.bfs))).toEqual([true, true, true]);
+		expect(c.grisees('presse')).toEqual([]);
+	});
+
 	it("refuse un état des sources d'une version inconnue, et dit alors l'état inconnu", () => {
 		const v2 = { ...etat({ camac: disponible }), version: 2 };
 		expect(deduire(lireEtatSources(v2)).etat('camac')).toEqual({ etat: 'inconnu' });
@@ -200,6 +230,37 @@ describe('grisage de la carte', () => {
 		});
 		expect(communesJ0).toHaveLength(300);
 		for (const couche of COUCHES) expect(c.grisees(couche.id)).toEqual([]);
+	});
+});
+
+describe('Couverture des conseils déclarés dans sources.json', () => {
+	const conseils = SOURCES.filter((s) => s.conseil);
+	const c = deduireCouverture({
+		sources: SOURCES,
+		etat: null,
+		couches: [couche('conseils', conseils.map((s) => s.id))],
+		communes: communesJ0,
+		maintenant: MAINTENANT
+	});
+	const couvertes = (id: string) => communesJ0.filter((x) => c.mode(id, x.bfs) !== 'non_couvert').map((x) => x.bfs);
+
+	it('donne à chaque conseil communal exactement sa commune, par API', () => {
+		expect(couvertes('openparldata-5586')).toEqual([5586]);
+		expect(couvertes('openparldata-5938')).toEqual([5938]);
+		expect(c.mode('openparldata-5586', 5586)).toBe('api');
+	});
+
+	it("ne donne pas de Couverture au Grand Conseil, qui porte sur le canton", () => {
+		expect(SOURCES.find((s) => s.id === 'openparldata-vd')?.couverture).toBeUndefined();
+		expect(couvertes('openparldata-vd')).toEqual([]);
+	});
+
+	it('couvre Lausanne et Yverdon par une couche des trois conseils, et grise toutes les autres communes', () => {
+		expect(conseils.map((s) => s.id)).toEqual(['openparldata-vd', 'openparldata-5586', 'openparldata-5938']);
+		expect(c.couvre('conseils', 5586)).toBe(true);
+		expect(c.couvre('conseils', 5938)).toBe(true);
+		expect(c.couvre('conseils', 5590)).toBe(false);
+		expect(c.grisees('conseils')).toHaveLength(298);
 	});
 });
 
