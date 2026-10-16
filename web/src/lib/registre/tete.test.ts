@@ -39,6 +39,21 @@ describe('<head> d’une commune', () => {
 		expect(teteCommune(PULLY, couches).description).toBe('Pully (VD) sur Vigie Vaud : les permis, les routes et les trains.');
 	});
 
+	it('demande son résumé à une couche dont le résumé dépend de la commune', () => {
+		const LAUSANNE = commune(5586, 'Lausanne', [6.58, 46.5, 6.72, 46.6]);
+		const conseils = couche('conseils', {
+			resume: (c) => (c.bfs === 5586 ? 'les séances de son Conseil communal' : 'les objets du Grand Conseil qui la nomment')
+		});
+		const couches = [couche('permis', { resume: 'les permis' }), conseils];
+		expect(teteCommune(LAUSANNE, couches).description).toBe(
+			'Lausanne (VD) sur Vigie Vaud : les permis et les séances de son Conseil communal.'
+		);
+		expect(teteCommune(PULLY, couches).description).toBe(
+			'Pully (VD) sur Vigie Vaud : les permis et les objets du Grand Conseil qui la nomment.'
+		);
+		expect(teteCommune(LAUSANNE, couches).titre).toBe('Lausanne – Vigie Vaud');
+	});
+
 	it('nomme les anciennes communes et les anciens noms', () => {
 		const ancienne = (nom: string): AncienNom => ({ nom, slug: nom.toLowerCase(), type: 'Ancienne commune', annee: 2011 });
 		const bel = {

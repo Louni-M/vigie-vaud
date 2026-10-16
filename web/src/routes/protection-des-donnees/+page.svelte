@@ -33,6 +33,15 @@
 		isolé : il suffit de le signaler à <a href="mailto:{COURRIEL}">{COURRIEL}</a> pour qu’il soit corrigé. Les avis
 		officiels, eux, contiennent ces informations pendant la durée de l’enquête.
 	</p>
+	<p>
+		Pour les conseils, les auteur·e·s des objets (motions, interpellations, postulats…) sont nommé·e·s, avec leur
+		parti, puisque ce sont des élu·e·s. Les autres noms de personnes qui apparaissent dans les titres des objets et
+		dans les ordres du jour des séances sont remplacés par « [particulier] » avant publication, lors de l’import
+		quotidien : ils n’atteignent jamais le dépôt de données public. Les pétitions n’affichent pas leurs
+		auteur·e·s. Si un nom est passé à travers, écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a> : il est retiré,
+		historique du dépôt de données public compris. Le texte d’origine reste chez OpenParlData et sur le site du
+		conseil.
+	</p>
 
 	<h2>Ce que votre visite transmet</h2>
 	<p>
@@ -61,7 +70,7 @@
 	-->
 	<ul class="destinataires">
 		<li>
-			<strong>GitHub Pages</strong> (GitHub, États-Unis), qui héberge le site : votre adresse IP, enregistrée pour
+			<strong>GitHub Pages</strong> (GitHub, États-Unis), qui héberge le site et ses données : votre adresse IP, enregistrée pour
 			la sécurité de l’hébergement. GitHub est certifié selon le Swiss-U.S. Data Privacy Framework.
 		</li>
 		{#if AUDIENCE}
