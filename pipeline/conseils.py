@@ -4,8 +4,10 @@ données, un fichier par élément.
 Le passage suit quatre étapes, chacune à sa place :
 
 1. `importer(opd, conseil, depuis)` lit les changements bruts d'un conseil chez OpenParlData ;
-2. `vers_archive(bruts, archive, genere)`, fonction pure, les normalise en Objets et Séances de l'archive ;
-3. `lecture(archive)`, fonction pure, reconstruit les fichiers de lecture que le site liste ;
+2. `vers_archive(bruts, archive, genere)`, fonction pure, les masque (`masquage.py`, ADR 0007) et les normalise en
+   Objets et Séances de l'archive ;
+3. `lecture(archive, sources, genere)`, fonction pure, reconstruit les fichiers de lecture que le site liste
+   (`lecture_conseils.py`) ;
 4. `ecrire(depot, documents, genere)` compare chaque fichier à l'ancien sans `genere` et n'écrit que ce qui change.
 
 `importer_conseils` enchaîne les quatre pour chaque source qui a un bloc `conseil`, et tient à jour
@@ -39,6 +41,8 @@ from urllib.parse import quote
 import httpx
 from pydantic import ValidationError
 
+from lecture_conseils import lecture
+from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
 from schema import (
     RACINE,
     Conseil,
@@ -213,11 +217,16 @@ def chemin_element(cle: str, element: Element) -> str:
 def vers_archive(bruts: Bruts, archive: Archive, genere: datetime) -> dict[str, Element]:
     """Les éléments de l'archive tirés de `bruts`, par clé. `archive` (les éléments déjà archivés) sert à résoudre
     l'Objet de chaque point d'ordre du jour et à départager deux Objets de même numéro (il y en a à Lausanne) : le
-    plus petit identifiant l'emporte, d'un import à l'autre. Les demandes de grâce sont écartées."""
+    plus petit identifiant l'emporte, d'un import à l'autre. Les demandes de grâce sont écartées, et leurs points
+    d'ordre du jour retirés. Les titres des Objets et des points sont masqués (ADR 0007), en épargnant les élu·e·s
+    connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`."""
     conseil = cle_conseil(bruts.conseil)
     elements: dict[str, Element] = {}
+    graces: set[str] = set()
     for brut in sorted(bruts.objets, key=lambda o: o["id"]):
         if _fr(brut.get("type_name")) in TYPES_ECARTES or not brut.get("number"):
+            if brut.get("number"):
+                graces.add(brut["number"])
             continue
         cle = cle_objet(conseil, brut["number"])
         deja = elements.get(cle) or archive.get(cle)
@@ -226,9 +235,20 @@ def vers_archive(bruts: Bruts, archive: Archive, genere: datetime) -> dict[str, 
         elements[cle] = _objet(brut, genere)
 
     connus = {**archive, **elements}
-    par_id = {e.id: cle for cle, e in connus.items() if isinstance(e, Objet) and cle.startswith(conseil + "/")}
+    du_conseil = {cle: e for cle, e in connus.items() if isinstance(e, Objet) and cle.startswith(conseil + "/")}
+    elus = elus_connus(du_conseil.values())
+    for cle, objet in elements.items():
+        elements[cle] = objet.model_copy(update={"titre": masquer(objet.titre, elus)})
+
+    par_id = {e.id: cle for cle, e in du_conseil.items()}
     for brut in sorted(bruts.seances, key=lambda s: s["id"]):
-        seance = _seance(brut, genere, lambda p: _objet_du_point(p, conseil, connus, par_id))
+        points = [
+            p
+            for p in _relation(brut, "agendas")
+            if not est_point_de_grace(p.get("item_title") or "", p.get("item_affair_number"), graces)
+        ]
+        brut = {**brut, "agendas": {"data": points}}
+        seance = _seance(brut, genere, lambda p: _objet_du_point(p, conseil, connus, par_id), elus)
         if seance is not None:
             elements[f"{conseil}/{seance.date[:10]}"] = seance
     return elements
@@ -236,6 +256,7 @@ def vers_archive(bruts: Bruts, archive: Archive, genere: datetime) -> dict[str, 
 
 def _objet(brut: dict, genere: datetime) -> Objet:
     etapes = _etapes(_relation(brut, "events"))
+    type_ = _fr(brut.get("type_name")) or ""
     libelle = _fr(brut.get("state_name"))
     derniere = etapes[-1] if etapes else None
     if libelle:
@@ -247,11 +268,11 @@ def _objet(brut: dict, genere: datetime) -> Objet:
         genere=genere,
         id=brut["id"],
         numero=brut["number"],
-        type=_fr(brut.get("type_name")) or "",
+        type=type_,
         statut=statut,
         depose=_jour(brut.get("begin_date")),
         titre=_fr(brut.get("title")) or "",
-        contributeurs=_contributeurs(_relation(brut, "contributors")),
+        contributeurs=[] if type_ in TYPES_SANS_AUTEUR else _contributeurs(_relation(brut, "contributors")),
         etapes=etapes,
         documents=_documents(_relation(brut, "docs")),
         lien=_lien(_fr(brut.get("url_external"))),
@@ -295,7 +316,9 @@ def _documents(bruts: list[dict]) -> list[DocumentObjet]:
     return documents
 
 
-def _seance(brut: dict, genere: datetime, objet_du_point: Callable[[dict], str | None]) -> Seance | None:
+def _seance(
+    brut: dict, genere: datetime, objet_du_point: Callable[[dict], str | None], elus: frozenset[str]
+) -> Seance | None:
     debut = brut.get("begin_date")
     if not debut:
         return None
@@ -311,7 +334,7 @@ def _seance(brut: dict, genere: datetime, objet_du_point: Callable[[dict], str |
         ordre_du_jour=[
             PointOrdreDuJour(
                 numero=p.get("item_number_display") or (str(p["item_number"]) if p.get("item_number") else None),
-                titre=p.get("item_title") or "",
+                titre=masquer(p.get("item_title") or "", elus),
                 categorie=p.get("item_category"),
                 resultat=p.get("item_result"),
                 objet=objet_du_point(p),
@@ -367,14 +390,6 @@ def _lien(valeur: str | None) -> str | None:
         return None
     valeur = quote(valeur.strip(), safe=":/?#[]@!$&'()*+,;=%~")
     return valeur if valeur.startswith(("http://", "https://")) else None
-
-
-# --- 3. Fichiers de lecture ------------------------------------------------------------------------------------
-
-
-def lecture(archive: Archive) -> dict[str, Enveloppe]:
-    """Les fichiers de lecture reconstruits depuis l'archive, par chemin. Aucun pour l'instant (ticket #65)."""
-    return {}
 
 
 # --- 4. Écriture -----------------------------------------------------------------------------------------------
@@ -461,7 +476,7 @@ def importer_conseils(
 
     etat = ImportConseils(version=1, genere=genere, conseils=imports)
     documents: dict[str, Enveloppe] = {chemin_element(cle, e): e for cle, e in nouveaux.items()}
-    documents |= lecture(archive)
+    documents |= lecture(archive, sources, genere)
     documents[FICHIER_IMPORT] = etat
     ecrire(depot, documents, genere)
     return etat

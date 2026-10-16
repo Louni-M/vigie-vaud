@@ -32,7 +32,8 @@ def test_l_import_de_l_echantillon_reel_produit_des_fichiers_d_archive_valides(t
         importer_conseils(tmp_path, lire_sources(RACINE / "sources.json"), opd, horloge)
 
     ecrits = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*.json"))
-    assert ecrits == [
+    archive = [c for c in ecrits if "/objets/" in c or "/seances/" in c or c == "conseils/import.json"]
+    assert archive == [
         "conseils/5586/objets/POS25-008.json",
         "conseils/5586/seances/2026-10-06.json",
         "conseils/5938/seances/2026-10-01.json",
@@ -79,5 +80,7 @@ def test_l_import_de_l_echantillon_reel_produit_des_fichiers_d_archive_valides(t
         "OPÉRATIONS PRÉLIMINAIRES",
         "Reporté",
     )
+    # « M. Loris SOCCHI » est un élu connu (auteur du postulat) : le masquage l'épargne.
+    assert point["titre"] == "Postulat de M. Loris SOCCHI : « Nos beaux murs gris». (FIM)"
     yverdon = json.loads((tmp_path / "conseils/5938/seances/2026-10-01.json").read_text())
     assert (yverdon["date"], [p["numero"] for p in yverdon["ordre_du_jour"]]) == ("2026-10-01T20:00", ["1", "7"])

@@ -190,10 +190,11 @@
       "description": "Date de dépôt (`begin_date`)."
     },
     "titre": {
+      "description": "`title.fr` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).",
       "type": "string"
     },
     "contributeurs": {
-      "description": "Dans l'ordre de la source.",
+      "description": "Dans l'ordre de la source ; vide pour une pétition.",
       "items": {
         "$ref": "#/$defs/Contributeur"
       },
