@@ -40,9 +40,10 @@ export interface Ouvert {
 /**
  * Ce qu'on peut ouvrir : la fiche d'une commune, ou un élément d'une couche. Le registre ouvre l'élément dans
  * l'une de ses fiches, qu'il trouve par `localiser`. Quand celui qui l'ouvre connaît déjà sa `position` (clic sur
- * la carte, liste), la carte vole vers lui tout de suite, sans attendre `localiser`.
+ * la carte, liste), la carte vole vers lui tout de suite, sans attendre `localiser`. Une fiche commune peut
+ * s'ouvrir sur l'onglet d'une couche (`onglet` : son id), sinon sur l'onglet déjà choisi.
  */
-export type Cible = { commune: string } | (Ouvert & { position?: [number, number] });
+export type Cible = { commune: string; onglet?: string } | (Ouvert & { position?: [number, number] });
 
 /** Résultat qu'une couche fournit à la recherche du socle. */
 export interface ResultatCouche {
@@ -144,6 +145,11 @@ export interface Couche<P = unknown> {
 	 * commune (Conseils : son conseil communal est couvert ou non) ; elle doit être connue à la construction.
 	 */
 	resume?: string | ((commune: Commune) => string);
+	/**
+	 * Ce qui suit « Non couvert : » en tête de l'onglet d'une commune que la couche ne couvre pas, une phrase
+	 * (« OpenParlData ne donne pas le conseil communal de Bussigny. ») ; sinon, le message commun du registre.
+	 */
+	nonCouvert?(commune: Commune): string;
 	/** Ce que la couche apporte au fil cantonal, quelle que soit son activation. */
 	fil?: Fil;
 	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */

@@ -220,7 +220,7 @@ describe('grisage de la carte', () => {
 		expect(c.grisees('conseils')).toEqual([5590]);
 	});
 
-	it('ne grise rien en J0 : toutes les sources sont cantonales', () => {
+	it('dans le registre, ne grise que pour la couche Conseils, et toutes les communes sauf Lausanne et Yverdon', () => {
 		const c = deduireCouverture({
 			sources: SOURCES,
 			etat: etat({ 'camac-permis': panne }),
@@ -229,7 +229,10 @@ describe('grisage de la carte', () => {
 			maintenant: MAINTENANT
 		});
 		expect(communesJ0).toHaveLength(300);
-		for (const couche of COUCHES) expect(c.grisees(couche.id)).toEqual([]);
+		for (const couche of COUCHES.filter((c) => c.id !== 'conseils')) expect(c.grisees(couche.id)).toEqual([]);
+		expect(c.grisees('conseils')).toHaveLength(298);
+		expect(c.grisees('conseils')).not.toContain(5586);
+		expect(c.grisees('conseils')).not.toContain(5938);
 	});
 });
 

@@ -23,8 +23,10 @@ export const coucheConseils: Couche<undefined> = {
 	icone: { signe: 'C', couleur: COULEUR_CONSEILS },
 	cleElement: 'c',
 	resume: resumeConseils(SOURCES),
+	nonCouvert: (commune) => `OpenParlData ne donne pas le conseil communal de ${commune.nom}.`,
 	composants: {
 		Carte: () => import('./Carte.svelte'),
-		Volet: () => import('./Volet.svelte')
+		Volet: () => import('./Volet.svelte'),
+		Onglet: () => import('./Onglet.svelte')
 	}
 };
