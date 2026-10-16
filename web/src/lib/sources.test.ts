@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { grouperSources } from './sources.js';
+import { grouperSources, listerConseils } from './sources.js';
 import type { Source } from './schema.js';
 
 const source = (id: string): Source => ({
@@ -53,5 +53,28 @@ describe('liste Sources d’À propos', () => {
 			['Permis', ['permis']],
 			['Tout le reste', ['fond', 'recherche', 'ucv', 'limites']]
 		]);
+	});
+});
+
+describe('conseils couverts, pour À propos', () => {
+	const conseil = (id: string, nom: string, donne: Source['conseil']): Source => ({ ...source(id), nom, conseil: donne });
+	const sources = [
+		source('permis'),
+		conseil('gc', 'Grand Conseil (OpenParlData)', { body_key: 'VD', donne: ['objets', 'seances'], groupe: 1965 }),
+		source('fond'),
+		conseil('yverdon', 'Conseil communal d’Yverdon-les-Bains (OpenParlData)', { body_key: '5938', donne: ['seances'] }),
+		conseil('objets', 'Conseil qui ne donne que ses objets', { body_key: '1', donne: ['objets'] })
+	];
+
+	it('liste les sources qui ont un bloc conseil, dans l’ordre de sources.json, avec ce que chacune donne', () => {
+		expect(listerConseils(sources).map((c) => [c.source.id, c.donne])).toEqual([
+			['gc', 'objets et séances'],
+			['yverdon', 'séances seulement'],
+			['objets', 'objets seulement']
+		]);
+	});
+
+	it('ne liste rien sans bloc conseil', () => {
+		expect(listerConseils([source('permis'), source('fond')])).toEqual([]);
 	});
 });

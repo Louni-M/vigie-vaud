@@ -105,9 +105,10 @@ export interface Couche<P = unknown> {
 	titre?(element: string, nomDeLaFiche: string): string;
 	/**
 	 * Ce que la couche montre d'une commune, pour la description de la page de la commune
-	 * (« les permis de construire à l’enquête, en direct depuis le canton »).
+	 * (« les permis de construire à l’enquête, en direct depuis le canton »). Une fonction quand cela dépend de la
+	 * commune (Conseils : son conseil communal est couvert ou non) ; elle doit être connue à la construction.
 	 */
-	resume?: string;
+	resume?: string | ((commune: Commune) => string);
 	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */
 	composants: {
 		Carte: Chargeur<P>;

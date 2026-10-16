@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { COURRIEL, DEPOT } from '#lib/config.js';
+	import { COURRIEL, DEPOT, DEPOT_DONNEES } from '#lib/config.js';
 	import { canonique } from '#lib/indexation.js';
 	import { COUCHES } from '#lib/registre/couches.js';
-	import { grouperSources, libelleVoie, SENS_VOIES, SOURCES } from '#lib/sources.js';
+	import { grouperSources, libelleVoie, listerConseils, SENS_VOIES, SOURCES } from '#lib/sources.js';
 
 	// La liste Sources est générée depuis sources.json : une source ajoutée y apparaît sous la couche qui la
 	// déclare, ou sous « Carte et communes » si aucune couche ne la déclare.
 	const groupes = grouperSources(COUCHES, SOURCES);
 	/** Une source par voie d'accès employée, pour la légende des voies. */
 	const voies = [...new Map(SOURCES.map((s) => [s.voie_acces, s])).values()];
+	// La liste des conseils couverts aussi : une source de sources.json qui a un bloc `conseil` y apparaît.
+	const conseils = listerConseils(SOURCES);
 </script>
 
 <svelte:head>
@@ -79,6 +81,73 @@
 		mène à la commune d’aujourd’hui.
 	</p>
 
+	<h3>Conseils</h3>
+	<p>
+		Les <strong>Objets</strong> (motions, postulats, interpellations, décrets, préavis…) et les
+		<strong>Séances</strong>, avec leur ordre du jour, du Grand Conseil et des conseils communaux qu’expose
+		<a href="https://openparldata.ch" target="_blank" rel="noopener">OpenParlData</a>, une plateforme qui rassemble
+		les données des parlements suisses.
+	</p>
+	<p>
+		À l’inverse des permis, ces données sont <strong>importées une fois par jour</strong> depuis OpenParlData, puis
+		conservées dans le
+		<a href={DEPOT_DONNEES} target="_blank" rel="noopener">dépôt de données public</a> de Vigie Vaud : un Objet ou
+		une Séance reste consultable même s’il disparaît de la source.
+	</p>
+	<p>
+		Le type d’un Objet et son statut sont ceux que donne le conseil, sans traduction ni regroupement. Les pétitions
+		n’affichent pas leurs auteur·e·s, et les demandes de grâce sont écartées. Ce que le site publie sur les personnes
+		nommées dans les titres est expliqué sur la page
+		<a href={resolve('/protection-des-donnees')}>Protection des données</a>.
+	</p>
+	<p>Conseils couverts :</p>
+	<ul class="conseils">
+		{#each conseils as c (c.source.id)}
+			<li><strong>{c.source.nom}</strong> : {c.donne}.</li>
+		{/each}
+	</ul>
+	<p>
+		Les autres conseils communaux ne sont pas dans OpenParlData. Ce que chaque source couvre, commune par commune, est
+		sur la page <a href={resolve('/couverture')}>Couverture</a>.
+	</p>
+
+	<h3 id="rattachement">Comment les objets du Grand Conseil sont rattachés aux communes</h3>
+	<p>
+		Un Objet d’un conseil communal appartient à sa commune. Un Objet du Grand Conseil porte sur tout le canton :
+		Vigie Vaud le rattache aux communes dont il cite le nom, et le montre dans la fiche de chacune, sous « Au Grand
+		Conseil ». Les Séances du Grand Conseil ne sont rattachées à aucune commune.
+	</p>
+	<p>Ce rattachement est automatique. Il suit quelques règles :</p>
+	<ul>
+		<li>
+			le site lit le titre de l’Objet et le texte de ses documents ; une commune nommée dans le titre passe avant
+			celles des documents ;
+		</li>
+		<li>
+			le nom d’une ancienne commune ou un ancien nom mène à la commune d’aujourd’hui : un Objet qui cite Gressy
+			apparaît sous Yverdon-les-Bains ;
+		</li>
+		<li>
+			un nom porté par plusieurs communes (Chavannes, Belmont, Corcelles, Romanel, Mont) n’est jamais reconnu seul,
+			faute de savoir de laquelle il s’agit ;
+		</li>
+		<li>
+			un nom qui désigne autre chose que la commune est écarté : un district ou une région (« district de Nyon »),
+			une rue (« avenue de Morges »), une institution (« Université de Lausanne »), une route ou une ligne de
+			transport ;
+		</li>
+		<li>
+			quand les documents d’un Objet citent plus de dix communes, ce sont des énumérations : seul son titre
+			compte.
+		</li>
+	</ul>
+	<p>
+		Des erreurs restent possibles : une commune citée en passant, ou un nom qui n’a pas été reconnu. La plupart des
+		Objets ne nomment d’ailleurs aucune commune ; ils restent visibles dans la fiche du Grand Conseil. Pour
+		signaler une erreur de rattachement, écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>, ou ouvrez une issue
+		sur le <a href="{DEPOT}/issues" target="_blank" rel="noopener">dépôt public</a> : elle sera corrigée à la main.
+	</p>
+
 	<h2 id="sources">Sources</h2>
 	<p>
 		Chaque source est citée avec son attribution, sa licence et sa voie d’accès. L’état de chaque source et les
@@ -105,8 +174,9 @@
 	<h2>Contact</h2>
 	<p>
 		Pour tout ce qui touche une personne (un nom mal masqué, une demande de retrait, vos droits sur vos données),
-		écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>. Pour le reste (une erreur, une source, une suggestion),
-		ouvrez une issue sur le <a href="{DEPOT}/issues" target="_blank" rel="noopener">dépôt public</a>.
+		écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>. Pour une erreur de rattachement, le courriel convient
+		aussi bien qu’une issue. Pour le reste (une erreur, une source, une suggestion), ouvrez de préférence une issue
+		sur le <a href="{DEPOT}/issues" target="_blank" rel="noopener">dépôt public</a>.
 	</p>
 
 	<h2>Licence et protection des données</h2>
@@ -136,9 +206,13 @@
 	h3 {
 		font-size: 17px;
 		margin: 22px 0 6px;
+		scroll-margin-top: calc(var(--header-h) + 12px);
 	}
 	.chapeau {
 		font-size: 17px;
+	}
+	.conseils {
+		padding-left: 20px;
 	}
 	.voies {
 		font-size: 14px;
