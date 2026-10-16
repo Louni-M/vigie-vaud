@@ -26,7 +26,10 @@ En local, contre un clone du dépôt de données (depuis `pipeline/`), sans rien
     uv run python conseils.py --depot ../../vigie-vaud-donnees --depuis 2026-10-10
 
 Sans `--depuis`, chaque conseil repart du jour de son dernier import réussi, ou de tout l'historique s'il n'a
-jamais été importé.
+jamais été importé. `--reconstruire` refait seulement les fichiers de lecture depuis l'archive (après un changement
+de leur forme ou une réécriture à la main de l'archive), sans aucune requête à OpenParlData :
+
+    uv run python conseils.py --depot ../../vigie-vaud-donnees --reconstruire
 """
 
 from __future__ import annotations
@@ -564,14 +567,30 @@ def importer_conseils(
     return etat
 
 
+def reconstruire(depot: Path, sources: FichierSources, horloge: Callable[[], datetime]) -> list[str]:
+    """Reconstruit les fichiers de lecture des conseils de `sources` depuis l'archive de `depot`, sans rien
+    importer : ni requête à OpenParlData, ni changement de l'archive ou de `conseils/import.json`. Renvoie les
+    chemins écrits ou supprimés."""
+    genere = horloge().astimezone(UTC).replace(microsecond=0)
+    documents = lecture(lire_archive(depot), sources, genere)
+    return ecrire(depot, documents, genere) + supprimer_perimes(depot, documents)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Importe les conseils dans un clone du dépôt de données, sans push.")
     parser.add_argument("--depot", type=Path, required=True, help="clone local du dépôt de données")
     parser.add_argument("--sources", type=Path, default=RACINE / "sources.json", help="déclaration des sources")
     parser.add_argument("--depuis", type=date.fromisoformat, help="jour de départ imposé à tous les conseils")
+    parser.add_argument(
+        "--reconstruire", action="store_true", help="refaire les fichiers de lecture depuis l'archive, sans import"
+    )
     args = parser.parse_args(argv)
 
     horloge = lambda: datetime.now(UTC)  # noqa: E731
+    if args.reconstruire:
+        changes = reconstruire(args.depot.resolve(), lire_sources(args.sources), horloge)
+        print(f"Fichiers de lecture reconstruits : {len(changes)} écrit(s) ou supprimé(s)")
+        return
     with httpx.Client() as http:
         opd = OpenParlData(http, horloge)
         importer_conseils(args.depot.resolve(), lire_sources(args.sources), opd, horloge, args.depuis)
