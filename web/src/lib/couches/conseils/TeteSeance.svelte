@@ -106,7 +106,9 @@
 	ol li {
 		margin: 2px 0;
 	}
+	/* Un bouton est un bloc en ligne : sans `top`, le numéro du point s'aligne sur sa dernière ligne. */
 	.point {
+		vertical-align: top;
 		padding: 0;
 		border: 0;
 		background: none;

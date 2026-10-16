@@ -27,13 +27,15 @@
 				{#each g.points as p, j (j)}
 					<li>
 						{#if p.numero}<span class="numero">{p.numero}.</span>{/if}
-						{#if p.objet}
-							{@const objet = p.objet}
-							<button type="button" class="point" onclick={() => ouvrir(objet)}>{p.titre}</button>
-						{:else}
-							{p.titre}
-						{/if}
-						{#if p.resultat}<span class="resultat"> · {p.resultat}</span>{/if}
+						<span>
+							{#if p.objet}
+								{@const objet = p.objet}
+								<button type="button" class="point" onclick={() => ouvrir(objet)}>{p.titre}</button>
+							{:else}
+								{p.titre}
+							{/if}
+							{#if p.resultat}<span class="resultat"> · {p.resultat}</span>{/if}
+						</span>
 					</li>
 				{/each}
 			</ol>
@@ -93,11 +95,14 @@
 		list-style: none;
 		font-size: 13px;
 	}
+	/* Le numéro à gauche du texte : un titre long (un bouton, bloc en ligne) le laisserait seul sur sa ligne. */
 	li {
+		display: flex;
+		gap: 4px;
 		margin: 4px 0;
 	}
 	.numero {
-		margin-right: 4px;
+		flex: none;
 		color: var(--muted);
 	}
 	.point {
