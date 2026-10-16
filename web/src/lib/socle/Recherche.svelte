@@ -311,6 +311,11 @@
 		border-radius: 10px;
 		box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
 	}
+	/* La liste tient dans la partie visible (clavier ouvert sur téléphone) et défile au-delà. */
+	ul {
+		max-height: calc(100dvh - 180px);
+		overflow-y: auto;
+	}
 	.aucun {
 		padding: 10px 12px;
 		font-size: 14px;

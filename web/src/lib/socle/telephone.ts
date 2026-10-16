@@ -2,8 +2,12 @@
  * Coquille sur téléphone : une seule vue plein écran à la fois, choisie dans la barre Carte · Fil · Couches · Fiche.
  */
 
-/** Téléphone en portrait. À l'horizontale et sur tablette, la carte et la fiche restent côte à côte. */
-export const TELEPHONE = '(max-width: 760px) and (min-height: 521px)';
+/**
+ * Téléphone : la largeur seule décide. Une condition sur la hauteur faisait basculer le téléphone dans la mise en page
+ * du bureau dès que le clavier s'ouvrait. À l'horizontale (plus de 760 px de large) et sur tablette, la carte et la
+ * fiche restent côte à côte.
+ */
+export const TELEPHONE = '(max-width: 760px)';
 
 /** Vue plein écran affichée sur téléphone. */
 export type Affichage = 'carte' | 'fil' | 'couches' | 'fiche';

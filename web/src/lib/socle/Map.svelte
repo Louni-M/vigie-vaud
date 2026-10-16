@@ -259,7 +259,7 @@
 		}
 	}
 	/* Téléphone : les sources ouvertes par le bouton « i » passent devant l'aperçu et les liens, le temps de les lire. */
-	@media (max-width: 760px) and (min-height: 521px) {
+	@media (max-width: 760px) {
 		:global(.maplibregl-ctrl-bottom-right:has(.maplibregl-compact-show)) {
 			z-index: 5;
 		}
