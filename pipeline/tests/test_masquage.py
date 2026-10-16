@@ -36,6 +36,48 @@ ELUS = frozenset({"Loris Socchi", "Jean Dupont", "Anne-Laure Métraux"})
         # … ni masqué à tort : sans civilité, un nom propre reste (c'est la règle du site).
         ("Simple question Laurence Cretegny et consorts - Galère La Liberté", None),
         ("Pour une place Jean Dupont à Ouchy", None),
+        # Sauf l'auteur·e d'une pétition, que Lausanne nomme sans civilité, dans un ordre ou dans l'autre.
+        (
+            "Pétition de Gaber Mark et crts déposée le 1 octobre 2026 de : «stand dans l'espace public lausannois»",
+            "Pétition de [particulier] et crts déposée le 1 octobre 2026 de : «stand dans l'espace public lausannois»",
+        ),
+        (
+            "Pétition de Frankel Guillaume et crts : «Nuisances sonores et incivilités / parc»",
+            "Pétition de [particulier] et crts : «Nuisances sonores et incivilités / parc»",
+        ),
+        (
+            "Pétition au CC déposée le 21 mai 2024 de Lya Blanc et crts : «Pour une desserte sans interruption»",
+            "Pétition au CC déposée le 21 mai 2024 de [particulier] et crts : «Pour une desserte sans interruption»",
+        ),
+        (
+            "Dépôt - Pétition déposée le 1er décembre 2021 de Gwennaël Bolomey et Ariane Miéville Garcia : «Modérer»",
+            "Dépôt - Pétition déposée le 1er décembre 2021 de [particulier] : «Modérer»",
+        ),
+        ("Pétition déposée le 7 novembre 2023 de Karl et Nils Voggensperger : « Un stade »", "Pétition déposée le 7 novembre 2023 de [particulier] : « Un stade »"),
+        (
+            "Pétition de Dobre Otilia et Fracheboud Maryse et crts : « Le métro M3 »",
+            "Pétition de [particulier] et crts : « Le métro M3 »",
+        ),
+        (
+            "Communication - réponse à la pétition déposée le 15 novembre 2021 de Tatiana Taillefert et consorts : « Rue »",
+            "Communication - réponse à la pétition déposée le 15 novembre 2021 de [particulier] et consorts : « Rue »",
+        ),
+        ("Pétition de Jaroslav et Ludmila Sotornik, relative à un conseiller d'État.", "Pétition de [particulier], relative à un conseiller d'État."),
+        ("Pétition de G. S. - pour la restitution de mon permis.", "Pétition de [particulier] - pour la restitution de mon permis."),
+        ("Pétition de Jean de Montmollin : « Un banc »", "Pétition de [particulier] : « Un banc »"),
+        ("Pétition de Jean d'Ormesson et consorts", "Pétition de [particulier] et consorts"),
+        ("Pétition de Bron Alain", "Pétition de [particulier]"),
+        # Un·e élu·e pétitionnaire reste, à côté d'un particulier masqué ; avec sa civilité, on n'y touche plus.
+        ("Pétition de Jean Dupont et Paul Exemple : « Des bancs »", "Pétition de Jean Dupont et [particulier] : « Des bancs »"),
+        ("Pétition de M. Jean Dupont : « Des bancs »", None),
+        # Une entité ou un collectif reste nommé·e.
+        ("Pétition au CC déposée le 16 janvier 2024 de Société de Développement du Sud-Ouest : « Un parc »", None),
+        ("Pétition déposée le 14 juin 2024 de Habitants de Cour-Contigny : « Un parc »", None),
+        ("Pétition de l'Association Lac-Harpe : « Un parc »", None),
+        ("Pétition déposée le 8 mars 2022 de Collectif Aubépines : « Un parc »", None),
+        # Ce qui suit « Pétition de » sans être un nom ne bouge pas.
+        ("Pétition de soutien à une famille.", None),
+        ("Pétition déposée le 8 mars 2022 de Montelly vit ! : « Non à l'APEMS »", None),
         # Les titres sans nom ne bougent pas.
         ("Covid 2020 six ans pour revenir en arrière", None),
     ],
@@ -45,7 +87,8 @@ def test_masquer(titre, attendu):
 
 
 # La même table que `web/src/lib/masquage.test.ts` (`masquerNoms`), cas pour cas : sans élu·e connu·e, le cron
-# masque comme le site. Un cas ajouté d'un côté s'ajoute de l'autre.
+# masque comme le site, les auteur·e·s de pétition sans civilité mis à part (une règle des conseils seulement). Un cas
+# ajouté d'un côté s'ajoute de l'autre.
 CAS_DU_SITE = [
     ("Construction d’une villa pour le compte de Dupont Jean", "Construction d’une villa pour le compte de [particulier]"),
     ("Recours pour le compte de Swisscom SA", None),

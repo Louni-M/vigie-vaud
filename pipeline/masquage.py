@@ -1,9 +1,14 @@
 """Masquage des noms de particuliers par le cron (ADR 0007), avant tout commit dans le dépôt de données.
 
 C'est la version du cron de `web/src/lib/masquage.ts` (`masquerNoms`), elle-même portage de `mask_names` (étiquette
-`chantiers-hebergee`) : mêmes expressions, mêmes cas. Elle n'y ajoute qu'une chose, pour les conseils : les
-**élu·e·s connu·e·s** du conseil, nommé·e·s en vertu de leur mandat, sont épargné·e·s. Une personne n'est épargnée
-que si son nom entier est celui d'un·e élu·e (à la casse et aux accents près) : un homonyme partiel est masqué.
+`chantiers-hebergee`) : mêmes expressions, mêmes cas. Elle n'y ajoute que deux choses, pour les conseils :
+
+- les **élu·e·s connu·e·s** du conseil, nommé·e·s en vertu de leur mandat, sont épargné·e·s. Une personne n'est
+  épargnée que si son nom entier est celui d'un·e élu·e (à la casse et aux accents près) : un homonyme partiel est
+  masqué ;
+- les **auteur·e·s d'une pétition** sont masqué·e·s même sans civilité, comme Lausanne les nomme (« Pétition de
+  Gaber Mark et crts », « Pétition déposée le 7 mai 2024 de Lya Blanc et crts : »), sauf élu·e connu·e ou entité.
+
 Approche prudente, comme sur le site : en cas de doute, on masque.
 """
 
@@ -36,6 +41,21 @@ NOM = r"[A-ZÀ-Ý](?:\.(?:-[A-ZÀ-Ý]\.)?|[\w’'´-]*)"  # « Dupont », « J. 
 CIVILITE_RE = re.compile(rf"\b({CIVILITE}(?:\s+(?:et|&)\s+{CIVILITE})*\s+)({NOM}(?:\s+(?:et\s+|&\s+)?{NOM})*)")
 ENTRE_PERSONNES = re.compile(r"(\s+(?:et|&)\s+)")
 LIAISONS = {"et", "&", "de", "du", "des", "da", "dos", "von", "van", "der", "le", "la"}
+# L'auteur·e d'une pétition, sans civilité : une suite de noms propres, les particules comprises (« Jean de
+# Montmollin »), après « Pétition [au CC] [déposée le <date>] de » ; plusieurs auteur·e·s séparé·e·s par « et » ou une
+# virgule. La suite n'est prise que si un séparateur la termine (« et crts », « : », « - », « déposée »…) : « Pétition
+# de Montelly vit ! » n'est pas un nom.
+PARTICULE = r"(?:(?:de|du|des|von|van|der|da|dos|di|le|la)\s+|d[’'])"
+PERSONNE = rf"(?!{CIVILITE}\s){NOM}(?:\s+{PARTICULE}?{NOM})*"
+DATE = r"\d{1,2}(?:er)?\s+\w+\s+\d{4}"
+PETITION_RE = re.compile(
+    rf"(\b[Pp][ée]tition(?:\s+au\s+CC)?(?:\s+d[ée]pos[ée]e?\s+le\s+{DATE})?\s+de\s+)"
+    rf"({PERSONNE}(?:(?:\s+et|,)\s+{PERSONNE})*)"
+    r"(?=\s+et\s+(?:crts|consorts)\b|\s*[-:,;.(«\"“]|\s+d[ée]pos[ée]e?\b|\s*$)"
+)
+ENTRE_PETITIONNAIRES = re.compile(r"((?:\s+et|,)\s+)")
+# Un collectif qui signe une pétition reste nommé, comme une entité.
+COLLECTIF_RE = re.compile(r"^(?:Collectif|Comité|Habitant[e·]*s|Riverain[e·]*s|Parents|Amis|Groupement|Mouvement|Pro)\b")
 
 
 def masquer(titre: str, elus: Iterable[str] = ()) -> str:
@@ -62,6 +82,13 @@ def masquer(titre: str, elus: Iterable[str] = ()) -> str:
                 parties[i] = MASQUE
         return m[1] + "".join(parties)
 
+    def petition(m: re.Match) -> str:
+        parties = ENTRE_PETITIONNAIRES.split(m[2])
+        garde = [_cle(p) in connus or bool(ENTITE_RE.search(p) or COLLECTIF_RE.search(p)) for p in parties[0::2]]
+        if not any(garde):
+            return m[1] + MASQUE
+        return m[1] + "".join(p if i % 2 or garde[i // 2] else MASQUE for i, p in enumerate(parties))
+
     s = titre
     # Formes juridiques avec points (« S.A. », « A.G. », « S.à r.l. ») : sinon le point coupe le segment.
     s = re.sub(r"\bS\.\s?A\.?(?!\w)", "SA", s)
@@ -69,6 +96,7 @@ def masquer(titre: str, elus: Iterable[str] = ()) -> str:
     s = re.sub(r"\bS\.?\s?à\s?r\.?\s?l\.?(?!\w)", "Sàrl", s, flags=re.I)
     # Civilités d'abord (« M. Dupont ») : le point de « M. » couperait sinon le segment « pour le compte de ».
     s = CIVILITE_RE.sub(personne, s)
+    s = PETITION_RE.sub(petition, s)
     return COMPTE_RE.sub(compte, s)
 
 
