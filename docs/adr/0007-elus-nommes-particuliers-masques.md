@@ -13,6 +13,11 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
   pétition, sur tout l'historique. Une pétition n'affiche pas d'auteur·e : on ne sait pas qui l'a déposée. Ses
   auteur·e·s, que Lausanne nomme sans civilité dans les titres (« Pétition de Gaber Mark et crts »), y sont masqué·e·s
   comme après une civilité, sauf élu·e connu·e ou entité ; le site, qui ne masque que les permis, n'a pas cette règle.
+  Les coordonnées d'un particulier y sont masquées avec son nom, en « [coordonnées] » : tout téléphone suisse et tout
+  courriel, où qu'il soit, et l'adresse postale (voie et numéro, NPA et localité) qui suit un particulier masqué
+  (« Pétition déposée le 27 août 2024 de [particulier] - [coordonnées] : »). Une adresse qui ne suit pas un particulier
+  reste : c'est celle d'une entité, ou d'un immeuble ou d'un bien-fonds sujet de l'Objet (« Préavis N° 2023/44 -
+  Chemin de la Colline 6-8 - Vente du bien-fonds »).
   Les demandes de grâce ne sont pas des Objets, et leurs points d'ordre du jour sont retirés.
 - Une amélioration du masquage vaut pour les imports suivants. L'historique n'est réécrit qu'à la main, sur demande
   ou quand un nom est signalé ; l'À propos dit comment demander un retrait.

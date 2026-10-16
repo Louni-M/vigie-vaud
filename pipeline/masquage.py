@@ -7,7 +7,11 @@ C'est la version du cron de `web/src/lib/masquage.ts` (`masquerNoms`), elle-mêm
   épargnée que si son nom entier est celui d'un·e élu·e (à la casse et aux accents près) : un homonyme partiel est
   masqué ;
 - les **auteur·e·s d'une pétition** sont masqué·e·s même sans civilité, comme Lausanne les nomme (« Pétition de
-  Gaber Mark et crts », « Pétition déposée le 7 mai 2024 de Lya Blanc et crts : »), sauf élu·e connu·e ou entité.
+  Gaber Mark et crts », « Pétition déposée le 7 mai 2024 de Lya Blanc et crts : »), sauf élu·e connu·e ou entité ;
+- les **coordonnées** deviennent « [coordonnées] » : tout téléphone suisse et tout courriel, partout, et l'adresse
+  postale (voie et numéro, NPA et localité) qui suit un particulier masqué (« de [particulier] - Chemin des
+  Lilas 46 - 1004 Lausanne - 079 … : »). Ailleurs, une adresse est celle d'une entité ou d'un immeuble, sujet de
+  l'Objet (« Préavis N° 2023/44 - Chemin de la Colline 6-8 - Vente… ») : elle reste.
 
 Approche prudente, comme sur le site : en cas de doute, on masque.
 """
@@ -21,6 +25,7 @@ from collections.abc import Iterable
 from schema import Objet
 
 MASQUE = "[particulier]"
+COORDONNEES = "[coordonnées]"
 ENTITE_RE = re.compile(
     r"\b(?:S\.?A\.?|Sàrl|S\.à\.r\.l\.?|SARL|GmbH|AG|SNC|SCI|Ltd|Inc|"
     r"Swisscom|Sunrise|Salt|Orange|UPC|CFF|SBB|Migros|Coop|Banque|BCV|Raiffeisen|Poste|"
@@ -56,6 +61,28 @@ PETITION_RE = re.compile(
 ENTRE_PETITIONNAIRES = re.compile(r"((?:\s+et|,)\s+)")
 # Un collectif qui signe une pétition reste nommé, comme une entité.
 COLLECTIF_RE = re.compile(r"^(?:Collectif|Comité|Habitant[e·]*s|Riverain[e·]*s|Parents|Amis|Groupement|Mouvement|Pro)\b")
+# Un téléphone suisse, sous toutes ses formes : « 079 000 00 00 », « 021/000.00.00 », « +41 79 000 00 00 », « 0041 21… ».
+TELEPHONE_RE = re.compile(
+    r"(?<![\d.])(?:(?:\+|00)\s?41\s?(?:\(0\)\s?)?\d{2}|0\d{2})\s?[/.-]?\s?\d{3}\s?[.-]?\s?\d{2}\s?[.-]?\s?\d{2}(?!\d)"
+)
+COURRIEL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+# Une partie d'adresse postale, que « - » ou une virgule séparent de la suivante : voie et numéro (« Chemin des
+# Lilas 46 », « av. de la Gare 4b »), NPA et localité (« 1004 Lausanne »), case postale.
+VOIE = (
+    r"(?i:chemin|ch\.|rue|ruelle|avenue|av\.|route|rte|place|pl\.|boulevard|bd|quai|all[ée]e|sentier|impasse|"
+    r"passage|promenade|escaliers|mont[ée]e|chauss[ée]e|esplanade|clos|square|faubourg|grand-rue)"
+)
+FIN_DE_PARTIE = r"(?=\s+[-–]\s|\s*[,:;«»()\"“]|\s*$)"
+DANS_LA_PARTIE = r"(?:(?!\s[-–]\s)[^,:;«»()\"“])"
+PARTIE_D_ADRESSE = (
+    rf"(?:{VOIE}\s{DANS_LA_PARTIE}*?\d+\s?[a-zA-Z]?|(?:CH-?)?[1-9]\d{{3}}\s+[A-ZÀ-Ý]{DANS_LA_PARTIE}*?"
+    rf"|(?i:case\s+postale|CP)\s+\d+){FIN_DE_PARTIE}"
+)
+# Les coordonnées qui suivent un particulier masqué : une ou plusieurs parties, réunies en une seule.
+COORDONNEES_APRES_RE = re.compile(
+    rf"({re.escape(MASQUE)}\s*[-–,]\s*)(?:{PARTIE_D_ADRESSE}|{re.escape(COORDONNEES)})"
+    rf"(?:\s*[-–,]\s*(?:{PARTIE_D_ADRESSE}|{re.escape(COORDONNEES)}))*"
+)
 
 
 def masquer(titre: str, elus: Iterable[str] = ()) -> str:
@@ -89,7 +116,8 @@ def masquer(titre: str, elus: Iterable[str] = ()) -> str:
             return m[1] + MASQUE
         return m[1] + "".join(p if i % 2 or garde[i // 2] else MASQUE for i, p in enumerate(parties))
 
-    s = titre
+    s = TELEPHONE_RE.sub(COORDONNEES, titre)
+    s = COURRIEL_RE.sub(COORDONNEES, s)
     # Formes juridiques avec points (« S.A. », « A.G. », « S.à r.l. ») : sinon le point coupe le segment.
     s = re.sub(r"\bS\.\s?A\.?(?!\w)", "SA", s)
     s = re.sub(r"\bA\.\s?G\.?(?!\w)", "AG", s)
@@ -97,7 +125,8 @@ def masquer(titre: str, elus: Iterable[str] = ()) -> str:
     # Civilités d'abord (« M. Dupont ») : le point de « M. » couperait sinon le segment « pour le compte de ».
     s = CIVILITE_RE.sub(personne, s)
     s = PETITION_RE.sub(petition, s)
-    return COMPTE_RE.sub(compte, s)
+    s = COMPTE_RE.sub(compte, s)
+    return COORDONNEES_APRES_RE.sub(lambda m: m[1] + COORDONNEES, s)
 
 
 def _ressemble_a_un_nom(segment: str) -> bool:
