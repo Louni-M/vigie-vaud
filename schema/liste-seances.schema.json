@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CleConseil": {
+      "pattern": "^[a-z0-9]+$",
+      "type": "string"
+    },
+    "CleElement": {
+      "pattern": "^[a-z0-9]+/[^/\\s]+$",
+      "type": "string"
+    },
+    "DateSeance": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$",
+      "type": "string"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "LigneSeance": {
+      "additionalProperties": false,
+      "description": "Une Séance en ligne légère : de quoi l'afficher dans une liste, sans son ordre du jour.",
+      "properties": {
+        "cle": {
+          "$ref": "#/$defs/CleElement",
+          "description": "`<conseil>/<jour>` : le fichier d'archive de la Séance."
+        },
+        "date": {
+          "$ref": "#/$defs/DateSeance"
+        },
+        "points": {
+          "description": "Nombre de points de l'ordre du jour.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cle",
+        "date",
+        "points"
+      ],
+      "title": "LigneSeance",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/<conseil>/seances.json` : toutes les Séances du conseil, de la plus récente à la plus ancienne.",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "conseil": {
+      "$ref": "#/$defs/CleConseil"
+    },
+    "seances": {
+      "items": {
+        "$ref": "#/$defs/LigneSeance"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "conseil",
+    "seances"
+  ],
+  "title": "ListeSeances",
+  "type": "object"
+}

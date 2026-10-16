@@ -1,0 +1,365 @@
+{
+ "meta": {
+  "offset": 0,
+  "limit": 500,
+  "total_records": 3,
+  "total_pages": 1,
+  "current_page": 1,
+  "has_more": false,
+  "next_page": null,
+  "prev_page": null,
+  "first_page": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category%2Cdocs.text&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud&offset=0&limit=500",
+  "last_page": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category%2Cdocs.text&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud&offset=0&limit=500",
+  "self": "https://api.openparldata.ch/v1/affairs/?body_key=VD&expand=contributors%2Cevents%2Cdocs&fields=id%2Cnumber%2Ctitle%2Ctype_name%2Cstate_name%2Cbegin_date%2Curl_external%2Ccontributors.type%2Ccontributors.fullname%2Ccontributors.firstname%2Ccontributors.lastname%2Ccontributors.party%2Ccontributors.role%2Ccontributors.position%2Cevents.date%2Cevents.position%2Cevents.title%2Cevents.title_harmonized%2Cdocs.name%2Cdocs.url%2Cdocs.date%2Cdocs.category%2Cdocs.text&sort_by=id&contributors_limit=1000&events_limit=1000&docs_limit=1000&id=203260%2C341083%2C340225&client=vigie-vaud"
+ },
+ "data": [
+  {
+   "state_name": {
+    "fr": "Adopté"
+   },
+   "number": "24_LEG_152",
+   "type_name": {
+    "fr": "Décret/Loi"
+   },
+   "id": 203260,
+   "url_external": {
+    "fr": "https://www.vd.ch/gc/seances-du-grand-conseil/point-seance/point/5be41a46-037a-4acc-b999-5a3815bbaea4/meeting/1033712"
+   },
+   "title": {
+    "fr": "Sur l'organisation de la prévention des radicalisations (LPREV)"
+   },
+   "begin_date": "2026-09-29T00:00:00",
+   "contributors": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 1,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/203260?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/203260?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/203260?expand=contributors&contributors_offset=0&contributors_limit=1000"
+    },
+    "data": [
+     {
+      "firstname": "Laurence",
+      "position": 1,
+      "fullname": "Laurence Cretegny",
+      "lastname": "Cretegny",
+      "party": {
+       "fr": "PLR"
+      },
+      "role": {
+       "fr": "Rapporteur(s) de commission"
+      },
+      "type": "person"
+     }
+    ]
+   },
+   "events": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 4,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/203260?expand=events&events_offset=0&events_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/203260?expand=events&events_offset=0&events_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/203260?expand=events&events_offset=0&events_limit=1000"
+    },
+    "data": [
+     {
+      "position": 1,
+      "title": {
+       "de": "Eingereicht"
+      },
+      "date": "2025-05-28T00:00:00",
+      "title_harmonized": {
+       "de": "Eingereicht",
+       "fr": "Déposé",
+       "it": "Presentato",
+       "en": "Submitted"
+      }
+     },
+     {
+      "position": 2,
+      "title": {
+       "de": "Eingereicht"
+      },
+      "date": "2026-09-29T00:00:00",
+      "title_harmonized": {
+       "de": "Eingereicht",
+       "fr": "Déposé",
+       "it": "Presentato",
+       "en": "Submitted"
+      }
+     },
+     {
+      "position": 3,
+      "title": {
+       "de": "Traktandiert"
+      },
+      "date": "2026-09-29T00:00:00",
+      "title_harmonized": {
+       "de": "Traktandiert",
+       "fr": "A l'ordre du jour",
+       "it": "All'ordine del giorno",
+       "en": "Agenda"
+      }
+     },
+     {
+      "position": 4,
+      "title": {
+       "de": "Traktandiert"
+      },
+      "date": "2026-10-06T00:00:00",
+      "title_harmonized": {
+       "de": "Traktandiert",
+       "fr": "A l'ordre du jour",
+       "it": "All'ordine del giorno",
+       "en": "Agenda"
+      }
+     }
+    ]
+   },
+   "docs": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 1,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/203260?expand=docs&docs_offset=0&docs_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/203260?expand=docs&docs_offset=0&docs_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/203260?expand=docs&docs_offset=0&docs_limit=1000"
+    },
+    "data": [
+     {
+      "category": {
+       "fr": "Document CE"
+      },
+      "date": "2025-05-28T00:00:00",
+      "name": "EMPL sur l'organisation de la prévention des radicalisations (LPREV) - Texte adopté par CE - EMPL sur l'organisation de la prévention des radicalisations (LPREV) - publié",
+      "text": "MAI 2025 24_LEG_152 \n\n \n\n \n \n \n\n EXPOSE DES MOTIFS ET PROJET DE LOI  \nsur l’organisation de la prévention des radicalisations (LPREV) \n\n \n \n \n \n \n \n\n \n \n\n \n\n\n\n \n\n2 \n \n\n1. INTRODUCTION \n\n1.1 Préambule  \n \nDans le Canton de Vaud, un dispositif de prévention de la radicalisation et de l’extrémisme violent (ci-\naprès, le Dispositif) a été mis en place dès 2018, notamment en réponse aux objets parlementaires \nClaire Richard et consorts – Mise en place d’une permanence téléphonique (\"helpline\") comme ",
+      "url": "https://sieldocs.vd.ch/ecm/app18/service/siel/getContent?ID=2308844"
+     }
+    ]
+   }
+  },
+  {
+   "state_name": {
+    "fr": "Renvoyée à commission"
+   },
+   "number": "26_POS_54",
+   "type_name": {
+    "fr": "Postulat"
+   },
+   "id": 340225,
+   "url_external": {
+    "fr": "https://www.vd.ch/gc/seances-du-grand-conseil/point-seance/point/e27f2eed-fc17-4dd6-8c62-3023fc9f7fc2/meeting/1033712"
+   },
+   "title": {
+    "fr": "Pour une souveraineté numérique et open source dans l'école vaudoise : transition planifiée vers le logiciel libre et protection des données scolaires"
+   },
+   "begin_date": "2026-09-29T00:00:00",
+   "contributors": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 1,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/340225?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/340225?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/340225?expand=contributors&contributors_offset=0&contributors_limit=1000"
+    },
+    "data": [
+     {
+      "firstname": "Didier",
+      "position": 1,
+      "fullname": "Didier Lohri",
+      "lastname": "Lohri",
+      "party": {
+       "fr": "VER"
+      },
+      "role": {
+       "fr": "Auteur"
+      },
+      "type": "person"
+     }
+    ]
+   },
+   "events": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 4,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/340225?expand=events&events_offset=0&events_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/340225?expand=events&events_offset=0&events_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/340225?expand=events&events_offset=0&events_limit=1000"
+    },
+    "data": [
+     {
+      "position": 1,
+      "title": {
+       "de": "Eingereicht"
+      },
+      "date": "2026-09-29T00:00:00",
+      "title_harmonized": {
+       "de": "Eingereicht",
+       "fr": "Déposé",
+       "it": "Presentato",
+       "en": "Submitted"
+      }
+     },
+     {
+      "position": 2,
+      "title": {
+       "de": "Traktandiert"
+      },
+      "date": "2026-09-29T00:00:00",
+      "title_harmonized": {
+       "de": "Traktandiert",
+       "fr": "A l'ordre du jour",
+       "it": "All'ordine del giorno",
+       "en": "Agenda"
+      }
+     },
+     {
+      "position": 3,
+      "title": {
+       "de": "Traktandiert"
+      },
+      "date": "2026-10-06T00:00:00",
+      "title_harmonized": {
+       "de": "Traktandiert",
+       "fr": "A l'ordre du jour",
+       "it": "All'ordine del giorno",
+       "en": "Agenda"
+      }
+     },
+     {
+      "position": 4,
+      "title": {
+       "de": "Überwiesen"
+      },
+      "date": "2026-10-06T00:00:00",
+      "title_harmonized": {
+       "de": "Überwiesen",
+       "fr": "Transférer",
+       "it": "Trasmesso",
+       "en": "Transferred"
+      }
+     }
+    ]
+   },
+   "docs": null
+  },
+  {
+   "state_name": {},
+   "number": "26_INT_140",
+   "type_name": {
+    "fr": "Interpellation"
+   },
+   "id": 341083,
+   "url_external": {
+    "fr": "https://www.vd.ch/gc/seances-du-grand-conseil/point-seance/point/4291d7bb-35e1-4e20-8d38-09023241b096/meeting/1033712"
+   },
+   "title": {
+    "fr": "Covid 2020 six ans pour revenir en arrière"
+   },
+   "begin_date": "2026-10-06T00:00:00",
+   "contributors": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 1,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/341083?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/341083?expand=contributors&contributors_offset=0&contributors_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/341083?expand=contributors&contributors_offset=0&contributors_limit=1000"
+    },
+    "data": [
+     {
+      "firstname": "Pierre-François",
+      "position": 1,
+      "fullname": "Pierre-François Mottier",
+      "lastname": "Mottier",
+      "party": {
+       "fr": "PLR"
+      },
+      "role": {
+       "fr": "Auteur"
+      },
+      "type": "person"
+     }
+    ]
+   },
+   "events": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 2,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/affairs/341083?expand=events&events_offset=0&events_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/affairs/341083?expand=events&events_offset=0&events_limit=1000",
+     "self": "https://api.openparldata.ch/v1/affairs/341083?expand=events&events_offset=0&events_limit=1000"
+    },
+    "data": [
+     {
+      "position": 1,
+      "title": {
+       "de": "Eingereicht"
+      },
+      "date": "2026-10-06T00:00:00",
+      "title_harmonized": {
+       "de": "Eingereicht",
+       "fr": "Déposé",
+       "it": "Presentato",
+       "en": "Submitted"
+      }
+     },
+     {
+      "position": 2,
+      "title": {
+       "de": "Traktandiert"
+      },
+      "date": "2026-10-06T00:00:00",
+      "title_harmonized": {
+       "de": "Traktandiert",
+       "fr": "A l'ordre du jour",
+       "it": "All'ordine del giorno",
+       "en": "Agenda"
+      }
+     }
+    ]
+   },
+   "docs": null
+  }
+ ]
+}

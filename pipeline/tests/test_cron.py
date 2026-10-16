@@ -13,7 +13,8 @@ import jsonschema
 import pytest
 
 from cron import IssuesGitHub, client_issues, passage
-from schema import FichierSources
+from faux_openparldata import Affaire, HorlogeFactice, Monde
+from schema import RACINE, FichierSources, lire_sources
 
 T0 = datetime(2026, 10, 14, 12, 17, tzinfo=UTC)
 URL_SONDE = "https://sonde.exemple.ch/query?f=json"
@@ -78,11 +79,25 @@ class IssuesFactices:
     def retour(self, source, panne, etat):
         self.signalements.append(("retour", source.id, panne.depuis.isoformat(), etat.depuis.isoformat()))
 
+    def imports_signales(self, conseils):
+        return None
+
+    def import_en_echec(self, conseil, dernier):
+        self.signalements.append(("import_en_echec", conseil.id, dernier and dernier.isoformat()))
+
+    def import_retour(self, conseil, dernier):
+        self.signalements.append(("import_retour", conseil.id, dernier.isoformat()))
+
+
+def _sans_attente(secondes):
+    """L'horloge de ces passages est figée : l'import des conseils n'a pas à attendre entre deux requêtes."""
+
 
 def _passer(depot, sources, reponse, heure=T0, issues=None):
     transport, requetes = _repondre(reponse)
     with httpx.Client(transport=transport) as client:
-        passage(depot, sources, client, horloge=lambda: heure, issues=issues or IssuesFactices())
+        issues = issues or IssuesFactices()
+        passage(depot, sources, client, horloge=lambda: heure, issues=issues, attendre=_sans_attente)
     return json.loads((depot / "etat-sources.json").read_text()), requetes
 
 
@@ -295,6 +310,72 @@ def test_les_champs_se_lisent_aussi_dans_les_proprietes_geojson(tmp_path):
     assert etat["sources"]["camac-permis"]["motif"] is None
 
 
+def _conseil(id, sonde):
+    """Un conseil d'OpenParlData : voie Cron, fraîcheur `import`, sans Couverture."""
+    source = {k: v for k, v in _source(id=id).items() if k != "couverture"}
+    return source | {
+        "nom": f"Conseil {id}",
+        "voie_acces": "cron",
+        "fraicheur": "import",
+        "conseil": {"body_key": "VD", "donne": ["objets", "seances"]},
+        "sonde": {"url": "https://api.openparldata.ch/v1/affairs/?body_key=VD", "delai": 20} | sonde,
+    }
+
+
+SONDE_OPENPARLDATA = {"champs": ["id", "number", "title"], "enregistrements": "data", "jamais_vide": True}
+
+
+def _objets(*enregistrements):
+    """Réponse d'OpenParlData : les enregistrements à plat dans `data`, avec l'enveloppe de pagination."""
+    return {"meta": {"total_records": len(enregistrements), "has_more": False}, "data": list(enregistrements)}
+
+
+OBJET = {"id": 1, "number": "26_INT_140", "title": "Interpellation"}
+
+
+def test_la_sonde_d_un_conseil_lit_les_champs_a_plat_dans_data(tmp_path):
+    etat, _ = _passer(tmp_path, _sources(_conseil("openparldata-vd", SONDE_OPENPARLDATA)), _objets(OBJET))
+
+    assert etat["sources"]["openparldata-vd"]["etat"] == "disponible"
+    assert etat["sources"]["openparldata-vd"]["motif"] is None
+
+
+@pytest.mark.parametrize(
+    ("reponse", "motif"),
+    [
+        pytest.param(_objets({"id": 1, "number": "26_INT_140"}), "champs absents : title", id="un champ absent"),
+        pytest.param(_objets(), "réponse vide", id="vide"),
+        pytest.param(_dossiers(DOSSIER), "réponse sans enregistrements", id="features au lieu de data"),
+    ],
+)
+def test_la_sonde_d_un_conseil_echoue_sans_ses_champs_ou_sans_enregistrement(tmp_path, reponse, motif):
+    etat, _ = _passer(tmp_path, _sources(_conseil("openparldata-vd", SONDE_OPENPARLDATA)), reponse)
+
+    assert etat["sources"]["openparldata-vd"]["motif"] == motif
+
+
+def test_un_passage_sonde_les_trois_conseils_de_sources_json_et_les_donne_disponibles(tmp_path):
+    sources = lire_sources(RACINE / "sources.json")
+    reponses = {"affairs": _objets(OBJET), "meetings": _objets({"id": 7, "begin_date": "2026-10-06T18:00:00"})}
+
+    def traiter(requete):
+        if requete.url.host != "api.openparldata.ch":
+            return httpx.Response(200, json=_dossiers(DOSSIER))
+        assert requete.url.params["client"] == "vigie-vaud"
+        return httpx.Response(200, json=reponses[requete.url.path.split("/")[2]])
+
+    with httpx.Client(transport=httpx.MockTransport(traiter)) as client:
+        passage(tmp_path, sources, client, horloge=lambda: T0, issues=IssuesFactices(), attendre=_sans_attente)
+
+    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    conseils = {id: e for id, e in etat["sources"].items() if id.startswith("openparldata-")}
+    assert {id: (e["etat"], e["motif"]) for id, e in conseils.items()} == {
+        "openparldata-vd": ("disponible", None),
+        "openparldata-5586": ("disponible", None),
+        "openparldata-5938": ("disponible", None),
+    }
+
+
 def test_la_sonde_est_une_seule_requete_avec_son_delai_et_le_user_agent_du_depot(tmp_path):
     lente = _source(sonde={"delai": 7})
 
@@ -311,8 +392,17 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
     ecrits = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if p.is_file())
     assert ecrits == [
         "etat-sources.json",
+        "schema/corrections.schema.json",
         "schema/enveloppe.schema.json",
         "schema/etat-sources.schema.json",
+        "schema/fil-conseils.schema.json",
+        "schema/import-conseils.schema.json",
+        "schema/index-conseils.schema.json",
+        "schema/liste-objets.schema.json",
+        "schema/liste-seances.schema.json",
+        "schema/objet.schema.json",
+        "schema/rattachements-commune.schema.json",
+        "schema/seance.schema.json",
         "schema/sources.schema.json",
     ]
     assert "987654" not in (tmp_path / "etat-sources.json").read_text()
@@ -549,3 +639,203 @@ def test_avec_push_les_issues_s_ouvrent_dans_le_depot_du_workflow_avec_son_githu
 def test_avec_push_sans_github_token_le_passage_refuse_de_partir():
     with httpx.Client() as client, pytest.raises(SystemExit, match="GITHUB_TOKEN"):
         client_issues(sans_push=False, environ={"GITHUB_REPOSITORY": DEPOT_DONNEES}, client=client)
+
+
+# --- Import quotidien des conseils (ticket #66), contre un faux OpenParlData ------------------------------------
+
+# 7 h à Lausanne : 05:00 UTC en octobre (heure d'été).
+VEILLE = datetime(2026, 10, 15, 5, 17, tzinfo=UTC)  # 07:17 à Lausanne
+JOUR = VEILLE + timedelta(days=1)
+
+
+def _source_conseil(body_key, nom):
+    return {
+        "id": f"openparldata-{body_key.lower()}",
+        "nom": nom,
+        "nom_court": nom.split(" (")[0],
+        "attribution": {"texte": "Source: OpenParlData.ch", "lien": "https://openparldata.ch", "licence": "CC BY 4.0"},
+        "voie_acces": "cron",
+        "fraicheur": "import",
+        "conseil": {"body_key": body_key, "donne": ["objets"]},
+        "sonde": {
+            "url": f"https://api.openparldata.ch/v1/affairs/?body_key={body_key}&limit=1&fields=id,number,title",
+            "delai": 20,
+        }
+        | SONDE_OPENPARLDATA,
+    }
+
+
+CONSEILS = _sources(
+    _source_conseil("VD", "Grand Conseil (OpenParlData)"),
+    _source_conseil("5586", "Conseil communal de Lausanne (OpenParlData)"),
+)
+
+
+def _monde_conseils():
+    return Monde(
+        horloge=HorlogeFactice(VEILLE),
+        affaires=[
+            Affaire(id=1, body_key="VD", number="26_INT_140", title="Interpellation", updated_at="2026-10-14"),
+            Affaire(id=2, body_key="5586", number="POS25/115", title="Postulat", updated_at="2026-10-14"),
+        ],
+    )
+
+
+def _passer_conseils(depot, monde, heure, issues=None, en_echec=(), rattrapage=False):
+    """Un passage du cron à `heure`. L'import des conseils de `en_echec` reçoit une erreur 503 ; leurs sondes, des
+    requêtes sans `expand`, répondent toujours."""
+    monde.horloge.heure = heure
+
+    def traiter(requete):
+        if "expand" in requete.url.params and requete.url.params["body_key"] in en_echec:
+            return httpx.Response(503)
+        return monde.transport().handle_request(requete)
+
+    with httpx.Client(transport=httpx.MockTransport(traiter)) as client:
+        passage(
+            depot,
+            CONSEILS,
+            client,
+            horloge=monde.horloge,
+            issues=issues or IssuesFactices(),
+            attendre=monde.horloge.attendre,
+            rattrapage=rattrapage,
+        )
+
+
+def _imports(depot):
+    return json.loads((depot / "conseils/import.json").read_text())["conseils"]
+
+
+def _requetes_d_import(monde):
+    """Les `body_key` des requêtes de l'import, dans l'ordre (les sondes ne développent aucune relation)."""
+    return [r.url.params["body_key"] for _, r in monde.requetes if "expand" in r.url.params]
+
+
+def test_l_import_des_conseils_attend_7_h_puis_ne_se_fait_qu_une_fois_par_jour(tmp_path):
+    monde = _monde_conseils()
+    _passer_conseils(tmp_path, monde, VEILLE)
+    monde.requetes.clear()
+
+    _passer_conseils(tmp_path, monde, JOUR - timedelta(minutes=30))  # 06:47 à Lausanne
+    avant_7_h = _requetes_d_import(monde)
+    _passer_conseils(tmp_path, monde, JOUR)  # 07:17
+    a_7_h = _requetes_d_import(monde)
+    _passer_conseils(tmp_path, monde, JOUR + timedelta(minutes=30))  # 07:47
+    _passer_conseils(tmp_path, monde, JOUR + timedelta(hours=16, minutes=30))  # 23:47
+    apres = _requetes_d_import(monde)
+
+    assert avant_7_h == []
+    assert sorted(set(a_7_h)) == ["5586", "VD"]
+    assert apres == a_7_h
+    assert {r.url.params["from_updated_at"] for _, r in monde.requetes if "expand" in r.url.params} == {"2026-10-14"}
+    assert set(_imports(tmp_path).values()) == {"2026-10-16T05:17:00Z"}
+
+
+def test_un_import_en_echec_est_refait_au_passage_suivant_sans_toucher_a_l_etat_de_la_source(tmp_path):
+    monde = _monde_conseils()
+    _passer_conseils(tmp_path, monde, VEILLE)
+
+    _passer_conseils(tmp_path, monde, JOUR, en_echec={"VD"})
+    apres_echec = _imports(tmp_path)
+    etat = json.loads((tmp_path / "etat-sources.json").read_text())["sources"]["openparldata-vd"]
+    monde.requetes.clear()
+    _passer_conseils(tmp_path, monde, JOUR + timedelta(minutes=30))
+
+    assert apres_echec == {"vd": "2026-10-15T05:17:00Z", "5586": "2026-10-16T05:17:00Z"}
+    assert (etat["etat"], etat["echecs_consecutifs"], etat["motif"]) == ("disponible", 0, None)
+    assert set(_requetes_d_import(monde)) == {"VD"}
+    assert _imports(tmp_path) == {"vd": "2026-10-16T05:47:00Z", "5586": "2026-10-16T05:17:00Z"}
+
+
+def test_le_rattrapage_importe_tous_les_conseils_depuis_tout_l_historique_a_toute_heure(tmp_path):
+    monde = _monde_conseils()
+    _passer_conseils(tmp_path, monde, VEILLE)
+    monde.requetes.clear()
+
+    _passer_conseils(tmp_path, monde, JOUR - timedelta(hours=3), rattrapage=True)  # 04:17 à Lausanne
+
+    assert sorted(set(_requetes_d_import(monde))) == ["5586", "VD"]
+    assert all("from_updated_at" not in r.url.params for _, r in monde.requetes)
+    assert set(_imports(tmp_path).values()) == {"2026-10-16T02:17:00Z"}
+
+
+def test_un_import_qui_plante_n_empeche_pas_d_ecrire_l_etat_des_sources_et_compte_comme_un_echec(tmp_path, capsys):
+    monde = _monde_conseils()
+    _passer_conseils(tmp_path, monde, VEILLE)
+    (tmp_path / "conseils/vd/objets/26_INT_140.json").write_text("{abîmé")
+
+    _passer_conseils(tmp_path, monde, JOUR)
+
+    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    assert etat["genere"] == "2026-10-16T05:17:00Z"
+    assert set(_imports(tmp_path).values()) == {"2026-10-15T05:17:00Z"}
+    assert "Import des conseils en échec" in capsys.readouterr().err
+
+
+def _passer_conseils_avec_github(depot, monde, github, heures, en_echec=()):
+    with github.client() as client:
+        for heure in heures:
+            _passer_conseils(depot, monde, heure, IssuesGitHub(client, DEPOT_DONNEES, JETON), en_echec)
+
+
+def test_plus_de_24_h_sans_import_reussi_ouvrent_une_seule_issue_import_conseils_fermee_au_retour(tmp_path):
+    monde, github = _monde_conseils(), GitHubFactice()
+    _passer_conseils_avec_github(tmp_path, monde, github, [VEILLE])
+
+    # 07:17 : 24 h tout juste depuis le dernier import réussi ; 07:47 et 08:17 : au-delà.
+    echecs = [JOUR, JOUR + timedelta(minutes=30), JOUR + timedelta(minutes=60)]
+    _passer_conseils_avec_github(tmp_path, monde, github, echecs[:1], en_echec={"VD"})
+    apres_24_h = [dict(i) for i in github.issues]
+    _passer_conseils_avec_github(tmp_path, monde, github, echecs[1:], en_echec={"VD"})
+    (ouverte,) = [dict(i) for i in github.issues]
+    _passer_conseils_avec_github(tmp_path, monde, github, [JOUR + timedelta(minutes=90)])
+
+    assert apres_24_h == []
+    assert ouverte["title"] == "Import en échec : Grand Conseil (OpenParlData)"
+    assert [e["name"] for e in ouverte["labels"]] == ["import-conseils"]
+    assert ouverte["state"] == "open"
+    assert "depuis le 2026-10-15 à 05:17 UTC" in ouverte["body"]
+    (issue,) = github.issues
+    assert issue["state"] == "closed"
+    assert issue["commentaires"] == [
+        "Grand Conseil (OpenParlData) est de nouveau importé : import réussi le 2026-10-16 à 06:47 UTC."
+    ]
+    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    assert {e["etat"] for e in etat["sources"].values()} == {"disponible"}
+
+
+def test_un_conseil_jamais_importe_ouvre_son_issue_import_conseils_des_le_premier_echec(tmp_path):
+    monde, github = _monde_conseils(), GitHubFactice()
+    _passer_conseils_avec_github(tmp_path, monde, github, [VEILLE, VEILLE + timedelta(minutes=30)], en_echec={"VD"})
+    (ouverte,) = [dict(i) for i in github.issues]
+    _passer_conseils_avec_github(tmp_path, monde, github, [VEILLE + timedelta(minutes=60)])
+
+    assert ouverte["title"] == "Import en échec : Grand Conseil (OpenParlData)"
+    assert ouverte["state"] == "open"
+    assert "Aucun import de Grand Conseil (OpenParlData) n'a encore réussi." in ouverte["body"]
+    (issue,) = github.issues
+    assert issue["state"] == "closed"
+    assert issue["commentaires"] == [
+        "Grand Conseil (OpenParlData) est de nouveau importé : import réussi le 2026-10-15 à 06:17 UTC."
+    ]
+
+
+def test_en_mode_local_sans_push_l_echec_et_le_retour_d_un_import_sont_affiches_sans_rien_demander_a_github(
+    tmp_path, capsys
+):
+    monde, github = _monde_conseils(), GitHubFactice()
+    with github.client() as client:
+        issues = client_issues(sans_push=True, environ=ENV_DU_WORKFLOW, client=client)
+        _passer_conseils(tmp_path, monde, VEILLE, issues)
+        _passer_conseils(tmp_path, monde, JOUR, issues, en_echec={"VD"})
+        capsys.readouterr()
+        _passer_conseils(tmp_path, monde, JOUR + timedelta(minutes=30), issues, en_echec={"VD"})
+        echec = capsys.readouterr().out
+        _passer_conseils(tmp_path, monde, JOUR + timedelta(minutes=60), issues)
+        retour = capsys.readouterr().out
+
+    assert github.requetes == []
+    assert "Import en échec : Grand Conseil (OpenParlData) (dernier import réussi 2026-10-15 05:17Z)" in echec
+    assert "Import de retour : Grand Conseil (OpenParlData) (importé 2026-10-16 06:17Z)" in retour
+    assert "Lausanne" not in echec + retour

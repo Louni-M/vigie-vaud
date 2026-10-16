@@ -21,6 +21,10 @@ describe('clés d’URL', () => {
 		expect(clesEnDouble(COUCHES)).toEqual([]);
 	});
 
+	it('comptent la clé d’élément de chaque couche inscrite, `c` des Conseils comprise', () => {
+		expect(COUCHES.map((c) => c.cleElement).filter(Boolean)).toEqual(['d', 'c']);
+	});
+
 	it('signale une clé prise par deux couches', () => {
 		const couches = [couche('a', { codec: codec('tri', 'x') }), couche('b', { codec: codec('tri') })];
 		expect(clesEnDouble(couches)).toEqual(['tri']);

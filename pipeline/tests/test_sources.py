@@ -6,12 +6,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from schema import lire_sources
+from schema import Conseil, lire_sources, nom_du_conseil
 
 RACINE = Path(__file__).resolve().parents[2]
 
 
-def test_sources_json_declare_les_huit_sources_de_j0():
+def test_sources_json_declare_les_sources_de_j0_puis_les_trois_conseils():
     fichier = lire_sources(RACINE / "sources.json")
 
     assert [s.id for s in fichier.sources] == [
@@ -23,17 +23,73 @@ def test_sources_json_declare_les_huit_sources_de_j0():
         "swisstopo-adresses",
         "swisstopo-lacs",
         "ofs-communes-historique",
+        "openparldata-vd",
+        "openparldata-5586",
+        "openparldata-5938",
     ]
     assert all(s.nom_court for s in fichier.sources)
-    assert all(s.couverture.communes == "canton" for s in fichier.sources)
 
 
-def test_seule_la_source_des_permis_est_sondee_et_jamais_vide():
+def test_seule_la_camac_garde_une_couverture_parmi_les_sources_de_j0():
     fichier = lire_sources(RACINE / "sources.json")
 
-    sondees = {s.id: s.sonde for s in fichier.sources if s.sonde is not None}
-    assert list(sondees) == ["camac-permis"]
-    assert sondees["camac-permis"].jamais_vide
+    couvertures = {s.id: s.couverture for s in fichier.sources if s.couverture is not None}
+    assert {id: (c.communes, c.mode) for id, c in couvertures.items()} == {
+        "camac-permis": ("canton", "api"),
+        "openparldata-5586": ([5586], "api"),
+        "openparldata-5938": ([5938], "api"),
+    }
+
+
+def test_les_trois_conseils_passent_par_le_cron_avec_l_attribution_d_openparldata():
+    fichier = lire_sources(RACINE / "sources.json")
+
+    conseils = {s.id: s for s in fichier.sources if s.conseil is not None}
+    assert {id: (s.nom, s.nom_court) for id, s in conseils.items()} == {
+        "openparldata-vd": ("Grand Conseil (OpenParlData)", "Grand Conseil"),
+        "openparldata-5586": ("Conseil communal de Lausanne (OpenParlData)", "Conseil de Lausanne"),
+        "openparldata-5938": ("Conseil communal d'Yverdon-les-Bains (OpenParlData)", "Conseil d'Yverdon"),
+    }
+    for s in conseils.values():
+        assert s.voie_acces == "cron"
+        assert s.fraicheur == "import"
+        assert s.attribution.model_dump() == {
+            "texte": "Source: OpenParlData.ch",
+            "lien": "https://openparldata.ch",
+            "licence": "CC BY 4.0",
+        }
+    assert {id: s.conseil.model_dump() for id, s in conseils.items()} == {
+        "openparldata-vd": {"body_key": "VD", "donne": ["objets", "seances"], "groupe": 1965},
+        "openparldata-5586": {"body_key": "5586", "donne": ["objets", "seances"], "groupe": None},
+        "openparldata-5938": {"body_key": "5938", "donne": ["seances"], "groupe": None},
+    }
+
+
+def test_chaque_conseil_a_une_sonde_legere_sur_openparldata_qui_lit_data():
+    fichier = lire_sources(RACINE / "sources.json")
+
+    sondes = {s.id: s.sonde for s in fichier.sources if s.conseil is not None}
+    assert {id: (str(s.url), s.champs) for id, s in sondes.items()} == {
+        "openparldata-vd": (
+            "https://api.openparldata.ch/v1/affairs/?body_key=VD&limit=1&fields=id,number,title&client=vigie-vaud",
+            ["id", "number", "title"],
+        ),
+        "openparldata-5586": (
+            "https://api.openparldata.ch/v1/affairs/?body_key=5586&limit=1&fields=id,number,title&client=vigie-vaud",
+            ["id", "number", "title"],
+        ),
+        "openparldata-5938": (
+            "https://api.openparldata.ch/v1/meetings/?body_key=5938&limit=1&fields=id,begin_date&client=vigie-vaud",
+            ["id", "begin_date"],
+        ),
+    }
+    assert all(s.enregistrements == "data" and s.jamais_vide for s in sondes.values())
+
+
+def test_les_sondes_de_j0_lisent_toujours_features():
+    fichier = lire_sources(RACINE / "sources.json")
+
+    assert fichier.sources[0].sonde.enregistrements == "features"
 
 
 def _source(**modifs):
@@ -62,6 +118,16 @@ def test_une_source_couvrant_une_liste_de_communes_est_lue(tmp_path):
     assert fichier.sources[0].sonde is None
 
 
+def test_une_source_sans_couverture_qui_donne_un_conseil_est_lue(tmp_path):
+    sans_couverture = {k: v for k, v in _source().items() if k != "couverture"}
+    conseil = sans_couverture | {"fraicheur": "import", "conseil": {"body_key": "VD", "donne": ["objets", "seances"]}}
+
+    (source,) = lire_sources(_ecrire(tmp_path, [conseil])).sources
+
+    assert source.couverture is None
+    assert source.conseil.groupe is None
+
+
 @pytest.mark.parametrize(
     "sources",
     [
@@ -75,8 +141,38 @@ def test_une_source_couvrant_une_liste_de_communes_est_lue(tmp_path):
         pytest.param([{k: v for k, v in _source().items() if k != "nom_court"}], id="sans nom_court"),
         pytest.param([_source(attribution={"texte": "x", "lien": "exemple.ch", "licence": "x"})], id="lien sans https"),
         pytest.param([_source(sonde={"url": "https://exemple.ch", "delai": 0})], id="délai de sonde nul"),
+        pytest.param([_source(conseil={"body_key": "VD", "donne": []})], id="conseil qui ne donne rien"),
+        pytest.param([_source(conseil={"body_key": "VD", "donne": ["votes"]})], id="conseil qui donne l'inconnu"),
+        pytest.param([_source(conseil={"donne": ["objets"]})], id="conseil sans body_key"),
     ],
 )
 def test_une_declaration_invalide_est_refusee(tmp_path, sources):
     with pytest.raises(ValidationError):
         lire_sources(_ecrire(tmp_path, sources))
+
+
+@pytest.mark.parametrize(
+    ("body_key", "cle", "commune"),
+    [("VD", "vd", None), ("5586", "5586", 5586), ("5938", "5938", 5938)],
+)
+def test_la_cle_et_la_commune_d_un_conseil_se_tirent_de_son_body_key(body_key, cle, commune):
+    conseil = Conseil(body_key=body_key, donne=["objets"])
+
+    assert (conseil.cle, conseil.commune) == (cle, commune)
+
+
+# Les mêmes cas que `nomDuConseil` du site (`web/src/lib/sources.test.ts`) : le nom de l'index est celui que le site
+# affiche ailleurs. Un cas ajouté d'un côté s'ajoute de l'autre.
+@pytest.mark.parametrize(
+    ("nom_source", "nom"),
+    [
+        ("Grand Conseil (OpenParlData)", "Grand Conseil"),
+        ("Conseil communal de Lausanne (OpenParlData)", "Conseil communal de Lausanne"),
+        ("Conseil communal d'Yverdon-les-Bains (OpenParlData)", "Conseil communal d’Yverdon-les-Bains"),
+        ("Conseil général de Nyon (OpenParlData, essai)", "Conseil général de Nyon"),
+        ("Conseil communal (CC) de Morges", "Conseil communal (CC) de Morges"),
+        ("Conseil communal de Pully", "Conseil communal de Pully"),
+    ],
+)
+def test_le_nom_d_un_conseil_est_celui_de_sa_source_sans_la_mention_finale_entre_parentheses(nom_source, nom):
+    assert nom_du_conseil(nom_source) == nom

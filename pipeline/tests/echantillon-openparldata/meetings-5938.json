@@ -1,0 +1,63 @@
+{
+ "meta": {
+  "offset": 0,
+  "limit": 500,
+  "total_records": 1,
+  "total_pages": 1,
+  "current_page": 1,
+  "has_more": false,
+  "next_page": null,
+  "prev_page": null,
+  "first_page": "https://api.openparldata.ch/v1/meetings/?body_key=5938&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33831&client=vigie-vaud&offset=0&limit=500",
+  "last_page": "https://api.openparldata.ch/v1/meetings/?body_key=5938&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33831&client=vigie-vaud&offset=0&limit=500",
+  "self": "https://api.openparldata.ch/v1/meetings/?body_key=5938&expand=agendas&fields=id%2Cname%2Cgroup_id%2Cbegin_date%2Curl_external%2Cagendas.item_number%2Cagendas.item_number_display%2Cagendas.item_title%2Cagendas.item_category%2Cagendas.item_result%2Cagendas.item_affair_number%2Cagendas.item_affair_id&sort_by=id&agendas_limit=1000&id=33831&client=vigie-vaud"
+ },
+ "data": [
+  {
+   "id": 33831,
+   "url_external": {
+    "fr": "https://www.yverdon-les-bains.ch/vie-politique/conseil-communal/seances"
+   },
+   "name": {
+    "fr": "Séance du Conseil communal du 1er octobre 2026"
+   },
+   "begin_date": "2026-10-01T20:00:00",
+   "group_id": 8921,
+   "agendas": {
+    "meta": {
+     "offset": 0,
+     "limit": 1000,
+     "total_records": 20,
+     "total_pages": 1,
+     "current_page": 1,
+     "has_more": false,
+     "next_page": null,
+     "prev_page": null,
+     "first_page": "https://api.openparldata.ch/v1/meetings/33831?expand=agendas&agendas_offset=0&agendas_limit=1000",
+     "last_page": "https://api.openparldata.ch/v1/meetings/33831?expand=agendas&agendas_offset=0&agendas_limit=1000",
+     "self": "https://api.openparldata.ch/v1/meetings/33831?expand=agendas&agendas_offset=0&agendas_limit=1000"
+    },
+    "data": [
+     {
+      "item_number": null,
+      "item_affair_number": null,
+      "item_result": null,
+      "item_title": "Appel",
+      "item_number_display": "1",
+      "item_affair_id": null,
+      "item_category": null
+     },
+     {
+      "item_number": null,
+      "item_affair_number": null,
+      "item_result": null,
+      "item_title": "Election d’un∙e membre du bureau du Conseil communal pour l'année 2026-2027",
+      "item_number_display": "7",
+      "item_affair_id": null,
+      "item_category": null
+     }
+    ]
+   }
+  }
+ ]
+}

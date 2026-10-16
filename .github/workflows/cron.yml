@@ -3,15 +3,23 @@ name: Passage du cron
 # Workflow réutilisable (ADR 0014). Il n'est lancé que par le déclencheur du dépôt de données `vigie-vaud-donnees`,
 # dont le contenu est dans `pipeline/depot-donnees/.github/workflows/cron.yml`. Il tourne donc avec le
 # `GITHUB_TOKEN` du dépôt de données, sans aucun secret, et `github.repository` y désigne le dépôt de données.
-# Un passage : sondes et état des sources (`pipeline/cron.py`), commit qui sert d'archive, push (avec
-# `pull --rebase` et deux nouveaux essais au plus), puis publication du dépôt de données sur Pages.
+# Un passage : sondes et état des sources, import quotidien des conseils dus (`pipeline/cron.py`), commit qui sert
+# d'archive, push (avec `pull --rebase` et deux nouveaux essais au plus), puis publication du dépôt de données sur
+# Pages. L'entrée `rattrapage` (lancement manuel du déclencheur) importe tous les conseils depuis tout l'historique.
 on:
   workflow_call:
+    inputs:
+      rattrapage:
+        description: Importer tous les conseils depuis tout l'historique
+        type: boolean
+        default: false
 
 jobs:
   passage:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Un passage ordinaire sonde et importe au plus un jour de changements ; le rattrapage relit tout l'historique
+    # à une requête par seconde.
+    timeout-minutes: ${{ inputs.rattrapage && 360 || 20 }}
     permissions:
       contents: write
       issues: write
@@ -40,8 +48,8 @@ jobs:
       - name: Installer le pipeline
         run: uv sync --locked --no-dev --project code/pipeline
 
-      # Les issues `panne-source` s'ouvrent dans le dépôt de données (`GITHUB_REPOSITORY`, celui du déclencheur)
-      # avec son `GITHUB_TOKEN`, que `cron.py` lit dans l'environnement.
+      # Les issues `panne-source` et `import-conseils` s'ouvrent dans le dépôt de données (`GITHUB_REPOSITORY`,
+      # celui du déclencheur) avec son `GITHUB_TOKEN`, que `cron.py` lit dans l'environnement.
       - name: Passage du cron
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -49,7 +57,9 @@ jobs:
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-        run: uv run --no-dev --project code/pipeline python code/pipeline/cron.py --depot donnees
+        run: >-
+          uv run --no-dev --project code/pipeline python code/pipeline/cron.py --depot donnees
+          ${{ inputs.rattrapage && '--rattrapage' || '' }}
 
       # `upload-pages-artifact` laisse de côté `.git`, `.github` et, depuis sa v4, tout fichier caché.
       - uses: actions/upload-pages-artifact@v5

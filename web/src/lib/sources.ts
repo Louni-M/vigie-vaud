@@ -1,7 +1,7 @@
 // Déclaration des sources (`sources.json` à la racine du dépôt), importée à la construction. Toutes les
 // attributions affichées en viennent ; la construction échoue si le fichier est invalide (scripts/verifier-sources.ts).
 import fichier from '../../../sources.json';
-import type { FichierSources, Source, VoieAcces } from './schema';
+import type { Conseil, DonneeConseil, FichierSources, Source, VoieAcces } from './schema';
 
 export const SOURCES: readonly Source[] = (fichier as FichierSources).sources;
 
@@ -20,10 +20,40 @@ export const libelleVoie = (s: Source) => VOIES[s.voie_acces];
 /** Ce que veut dire chaque voie d'accès, pour le lecteur (glossaire de `CONTEXT.md`). */
 export const SENS_VOIES: Record<VoieAcces, string> = {
 	direct: 'votre navigateur interroge la source à chaque visite',
-	cron: 'la source est relevée toutes les 30 minutes par le cron et publiée dans le dépôt de données',
+	cron: 'la source est relevée par le cron et publiée dans le dépôt de données (les conseils : une fois par jour)',
 	worker: 'la source passe par un relais',
 	preparee: 'la source est transformée une fois en fichier, publié avec le site'
 };
+
+/** Ce que donne un conseil, en toutes lettres : « objets et séances », « séances seulement » ou « objets seulement ». */
+export function libelleDonne(conseil: { donne: readonly DonneeConseil[] }): string {
+	const objets = conseil.donne.includes('objets');
+	const seances = conseil.donne.includes('seances');
+	return objets && seances ? 'objets et séances' : seances ? 'séances seulement' : 'objets seulement';
+}
+
+/** Clé du conseil dans le dépôt de données : `body_key` en minuscules (`vd`, `5586`), comme `Conseil.cle` du cron. */
+export const cleConseil = (conseil: Conseil) => conseil.body_key.toLowerCase();
+
+/** N° OFS de la commune d'un conseil communal (`body_key` numérique) ; `null` pour le Grand Conseil. */
+export const communeDuConseil = (conseil: Conseil) => (/^\d+$/.test(conseil.body_key) ? Number(conseil.body_key) : null);
+
+/**
+ * Nom du conseil, tiré du nom de sa source : sans la mention finale entre parenthèses, l'apostrophe typographique
+ * (« Conseil communal d’Yverdon-les-Bains »). La même règle que `nom_du_conseil` du cron, qui écrit le nom de l'index.
+ */
+export const nomDuConseil = (nomSource: string) => nomSource.replace(/\s*\([^()]*\)$/, '').replace(/'/g, '’');
+
+/** Un conseil couvert : sa source et ce qu'il donne. */
+export interface ConseilCouvert {
+	source: Source & { conseil: Conseil };
+	donne: string;
+}
+
+/** Les conseils couverts, tirés des sources qui ont un bloc `conseil`, dans l'ordre de `sources.json`. */
+export function listerConseils(sources: readonly Source[]): ConseilCouvert[] {
+	return sources.flatMap((s) => (s.conseil ? [{ source: { ...s, conseil: s.conseil }, donne: libelleDonne(s.conseil) }] : []));
+}
 
 /** Un groupe de la liste Sources d'À propos : une couche, ou « Carte et communes ». */
 export interface GroupeSources {

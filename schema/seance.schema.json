@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CleElement": {
+      "pattern": "^[a-z0-9]+/[^/\\s]+$",
+      "type": "string"
+    },
+    "DateSeance": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$",
+      "type": "string"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Lien": {
+      "pattern": "^https?://\\S+$",
+      "type": "string"
+    },
+    "PointOrdreDuJour": {
+      "additionalProperties": false,
+      "properties": {
+        "numero": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Numéro du point tel que la source l'affiche."
+        },
+        "titre": {
+          "description": "`item_title` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).",
+          "type": "string"
+        },
+        "categorie": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resultat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Résultat brut (« Transmise au CE », « Renvoi en Municipalité »…)."
+        },
+        "objet": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CleElement"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Clé de l'Objet du point, quand il est dans l'archive."
+        }
+      },
+      "required": [
+        "numero",
+        "titre",
+        "categorie",
+        "resultat",
+        "objet"
+      ],
+      "title": "PointOrdreDuJour",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`.",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "id": {
+      "description": "Identifiant de la Séance dans OpenParlData.",
+      "type": "integer"
+    },
+    "date": {
+      "$ref": "#/$defs/DateSeance",
+      "description": "Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`)."
+    },
+    "nom": {
+      "description": "Nom brut de la source ; le site affiche un nom composé à partir de la date.",
+      "type": "string"
+    },
+    "lien": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Lien"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ordre_du_jour": {
+      "items": {
+        "$ref": "#/$defs/PointOrdreDuJour"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "id",
+    "date",
+    "nom",
+    "lien",
+    "ordre_du_jour"
+  ],
+  "title": "Seance",
+  "type": "object"
+}

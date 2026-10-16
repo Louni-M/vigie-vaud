@@ -1,9 +1,9 @@
 <script lang="ts">
 	/*
-	 * Grisage de la carte (bureau seulement) : les communes que la couche du volet ouvert ne couvre pas sont
-	 * voilées de gris, sous les calques de toutes les couches. La règle est dans la Couverture (`grisees`) ; ce
-	 * composant ne fait que dessiner. Les limites des communes ne sont chargées qu'au premier grisage : en J0,
-	 * toutes les sources sont cantonales et rien n'est grisé.
+	 * Grisage de la carte : les communes que la couche du volet ouvert (bureau) ou de « Voir sur la carte »
+	 * (téléphone) ne couvre pas sont voilées de gris, sous les calques de toutes les couches. La règle est dans la
+	 * Couverture (`grisees`) ; ce composant ne fait que dessiner. Les limites des communes ne sont chargées qu'au premier grisage (en J1, à
+	 * l'ouverture du volet Conseils, qui grise toutes les communes sauf Lausanne et Yverdon).
 	 */
 	import { untrack } from 'svelte';
 	import type { GeoJSONSource, GeoJSONSourceSpecification, Map as MlMap } from 'maplibre-gl';

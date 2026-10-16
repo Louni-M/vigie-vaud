@@ -5,17 +5,31 @@ import { resolve } from '$app/paths';
 import { page } from '$app/state';
 import type { Map as MlMap } from 'maplibre-gl';
 import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
-import type { Chargeur, Cible, Contexte, CoucheInscrite, Lecteur, Ouvert } from './types.js';
+import type { Chargeur, Cible, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert } from './types.js';
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
-import { corrigerChemin, fermeture, memeElement, mouvement, type Adresse } from './navigation.js';
+import {
+	corrigerChemin,
+	creerNavigations,
+	fermeture,
+	memeElement,
+	memeFiche,
+	mouvement,
+	type Adresse
+} from './navigation.js';
+import { ficheDuChemin, fichePropre } from './fiches.js';
+import { cheminFiche } from './liens.js';
 import { titreFiche } from './tete.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
+import { zoneDuFil } from '#lib/fil/fil.js';
+
+/** Volet du fil cantonal, à la place de celui d'une couche. */
+export const FIL = 'fil';
 
 /** Ce que le registre demande à la carte du socle quand l'adresse change sous lui. */
 export interface VueCarte {
 	aller(c: Centre, anime?: boolean): void;
-	/** Vol souple vers un point, au moins à ce zoom. */
-	voler(lon: number, lat: number, zoom?: number): void;
+	/** Vol souple vers un point, au moins à ce zoom ; `parDefaut` : la vue obtenue n'entre pas dans l'adresse. */
+	voler(lon: number, lat: number, zoom?: number, parDefaut?: boolean): void;
 	vueCanton(): void;
 	/** Cadre une emprise ; `parDefaut` : la vue obtenue n'entre pas dans l'adresse. */
 	cadrer(emprise: Emprise, anime?: boolean, parDefaut?: boolean): void;
@@ -23,6 +37,8 @@ export interface VueCarte {
 
 /** Route de la fiche commune : la commune ouverte est dans le chemin (ADR 0012). */
 const ROUTE_COMMUNE = '/(carte)/commune/[slug]' as const;
+/** Route d'une fiche propre : son chemin, d'un seul segment, est celui que déclare sa couche (`/grand-conseil`). */
+const ROUTE_FICHE = '/(carte)/[fiche]' as const;
 
 /** Zoom auquel un élément ouvert est montré. */
 const ZOOM_ELEMENT = 16;
@@ -30,7 +46,7 @@ const ZOOM_ELEMENT = 16;
 type NomComposant = keyof CoucheInscrite['composants'];
 
 /**
- * Le registre des couches à l'exécution : commune ouverte, couches activées, paramètres des couches, vue,
+ * Le registre des couches à l'exécution : fiche ouverte (commune ou fiche propre), couches activées, paramètres des couches, vue,
  * élément ouvert et volet ouvert. Il est le seul maître de l'adresse : `brancherAdresse` synchronise son état
  * avec la requête (`replace` pour la vue et les réglages, `push` pour l'ouverture d'un élément ou d'une fiche).
  * `communes` donne l'index des communes, connu dès le rendu de la page pré-générée.
@@ -46,8 +62,18 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	let zone = $state.raw<Zone | null>(null);
 	let ouvert = $state<Ouvert | null>(null);
 	let map = $state.raw<MlMap | null>(null);
-	/** Volet ouvert sur la carte (bureau) ; n'entre pas dans l'adresse. */
-	let volet = $state<string | null>(null);
+	/** Zone du fil : celle du dernier déplacement fait par la personne (`zoneDuFil`). */
+	let zoneFil = $state.raw<Zone | null>(null);
+	/**
+	 * Volet ouvert sur la carte (bureau) : l'id d'une couche, ou `'fil'` pour le fil cantonal, ouvert à l'arrivée.
+	 * Un seul à la fois ; n'entre pas dans l'adresse.
+	 */
+	let volet = $state<string | null>(FIL);
+	/**
+	 * Onglet choisi dans la fiche commune (l'id de sa couche) ; `null` : le premier. Il reste quand on change de
+	 * commune, et n'entre pas dans l'adresse.
+	 */
+	let onglet = $state<string | null>(null);
 	/** Message près de la recherche : élément introuvable (« Aucun dossier n° … ») ou impossible à localiser. */
 	let avis = $state<string | null>(null);
 	/** Couches activées au moins une fois : leur `Carte` reste montée, pour le fondu à la désactivation. */
@@ -55,12 +81,21 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	/** Slug de la commune dont la fiche est ouverte, lu dans le chemin. */
 	const slug = $derived(page.route.id === ROUTE_COMMUNE ? (page.params.slug ?? null) : null);
+	/** Fiche propre ouverte, et la couche qui la déclare, lue dans le chemin. */
+	const propre = $derived(
+		page.route.id === ROUTE_FICHE && page.params.fiche ? ficheDuChemin(couches, `/${page.params.fiche}`) : null
+	);
+	/** Fiche ouverte, lue dans le chemin : celle d'une commune ou une fiche propre, jamais les deux. */
+	const fiche = $derived<Fiche | null>(
+		slug !== null ? { commune: slug } : propre ? { fiche: propre.fiche.id } : null
+	);
 	const commune = $derived(slug === null ? null : (communes().find((c) => c.slug === slug) ?? null));
 
 	const etat = (): EtatUrl => ({ actives, vue, ouvert, parametres });
 	const requete = $derived(ecrireUrl(couches, etat()));
 	/** Titre du document quand une fiche est ouverte ; il suit l'élément ouvert. */
-	const titre = $derived(commune ? titreFiche(commune, ouvert, couches) : null);
+	const nomFiche = $derived(commune?.nom ?? propre?.fiche.nom ?? null);
+	const titre = $derived(nomFiche === null ? null : titreFiche(nomFiche, ouvert, couches));
 
 	function appliquer(e: EtatUrl) {
 		actives = e.actives;
@@ -108,40 +143,63 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	/** Carte du socle, branchée par `brancherAdresse`. */
 	let carteSocle: () => VueCarte | undefined = () => undefined;
 
-	function cadrerCommune(s: string, anime: boolean) {
-		const c = communes().find((c) => c.slug === s);
-		// Cadrée sur sa partie terrestre (`cadre`), pas sur son emprise lac compris.
-		if (c) carteSocle()?.cadrer(c.cadre, anime, true);
+	/**
+	 * La carte montre une fiche : la commune entière, cadrée sur sa partie terrestre (`cadre`) et non sur son
+	 * emprise lac compris, ou la position d'une fiche propre, au zoom d'un élément. Ces vues n'entrent pas dans
+	 * l'adresse.
+	 */
+	function cadrerFiche(f: Fiche, anime: boolean) {
+		if ('commune' in f) {
+			const c = communes().find((c) => c.slug === f.commune);
+			if (c) carteSocle()?.cadrer(c.cadre, anime, true);
+			return;
+		}
+		const position = fichePropre(couches, f.fiche)?.fiche.position;
+		if (position) carteSocle()?.voler(position[0], position[1], ZOOM_ELEMENT, true);
 	}
+
+	/** Change de page ; tant que la navigation n'a pas abouti, l'état n'écrit pas l'adresse (`creerNavigations`). */
+	const navigations = creerNavigations(goto);
+	const naviguer = (url: string, options: Parameters<typeof goto>[1]) => void navigations.naviguer(url, options);
 
 	/**
-	 * Ouvrir une fiche commune crée une entrée d'historique. La nouvelle adresse garde les couches et les
-	 * réglages, mais ni la vue (la carte va cadrer la commune) ni l'élément ouvert.
+	 * Ouvrir une fiche, commune ou propre, crée une entrée d'historique. La nouvelle adresse garde les couches et
+	 * les réglages, mais ni la vue (la carte va cadrer la fiche) ni l'élément ouvert.
 	 */
-	function ouvrirCommune(s: string) {
-		if (s === slug) return cadrerCommune(s, true);
+	function ouvrirFiche(f: Fiche) {
+		if (memeFiche(f, fiche)) return cadrerFiche(f, true);
 		const q = ecrireUrl(couches, { ...etat(), vue: null, ouvert: null });
-		goto(`${resolve(ROUTE_COMMUNE, { slug: s })}${q}`, { reset: false });
+		naviguer(`${cheminFiche(couches, f)}${q}`, { reset: false });
 	}
 
-	/** Fermer la fiche ramène à « / », sans bouger la carte. */
-	function fermerCommune() {
-		if (slug === null) return;
+	/** Fermer la fiche, commune ou propre, ramène à « / », sans bouger la carte. */
+	function fermerFiche() {
+		if (fiche === null) return;
 		const q = ecrireUrl(couches, { ...etat(), vue: vue ?? centre, ouvert: null });
-		goto(`${resolve('/(carte)')}${q}`, { reset: false });
+		naviguer(`${resolve('/(carte)')}${q}`, { reset: false });
 	}
 
-	/* ---- Élément ouvert : toujours dans la fiche de sa commune ---- */
+	/* ---- Élément ouvert : toujours dans l'une de ses fiches ---- */
 
-	/** Ce que reflète l'adresse courante : commune du chemin et élément de la requête. */
-	let suivi: Pick<Adresse, 'commune' | 'ouvert'> = { commune: null, ouvert: null };
+	/** Ce que reflète l'adresse courante : fiche du chemin et élément de la requête. */
+	let suivi: Pick<Adresse, 'fiche' | 'ouvert'> = { fiche: null, ouvert: null };
 	/** Dernier élément demandé : une demande plus ancienne qui aboutit après lui est ignorée. */
 	let demande: Ouvert | null = null;
 
-	type Lieu = { commune: string; position: [number, number] } | null;
+	/**
+	 * Montre l'élément ouvert dans la fiche `dans` : la carte va vers sa position (d'un saut si `saut`), ou cadre
+	 * la fiche quand l'élément n'en a pas.
+	 */
+	function montrerElement(lieu: Lieu, dans: Fiche, saut: boolean) {
+		if (lieu.position) {
+			const [lon, lat] = lieu.position;
+			if (saut) carteSocle()?.aller({ lon, lat, zoom: ZOOM_ELEMENT }, false);
+			else carteSocle()?.voler(lon, lat, ZOOM_ELEMENT);
+		} else cadrerFiche(dans, !saut);
+	}
 
-	/** Commune et position de l'élément selon sa couche ; `echec` si la couche n'a pas pu le chercher. */
-	async function localiser(o: Ouvert): Promise<Lieu | 'echec'> {
+	/** Fiches et position de l'élément selon sa couche ; `echec` si la couche n'a pas pu le chercher. */
+	async function localiser(o: Ouvert): Promise<Lieu | null | 'echec'> {
 		const c = couches.find((c) => c.id === o.couche);
 		if (!c?.localiser) return null;
 		try {
@@ -157,9 +215,10 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		`Le n° ${o.element} n’a pas pu être cherché : vérifiez votre connexion, puis réessayez.`;
 
 	/**
-	 * Ouvre un élément dans la fiche de sa commune, trouvée par `localiser`. Ouvrir un élément quand aucun n'est
-	 * ouvert, ou celui d'une autre commune, crée une entrée d'historique : le retour du navigateur ramène à la
-	 * fiche précédente. Passer d'un élément à un autre dans la même commune remplace l'entrée.
+	 * Ouvre un élément dans l'une de ses fiches, trouvées par `localiser` : celle du chemin si elle en fait partie,
+	 * sinon la première (`corrigerChemin`). Ouvrir un élément quand aucun n'est ouvert, ou dans une autre fiche, crée
+	 * une entrée d'historique : le retour du navigateur ramène à la fiche précédente. Passer d'un élément à un autre
+	 * dans la même fiche remplace l'entrée.
 	 */
 	async function ouvrirElement(cible: Ouvert & { position?: [number, number] }) {
 		const o: Ouvert = { couche: cible.couche, element: cible.element };
@@ -171,21 +230,22 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		if (demande !== o) return;
 		demande = null;
 		if (lieu === 'echec') return void (avis = messageNonCherche(o));
-		const k = corrigerChemin(slug, lieu);
+		const k = corrigerChemin(fiche, lieu);
 		if (k === 'retirer') return void (avis = messageIntrouvable(o));
-		if (!cible.position) carteSocle()?.voler(lieu!.position[0], lieu!.position[1], ZOOM_ELEMENT);
+		if (!cible.position) montrerElement(lieu!, k ?? fiche!, false);
 		if (k === null) {
-			// Même commune : l'adresse suit l'état (entrée poussée si rien n'était ouvert).
+			// Même fiche : l'adresse suit l'état (entrée poussée si rien n'était ouvert).
 			nouvelleEntree = ouvert === null;
 			ouvert = o;
 			return;
 		}
-		// Autre commune : une nouvelle entrée, sans la vue (la carte vole vers l'élément). L'état suivra l'adresse,
+		// Autre fiche : une nouvelle entrée, sans la vue (la carte vole vers l'élément). L'état suivra l'adresse,
 		// et la carte ne bougera pas une seconde fois.
-		const depuis = slug;
-		suivi = { commune: k.commune, ouvert: o };
+		const depuis = fiche;
+		const chemin = cheminFiche(couches, k);
+		suivi = { fiche: k, ouvert: o };
 		const q = ecrireUrl(couches, { ...etat(), vue: null, ouvert: o });
-		goto(`${resolve(ROUTE_COMMUNE, { slug: k.commune })}${q}`, {
+		naviguer(`${chemin}${q}`, {
 			reset: false,
 			state: { element: { depuis } }
 		});
@@ -193,8 +253,8 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	/**
 	 * L'adresse porte un élément qu'on n'a pas ouvert soi-même (lien partagé, précédent ou suivant du navigateur) :
-	 * on corrige son chemin vers la commune de l'élément, ou on retire l'élément introuvable. `montrer` : la carte
-	 * va vers lui, d'un saut à l'arrivée sur le site.
+	 * on corrige son chemin vers l'une de ses fiches, ou on retire l'élément introuvable. `montrer` : la carte va
+	 * vers lui, d'un saut à l'arrivée sur le site.
 	 */
 	async function corriger(o: Ouvert, montrer: boolean, initial: boolean) {
 		demande = o;
@@ -202,18 +262,17 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		if (demande !== o || !memeElement(ouvert, o)) return;
 		demande = null;
 		if (lieu === 'echec') return void (avis = messageNonCherche(o));
-		const k = corrigerChemin(slug, lieu);
+		const k = corrigerChemin(fiche, lieu);
 		if (k === 'retirer') {
 			avis = messageIntrouvable(o);
 			ouvert = null;
 			return;
 		}
-		const [lon, lat] = lieu!.position;
-		if (montrer && initial) carteSocle()?.aller({ lon, lat, zoom: ZOOM_ELEMENT }, false);
-		else if (montrer) carteSocle()?.voler(lon, lat, ZOOM_ELEMENT);
+		if (montrer) montrerElement(lieu!, k ?? fiche!, initial);
 		if (k === null) return;
-		suivi = { commune: k.commune, ouvert: o };
-		goto(`${resolve(ROUTE_COMMUNE, { slug: k.commune })}${ecrireUrl(couches, etat())}`, {
+		const chemin = cheminFiche(couches, k);
+		suivi = { fiche: k, ouvert: o };
+		naviguer(`${chemin}${ecrireUrl(couches, etat())}`, {
 			replace: true,
 			reset: false,
 			state: page.state
@@ -221,17 +280,21 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	}
 
 	function ouvrir(cible: Cible) {
-		if ('commune' in cible) return ouvrirCommune(cible.commune);
+		if ('commune' in cible) {
+			if (cible.onglet) onglet = cible.onglet;
+			return ouvrirFiche({ commune: cible.commune });
+		}
+		if ('fiche' in cible) return ouvrirFiche({ fiche: cible.fiche });
 		ouvrirElement(cible);
 	}
 
 	/**
 	 * Fermer l'élément ramène à l'onglet de sa couche, sans bouger la carte : retour en arrière si l'application a
-	 * poussé l'entrée depuis la même commune, sinon l'adresse est remplacée par le chemin de la commune.
+	 * poussé l'entrée depuis la même fiche, sinon l'adresse est remplacée par le chemin de la fiche.
 	 */
 	function fermer() {
 		if (!ouvert) return;
-		if (fermeture(page.state, slug) === 'retour') history.back();
+		if (fermeture(page.state, fiche) === 'retour') history.back();
 		else ouvert = null;
 	}
 
@@ -259,6 +322,9 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			get commune() {
 				return commune;
 			},
+			get fiche() {
+				return propre?.fiche ?? null;
+			},
 			get communes() {
 				return communes();
 			},
@@ -281,9 +347,28 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		map = m;
 	}
 
-	/** Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. */
-	function deplacement(z: Zone, c: Centre, parDefaut: boolean) {
+	/** Jusqu'à cet instant (ms), les déplacements comptent comme faits par la personne : elle a cherché un lieu. */
+	let vouluJusqua = 0;
+	/** Délai laissé à la carte pour aller vers le lieu cherché (ouverture de la fiche, puis cadrage). */
+	const DELAI_VOULU = 3_000;
+
+	/**
+	 * La personne a choisi un lieu dans la recherche (commune, adresse) : les déplacements qui suivent, même lancés
+	 * par le registre ou le socle, sont les siens, et déplacent la zone du fil.
+	 */
+	function deplacementVoulu() {
+		vouluJusqua = Date.now() + DELAI_VOULU;
+	}
+
+	/**
+	 * Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. `parLaPersonne` :
+	 * elle a glissé ou zoomé ; la zone du fil ne suit que ses déplacements.
+	 */
+	function deplacement(z: Zone, c: Centre, parDefaut: boolean, parLaPersonne = false) {
+		// Tous les déplacements de ce délai comptent : la colonne de la fiche s'ouvre, puis la commune est cadrée.
+		const voulu = Date.now() < vouluJusqua;
 		zone = z;
+		zoneFil = zoneDuFil(zoneFil, z, parLaPersonne || voulu);
 		centre = c;
 		vue = parDefaut ? null : c;
 	}
@@ -304,15 +389,15 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		 */
 		function suivre(params: Lecteur, initial: boolean) {
 			const e = lireUrl(couches, params);
-			const m = mouvement(suivi, { commune: slug, vue: e.vue, ouvert: e.ouvert }, initial);
+			const m = mouvement(suivi, { fiche, vue: e.vue, ouvert: e.ouvert }, initial);
 			const nouveau = e.ouvert !== null && !memeElement(suivi.ouvert, e.ouvert);
-			suivi = { commune: slug, ouvert: e.ouvert };
+			suivi = { fiche, ouvert: e.ouvert };
 			appliquer(e);
 			// Une carte qui ne bouge pas garde sa vue : l'adresse sera réécrite avec elle.
 			if (m !== null || initial) vue = e.vue;
 			if (m === 'canton') carteSocle()?.vueCanton();
 			else if (m && typeof m === 'object' && 'aller' in m) carteSocle()?.aller(m.aller, !initial);
-			else if (m && typeof m === 'object') cadrerCommune(m.cadrer, !initial);
+			else if (m && typeof m === 'object') cadrerFiche(m.cadrer, !initial);
 			if (nouveau) corriger(e.ouvert!, m === 'element', initial);
 		}
 
@@ -328,13 +413,13 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			untrack(() => {
 				const push = nouvelleEntree;
 				nouvelleEntree = false;
-				if (synchro === null || q === location.search) return;
+				if (synchro === null || navigations.enCours || q === location.search) return;
 				synchro = location.pathname + q;
-				suivi = { commune: slug, ouvert };
+				suivi = { fiche, ouvert };
 				goto(`${location.pathname}${q}`, {
 					shallow: true,
 					replace: !push,
-					state: push ? { element: { depuis: slug } } : page.state
+					state: push ? { element: { depuis: fiche } } : page.state
 				});
 			});
 		});
@@ -359,6 +444,10 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		get zone() {
 			return zone;
 		},
+		/** Zone du fil, distincte de celle de la carte : les vols lancés par le registre ne la changent pas. */
+		get zoneFil() {
+			return zoneFil;
+		},
 		get map() {
 			return map;
 		},
@@ -368,6 +457,14 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		/** Commune dont la fiche est ouverte. */
 		get commune() {
 			return commune;
+		},
+		/** Fiche ouverte, commune ou propre ; `null` : la carte seule. */
+		get fiche() {
+			return fiche;
+		},
+		/** Fiche propre ouverte et la couche qui la déclare. */
+		get propre() {
+			return propre;
 		},
 		/** Titre du document quand une fiche est ouverte (`null` sinon). */
 		get titre() {
@@ -384,17 +481,25 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		set volet(id: string | null) {
 			volet = id;
 		},
+		/** Onglet choisi dans la fiche commune ; `null` : le premier. */
+		get onglet() {
+			return onglet;
+		},
+		set onglet(id: string | null) {
+			onglet = id;
+		},
 		/** La `Carte` de cette couche doit être montée (activée, ou désactivée après l'avoir été). */
 		montee: (id: string) => montees.has(id),
 		active: (id: string) => actives.includes(id),
 		activer,
 		ouvrir,
 		fermer,
-		fermerCommune,
+		fermerFiche,
 		composant,
 		contexte,
 		carte,
 		deplacement,
+		deplacementVoulu,
 		brancherAdresse
 	};
 }

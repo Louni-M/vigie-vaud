@@ -1,12 +1,16 @@
 <script lang="ts">
 	/*
 	 * Coquille de la carte, commune à `/` et à `/commune/<slug>` : elle garde la carte montée pendant la
-	 * navigation. Rail des couches à gauche, volet posé sur la carte, recherche flottante en haut, et la fiche
-	 * commune en colonne à droite quand une commune est ouverte. Les pages du groupe ne portent que le <head>.
+	 * navigation. Rail des couches à gauche, volet posé sur la carte (celui d'une couche, ou le fil cantonal, ouvert à
+	 * l'arrivée), recherche flottante en haut, et la fiche ouverte en colonne à droite : celle d'une commune, ou une
+	 * fiche propre (`/grand-conseil`).
+	 * Les pages du groupe ne portent que le <head>.
 	 *
-	 * Sur téléphone (requête `telephone`), une seule vue plein écran à la fois, choisie dans la barre Carte ·
-	 * Couches · Fiche : la vue Couches empile les volets de toutes les couches, et ce qu'on ouvre depuis la carte
-	 * s'affiche d'abord en aperçu, en bas de la carte. Aucun grisage sur téléphone en J0.
+	 * Sur téléphone (requête `telephone`), une seule vue plein écran à la fois, choisie dans la barre Carte · Fil ·
+	 * Couches · Fiche : la vue Fil rend le fil cantonal, la vue Couches empile les volets de toutes les couches, et ce
+	 * qu'on ouvre depuis la carte ou le fil s'affiche d'abord en aperçu, en bas de la carte. L'arrivée sur une fiche
+	 * (`/commune/<slug>`, `/grand-conseil`) se fait dans la vue Fiche. Le grisage d'une couche n'y suit pas le volet
+	 * ouvert : « Voir sur la carte », en tête de son volet, le montre sur la carte (`grisage-mobile`).
 	 */
 	import { tick, untrack } from 'svelte';
 	import { fly } from 'svelte/transition';
@@ -17,17 +21,21 @@
 	import { COUCHES } from '#lib/registre/couches.js';
 	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { ancre } from '#lib/registre/recouvrement.js';
-	import { creerRegistre, fournirRegistre, type VueCarte } from '#lib/registre/registre.svelte.js';
+	import { creerRegistre, fournirRegistre, FIL, type VueCarte } from '#lib/registre/registre.svelte.js';
+	import Fil from '#lib/fil/Fil.svelte';
+	import { creerChargementFil } from '#lib/fil/chargement.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
-	import FicheCommune from '#lib/registre/FicheCommune.svelte';
+	import FicheOuverte from '#lib/registre/FicheOuverte.svelte';
 	import Apercu from '#lib/registre/Apercu.svelte';
 	import Grisage from '#lib/registre/Grisage.svelte';
+	import { grisageApres, type GrisageMobile } from '#lib/registre/grisage-mobile.js';
 	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import {
 		TELEPHONE,
 		affichageApres,
+		affichageArrivee,
 		decalageAuDessus,
 		type Affichage,
 		type Ouverture
@@ -39,18 +47,24 @@
 	let { data, children }: LayoutProps = $props();
 
 	const registre = creerRegistre(COUCHES, () => data.communes);
+	/** Entrées du fil cantonal, lues à sa première ouverture et gardées pendant la visite. */
+	const fil = creerChargementFil(COUCHES);
 	let carte: ReturnType<typeof Map> | undefined = $state();
 
 	/* ---- Téléphone ---- */
 
 	const telephone = new MediaQuery(TELEPHONE, false);
-	/** Vue plein écran affichée sur téléphone ; n'entre pas dans l'adresse. */
-	let affichage = $state<Affichage>('carte');
 	const ouverture = $derived<Ouverture>({
-		commune: registre.commune?.slug ?? null,
+		fiche: !registre.fiche
+			? null
+			: 'commune' in registre.fiche
+				? `commune:${registre.fiche.commune}`
+				: `fiche:${registre.fiche.fiche}`,
 		element: registre.ouvert ? `${registre.ouvert.couche}:${registre.ouvert.element}` : null
 	});
-	let ouvertureAvant: Ouverture = { commune: null, element: null };
+	/** Vue plein écran affichée sur téléphone ; n'entre pas dans l'adresse. */
+	let affichage = $state<Affichage>(affichageArrivee(untrack(() => ouverture)));
+	let ouvertureAvant: Ouverture = untrack(() => ouverture);
 	$effect(() => {
 		const apres = ouverture;
 		untrack(() => {
@@ -78,14 +92,25 @@
 
 	const vueCarte: VueCarte = {
 		aller: (c, anime) => carte?.aller(c, anime),
-		voler: (lon, lat, zoom) => carte?.voler(lon, lat, zoom, decalage()),
+		voler: (lon, lat, zoom, parDefaut) => carte?.voler(lon, lat, zoom, decalage(), parDefaut),
 		vueCanton: () => carte?.vueCanton(),
 		cadrer: (emprise, anime, parDefaut) => carte?.cadrer(emprise, anime, parDefaut)
 	};
 	registre.brancherAdresse(() => (carte ? vueCarte : undefined));
 	fournirRegistre(registre);
 
-	/** « Voir la fiche › » de l'aperçu : la vue Fiche, le focus sur le nom de la commune. */
+	// Une couche activée ou désactivée depuis une autre vue (fondu) n'est redessinée qu'au retour sur la carte.
+	$effect(() => {
+		if (affichage === 'carte') untrack(() => registre.map)?.triggerRepaint();
+	});
+
+	/** Le fil n'est monté qu'à son premier passage sur la vue Fil, qui le charge ; il reste monté ensuite. */
+	let filVu = $state(false);
+	$effect(() => {
+		if (affichage === 'fil') filVu = true;
+	});
+
+	/** « Voir la fiche › » de l'aperçu : la vue Fiche, le focus sur le nom de la fiche. */
 	async function voirFiche() {
 		affichage = 'fiche';
 		await tick();
@@ -95,8 +120,29 @@
 	/** Adresse cherchée ou position GPS, marquée sur la carte ; jamais écrite dans l'URL. */
 	let repere: [number, number] | null = $state(null);
 
-	/** Le grisage suit la couche dont le volet est ouvert, avec la mise en page du bureau seulement. */
-	const grisees = $derived(telephone.current ? [] : couvertureCourante(data.communes).grisees(registre.volet));
+	const couverture = $derived(couvertureCourante(data.communes));
+	/**
+	 * Sur téléphone, la couche dont « Voir sur la carte » montre le grisage, jusqu'à la croix de sa pastille, au choix
+	 * d'une autre couche ou à sa désactivation ; hors de l'adresse.
+	 */
+	let grisageMobile = $state<GrisageMobile>(null);
+	$effect(() => {
+		const actives = registre.actives;
+		untrack(() => (grisageMobile = grisageApres(grisageMobile, { actives })));
+	});
+	/** Couches qui grisent au moins une commune : leur volet a « Voir sur la carte » sur téléphone. */
+	const grisantes = $derived(COUCHES.filter((c) => couverture.grisees(c.id).length > 0).map((c) => c.id));
+	const nomGrisage = $derived(COUCHES.find((c) => c.id === grisageMobile)?.nom ?? null);
+
+	/** « Voir sur la carte » dans le volet de la couche : la vue Carte, avec son grisage (la couche s'active). */
+	function voirCouverture(id: string) {
+		if (!registre.active(id)) registre.activer(id, true);
+		grisageMobile = grisageApres(grisageMobile, { voir: id });
+		affichage = 'carte';
+	}
+
+	/** Le grisage suit la couche dont le volet est ouvert sur bureau, et « Voir sur la carte » sur téléphone. */
+	const grisees = $derived(couverture.grisees(telephone.current ? grisageMobile : registre.volet));
 
 	// Un même texte (« © swisstopo », pour le fond, les adresses et les lacs) n'est cité qu'une fois.
 	const attribution = $derived(
@@ -106,10 +152,13 @@
 			.map(attributionHtml)
 	);
 
-	const chercherCouches = (texte: string) => resultatsCouches(COUCHES, texte);
+	const chercherCouches = (texte: string) => resultatsCouches(COUCHES, texte, data.communes);
 
 	function choix(r: Resultat) {
 		registre.oublierAvis();
+		// Chercher un lieu déplace la zone du fil ; chercher un élément ou une fiche propre, non : c'est le registre
+		// qui vole vers eux.
+		if (r.type === 'adresse' || r.type === 'commune') registre.deplacementVoulu();
 		if (r.type === 'adresse') {
 			repere = [r.lon, r.lat];
 			carte?.voler(r.lon, r.lat, r.categorie === 'Position' ? 15 : 16);
@@ -117,6 +166,9 @@
 			// La fiche s'ouvre, et la carte cadre la commune.
 			repere = null;
 			registre.ouvrir({ commune: r.commune.slug });
+		} else if (r.type === 'fiche') {
+			repere = null;
+			registre.ouvrir({ fiche: r.fiche });
 		} else registre.ouvrir({ couche: r.couche, element: r.element });
 	}
 
@@ -136,7 +188,7 @@
 	}
 </script>
 
-<div class="app" class:avec-fiche={registre.commune} data-affichage={affichage}>
+<div class="app" class:avec-fiche={registre.commune ?? registre.propre} data-affichage={affichage}>
 	<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
 
 	<Rail {registre} />
@@ -172,6 +224,19 @@
 					<button type="button" aria-label="Masquer ce message" onclick={registre.oublierAvis}>×</button>
 				{/if}
 			</p>
+			<!-- Téléphone : le grisage montré par « Voir sur la carte », jusqu'à la croix. -->
+			{#if telephone.current && nomGrisage}
+				<p class="pastille-couverture">
+					Couverture : {nomGrisage}
+					<button
+						type="button"
+						aria-label="Ne plus griser les communes que {nomGrisage} ne couvre pas"
+						onclick={() => (grisageMobile = grisageApres(grisageMobile, { effacer: true }))}
+					>
+						×
+					</button>
+				</p>
+			{/if}
 		</div>
 
 		<!-- Un bloc par couche : le volet qui se ferme garde sa couche pendant qu'il disparaît. -->
@@ -188,38 +253,63 @@
 			{/if}
 		{/each}
 
+		<!-- Le fil cantonal, à la place des volets : ouvert à l'arrivée, sa colonne de fiche reste ouvrable à droite. -->
+		{#if registre.volet === FIL && !telephone.current}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				class="volet volet-fil"
+				transition:fly={{ x: -20, duration: 160 }}
+				onkeydown={(e) => e.key === 'Escape' && fermerVolet()}
+			>
+				<Fil {registre} chargement={fil} communes={data.communes} onfermer={fermerVolet} />
+			</div>
+		{/if}
+
 		<p class="liens">
 			<a href={resolve('/a-propos')}>À propos</a> ·
 			<a href={resolve('/protection-des-donnees')}>Protection des données</a>
 		</p>
 
 		<!-- Téléphone : ce qui est ouvert s'affiche d'abord en aperçu, en bas de la carte. -->
-		{#if telephone.current && registre.commune}
+		{#if telephone.current && (registre.commune ?? registre.propre)}
 			<div class="apercu" bind:this={apercu} in:fly={{ y: 30, duration: 200 }}>
-				<Apercu {registre} commune={registre.commune} onvoir={voirFiche} />
+				<Apercu {registre} nom={registre.commune?.nom ?? registre.propre!.fiche.nom} onvoir={voirFiche} />
 			</div>
 		{/if}
 	</div>
+
+	<!-- Téléphone : la vue Fil, montée à son premier passage ; toucher une entrée ramène à la carte, pour l'aperçu. -->
+	{#if telephone.current && filVu}
+		<div class="vue-fil">
+			<Fil {registre} chargement={fil} communes={data.communes} onouvert={() => (affichage = 'carte')} />
+		</div>
+	{/if}
 
 	<!-- Téléphone : la vue Couches empile les volets de toutes les couches, dans l'ordre du registre. -->
 	{#if telephone.current && affichage === 'couches'}
 		<div class="couches">
 			{#each COUCHES as c (c.id)}
-				<Volet couche={c} {registre} />
+				<Volet
+					couche={c}
+					{registre}
+					onvoir={grisantes.includes(c.id) ? () => voirCouverture(c.id) : undefined}
+				/>
 			{/each}
 		</div>
 	{/if}
 
-	{#if registre.commune}
-		<!-- Une seule colonne : changer de commune remplace son contenu sans la refermer. -->
+	{#if registre.commune ?? registre.propre}
+		{@const ouverte = registre.commune ?? registre.propre!}
+		<!-- Une seule colonne, pour une commune ou une fiche propre : changer de fiche remplace son contenu sans la refermer. -->
 		<div class="colonne" in:fly={{ x: 40, duration: 200 }}>
-			<FicheCommune {registre} commune={registre.commune} />
+			<FicheOuverte {registre} {ouverte} />
 		</div>
 	{/if}
 
 	<!-- Masquée sur bureau par la feuille de style : sur téléphone, elle est là dès le premier rendu. -->
 	<nav class="barre-vues" aria-label="Affichage">
 		<button type="button" aria-pressed={affichage === 'carte'} onclick={() => (affichage = 'carte')}>Carte</button>
+		<button type="button" aria-pressed={affichage === 'fil'} onclick={() => (affichage = 'fil')}>Fil</button>
 		<button type="button" aria-pressed={affichage === 'couches'} onclick={() => (affichage = 'couches')}>
 			Couches
 		</button>
@@ -227,7 +317,7 @@
 		<button
 			type="button"
 			aria-pressed={affichage === 'fiche'}
-			disabled={!registre.commune}
+			disabled={!registre.fiche}
 			onclick={() => (affichage = 'fiche')}
 		>
 			Fiche
@@ -302,6 +392,10 @@
 		height: fit-content;
 		max-height: calc(100% - 100px);
 	}
+	/* Le fil, un peu plus large qu'un volet. */
+	.volet-fil {
+		width: min(380px, calc(100% - 20px));
+	}
 	.liens {
 		position: absolute;
 		z-index: 2;
@@ -322,8 +416,33 @@
 		/* Laisse visibles les liens et le bouton des sources (attribution), en bas de la carte. */
 		bottom: 34px;
 	}
-	.barre-vues {
+	.barre-vues,
+	.vue-fil {
 		display: none;
+	}
+	.pastille-couverture {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: fit-content;
+		margin: 6px 0 0;
+		padding: 4px 4px 4px 12px;
+		border-radius: 999px;
+		background: var(--surface);
+		box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+		font-size: 14px;
+		font-weight: 600;
+	}
+	.pastille-couverture button {
+		width: 36px;
+		height: 36px;
+		border: 0;
+		border-radius: 50%;
+		background: none;
+		font-size: 20px;
+		line-height: 1;
+		color: var(--muted);
+		cursor: pointer;
 	}
 
 	/*
@@ -339,21 +458,39 @@
 		.app > :global(.rail) {
 			display: none;
 		}
+		/* Les volets du bureau, rendus à la pré-génération, ne s'affichent pas avant que la requête ne les retire. */
+		.zone-carte .volet {
+			display: none;
+		}
 		.zone-carte,
 		.colonne,
-		.couches {
+		.couches,
+		.vue-fil {
 			grid-area: 1 / 1;
 		}
 		.colonne,
-		.couches {
+		.couches,
+		.vue-fil {
 			z-index: 6;
+		}
+		.vue-fil {
+			display: block;
+			overflow-y: auto;
+			background: var(--bg);
+		}
+		.vue-fil :global(.fil) {
+			border-radius: 0;
+			box-shadow: none;
+			min-height: 100%;
+			box-sizing: border-box;
 		}
 		.colonne :global(.fiche) {
 			border-left: 0;
 		}
 		/* visibility plutôt que display : la carte garde sa taille, et ce qui est caché sort de l'ordre de tabulation. */
 		.app:not([data-affichage='carte']) .zone-carte,
-		.app:not([data-affichage='fiche']) .colonne {
+		.app:not([data-affichage='fiche']) .colonne,
+		.app:not([data-affichage='fil']) .vue-fil {
 			visibility: hidden;
 		}
 		/* MapLibre force « visibility: visible » sur l'attribution dépliée. */

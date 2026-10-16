@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Auteur": {
+      "additionalProperties": false,
+      "properties": {
+        "nom": {
+          "type": "string"
+        },
+        "parti": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "nom",
+        "parti"
+      ],
+      "title": "Auteur",
+      "type": "object"
+    },
+    "CleConseil": {
+      "pattern": "^[a-z0-9]+$",
+      "type": "string"
+    },
+    "CleElement": {
+      "pattern": "^[a-z0-9]+/[^/\\s]+$",
+      "type": "string"
+    },
+    "CommuneRattachee": {
+      "additionalProperties": false,
+      "description": "Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement.",
+      "properties": {
+        "ofs": {
+          "$ref": "#/$defs/NumeroOfs"
+        },
+        "origine": {
+          "$ref": "#/$defs/OrigineCommune",
+          "description": "`titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée à la main par `corrections.json`."
+        }
+      },
+      "required": [
+        "ofs",
+        "origine"
+      ],
+      "title": "CommuneRattachee",
+      "type": "object"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "LigneObjet": {
+      "additionalProperties": false,
+      "description": "Un Objet en ligne légère, commune aux listes par année, à « Au Grand Conseil » et à l'index : de quoi\nl'afficher dans une liste. Le détail est dans son fichier d'archive.",
+      "properties": {
+        "cle": {
+          "$ref": "#/$defs/CleElement",
+          "description": "`<conseil>/<numéro>` : le fichier d'archive de l'Objet."
+        },
+        "numero": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "depose": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "titre": {
+          "type": "string"
+        },
+        "auteurs": {
+          "description": "Les deux premiers contributeurs, dans l'ordre de la source.",
+          "items": {
+            "$ref": "#/$defs/Auteur"
+          },
+          "type": "array"
+        },
+        "nombre_auteurs": {
+          "description": "Nombre de tous les contributeurs.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "statut": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Statut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "derniere_etape": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Date de la dernière étape datée."
+        },
+        "communes": {
+          "description": "Grand Conseil : les communes rattachées, dans l'ordre du rattachement. Vide pour un conseil communal, dont les Objets n'appartiennent qu'à sa commune.",
+          "items": {
+            "$ref": "#/$defs/CommuneRattachee"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "cle",
+        "numero",
+        "type",
+        "depose",
+        "titre",
+        "auteurs",
+        "nombre_auteurs",
+        "statut",
+        "derniere_etape",
+        "communes"
+      ],
+      "title": "LigneObjet",
+      "type": "object"
+    },
+    "NumeroOfs": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "OrigineCommune": {
+      "enum": [
+        "titre",
+        "document",
+        "correction"
+      ],
+      "type": "string"
+    },
+    "Statut": {
+      "additionalProperties": false,
+      "properties": {
+        "libelle": {
+          "description": "Le `state_name` brut de la source quand il existe, sinon le libellé de la dernière étape datée.",
+          "type": "string"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Date de la dernière étape datée ; `null` si aucune étape n'est datée."
+        }
+      },
+      "required": [
+        "libelle",
+        "date"
+      ],
+      "title": "Statut",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/<conseil>/objets-<année>.json` : les Objets du conseil déposés cette année-là, du plus récent au\nplus ancien. Un Objet sans date de dépôt est classé à l'année de sa première étape datée ; sans aucune date, il\nn'est dans aucune liste (son fichier d'archive reste ouvrable).",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "conseil": {
+      "$ref": "#/$defs/CleConseil"
+    },
+    "annee": {
+      "type": "integer"
+    },
+    "objets": {
+      "items": {
+        "$ref": "#/$defs/LigneObjet"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "conseil",
+    "annee",
+    "objets"
+  ],
+  "title": "ListeObjets",
+  "type": "object"
+}

@@ -6,11 +6,18 @@
 	 * (EchecSource), pas dans le badge : sous le nom d'un onglet, un bouton ne peut pas en contenir un autre.
 	 */
 	import { etatExecution, libelleBadge } from '#lib/fraicheur.js';
+	import { dernierImport } from '#lib/imports-conseils.js';
+	import { importsCourants } from '#lib/imports-courants.svelte.js';
 	import type { Source } from '#lib/schema.js';
 
 	let { source }: { source: Source } = $props();
 
-	const etat = $derived(etatExecution(source.id) ?? { derniere: null, erreur: null });
+	// Une source `import` (un conseil) date du dernier import réussi du cron, lu dans `conseils/import.json`.
+	const etat = $derived(
+		source.fraicheur === 'import'
+			? { derniere: dernierImport(importsCourants(), source), erreur: null }
+			: (etatExecution(source.id) ?? { derniere: null, erreur: null })
+	);
 
 	/** L'âge affiché suit l'heure : relu toutes les 30 s. */
 	let maintenant = $state(new Date());

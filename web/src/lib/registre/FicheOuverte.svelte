@@ -1,12 +1,17 @@
 <script lang="ts">
 	/*
-	 * Fiche commune, rendue par le registre en colonne à droite de la carte : en-tête (nom de la commune, adresse de
-	 * son hôtel de ville ou « position approximative », anciennes communes et anciens noms), puis un
-	 * onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
-	 * a qu'un onglet ; sous le nom de chaque onglet, le badge de fraîcheur de chacune des sources de la couche.
-	 * Pour une commune que la couche ne couvre pas, l'onglet affiche le message commun « non couvert ».
-	 * Changer de commune remplace le contenu sur place : l'onglet choisi reste, son contenu est
-	 * remonté pour la nouvelle commune.
+	 * Fiche ouverte, rendue par le registre en colonne à droite de la carte : celle d'une commune ou une fiche propre,
+	 * jamais les deux.
+	 *
+	 * Fiche commune : en-tête (nom de la commune, adresse de son hôtel de ville ou « position approximative »,
+	 * anciennes communes et anciens noms), puis un onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
+	 * a qu'un onglet ; sous le nom de chaque onglet, les badges de fraîcheur des seules sources qui concernent la
+	 * commune (`sourcesDeLOnglet`). Pour une commune que la couche ne couvre pas, « Non couvert » passe en tête de
+	 * l'onglet, qui reste rendu. L'onglet choisi est tenu par le registre (`ouvrir({ commune, onglet })` le choisit) :
+	 * changer de commune remplace le contenu sur place, l'onglet choisi reste et son contenu est remonté.
+	 *
+	 * Fiche propre : en-tête (nom et sous-titre que déclare sa couche), puis le seul onglet de sa couche, rendu avec
+	 * `ctx.fiche`, sous lequel les badges des sources qui portent sur tout le canton.
 	 *
 	 * L'élément ouvert s'affiche dans l'onglet de sa couche, sous le fil « Permis › n° 248845 » : l'`Onglet` reste
 	 * monté, caché, pour retrouver sa place quand on ferme l'élément ; le focus revient alors sur l'onglet.
@@ -15,24 +20,41 @@
 	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
-	import { source } from '#lib/sources.js';
+	import { SOURCES } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
 	import { enteteFiche } from './entete.js';
+	import type { FicheDeCouche } from './fiches.js';
+	import { messageNonCouvert, nomOnglet, sourcesDeLOnglet } from './onglet.js';
 	import type { Registre } from './registre.svelte.js';
 
-	let { registre, commune }: { registre: Registre; commune: Commune } = $props();
+	let { registre, ouverte }: { registre: Registre; ouverte: Commune | FicheDeCouche } = $props();
 
-	const entete = $derived(enteteFiche(commune));
+	const commune = $derived('bfs' in ouverte ? ouverte : null);
+	const propre = $derived('bfs' in ouverte ? null : ouverte);
+	const nom = $derived(commune?.nom ?? propre!.fiche.nom);
+	/** Ce qui distingue la fiche, pour remonter l'onglet quand elle change. */
+	const cle = $derived(commune ? `commune:${commune.slug}` : `fiche:${propre!.fiche.id}`);
+	const entete = $derived(commune ? enteteFiche(commune) : null);
 
-	const onglets = $derived(registre.couches.filter((c) => c.composants.Onglet));
-	let choisi = $state<string | null>(null);
+	const onglets = $derived(
+		propre
+			? propre.couche.composants.Onglet
+				? [propre.couche]
+				: []
+			: registre.couches.filter((c) => c.composants.Onglet)
+	);
 	/** Couche de l'élément ouvert, quand elle a un onglet et une `Fiche` pour l'y afficher. */
 	const avecFiche = $derived(
 		onglets.find((c) => c.id === registre.ouvert?.couche && c.composants.Fiche) ?? null
 	);
-	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === choisi) ?? onglets[0]);
+	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === registre.onglet) ?? onglets[0]);
 	const element = $derived(avecFiche === courant ? registre.ouvert : null);
-	const couvert = $derived(!courant || couvertureCourante().couvre(courant.id, commune.bfs));
+	const couvert = $derived(!courant || !commune || couvertureCourante().couvre(courant.id, commune.bfs));
+	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil, retour du navigateur) y ramène,
+	// même quand on est arrivé par un lien.
+	$effect(() => {
+		if (avecFiche) registre.onglet = avecFiche.id;
+	});
 
 	/** Défilement de l'onglet quand l'élément s'ouvre, rétabli quand il se ferme. */
 	let corps: HTMLElement | undefined = $state();
@@ -58,31 +80,33 @@
 		if (!pas || !courant) return;
 		e.preventDefault();
 		const i = (onglets.indexOf(courant) + pas + onglets.length) % onglets.length;
-		choisi = onglets[i].id;
-		document.getElementById(`onglet-${choisi}`)?.focus();
+		registre.onglet = onglets[i].id;
+		document.getElementById(`onglet-${onglets[i].id}`)?.focus();
 	}
 
 	/** Choisir un autre onglet ferme l'élément ouvert ; le sien ramène à son contenu. */
 	function choisir(id: string) {
-		choisi = id;
+		registre.onglet = id;
 		if (element) registre.fermer();
 	}
 </script>
 
 <section class="fiche" aria-labelledby="fiche-titre">
 	<div class="entete">
-		<h2 id="fiche-titre" tabindex="-1">{commune.nom}</h2>
-		<button class="fermer" type="button" aria-label="Fermer la fiche de {commune.nom}" onclick={registre.fermerCommune}>
+		<h2 id="fiche-titre" tabindex="-1">{nom}</h2>
+		<button class="fermer" type="button" aria-label="Fermer la fiche {commune ? 'de' : 'du'} {nom}" onclick={registre.fermerFiche}>
 			×
 		</button>
 	</div>
 	<div class="infos">
-		{#if entete.siege}
+		{#if propre}
+			<p>{propre.fiche.sousTitre}</p>
+		{:else if entete?.siege}
 			<p>Hôtel de ville : {entete.siege}</p>
 		{:else}
 			<p class="approximative">Hôtel de ville : position approximative</p>
 		{/if}
-		{#each entete.anciens as ligne (ligne)}<p>{ligne}</p>{/each}
+		{#each entete?.anciens ?? [] as ligne (ligne)}<p>{ligne}</p>{/each}
 	</div>
 
 	<!-- svelte-ignore a11y_interactive_supports_focus -->
@@ -97,35 +121,34 @@
 				tabindex={c === courant ? 0 : -1}
 				onclick={() => choisir(c.id)}
 			>
-				{c.nom}
-				{#each c.sources.map(source) as s (s.id)}<BadgeFraicheur source={s} />{/each}
+				{nomOnglet(c)}
+				{#each sourcesDeLOnglet(c, SOURCES, commune?.bfs ?? null) as s (s.id)}<BadgeFraicheur source={s} />{/each}
 			</button>
 		{/each}
 	</div>
 
 	{#if courant}
 		<div class="corps" role="tabpanel" id="panneau-{courant.id}" aria-labelledby="onglet-{courant.id}" bind:this={corps}>
-			{#if !couvert}
-				<p class="non-couvert" hidden={element !== null}>
-					<strong>Non couvert</strong> : la couche {courant.nom} n’a pas de source pour {commune.nom}.
-					<a href={resolve('/couverture')}>Voir la Couverture</a>
-				</p>
-			{:else}
-				{#key `${courant.id}:${commune.slug}`}
-					<div hidden={element !== null}>
-						{#await registre.composant(courant, 'Onglet') then module}
-							{#if module}<module.default ctx={registre.contexte(courant)} />{/if}
-						{:catch}
-							<p class="erreur">L’onglet n’a pas pu être chargé. Rechargez la page.</p>
-						{/await}
-					</div>
-				{/key}
-			{/if}
+			{#key `${courant.id}:${cle}`}
+				<div hidden={element !== null}>
+					{#if !couvert && commune}
+						<p class="non-couvert">
+							<strong>Non couvert</strong> : {messageNonCouvert(courant, commune)}
+							<a href={resolve('/couverture')}>Voir la Couverture</a>
+						</p>
+					{/if}
+					{#await registre.composant(courant, 'Onglet') then module}
+						{#if module}<module.default ctx={registre.contexte(courant)} />{/if}
+					{:catch}
+						<p class="erreur">L’onglet n’a pas pu être chargé. Rechargez la page.</p>
+					{/await}
+				</div>
+			{/key}
 			{#if element}
 				<nav class="fil" aria-label="Fil d’Ariane">
-					<button type="button" class="lien" onclick={registre.fermer}>{courant.nom}</button>
+					<button type="button" class="lien" onclick={registre.fermer}>{nomOnglet(courant)}</button>
 					<span aria-hidden="true">›</span>
-					<span aria-current="page">n° {element.element}</span>
+					<span aria-current="page">{courant.libelle?.(element.element) ?? `n° ${element.element}`}</span>
 				</nav>
 				{#key `${element.couche}:${element.element}`}
 					{#await registre.composant(courant, 'Fiche') then module}
@@ -221,7 +244,7 @@
 		font-size: 14px;
 	}
 	.non-couvert {
-		margin: 0;
+		margin: 0 0 12px;
 		color: var(--muted);
 	}
 	.fil {

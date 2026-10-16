@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { teteCommune, titreFiche } from './tete.js';
+import { teteCommune, teteFiche, titreFiche } from './tete.js';
 import type { CoucheInscrite } from './types.js';
 import { commune } from '#tests/faux-canton.js';
 import type { AncienNom } from '#lib/types.js';
@@ -29,14 +29,29 @@ describe('<head> d’une commune', () => {
 		);
 	});
 
-	it('énumère les couches dans l’ordre du registre, et ignore celles qui ne résument rien', () => {
+	it('joint les résumés par « ; », dans l’ordre du registre, et ignore les couches qui ne résument rien', () => {
 		const couches = [
 			couche('a', { resume: 'les permis' }),
 			couche('h'),
 			couche('b', { resume: 'les routes' }),
 			couche('c', { resume: 'les trains' })
 		];
-		expect(teteCommune(PULLY, couches).description).toBe('Pully (VD) sur Vigie Vaud : les permis, les routes et les trains.');
+		expect(teteCommune(PULLY, couches).description).toBe('Pully (VD) sur Vigie Vaud : les permis ; les routes ; les trains.');
+	});
+
+	it('demande son résumé à une couche dont le résumé dépend de la commune', () => {
+		const LAUSANNE = commune(5586, 'Lausanne', [6.58, 46.5, 6.72, 46.6]);
+		const conseils = couche('conseils', {
+			resume: (c) => (c.bfs === 5586 ? 'les séances de son Conseil communal' : 'les objets du Grand Conseil qui la nomment')
+		});
+		const couches = [couche('permis', { resume: 'les permis' }), conseils];
+		expect(teteCommune(LAUSANNE, couches).description).toBe(
+			'Lausanne (VD) sur Vigie Vaud : les permis ; les séances de son Conseil communal.'
+		);
+		expect(teteCommune(PULLY, couches).description).toBe(
+			'Pully (VD) sur Vigie Vaud : les permis ; les objets du Grand Conseil qui la nomment.'
+		);
+		expect(teteCommune(LAUSANNE, couches).titre).toBe('Lausanne – Vigie Vaud');
 	});
 
 	it('nomme les anciennes communes et les anciens noms', () => {
@@ -63,15 +78,34 @@ describe('titre de la page, qui suit la fiche ouverte', () => {
 	const permis = couche('permis', { titre: (element, commune) => `Dossier n° ${element} – ${commune} – Vigie Vaud` });
 	const sansTitre = couche('routes');
 
-	it('est celui de la commune quand aucun élément n’est ouvert', () => {
-		expect(titreFiche(PULLY, null, [permis])).toBe('Pully – Vigie Vaud');
+	it('est celui de la fiche quand aucun élément n’est ouvert', () => {
+		expect(titreFiche('Pully', null, [permis])).toBe('Pully – Vigie Vaud');
+		expect(titreFiche('Parlement', null, [permis])).toBe('Parlement – Vigie Vaud');
 	});
-	it('est celui que la couche donne à l’élément ouvert, dans la commune du chemin', () => {
-		expect(titreFiche(PULLY, { couche: 'permis', element: '248845' }, [permis])).toBe(
+	it('est celui que la couche donne à l’élément ouvert, dans la fiche du chemin', () => {
+		expect(titreFiche('Pully', { couche: 'permis', element: '248845' }, [permis])).toBe(
 			'Dossier n° 248845 – Pully – Vigie Vaud'
 		);
+		expect(titreFiche('Parlement', { couche: 'permis', element: '248845' }, [permis])).toBe(
+			'Dossier n° 248845 – Parlement – Vigie Vaud'
+		);
 	});
-	it('reste celui de la commune pour une couche qui ne titre pas ses éléments', () => {
-		expect(titreFiche(PULLY, { couche: 'routes', element: 'A9' }, [permis, sansTitre])).toBe('Pully – Vigie Vaud');
+	it('reste celui de la fiche pour une couche qui ne titre pas ses éléments', () => {
+		expect(titreFiche('Pully', { couche: 'routes', element: 'A9' }, [permis, sansTitre])).toBe('Pully – Vigie Vaud');
+	});
+});
+
+describe('<head> d’une fiche propre', () => {
+	const fiche = {
+		id: 'parlement',
+		chemin: '/parlement',
+		nom: 'Parlement',
+		sousTitre: 'place du Château',
+		description: 'Ce que fait le parlement.',
+		position: [6.6, 46.5] as [number, number]
+	};
+
+	it('porte le nom de la fiche et la description qu’elle déclare', () => {
+		expect(teteFiche(fiche)).toEqual({ titre: 'Parlement – Vigie Vaud', description: 'Ce que fait le parlement.' });
 	});
 });

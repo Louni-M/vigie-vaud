@@ -1,10 +1,11 @@
 // Contrôle de `sources.json` à la construction du site (ADR 0013) : la construction échoue si le fichier ne suit
-// pas le JSON Schema tiré des modèles Pydantic, ou s'il cite un n° OFS qui n'est pas une commune actuelle.
+// pas le JSON Schema tiré des modèles Pydantic, s'il cite un n° OFS qui n'est pas une commune actuelle, ou si la
+// Couverture d'un conseil est fausse.
 // Le site se construit sans Python : la validation passe par Ajv, sur le JSON Schema versionné dans `schema/`.
 import { readFileSync } from 'node:fs';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import type { Plugin } from 'vite';
-import type { FichierSources } from '../src/lib/schema.ts';
+import type { FichierSources, Source } from '../src/lib/schema.ts';
 
 const lire = (chemin: string): unknown => JSON.parse(readFileSync(chemin, 'utf8'));
 
@@ -19,13 +20,30 @@ export function erreursSources(fichier: unknown, schema: object, communes: Set<n
 	for (const source of fichier.sources) {
 		if (vus.has(source.id)) erreurs.push(`identifiant de source en double : ${source.id}`);
 		vus.add(source.id);
-		const { communes: couvertes } = source.couverture;
-		if (couvertes === 'canton') continue;
+		if (source.conseil) erreurs.push(...erreursConseil(source));
+		const couvertes = source.couverture?.communes;
+		if (couvertes === undefined || couvertes === 'canton') continue;
 		for (const ofs of couvertes) {
 			if (!communes.has(ofs)) erreurs.push(`${source.id} : le n° OFS ${ofs} n'est pas une commune actuelle`);
 		}
 	}
 	return erreurs;
+}
+
+/**
+ * Couverture d'un conseil : un conseil communal (`body_key` = n° OFS) couvre exactement sa commune ; le Grand
+ * Conseil (`VD`), qui porte sur le canton, n'a pas de Couverture. Une Couverture fausse ne doit jamais être publiée.
+ */
+function erreursConseil(source: Source): string[] {
+	const { body_key } = source.conseil!;
+	const communes = source.couverture?.communes;
+	if (!/^\d+$/.test(body_key)) {
+		return communes === undefined
+			? []
+			: [`${source.id} : le Grand Conseil porte sur le canton et ne déclare pas de Couverture`];
+	}
+	const exacte = Array.isArray(communes) && communes.length === 1 && communes[0] === Number(body_key);
+	return exacte ? [] : [`${source.id} : un conseil communal couvre exactement sa commune (${body_key})`];
 }
 
 /** Fait échouer la construction (et le serveur de développement) si `sources.json` est invalide. */

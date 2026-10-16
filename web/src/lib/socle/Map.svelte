@@ -36,9 +36,10 @@
 		onpret?: (map: MlMap) => void;
 		/**
 		 * Fin d'un déplacement. `parDefaut` : la vue du canton (au chargement, ou rétablie par `vueCanton`),
-		 * qui n'est pas un choix du visiteur.
+		 * qui n'est pas un choix du visiteur. `parLaPersonne` : le visiteur a glissé, zoomé (molette, doigts,
+		 * clavier ou boutons) ; faux pour les vols et cadrages demandés à la carte.
 		 */
-		onvue?: (zone: Zone, centre: Centre, parDefaut: boolean) => void;
+		onvue?: (zone: Zone, centre: Centre, parDefaut: boolean, parLaPersonne: boolean) => void;
 	}
 
 	let { repere = null, attribution = [], bounds = CANTON, interactive = true, onpret, onvue }: Props = $props();
@@ -51,6 +52,8 @@
 	let cadreEnAttente: LngLatBoundsLike | null = null;
 	/** Le cadre en attente mène à une vue par défaut. */
 	let cadreParDefaut = false;
+	/** La vue en attente (`enAttente`) n'est pas un choix du visiteur : fiche propre qu'on vient d'ouvrir. */
+	let vueParDefaut = false;
 	let maplibre: typeof import('maplibre-gl') | undefined;
 	let controle: AttributionControl | undefined;
 	/** Le prochain déplacement terminé mène à une vue par défaut (canton, commune cadrée) : elle n'entre pas dans l'adresse. */
@@ -66,7 +69,7 @@
 		};
 	}
 
-	function emitView(parDefaut = false) {
+	function emitView(parDefaut = false, parLaPersonne = false) {
 		if (!map || !onvue) return;
 		parDefaut ||= versDefaut;
 		versDefaut = false;
@@ -75,17 +78,24 @@
 		onvue(
 			[b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
 			{ lon: c.lng, lat: c.lat, zoom: map.getZoom() },
-			parDefaut
+			parDefaut,
+			parLaPersonne
 		);
 	}
 
 	/**
 	 * Centre la carte sur un point (recherche d'adresse, géolocalisation, sélection), en un vol souple :
 	 * dézoom léger puis approche. `decalage` (px) remonte le point au-dessus d'un aperçu en bas de carte.
-	 * MapLibre remplace l'animation par un saut si le visiteur a demandé moins d'animations.
+	 * MapLibre remplace l'animation par un saut si le visiteur a demandé moins d'animations. `parDefaut` : la vue
+	 * obtenue n'est pas un choix du visiteur (fiche propre qu'on vient d'ouvrir).
 	 */
-	export function voler(lon: number, lat: number, zoom = 16, decalage = 0) {
-		if (!map) return aller({ lon, lat, zoom });
+	export function voler(lon: number, lat: number, zoom = 16, decalage = 0, parDefaut = false) {
+		if (!map) {
+			aller({ lon, lat, zoom });
+			vueParDefaut = parDefaut;
+			return;
+		}
+		versDefaut = parDefaut;
 		const cible = Math.max(map.getZoom(), zoom);
 		const loin = cible - map.getZoom() > 4;
 		map.flyTo({
@@ -131,6 +141,7 @@
 	export function aller(c: Centre, anime = true) {
 		if (!map) {
 			enAttente = c;
+			vueParDefaut = false;
 			cadreEnAttente = null;
 			return;
 		}
@@ -183,11 +194,17 @@
 					}
 				});
 
-				m.on('moveend', () => emitView());
+				// MapLibre joint l'évènement du navigateur aux déplacements faits par le visiteur, pas aux vols demandés
+				// ni aux changements de taille. Il l'omet parfois pour la molette : un tour de molette juste avant compte.
+				let geste = false;
+				let molette = -Infinity;
+				container.addEventListener('wheel', () => (molette = performance.now()), { capture: true, passive: true });
+				m.on('movestart', (e) => (geste = !!e.originalEvent || performance.now() - molette < 500));
+				m.on('moveend', (e) => emitView(false, geste || !!e.originalEvent));
 				map = m;
 				// Vue demandée pendant le chargement du style.
 				// Une vue demandée (lien partagé) est un choix du visiteur : elle reste dans l'adresse.
-				const parDefaut = !enAttente && (!cadreEnAttente || cadreParDefaut);
+				const parDefaut = enAttente ? vueParDefaut : !cadreEnAttente || cadreParDefaut;
 				if (enAttente) m.jumpTo({ center: [enAttente.lon, enAttente.lat], zoom: enAttente.zoom });
 				else if (cadreEnAttente) m.fitBounds(cadreEnAttente, { padding: 40, duration: 0 });
 				enAttente = cadreEnAttente = null;

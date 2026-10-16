@@ -1,18 +1,23 @@
 <script lang="ts">
-	import { dateHeure, libelleEtat, libelleMode, type Paire } from '#lib/couverture.js';
+	import { dateHeure, libelleCellule, libelleCommunes, libelleEtat, libelleMode } from '#lib/couverture.js';
 	import { couvertureChargee, couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import { lienPannes } from '#lib/etat-sources.js';
+	import { dernierImport } from '#lib/imports-conseils.js';
+	import { importsCharges, importsCourants } from '#lib/imports-courants.svelte.js';
 	import { canonique } from '#lib/indexation.js';
 	import { normaliser } from '#lib/labels.js';
 	import { lienCommune } from '#lib/registre/liens.js';
-	import { libelleVoie } from '#lib/sources.js';
+	import { libelleDonne, libelleVoie } from '#lib/sources.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	// La page est pré-générée sans l'état des sources : il est chargé dans le navigateur.
+	// La page est pré-générée sans l'état des sources ni le dernier import des conseils : ils sont chargés dans le
+	// navigateur.
 	const couverture = $derived(couvertureCourante(data.communes));
 	const charge = $derived(couvertureChargee());
+	const imports = $derived(importsCourants());
+	const importsCharge = $derived(importsCharges());
 
 	let recherche = $state('');
 	const lignes = $derived.by(() => {
@@ -20,7 +25,6 @@
 		return q ? data.communes.filter((c) => normaliser(c.nom).includes(q)) : data.communes;
 	});
 
-	const etatAffiche = (p: Paire) => (p.etat ? (charge ? libelleEtat(p.etat) : '…') : null);
 	const quand = (iso: string | null | undefined) => (iso ? `le ${dateHeure(iso)}` : '—');
 </script>
 
@@ -28,7 +32,7 @@
 	<title>Couverture – Vigie Vaud</title>
 	<meta
 		name="description"
-		content="Pour chaque source de Vigie Vaud et chaque commune vaudoise : comment les données sont obtenues, et si la source répond."
+		content="Pour chaque couche de Vigie Vaud et chaque commune vaudoise : comment les données sont obtenues, et si leur source répond."
 	/>
 	<link rel="canonical" href={canonique('/couverture')} />
 </svelte:head>
@@ -36,9 +40,9 @@
 <main class="page">
 	<h1>Couverture</h1>
 	<p class="intro">
-		Pour chaque source et chaque commune : le <strong>mode</strong> (les données viennent d’une API, sont scrapées,
+		Pour chaque couche et chaque commune : le <strong>mode</strong> (les données viennent d’une API, sont scrapées,
 		ou la commune n’est pas couverte) et l’<strong>état</strong> de la source, vérifié toutes les 30 minutes par une
-		sonde.
+		sonde. Les conseils sont importés une fois par jour ; une sonde vérifie que leur source répond.
 	</p>
 
 	<section class="encarts" aria-label="Sources">
@@ -62,10 +66,20 @@
 					</dd>
 					<dt>Voie d’accès</dt>
 					<dd>{libelleVoie(s.source)}</dd>
-					<dt>Mode</dt>
-					<dd>{libelleMode(s.source.couverture.mode)}</dd>
+					{#if s.source.couverture}
+						<dt>Mode</dt>
+						<dd>{libelleMode(s.source.couverture.mode)}</dd>
+					{/if}
 					<dt>Communes</dt>
-					<dd>{s.communes} communes sur {data.communes.length}</dd>
+					<dd>{libelleCommunes(s, data.communes.length)}</dd>
+					{#if s.source.conseil}
+						<dt>Donne</dt>
+						<dd>{libelleDonne(s.source.conseil)}</dd>
+					{/if}
+					{#if s.source.voie_acces === 'cron'}
+						<dt>Dernier import</dt>
+						<dd>{importsCharge ? quand(dernierImport(imports, s.source)?.toISOString()) : '…'}</dd>
+					{/if}
 					<dt>Dernière sonde</dt>
 					<dd>{charge ? quand(s.sonde?.derniere_sonde) : '…'}</dd>
 					<dt>Dernier succès</dt>
@@ -89,8 +103,8 @@
 				<thead>
 					<tr>
 						<th scope="col">Commune</th>
-						{#each couverture.sources as s (s.source.id)}
-							<th scope="col"><abbr title={s.source.nom}>{s.source.nom_court}</abbr></th>
+						{#each couverture.colonnes as couche (couche.id)}
+							<th scope="col">{couche.nom}</th>
 						{/each}
 					</tr>
 				</thead>
@@ -98,17 +112,21 @@
 					{#each lignes as c (c.bfs)}
 						<tr>
 							<th scope="row"><a href={lienCommune(c.slug)}>{c.nom}</a></th>
-							{#each couverture.sources as s (s.source.id)}
-								{@const p = couverture.paire(s.source.id, c.bfs)}
-								{@const e = etatAffiche(p)}
-								<td data-etat={charge ? p.etat?.etat : undefined}>
-									{libelleMode(p.mode)}{#if e}{' · '}{e}{/if}
+							{#each couverture.colonnes as couche (couche.id)}
+								{@const couvrantes = couverture.cellule(couche.id, c.bfs)}
+								{@const libelles = libelleCellule(couvrantes, charge)}
+								<td>
+									{#each libelles as libelle, i (i)}
+										<span class="paire" data-etat={charge ? couvrantes[i]?.paire.etat?.etat : undefined}>
+											{libelle}
+										</span>
+									{/each}
 								</td>
 							{/each}
 						</tr>
 					{:else}
 						<tr>
-							<td colspan={couverture.sources.length + 1} class="vide">Aucune commune ne correspond.</td>
+							<td colspan={couverture.colonnes.length + 1} class="vide">Aucune commune ne correspond.</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -153,6 +171,10 @@
 	[data-etat='surveillance_interrompue'],
 	[data-etat='inconnu'] {
 		color: var(--enquete-texte);
+	}
+	/* Plusieurs sources qui couvrent la commune : une ligne chacune. */
+	.paire {
+		display: block;
 	}
 	.motif {
 		font-size: 14px;
@@ -220,9 +242,6 @@
 	thead th {
 		background: var(--surface-2);
 		font-size: 13px;
-	}
-	abbr {
-		text-decoration: none;
 	}
 	tbody tr {
 		/* La ligne entière mène à la fiche : le lien du nom s'étend sur toute la ligne. */

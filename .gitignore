@@ -6,3 +6,16 @@
 .venv/
 __pycache__/
 .DS_Store
+
+# Réponses brutes de sondes d'API faites à la main (curl) : du brouillon, jamais publié.
+/h.txt
+/sh.txt
+/id.json
+/il.json
+/stac.json
+
+# Journaux et secrets locaux
+*.log
+.env
+.env.*
+!.env.example

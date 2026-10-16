@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CommuneRattachee": {
+      "additionalProperties": false,
+      "description": "Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement.",
+      "properties": {
+        "ofs": {
+          "$ref": "#/$defs/NumeroOfs"
+        },
+        "origine": {
+          "$ref": "#/$defs/OrigineCommune",
+          "description": "`titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée à la main par `corrections.json`."
+        }
+      },
+      "required": [
+        "ofs",
+        "origine"
+      ],
+      "title": "CommuneRattachee",
+      "type": "object"
+    },
+    "Contributeur": {
+      "additionalProperties": false,
+      "properties": {
+        "nom": {
+          "type": "string"
+        },
+        "parti": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Abréviation du parti, telle que la source la donne."
+        },
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Rôle brut (« Auteur », « Cosignataires », « Federführung »…)."
+        },
+        "sorte": {
+          "$ref": "#/$defs/SorteContributeur"
+        }
+      },
+      "required": [
+        "nom",
+        "parti",
+        "role",
+        "sorte"
+      ],
+      "title": "Contributeur",
+      "type": "object"
+    },
+    "DocumentObjet": {
+      "additionalProperties": false,
+      "properties": {
+        "titre": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Nom du document, sinon sa catégorie."
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lien": {
+          "$ref": "#/$defs/Lien",
+          "description": "Le document chez la source (PDF, page ou vidéo)."
+        }
+      },
+      "required": [
+        "titre",
+        "date",
+        "lien"
+      ],
+      "title": "DocumentObjet",
+      "type": "object"
+    },
+    "Etape": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "type": "string"
+        },
+        "libelle": {
+          "description": "`title.fr` de la source, sinon `title_harmonized.fr`, brut.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "libelle"
+      ],
+      "title": "Etape",
+      "type": "object"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "Lien": {
+      "pattern": "^https?://\\S+$",
+      "type": "string"
+    },
+    "NumeroOfs": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "OrigineCommune": {
+      "enum": [
+        "titre",
+        "document",
+        "correction"
+      ],
+      "type": "string"
+    },
+    "SorteContributeur": {
+      "enum": [
+        "personne",
+        "groupe"
+      ],
+      "type": "string"
+    },
+    "Statut": {
+      "additionalProperties": false,
+      "properties": {
+        "libelle": {
+          "description": "Le `state_name` brut de la source quand il existe, sinon le libellé de la dernière étape datée.",
+          "type": "string"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Date de la dernière étape datée ; `null` si aucune étape n'est datée."
+        }
+      },
+      "required": [
+        "libelle",
+        "date"
+      ],
+      "title": "Statut",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est\n`<conseil>/<numéro>`, la barre oblique du numéro devenant `-` (`vd/26_INT_140`, `5586/POS25-115`).",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "id": {
+      "description": "Identifiant de l'Objet dans OpenParlData.",
+      "type": "integer"
+    },
+    "numero": {
+      "description": "Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "type": {
+      "description": "Type brut de la source (`type_name`).",
+      "type": "string"
+    },
+    "statut": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Statut"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "depose": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Date de dépôt (`begin_date`)."
+    },
+    "titre": {
+      "description": "`title.fr` de la source, noms de particuliers masqués (« [particulier] », ADR 0007).",
+      "type": "string"
+    },
+    "contributeurs": {
+      "description": "Dans l'ordre de la source ; vide pour une pétition.",
+      "items": {
+        "$ref": "#/$defs/Contributeur"
+      },
+      "type": "array"
+    },
+    "etapes": {
+      "description": "Étapes datées, de la plus ancienne à la plus récente.",
+      "items": {
+        "$ref": "#/$defs/Etape"
+      },
+      "type": "array"
+    },
+    "documents": {
+      "items": {
+        "$ref": "#/$defs/DocumentObjet"
+      },
+      "type": "array"
+    },
+    "lien": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Lien"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Page de l'Objet chez le conseil (`url_external`)."
+    },
+    "communes": {
+      "description": "Grand Conseil : les communes rattachées par le nom (ADR 0016), dans l'ordre du rattachement (titre, puis documents de la plus à la moins citée, puis corrections), `corrections.json` appliqué. Vide pour un conseil communal, dont les Objets n'appartiennent qu'à leur commune.",
+      "items": {
+        "$ref": "#/$defs/CommuneRattachee"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "id",
+    "numero",
+    "type",
+    "statut",
+    "depose",
+    "titre",
+    "contributeurs",
+    "etapes",
+    "documents",
+    "lien",
+    "communes"
+  ],
+  "title": "Objet",
+  "type": "object"
+}

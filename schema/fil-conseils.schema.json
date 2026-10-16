@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CleConseil": {
+      "pattern": "^[a-z0-9]+$",
+      "type": "string"
+    },
+    "CleElement": {
+      "pattern": "^[a-z0-9]+/[^/\\s]+$",
+      "type": "string"
+    },
+    "DateSeance": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$",
+      "type": "string"
+    },
+    "EntreeFil": {
+      "additionalProperties": false,
+      "description": "Un Objet ou une Séance, à la forme d'une entrée du fil cantonal.",
+      "properties": {
+        "cle": {
+          "$ref": "#/$defs/CleElement"
+        },
+        "conseil": {
+          "$ref": "#/$defs/CleConseil"
+        },
+        "sorte": {
+          "$ref": "#/$defs/SorteElement"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Objet : son type brut. Séance : `null`."
+        },
+        "date": {
+          "$ref": "#/$defs/DateSeance",
+          "description": "Objet : jour de dépôt, sinon de sa première étape datée. Séance : son jour, avec l'heure quand la source la donne."
+        },
+        "titre": {
+          "description": "Objet : son titre masqué. Séance : son nom brut (le site compose le sien).",
+          "type": "string"
+        },
+        "communes": {
+          "description": "Conseil communal : sa commune. Grand Conseil : les communes rattachées à l'Objet, dans l'ordre du rattachement ; aucune pour une Séance.",
+          "items": {
+            "$ref": "#/$defs/NumeroOfs"
+          },
+          "type": "array"
+        },
+        "points": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Séance : nombre de points de l'ordre du jour. Objet : `null`."
+        }
+      },
+      "required": [
+        "cle",
+        "conseil",
+        "sorte",
+        "type",
+        "date",
+        "titre",
+        "communes",
+        "points"
+      ],
+      "title": "EntreeFil",
+      "type": "object"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "NumeroOfs": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "SorteElement": {
+      "enum": [
+        "objet",
+        "seance"
+      ],
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/fil.json` : les Objets et les Séances de tous les conseils datés des 21 derniers jours (heure de\nSuisse, marge pour des imports manqués) ou après, donc toutes les Séances à venir, du plus récent au plus ancien.\nLe site filtre lui-même sur sa fenêtre.",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "entrees": {
+      "items": {
+        "$ref": "#/$defs/EntreeFil"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "entrees"
+  ],
+  "title": "FilConseils",
+  "type": "object"
+}

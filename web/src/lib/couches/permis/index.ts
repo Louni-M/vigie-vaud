@@ -1,7 +1,8 @@
 import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
 import type { Parametres } from './donnees.svelte.js';
-import { NATURES, STATUTS, STATUTS_EN_COURS, STATUTS_ORDRE } from '#lib/labels.js';
+import { NATURES, STATUTS, STATUTS_EN_COURS, STATUTS_ORDRE, natureLabel } from '#lib/labels.js';
 import type { Statut } from '#lib/types.js';
+import { jourDe } from '#lib/fil/fil.js';
 
 /**
  * La couche Permis : dossiers CAMAC lus en direct sur le service du canton. Ses composants partagent
@@ -22,15 +23,38 @@ export const couchePermis: Couche<Parametres> = {
 		return /^\d{5,6}$/.test(n) ? [{ couche: 'permis', element: n, libelle: `Dossier CAMAC n° ${n}` }] : [];
 	},
 	// Le module de données n'est importé qu'à la première ouverture d'un dossier : la description reste légère.
+	// Un dossier n'a qu'une fiche, celle de sa commune.
 	async localiser(element) {
 		if (!/^\d+$/.test(element)) return null;
 		const { permis } = await import('./donnees.svelte.js');
 		const d = await permis.fiche(Number(element));
-		return d ? { commune: d.slug, position: [d.lon, d.lat] } : null;
+		return d ? { fiches: [{ commune: d.slug }], position: [d.lon, d.lat] } : null;
 	},
 	introuvable: (element) => `Aucun dossier n° ${element}.`,
-	titre: (element, commune) => `Dossier n° ${element} – ${commune} – Vigie Vaud`,
+	titre: (element, nomDeLaFiche) => `Dossier n° ${element} – ${nomDeLaFiche} – Vigie Vaud`,
 	resume: 'les permis de construire à l’enquête, en direct depuis le canton',
+	// Les nouveaux dossiers sont lus dans les dossiers en cours, chargés une seule fois par visite et partagés
+	// avec la carte : un dossier reste « nouveau » même si son enquête est close. Une enquête qui ne commence que
+	// demain n'y est pas encore : « À venir » est fait des Séances annoncées.
+	fil: {
+		types: [{ id: 'nouveaux', nom: 'Nouveaux dossiers', signe: 'P', couleur: STATUTS.enquete.couleur }],
+		async entrees(depuis) {
+			const { permis } = await import('./donnees.svelte.js');
+			const [actifs, aujourdhui] = [await permis.chargerActifs(), jourDe(new Date())];
+			return actifs
+				.filter((d) => d.debut && d.debut >= depuis && d.debut <= aujourdhui)
+				.map((d) => ({
+					element: String(d.id),
+					type: 'nouveaux',
+					date: d.debut!,
+					sorte: natureLabel(d.nature),
+					qui: d.commune,
+					titre: d.description ?? natureLabel(d.nature),
+					communes: [d.slug],
+					position: [d.lon, d.lat]
+				}));
+		}
+	},
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),

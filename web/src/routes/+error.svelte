@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { COUCHES } from '#lib/registre/couches.js';
-	import { lienCommune, lienElement, lienVue } from '#lib/registre/liens.js';
+	import { lienCommune, lienElement, lienFiche, lienVue } from '#lib/registre/liens.js';
 	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { ancienneAdresse } from '#lib/socle/anciens.js';
 	import { getCommunes } from '#lib/socle/communes.js';
@@ -43,6 +43,7 @@
 	function choix(r: Resultat) {
 		if (r.type === 'commune') goto(lienCommune(r.commune.slug));
 		else if (r.type === 'element') goto(lienElement(r.couche, r.element));
+		else if (r.type === 'fiche') goto(lienFiche(r.fiche));
 		else goto(lienVue({ lon: r.lon, lat: r.lat, zoom: r.categorie === 'Position' ? 15 : 16 }));
 	}
 </script>
@@ -65,7 +66,7 @@
 	{/if}
 	{#if communes.length}
 		<div class="recherche">
-			<Recherche {communes} chercherCouches={(texte) => resultatsCouches(COUCHES, texte)} onchoix={choix} />
+			<Recherche {communes} chercherCouches={(texte) => resultatsCouches(COUCHES, texte, communes)} onchoix={choix} />
 		</div>
 	{/if}
 	<p class="actions">
