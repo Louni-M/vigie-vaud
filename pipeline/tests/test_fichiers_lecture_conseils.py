@@ -175,7 +175,7 @@ def test_l_index_resume_chaque_conseil_dans_l_ordre_des_sources(tmp_path):
 
 
 def test_sans_objet_rattache_aucun_fichier_au_grand_conseil_n_est_ecrit(tmp_path):
-    # Le rattachement par le nom (ticket #67) remplira `communes` ; d'ici là, aucune commune n'a d'Objet.
+    # Aucun Objet du monde de base ne nomme de commune (rattachement par le nom : `test_rattachement_conseils`).
     horloge = HorlogeFactice(T0)
 
     _passer(tmp_path, _monde(horloge), horloge)

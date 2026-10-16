@@ -1,0 +1,1973 @@
+{
+ "description": "Jeu annoté réel du rattachement par le nom (ADR 0016), tiré de l'échantillon de la recherche #47 (Objets du Grand Conseil déposés du 15 octobre 2024 au 6 octobre 2026, script d'appariement de `research/communes-grand-conseil`) : les titres où le script trouve un nom, 50 titres où il n'en trouve aucun (graine 47), et 100 mentions tirées du texte des documents hors formules (graine 47), chacune avec 160 caractères de contexte de part et d'autre. Les titres qui nomment un particulier sont écartés ; dans les extraits, les noms de particuliers sont masqués. `attendu` : les communes (n° OFS) que le texte désigne vraiment (lieu, autorité communale, établissement situé dans la commune, y compris dans une énumération), relues à la main. `douteux` : la note d'un cas à relire par le mainteneur.",
+ "cas": [
+  {
+   "origine": "titre",
+   "numero": "24_LEG_129",
+   "texte": "Un crédit d’ouvrage de CHF 19'600’000.- pour financer les mesures d’assainissement prioritaires et la couverture photovoltaïque du Centre Blécherette, le Mont-sur-Lausanne",
+   "attendu": [
+    5587
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_219",
+   "texte": "EMPD accordant au Conseil d'État un crédit d’étude de CHF 3'151’000.- pour financer les études relatives à la construction du nouveau pôle alimentaire (NPA) des établissements de la plaine de l’Orbe (EPO) sur le site du pôle Pénitentiaire du Nord Vaudois (PPNV)",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_234",
+   "texte": "EMPD accordant au Conseil d'État un crédit d’investissement de CHF 62’860'000.- pour financer la construction d’un nouveau bâtiment pour la Haute école pédagogique aux Côtes de la Bourdonnette à Chavannes-près-Renens",
+   "attendu": [
+    5627
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_INT_176",
+   "texte": "Quel avenir pour la suppression du « Goulet d’Étranglement de Crissier » ?",
+   "attendu": [
+    5583
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_INT_179",
+   "texte": "Port du turban au Gymnase d'Yverdon déroulement des faits et futures mesures",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_34",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’investissement de CHF 5’205’000.- pour financer le plan de continuité de la prison du Bois-Mermet à Lausanne et accordant au Conseil d'Etat un crédit d’investissement de CHF 10'713’000.- pour financer le plan de continuité du pénitencier de Bochuz et ateliers aux EPO, Orbe",
+   "attendu": [
+    5586,
+    5757
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_35",
+   "texte": "EMPD accordant au Conseil d'État un crédit d’objet de CHF 41'499'000.- pour financer des études et la réalisation de la phase 1 (premiers ouvrages prioritaires) des infrastructures nécessaires et communes aux bâtiments existants et futurs du Pôle pénitentiaire Nord vaudois (PPNV) à Orbe et accordant au Conseil d'État un crédit d’étude de CHF 4'261’000.- pour financer les études de la phase 2 des infrastructures nécessaires et communes aux bâtiments existants et futurs du Pôle pénitentiaire Nord vaudois (PPNV) à Orbe",
+   "attendu": [
+    5757
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_MOT_46",
+   "texte": "Motion pour la réalisation d’un parking d’échange lors du prolongement du tramway de Renens à Villars-Ste-Croix",
+   "attendu": [
+    5591,
+    5651
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_QUE_76",
+   "texte": "Quelles sont les mesures prises pour assurer un transfert efficace sur le réseau des transports publics régionaux des voyageur-euse-s supplémentaires prévu-e en gare de Renens à partir du changement d’horaire CFF du 15.12.2024, notamment s’agissant du métro m1 et des lignes de bus 31, 32 et 33 ?",
+   "attendu": [
+    5591
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_RAP_32",
+   "texte": "Rapport du Conseil d'Etat au Grand Conseil sur le Postulat Alexandre Rydlo et consorts - au nom des député-e-s de l'Ouest lausannois - Pour un arrêt des trains grandes lignes en gare de Renens",
+   "attendu": [
+    5591
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_16",
+   "texte": "Place de la Gare à Lausanne: le canton adhère-t-il au projet ?",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_81",
+   "texte": "Impossible de réaliser des aménagements cyclables à Hautemorges ?",
+   "attendu": [
+    5656
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_21",
+   "texte": "Goulet d'étranglement de Crissier - qui va payer l'addition ?",
+   "attendu": [
+    5583
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_60",
+   "texte": "Licenciement à l’Université de Lausanne et climat institutionnel préoccupant",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_86",
+   "texte": "L'Orbe, ses gorges et... ses déchets?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_87",
+   "texte": "Ligne CFF Lausanne - Payerne : où se cache le quai 2 ?",
+   "attendu": [
+    5586,
+    5822
+   ],
+   "douteux": "« Ligne CFF Lausanne - Payerne » : une ligne nommée par ses deux bouts (cas limite de la recherche, compté juste)."
+  },
+  {
+   "origine": "titre",
+   "numero": "25_PAR_14",
+   "texte": "Élection de 2 membres de la Cour des comptes du Canton de Vaud – Premier mandat de 6 ans",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_37",
+   "texte": "Révision du PAC de la Ville haute de Moudon, le temps file et rien ne point à l'horizon ?",
+   "attendu": [
+    5678
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_49",
+   "texte": "Sécurité à la Cathédrale de Lausanne",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_8",
+   "texte": "Digital Nightmares : de la pub pour Tesla à l'Université de Lausanne ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "23_LEG_193",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit additionnel de CHF 3’400’000.- pour financer les dépenses supplémentaires nécessaires à la mise en œuvre des mesures SST urgentes pour le Gymnase du Bugnon à Lausanne",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "23_LEG_234",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit-cadre (2024-2028) de CHF 64'189'000.- pour financer les travaux d'entretien des bâtiments sur 4 sites et un crédit additionnel de CHF 1'474'000.- au crédit cadre de CHF 38'500'000 accordé par le Grand conseil le 27.10.2020 pour financer les mesures climatiques du bâtiment EPCL-midi à Lausanne",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "23_LEG_248",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’investissement de CHF 2'619'000.- pour financer la part cantonale des frais d’assainissement du glissement des Fontanelles, Ormont-Dessous",
+   "attendu": [
+    5410
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_130",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d'investissement de CHF 16'075’000 pour financer les études et les travaux de transformation et d'aménagement nécessaires à la relocalisation de la Justice de Paix du district de Lausanne des Côtes-de-Montbenon 8 à Lausanne vers Provence 4 à Lausanne",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_131",
+   "texte": "Modifiant la Loi du 6 juillet 2004 sur l'Université de Lausanne",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_142",
+   "texte": "EMPD accordant au Conseil d'État un crédit d’investissement de CHF 78'120’000 pour financer l’achat du bien-fonds n°309 de la Commune de Renens sis à l’avenue des Baumettes 23 (centre administratif des Baumettes) propriété d’UBS SA",
+   "attendu": [
+    5591
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_15",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’investissement de CHF 4'800'000.- pour financer l’équipement et le mobilier d’une salle de sport VD6 et l’extension du Gymnase de Bussigny",
+   "attendu": [
+    5624
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_151",
+   "texte": "EMPD accordant au Conseil d'État un crédit d’investissement de CHF 4'400'000.- pour financer des salles provisoires pour l’école technique de la vallée de Joux (ETVJ) au Sentier (Le Chenit)",
+   "attendu": [
+    5872
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_166",
+   "texte": "EMPD EMPD accordant aux transports publics de la région lausannoise SA (tl) un prêt conditionnellement remboursable de CHF 147'798'000, un prêt sans intérêts de CHF 14'753'000 et une garantie d’emprunt de CHF 35'185'000 pour le financement de la participation de l'État ainsi que le préfinancement partiel de la part fédérale de la réalisation de la deuxième étape du tramway t1 entre Renens (Gare) et Villars-Sainte-Croix (Croix-du-Péage)",
+   "attendu": [
+    5591,
+    5651
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_178",
+   "texte": "EMPD accordant au Conseil d'État un crédit d’étude de CHF 3'200'000.- pour financer les études du nouveau centre d’essais et de recherches agricoles à Grange Verney, Moudon",
+   "attendu": [
+    5678
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_213",
+   "texte": "Et projet de décret sur la fusion des communes de L’Abbaye, Le Chenit et Le Lieu et projet de loi modifiant la loi du 30 mai 2006 sur le découpage territorial",
+   "attendu": [
+    5871,
+    5872,
+    5873
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_236",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’ouvrage CHF 15’438’000.- pour financer les travaux de réhabilitation des routes cantonales 3-C-S et 7-C-S entre Chavannes-de-Bogis et Chavannes-des-Bois sur le territoire des communes de Chavannes-de-Bogis, Commugny et Chavannes-des-Bois",
+   "attendu": [
+    5707,
+    5708,
+    5711
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_252",
+   "texte": "EMPD EMPD accordant au Conseil d'Etat un crédit d’ouvrage de CHF 3'575'000.- pour financer la réalisation de la requalification de la RC 11 et l’aménagement d’un itinéraire de mobilité douce sur le territoire de la Commune d’Eysins",
+   "attendu": [
+    5716
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_26",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’étude 2ème étape de CHF 3'260'000.- pour financer l’approfondissement des études de conservation et de restauration de l’amphithéâtre romain d’Avenches",
+   "attendu": [
+    5451
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_32",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’étude complémentaire de CHF 12'620’000 pour financer les études relatives à la construction de la future prison des Grands-Marais (PGM) en une étape de travaux au lieu de deux ainsi que pour financer les diagnostics archéologiques relatifs à la construction de la future prison des Grands-Marais (PGM) et des sites adjacents, la Nouvelle colonie ouverte (COO) et le Poste de contrôle avancé (PCA) dans la Plaine de l’Orbe",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_57",
+   "texte": "EMPD crédit d’ouvrage de CHF 77'776'000.- pour financer la construction du nouveau Gymnase d’Echallens sur le site de Court-Champ à Echallens et un crédit d’investissement sous forme de subvention à fonds perdus de CHF 5'450'000.- en faveur de la compagnie du LEB pour contribuer à l’adaptation du passage inférieur de la gare d’Echallens permettant l’accès au nouveau Gymnase d’Echallens",
+   "attendu": [
+    5518
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_69",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’investissement de CHF 3’110’000.- pour financer les travaux de transformation et d’aménagement du nouvel Office régional de protection des mineurs de la Couronne lausannoise et du Gros-de-Vaud, à Romanel-sur-Lausanne",
+   "attendu": [
+    5592
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_98",
+   "texte": "Accordant au Conseil d'Etat un crédit d'étude de CHF 6'400'000.- pour financer les études relatives à la rénovation / restauration du Gymnase de la Cité à Lausanne",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_103",
+   "texte": "Exposé des motifs et projet de décret sur la fusion des Communes de Lucens et Curtilles et Projet de loi modifiant la loi du 30 mai 2006 sur le découpage territorial",
+   "attendu": [
+    5675,
+    5669
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_18",
+   "texte": "EMPD accordant au Conseil d'Etat un crédit d’ouvrage de CHF 13’575'000.- pour financer la part cantonale des travaux d’assainissement des ouvrages et d’amélioration de la fonctionnalité et de l’exploitation de la jonction sud de Moudon entre la RC 601 Lausanne – Berne et la RC 626 Oron – Moudon, sur la commune de Moudon",
+   "attendu": [
+    5678
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_74",
+   "texte": "Accordant au Conseil d'Etat un crédit d'étude de CHF 1'000'000 destiné à financer les études pour la mise en valeur des mosaïques sur le site archéologique de Boscéaz à Orbe et répondant à la motion Denis-Olivier Maillefer et consorts demandant la mise en valeur de la villa romaine et au postulat Patrick Simonin et consorts – Faudra-t-il que le ciel tombe sur la tête du Conseil d'Etat pour entrevoir des actes dans la protection et la mise en valeur de la villa romaine d'Orbe ?",
+   "attendu": [
+    5757
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_79",
+   "texte": "Accordant au Conseil d'État un crédit d’investissement de CHF 24'690'000.00 pour financer l’achat d’une fraction du bien-fonds n°870 de la commune de Prilly sis à la Route des Flumeaux 50, propriété de SICPA SA",
+   "attendu": [
+    5589
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_112",
+   "texte": "Racisme structurel au sein de la Police de Lausanne, qu'en est-il du Canton ?",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_91",
+   "texte": "EMPD accordant au Conseil d'État un crédit d’investissement de CHF 8'000’000.- pour financer les études, la démolition du bâtiment et du dépôt existant (ECA 3593a et 3593b) ainsi que la construction d'un centre de région Nord de la DGE sur le site de «Champ-Lovats», parcelle n°1605, à Yverdon-les-Bains",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_122",
+   "texte": "Quel est l’impact des gravières du district de Morges sur le flux de camions dans la région ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_114",
+   "texte": "Coupes dans les prestations publiques : abandon du foyer EVAM de Rolle pour les victimes de violence dans le couple",
+   "attendu": [
+    5861
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_126",
+   "texte": "Manifestations du 18 septembre à Lausanne les droits fondamentaux ont ils été respectés ?",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_132",
+   "texte": "Lausanne sous dioxine : décontaminons !",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_140",
+   "texte": "La dioxine à Lausanne est-elle donc une vraie pollution?",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_96",
+   "texte": "Pour un itinéraire pédestre entre Bière et le Marchairuz",
+   "attendu": [
+    5425
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_125",
+   "texte": "Problèmes liés aux précipitations et à la gestion d’un cours d’eau à Chavornay",
+   "attendu": [
+    5749
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_130",
+   "texte": "Projet d'extension autoroutière de l'Ouest lausannois : impact en cas d'abandon de la jonction d'Ecublens",
+   "attendu": [
+    5635
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_POS_60",
+   "texte": "Postulat : Liaisons de transports publics entre la Vallée de Joux, Morez et Nyon",
+   "attendu": [
+    5724
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_149",
+   "texte": "Agressions, deal, Morges va-t-elle devenir le nouveau Lausanne ?",
+   "attendu": [
+    5642
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_172",
+   "texte": "Exposé des motifs et projet de décret sur la fusion des communes de Mathod et Suscévaz et projet de loi modifiant la loi du 30 mai 2006 sur le découpage territorial",
+   "attendu": [
+    5919,
+    5930
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_173",
+   "texte": "Exposé des motifs et projet de décret sur la fusion des communes de Gimel, Saubraz et Saint-Oyens et projet de loi modifiant la loi du 30 mai 2006 sur le découpage territorial",
+   "attendu": [
+    5428,
+    5437,
+    5436
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_122",
+   "texte": "Pollution du Léman au triazole: le Canton compte-t-il rejoindre Lausanne dans ses démarches engagées vis-à-vis de Syngenta ?",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_4",
+   "texte": "La cathédrale de Lausanne, joyau du patrimoine, est-elle suffisamment protégée ?",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_QUE_6",
+   "texte": "Conflits d'intérêts dans le cadre de la LADE : après le cas Leysin, comment s'assurer de la bonne gouvernance ?",
+   "attendu": [
+    5407
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_105",
+   "texte": "Accordant au Conseil d'Etat un crédit d'investissement de CHF 5'100'000.- pour financer les travaux de transformation et d'aménagement nécessaires à l'extension des locaux de la Justice de paix du district de Nyon sis rue Jules-Gachet 5 à Nyon",
+   "attendu": [
+    5724
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_POS_64",
+   "texte": "Impact du retrait de Chavannes-près-Renens du projet de désengorgement du nœud autoroutier de l’Ouest lausannois et mesures compensatoires",
+   "attendu": [
+    5627
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_126",
+   "texte": "Cartes de \"vœux - reproches\" de fin d'année du Gymnase de Nyon: au frais du contribuables",
+   "attendu": [
+    5724
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_26",
+   "texte": "Musée Espace Culturel Ormonts Leysin (MECOL) EP CAMAC No 241468",
+   "attendu": [
+    5407
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_6",
+   "texte": "Canons à neige Leysin - Les Mosses : ni viabilité climatique, ni soutenabilité économique !",
+   "attendu": [
+    5407
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_PET_1",
+   "texte": "Pétition Chavornay NON à la décharge",
+   "attendu": [
+    5749
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_QUE_10",
+   "texte": "Lucens : des économies (radio)actives?",
+   "attendu": [
+    5675
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_PET_4",
+   "texte": "Pétition Aménagement du tronçon de la Route de Saint-Cergue compris entre la Route",
+   "attendu": [],
+   "douteux": "« Route de Saint-Cergue » : la route, sans doute à Nyon ; ni Saint-Cergue ni Nyon attendus."
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_47",
+   "texte": "Protection de 5 baraques de pêcheurs d'Yvonand",
+   "attendu": [
+    5939
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_QUE_35",
+   "texte": "Coup d'oeil du 10.5.26 et révocation à Perroy",
+   "attendu": [
+    5860
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_MOT_27",
+   "texte": "Pour un crédit d’ouvrage destiné à financer les travaux de rénovation du système technique et des infrastructures de la piscine du Gymnase d’Etoy (prise en considération immédiate)",
+   "attendu": [
+    5636
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_98",
+   "texte": "La rénovation d’un bâtiment historique de Vevey justifie-t-elle une résiliation générale des baux ?",
+   "attendu": [
+    5890
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_85",
+   "texte": "Réduction de la desserte entre Villeneuve et Rennaz: quelles conséquences pour l'accès aux soins et pour le personnel hospitalier?",
+   "attendu": [
+    5414,
+    5412
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_77",
+   "texte": "Accordant au Conseil d'Etat un crédit d’étude de CHF 1'645'000.- pour financer les études d’assainissement et de renforcement du viaduc sur la Grande Eau et les CFF de la RC 705, sur le territoire des communes d’Aigle et d’Yvorne",
+   "attendu": [
+    5401,
+    5415
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_88",
+   "texte": "Vers une réouverture de la ligne de chemin de fer Vallorbe – Pontarlier via Jougne ?",
+   "attendu": [
+    5764
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_PET_5",
+   "texte": "Pétition NON à la mégagravière des Bois de Ballens !",
+   "attendu": [
+    5423
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_PET_7",
+   "texte": "Pétition Dévotion Mariale à la chapelle de Marie de la cathédrale de Lausanne, projet de \"brûloir\"",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_191",
+   "texte": "Accordant au Conseil d’Etat un crédit d’investissement de CHF 3’850’000.- pour financer l’aménagement de 4 nouvelles salles polyvalentes et des aménagements urgents dans l’école professionnelle de Montreux à Clarens",
+   "attendu": [
+    5886
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_114",
+   "texte": "Incendies à répétition chez Thévenaz-Leduc SA à Ecublens. Est-ce que la population de l'Ouest-lausannois doit subir et vivre dans un environnement pollué?",
+   "attendu": [
+    5635
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_123",
+   "texte": "Menace fédérale sur le transport régional des voyageurs (TRV) : quelle stratégie du Conseil d'État pour pérenniser le réseau de périphérie du district de Nyon et du canton ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_127",
+   "texte": "Incendie du site de recyclage de l’entreprise Thévenaz-Leduc à Ecublens le vendredi 28.08.2026 : L’incendie de trop !",
+   "attendu": [
+    5635
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_POS_39",
+   "texte": "Faisons toute la lumière sur les impacts sanitaires de la pollution à la dioxine à Lausanne",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "26_QUE_59",
+   "texte": "Contrôle de la qualité de l'eau de L'Orbe supérieure",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_135",
+   "texte": "Installation d’une chaudière à mazout de 400 kW à Bassins, le silence de la DGTL et la responsabilité des délégués cantonaux chez Romande Energie",
+   "attendu": [
+    5703
+   ]
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_131",
+   "texte": "Suppression de la valeur locative : quelles conséquences pour le canton de Vaud ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_58",
+   "texte": "Exposé des motifs sur l'Initiative populaire \"Sauvons le Mormont\" et son contre-projet : Préavis du Conseil d'Etat et EMPD",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_POS_9",
+   "texte": "Organisation de l’accueil de l’enfance dans le canton de Vaud et réformes fédérales (LSAcc). Qu’en est-il des compatibilités?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_86",
+   "texte": "Nouveaux arrivants : Quelle part sans emploi à l’arrivée ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_RES_17",
+   "texte": "Les conditions de l'exonération fiscale de l'UEFA sont-elles toujours satisfaites ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_POS_28",
+   "texte": "Pas de suppression du stationnement sans alternative pour les usagers",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_128",
+   "texte": "Lac Léman: notre bien commun",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_RAP_12",
+   "texte": "Rapport du Conseil d'Etat au Grand Conseil sur les mesures d'assainissement prises conformément à la loi du 27 avril 2010 sur l'assainissement financier au sens de l'article 165 de la Constitution du Canton de Vaud du 14 avril 2003 (LAFin) suite au bouclement des comptes 2024",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_81",
+   "texte": "Le Conseil d'Etat a-t-il prévu d'adresser des recommandations aux Municipalité pour les guider dans leur choix d'une application de communication utilisée dans leurs fonctions?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_103",
+   "texte": "Trop de RH tue les RH?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_115",
+   "texte": "Évolution des salaires de la fonction publique",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_122",
+   "texte": "Urgence climatique et blocages des PPE : Quatre ans après mes premières interventions de 2022, quel agenda concret pour le cautionnement cantonal après le renvoi de mai 2026 ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_HQU_141",
+   "texte": "PALM (Projet d'agglomération Lausanne-Morges): après les refus des budgets par certaines communes, quelles actions pour éviter qu'il ne prenne l'eau?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_2",
+   "texte": "Avant qu’il ne reste que deux saisons, prenons soin des quatre saisons",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_134",
+   "texte": "Philippe Jobin (UDC) - Cas de rigueur liées au Covid pour la restauration",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "23_RAP_45",
+   "texte": "Rapport du Conseil d'Etat au Grand Conseil sur le Postulat Rebecca Joly et consorts au nom Les Vert-e-s - Pour que l'Etat soit exemplaire : disparition des chauffages à mazout dans les bâtiments de la CPEV",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_10",
+   "texte": "Quelles Mesures pour Garantir la Réalisation du Projet Autoroutier de l’Ouest Lausannois ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "23_LEG_147",
+   "texte": "Loi sur l'énergie (LVLEne) - révision totale ; Préavis du CE sur l'initiative Vassilis Venizelos et consorts « 300 millions pour une relance favorable à la transition énergétique » et projet de décret ; Rapports et réponse à 4 motions, 16 postulats et 3 interpellations",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_REP_36",
+   "texte": "Réponse du Conseil d'Etat au Grand Conseil aux observations de la COFIN sur les comptes de l’Etat de Vaud – année 2023 – Seconde réponse à la seconde observation",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_57",
+   "texte": "Remplacement de la ligne BVB par des bus EV74 et desserte des arrêts du Chêne et de Fenalet",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_QUE_42",
+   "texte": "Quelle priorité pour les cours interentreprises (CIE) ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_LEG_152",
+   "texte": "Sur l'organisation de la prévention des radicalisations (LPREV)",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_97",
+   "texte": "Exil des bons contribuables, pouvons-nous obtenir les chiffres ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_83",
+   "texte": "Comment améliorer la situation des familles d’accueil vaudoises ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_MOT_9",
+   "texte": "VTT et cyclotourisme : sortir des méandres administratives",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_29",
+   "texte": "Clarification du calendrier de la loi cadre sur la durabilité et le climat",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_RES_6",
+   "texte": "Contamination des eaux du Léman au 1,2,4 Triazole au nom de Marc Morandi, Denis Dumartheray, Jérôme de Benedictis, Valérie Zonca, Cédric Echenard, Elodie Lopez",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_84",
+   "texte": "G7: quelles mesures vaudoises?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_141",
+   "texte": "Soignant·es sous tension : agir maintenant pour préserver leur santé et la nôtre",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_INT_156",
+   "texte": "Fraude à l'aide sociale à la Rue de Genève 85 - La pointe de l'iceberg ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_38",
+   "texte": "L’application des critères INTEGRAS",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_HQU_126",
+   "texte": "Quel avenir pour le Checkpoint ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_73",
+   "texte": "Une transparence nécessaire pour prévenir les investissements de la Caisse de pension de l’État de Vaud contraires au respect du droit international, des droits humains et du climat",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_MOT_60",
+   "texte": "Mesure d’économie : Pour un relèvement temporaire du taux du droit de mutation de 2,2 % à 2,5 %",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_MOT_51",
+   "texte": "Pour une contribution de crise équitable",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_119",
+   "texte": "Laisser flamber les loyers après travaux?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_115",
+   "texte": "Temps d’attente aux urgences pédiatriques du CHUV : comment améliorer la situation ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_95",
+   "texte": "Consultation projet d'horaire transports publics 2027 : cadence rail RER Orbe-Renens",
+   "attendu": [
+    5757,
+    5591
+   ],
+   "douteux": "« RER Orbe-Renens » : ligne nommée par ses deux bouts, en un mot ; le trait d'union empêche de la lire."
+  },
+  {
+   "origine": "titre",
+   "numero": "26_INT_87",
+   "texte": "Maltraitances animales : quel suivi des dénonciations ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_PAR_5",
+   "texte": "Élection complémentaire de 4 assesseurs à la Cour des assurances sociales (CASSO) - Législature 2025-2029",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_30",
+   "texte": "Quid des PIG ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "24_HQU_130",
+   "texte": "Et si nos hôpitaux, le CHUV inclus, n'arrivaient plus à faire face aux urgences ambulatoires",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_HQU_6",
+   "texte": "Eau impropre à la consommation dans des bâtiments publics communaux: quels leviers pour l'Etat?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_QUE_84",
+   "texte": "Impression en couleur dans l'administration cantonale",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_DET_3",
+   "texte": "Sur la une débâcle catastrophique",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_POS_57",
+   "texte": "L’expulsion, une spirale coûteuse… que la prévention peut éviter, mais avec quel outil ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_POS_31",
+   "texte": "Pour une entité garantissant la coordination et le suivi du processus déduit de l’art 25a LAT",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_REP_170",
+   "texte": "Mise à jour",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "26_HQU_73",
+   "texte": "Subsides à l’assurance-maladie : des délais d’attente qui s’aggravent ?",
+   "attendu": []
+  },
+  {
+   "origine": "titre",
+   "numero": "25_LEG_238",
+   "texte": "Projet de modification de la loi du 21 novembre 1973 sur la viticulture (LV)",
+   "attendu": []
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "Des pistes cyclables unidirectionnelles ou bidirectionnelles séparées de la route sont prévues sur la majorité du tracé à l’exception de la rue du Terminus, à Renens. Le trafic réduit (inférieur à 2'500 véhicules par jour) et un aménagement pacifié de la rue garantissent toutefois une circulation confortable et sûre des cyclistes",
+   "attendu": [
+    5591
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_86",
+   "texte": "d’entreprise tl 2024-2028, validé par le Conseil d’administration composé des communes du réseau d’agglomération (Belmont ; Bussigny ; Chavannes ; Crissier ; Ecublens ; Epalinges ; Lausanne ; Le Mont-sur-Lausanne ; Lutry ; Paudex ; Prilly ; Pully ; Renens ; St-Sulpice ; Villars-Ste-Croix), avec les impacts financiers y relatifs",
+   "attendu": [
+    5624,
+    5583,
+    5635,
+    5584,
+    5586,
+    5587,
+    5606,
+    5588,
+    5589,
+    5590,
+    5591,
+    5648,
+    5651,
+    5581,
+    5627
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "Grandevent, Grandson, Juriens, Lignerolle, Mathod, Mauborget, Molondin, Montagny-près- Yverdon, Montcherand, Mutrux, Novalles, Onnens, Orbe, Orges, Orzens, Pomy, La Praz, Premier, Provence, Rances, Romainmôtier-Envy, Rovray, Sainte-Croix, Sergey, Suchy, Suscévaz, Tévenon, Treycovagnes, Ursins, La Vallée de Joux, Valeyres-sous-Montagny,",
+   "attendu": [
+    5560,
+    5561,
+    5754,
+    5755,
+    5919,
+    5562,
+    5921,
+    5922,
+    5756,
+    5563,
+    5564,
+    5565,
+    5757,
+    5924,
+    5925,
+    5926,
+    5758,
+    5759,
+    5566,
+    5760,
+    5761,
+    5928,
+    5568,
+    5762,
+    5929,
+    5930,
+    5571,
+    5931,
+    5932,
+    5933
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_69",
+   "texte": "identifié un site parfaitement adapté en termes de surface et surtout d’emplacement : ° une surface d’env. 1'280 m?°, sur deux niveaux, au chemin des Mésanges 3, à Romanel-sur-Lausanne, pour y installer définitivement le 5°%° ORPM pour la région de la Couronne lausannoiïse et du Gros-de-Vaud. Ces surfaces constituent une opportunité qu’il importe",
+   "attendu": [
+    5592
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_218",
+   "texte": "Colonie Ouverte (NCO). Un crédit d’étude de CHF 400'000.- (SIEL GOV 476 733), référencé dans l’outil SAP sous l’EOTP n°I.000345.01 « CE - Nouvelle Colonie ouverte Orbe » accordé par le Conseil d’état le 11.06.2014 et approuvé le 28.08.2014 par la COFIN, a servi pour les études de planification et de programmation de ce nouveau",
+   "attendu": [
+    5757
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_103",
+   "texte": "avec le temps, le château fort de Lucens, moins accessible. Le Château actuel de Curtilles tire son origine d'une \"maison carrée\" reconnue en 1542 par Aymée de Villarzel en faveur de LLEE. de Berne. Sur le tertre où elle est juchée, il ne reste aucune trace de la première église édifiée en ce lieu de 1055 à 1089, dédiée à Saint-Pierre",
+   "attendu": [
+    5675,
+    5669
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "fréquentation prévisible dans les prochaines années en fonction de la réalisation des développements urbains. Le tramway permettra de desservir les communes de Crissier, Bussigny et Villars-Saint-Croix et de proposer un axe en transport en commun capacitaire et attractif pour rallier la gare de Renens ou le centre de Lausanne.",
+   "attendu": [
+    5583,
+    5624,
+    5591,
+    5586,
+    5651
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_234",
+   "texte": "système de chauffage existant fonctionne aux énergies fossiles et nécessite un remplacement au profit d’énergie renouvelable (raccordement au CAD de la Ville de Lausanne). Enfin, si une grande partie du parc immobilier de l’Etat de Vaud est concerné par des risques standards tels que la vétusté, ces sites ont été planifiés en",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_57",
+   "texte": "une déconcentration de cette offre sur l’ensemble du territoire cantonal sur un site avec une bonne accessibilité en transports publics. En effet, le gymnase d’Echallens est idéalement situé à proximité de la gare d’Echallens où aboutissent aussi sept lignes de bus du trafic régional. Selon une étude de faisabilité – volet mobilité",
+   "attendu": [
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "aujourd’hui à fusionner. Il s’agit donc d’un retour à l’état initial, à l’époque où les divers suzerains convenaient que la vallée appartenait tout entière au couvent du Lieu. Comme évoqué ci-dessus, le véritable début de l’histoire de la Vallée de Joux date du 12e siècle. C’est en effet à partir de cette époque relativement tardive",
+   "attendu": [
+    5873
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "L’Abbaye, Le Chenit et Le Lieu adoptée le 22 septembre 2024 par les corps électoraux 6 Article premier - Principe et entrée en vigueur Les communes de L’Abbaye, Le Chenit et Le Lieu sont réunies et ne forment plus qu’une seule commune dès le 1er janvier 2027. Article 2 - Nom Le nom de la nouvelle commune est La Vallée",
+   "attendu": [
+    5871,
+    5872,
+    5873
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_18",
+   "texte": "direction de Chavannes / Oron. Les distances de visibilité sont, en revanche, suffisantes pour les véhicules sortant en tourner-à-droite depuis la rampe de Lausanne et pour ceux qui sortent du chemin du Devin. S’agissant du carrefour entre La Cartonnerie et la RC 601, les distances de visibilité pour les véhicules s'insérant",
+   "attendu": [
+    5805,
+    5665
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_114",
+   "texte": "s’inscrit dans la continuité de l’actuelle Maison du Blé et du Pain et se veut un point d’attraction important de la région du Gros-de-Vaud et de la commune d’Echallens. Une étude établie par le bureau GutundGut confirme l’intérêt de ce projet. Les points forts et les points faibles ont été analysés pour juger de sa viabilité",
+   "attendu": [
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_155",
+   "texte": "Assainissement tunnel du Vernex, SIA 3 à 4 50'000 Système d’information voyageurs 400'000 Automatisation Montreux MVR-N, SIA 3 à 4 200'000 1 Adaptations pour répondre à la loi du 13 décembre 2002 sur l’égalité des personnes handicapées (LHand) qui",
+   "attendu": [
+    5886
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "Ursins, Valeyres-sous-Montagny, Valeyres-sous-Rances, Valeyres-sous-Ursins, Vallorbe, Vaulion, Villars-Epeney, Vugelles-La Mothe, Vuiteboeuf, Yverdon-les-Bains et Yvonand. 1 Le district du Jura-Nord vaudois comprend les communes de : L'Abergement, Agiez, Arnex-sur-Orbe, Ballaigues, Baulmes, Bavois, Belmont-sur-Yverdon, Bioley-Magnoux,",
+   "attendu": [
+    5932,
+    5933,
+    5763,
+    5934,
+    5764,
+    5765,
+    5935,
+    5937,
+    5766,
+    5938,
+    5939,
+    5741,
+    5742,
+    5743,
+    5744,
+    5745,
+    5746,
+    5902,
+    5903
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_74",
+   "texte": "consorts – Faudra-t-il que le ciel tombe sur la tête du Conseil d’État pour entrevoir des actes dans la protection et la mise en valeur de la Villa romaine d’Orbe ? (18_POS_051) 18 5. Conclusion 20 3 1. PRESENTATION DU PROJET 1.1 Préambule 1.1.1 Historique Une des priorités du Conseil d’État",
+   "attendu": [
+    5757
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_114",
+   "texte": "porteurs de projets partiels, de représentants de l’ARGdV et du Musée Suisse du Blé et du Pain. Assemblée générale Président Membres [particulier], Froideville [particulier], Assens [particulier], Oulens-sous-Echallens [particulier], Oulens-sous-Echallens [particulier], Echallens [particulier], Echallens",
+   "attendu": [
+    5523,
+    5511,
+    5529,
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_INT_184",
+   "texte": "cofinancement des offres, en tenant compte notamment de la fréquentation des lignes. Concernant plus spécifiquement la ligne de bus MBC 750 Cossonay-Penthalaz – L’Isle – Mont-la-Ville / Le Pont, son horaire a été conçu de manière à donner des correspondances optimisées de et pour Lausanne à la gare de Cossonay-Penthalaz. Le",
+   "attendu": [
+    5486,
+    5491,
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_109",
+   "texte": "nécessaire lorsque de tels plans concernent plusieurs communes ; ils sont approuvés par le Conseil d’État. Le plan des mesures OPair 2018 de l'agglomération Lausanne – Morges, adopté par le Conseil d’État le 6 février 2018, identifie tout comme la version précédente la nécessité de mettre en œuvre un réseau de parkings d’échange",
+   "attendu": []
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_234",
+   "texte": "dans le cadre de bâtiments datant de la deuxième partie du 20e siècle, permettent de tendre vers les objectifs définis dans la stratégie immobilière (Gymnases d’Yverdon, CLE). - Les rénovations globales, pour les bâtiments plus anciens tels que la Villa Beauregard à l’Avenue de Cour 25, construite au 18e siècle, présentent des",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_155",
+   "texte": "Haut-de-Caux : 5,79 KM 9  Tronçon sans fonction de desserte Haut-de-Caux – Rochers de Naye : 4,57 KM Clé de répartition kilométrique en % :  Montreux, Gare – Haut-de-Caux : (5,79/10,36) *100 = 55,89%  Haut-de-Caux – Rochers-de-Naye : (4,57/10,36) *100 = 44,11% Selon la clé ci-dessus, le Canton finance",
+   "attendu": [
+    5886
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_252",
+   "texte": "climatiques et à la proximité des voies de circulation. Le concept est en cours d’étude par un bureau reconnu d’architectes paysagistes mandaté par la Commune d’Eysins. Les plantations et l’éclairage public sont à la charge de la Commune d’Eysins. Ces travaux seront facturés par les mandataires et par les entreprises directement",
+   "attendu": [
+    5716
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "V 8.7.2025",
+   "texte": "trois projets de gravières, inscrits en priorité 1 dans le programme de gestion des carrières, est justifié : Le Sépey (Ballens, Yens, St-Livres) ; Les Bulles (La Chaux) ; En Messerin (Prangins, Duillier). A noter que ces projets de gravières sont déjà inscrits dans le PDCn, et que seul l’état de coordination est modifié. Mesure",
+   "attendu": [
+    5423,
+    5655,
+    5435,
+    5474,
+    5725,
+    5715
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_69",
+   "texte": "District de la Broye-Vully (salle d’entretien uniquement) ° Est vaudois : Districts de la Riviera-Pays-d’Enhaut, d’Aigle et Cully-Lavaux (locaux à Montreux) e__ Lausanne : Districts de Lausanne et Ouest lausannois (locaux au BAP, à Lausanne) et depuis le 1° juillet 2023 + _ Couronne et Gros-de-Vaud : Districts du Gros-de-Vaud,",
+   "attendu": [
+    5886,
+    5586
+   ],
+   "douteux": "« Districts de la Riviera-Pays-d'Enhaut, d'Aigle et Cully-Lavaux » : Aigle est le district, compté faux ; « e__ Lausanne : Districts de Lausanne… » est un intitulé de région."
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_109",
+   "texte": "Conseil d’État Tel que le rappelle l’interpellation, le rayonnement de l’interface de Cossonay-Penthalaz dépasse très largement le périmètre des communes de Penthalaz et de Cossonay. Elle permet à de très nombreux pendulaires issus d’autres communes d’accéder aux transports ferroviaires et son réaménagement participera à l’atteinte",
+   "attendu": [
+    5495,
+    5477
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_POS_58",
+   "texte": "40.6% 42.1% 96.3% 43.5% 42.4% 102.5% REVE 32.7% 39.0% 83.7% 20.4% 37.0% 55.0% 24.8% 37.8% 65.6% Rymaje 17.3% 30.2% 57.1% 17.5% 27.4% 64.0% 17.4% 28.0% 62.2% Sainte-Croix 23.0% 16.7% 137.5% 10.8% 19.7% 54.9% 13.9% 19.7% 71.0% Toblerones 40.3% 47.9% 84.2% 27.4% 44.9% 61.1% 31.5% 46.3% 68.1% - 18 - UNE ÉVOLUTION FUTURE",
+   "attendu": [
+    5568
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_15",
+   "texte": "de 11 opérations immobilières afin d’absorber les besoins anticipés. Elle peut être résumée comme suit : Opérations 1 et 2 : les Gymnases de Crissier et de Bussigny À la rentrée 2023-2024, la capacité totale du réseau des gymnases est de 683 classes (voir figure 2), avec 673 classes effectivement ouvertes (voir figure",
+   "attendu": [
+    5583,
+    5624
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_103",
+   "texte": "Armorial des communes vaudoises, Lausanne, 1972. Les communes vaudoises et leurs armoiries, Chapelle-sur-Moudon, 1995. Sites internet des communes de Lucens et Curtilles. La mention la plus reculée de Lucens remonte à 965, année où Magnères, évêque de Lausanne, reçu un champ situé à Losingus, c'est-à-dire Lucens. Cependant,",
+   "attendu": [
+    5586,
+    5693,
+    5675,
+    5669
+   ],
+   "douteux": "Bibliographie : « Armorial des communes vaudoises, Lausanne, 1972 », « …, Chapelle-sur-Moudon, 1995 » (lieux d'édition, comptés justes) et « évêque de Lausanne »."
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "Corcelles-près-Concise, Cronay, Croy, Cuarny, Démoret, Donneloye, Ependes, Fiez, Fontaines-sur-Grandson, Giez, Grandevent, Grandson, Juriens, Lignerolle, Mathod, Mauborget, Molondin, Montagny-près- Yverdon, Montcherand, Mutrux, Novalles, Onnens, Orbe, Orges, Orzens, Pomy, La Praz, Premier, Provence, Rances, Romainmôtier-Envy, Rovray,",
+   "attendu": [
+    5555,
+    5910,
+    5752,
+    5911,
+    5912,
+    5913,
+    5914,
+    5556,
+    5557,
+    5559,
+    5560,
+    5561,
+    5754,
+    5755,
+    5919,
+    5562,
+    5921,
+    5922,
+    5756,
+    5563,
+    5564,
+    5565,
+    5757,
+    5924,
+    5925,
+    5926,
+    5758,
+    5759,
+    5566,
+    5760,
+    5761,
+    5928
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_POS_24",
+   "texte": "Le Tribunal fédéral annule un permis de construire délivré par la commune de Grandson (VD). (archives) (© KEYSTONE/[particulier]) Le",
+   "attendu": [
+    5561
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_QUE_35",
+   "texte": "référence (UER) comprenant l’ensemble des personnes dont les revenus et fortunes sont prises en considération pour calculer le droit au subside ** Région 1 : Lausanne, l’Ouest lausannois, Nyon, La Côte, Lavaux, la Riviera Région 2 : le Chablais, le Pays d’Enhaut, Oron, Cossonay, la Broye, le Vully, le Gros-de-Vaud, le Jura,",
+   "attendu": [],
+   "douteux": "« Région 1 : Lausanne, l'Ouest lausannois, Nyon… Région 2 : … Oron, Cossonay » : régions de primes nommées d'après une ville, comptées fausses comme les districts."
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_57",
+   "texte": "locaux du Gymnase d’Echallens au 09.01.2024. Ratios Ratio SP/SU 1.63 Ratio SP/SUP 1.84 1.3.5 Principes architecturaux Le projet du futur Gymnase d'Echallens offre l'opportunité de relier le Chemin du Grand Record au nord- est et le Chemin de Court-Champ au sud-ouest. Positionné au centre de la parcelle, le volume",
+   "attendu": [
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_57",
+   "texte": "développement de la capacité du nombre de classes dans les Gymnases vaudois (Source DGEP). 11 1.3 Descriptif du projet 1.3.1 Le Gymnase du Chablais à Aigle et le nouveau Gymnase d’Echallens En 2020, l’Etat a lancé un concours de projets d’architecture et d’ingénierie sur le site de l’ancien hôpital d’Aigle, dont",
+   "attendu": [
+    5401,
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "public conformément à la décision du COPROJ n°9 du 10 septembre 2019. Quatre parcelles sont concernées (deux sur la commune de Crissier et deux sur la commune de Bussigny). Les emprises temporaires totalisent 1'105 m2 et les emprises définitives 920m2. Il n’y a pas d’emprise sur des parcelles privées cantonales. Tous les propriétaires",
+   "attendu": [
+    5583,
+    5624
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_217",
+   "texte": "rendu public en février 2024 par le biais d'une conférence de presse puis cinq présentations publiques dans différentes régions du canton (Yverdon, Payerne, Nyon, Lausanne et Montreux) qui ont réuni plus de 600 personnes. 1. Une vision fédératrice Les personnes et instances consultées en amont de la rédaction du Concept cantonal du",
+   "attendu": [
+    5938,
+    5822,
+    5724,
+    5586,
+    5886
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_QUE_48",
+   "texte": "dégâts recensés ces dernières années. Dernièrement, la problématique des populations de corvidés en ville est revenue dans l'actualité au travers de la ville de Nyon. Les habitants des quartiers ont subi une dégradation sévère et continue de la qualité de vie, due à ces oiseaux qui ont élu domicile dans le cordon boisé du Cossy",
+   "attendu": [
+    5724
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_114",
+   "texte": "Le Centre Collecteur à Echallens ; 3. Le Moulin d’Echallens à Echallens ; 4. Le Verger du Talent à Oulens-sous-Echallens ; 11 5. La Ferme Martin à Assens ; 6. Le Pâturage de Denezy à Denezy ; 7. La Buvette de Sugnens à Sugnens. 12 Le schéma ci-dessous indique la relation entre la mesure collective",
+   "attendu": [
+    5518,
+    5529,
+    5511,
+    5693,
+    5540
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_98",
+   "texte": "impossibilité de libérer, même temporairement, des locaux de formation. En offrant temporairement cette marge de manœuvre, les mises en service des Gymnases d’Aigle, d’Echallens, de Crissier ainsi que l’extension de Bussigny, rendraient possible la réalisation des travaux de rénovation sur les autres sites de formation, avant le probable",
+   "attendu": [
+    5401,
+    5518,
+    5583,
+    5624
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_171",
+   "texte": "réalisable avant la fin des travaux de mise en conformité de la gare de Morges, prévue à l'horizon 2033. Passée cette échéance, les trains en circulation entre Morges et les sites d'extraction d'Apples et de Ballens permettraient de transporter jusqu’à 750’000 tonnes par an. Cela représenterait un report vers le rail d'environ",
+   "attendu": [
+    5642,
+    5656,
+    5423
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_26",
+   "texte": "qu’à l’entrée des Eglises. Cette présentation mentionne aussi les coordonnées des responsables à contacter en cas d’éventuels d’abus. La paroisse anglicane de Lausanne insiste sur l’obligation légale de signaler les cas de suspicion d’abus d’enfant à l’autorité compétente (Loi sur la protection des mineurs, 850.41). Le dispositif",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_210",
+   "texte": ".......................................................................................... 52 3.15.4 Grange Verney, bâtiment principal/réfectoire/trait d’union, Moudon ............................ 53 3.15.5 Centre de conservation de la faune, Marquisat 1, Saint-Sulpice ................................. 54 3.15.6 Ecole Professionnelle",
+   "attendu": [
+    5678,
+    5648
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "les statuts des routes cantonales seront modifiés en tant que routes cantonales « en traversée de localité » limitées à 50 km/h sur les secteurs suivants : • Bussigny, RC 151 : boulevard de l’Arc-en-ciel (route de Renens) entre la limite communale avec Crissier et la RC 179 ; • Bussigny et Crissier, RC 178 : entre le pont",
+   "attendu": [
+    5624,
+    5583
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_104",
+   "texte": "loi du 5 octobre 2021 sur l’exercice des droits politiques 2 1. PREAMBULE Le 22 septembre 2024, les corps électoraux des communes de L’Abbaye, Le Chenit et Le Lieu ont accepté la convention de fusion ayant pour objet la création d’une nouvelle commune vaudoise ensuite de fusion du nom de La Vallée de Joux. Au",
+   "attendu": [
+    5871,
+    5872,
+    5873
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "(part financée par la vente des billets et abonnements) de la ligne de tramway de Lausanne-Flon à Villars-Sainte-Croix serait satisfaisant. Le prolongement vers Villars-Sainte-Croix couvre de nouveaux quartiers à des stades de concrétisation divers. Certains sont en cours de construction, d’autres ont été légalisés et connaîtront prochainement",
+   "attendu": [
+    5651,
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_98",
+   "texte": "accordant au Conseil d'Etat un crédit détude de CHF 1000000 destiné à financer les études pour la mise en valeur des mosaïques sur le site archéologique de Boscéaz à Orbe et répondant à la motion Denis-Olivier Maillefer et consorts demandant la mise en valeur de la villa romaine et au postulat Patrick Simonin et consorts - Faudra-t-il",
+   "attendu": [
+    5757
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_103",
+   "texte": "communes de Lucens et Curtilles adoptée le 18 mai 2025 par les corps électoraux 4 Article premier - Principe et entrée en vigueur Les communes de Lucens et Curtilles sont réunies et ne forment plus qu’une seule commune dès le 1er janvier 2027. Article 2 - Nom Le nom de la nouvelle commune est Lucens. Le",
+   "attendu": [
+    5675,
+    5669
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_188",
+   "texte": "centrale téléphonique des médecins de garde et de la gestion coordonnée du trafic d’agglomération dans le nouveau bâtiment administratif de l’ECA à la Grangette à Lausanne\" du programme de législature 2017-2022 du Conseil d’Etat. - Objectif 2 \"Action contre le réchauffement climatique, promotion des énergies renouvelables et des",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_MOT_2",
+   "texte": "lieu d’habitation explique également la pratique ou non du vélo, les jeunes de l’agglomération étant davantage des non-cyclistes que les jeunes domiciliés à Yverdon-les-Bains. TABLEAU 29 : MODELE DE REGRESSION LOGISTIQUE MULTINOMIALE EXPLIQUANT LA PROPENSION A FAIRE DU VELO OU NON (RESPECTIVEMENT AVEC ET SANS LA PRATIQUE DU VELO",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_QUE_35",
+   "texte": "les limites de la prime effective de chacun ou de la prime de référence correspondante si la prime effective lui est supérieure. La famille (4 personnes) vit à Lausanne, soit dans la région 1 (pour savoir dans quelle région vous habitez : voir explications du tableau sous point 2). Son revenu déterminant unifié s’élève à 76’000.-",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_155",
+   "texte": "monte à environ 2’375’000. TPC exploite les lignes de chemin de fer suivantes : • Aigle – Ollon – Monthey – Champéry • Aigle – Les Diablerets • Aigle – Leysin • Bex – Villars-sur-Ollon – Col-de-Bretaye 1.4 Financement de l’infrastructure ferroviaire suisse 1.4.1 Principe de financement selon la législation fédérale",
+   "attendu": [
+    5401,
+    5409,
+    5407,
+    5402
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "26_INT_25",
+   "texte": "d’assurer l’efficacité des collectes. Pour les tournées de collectes, voici les différentes méthodes qui ont été adoptées : 9 Communes gérées par Retripa SA à Crissier : optimi- sation des tournées grâce à leur expérience, afin d’obtenir une meilleure représentativité (par secteur et par type de sacs). 9 Pour les autres communes :",
+   "attendu": [
+    5583
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_190",
+   "texte": "constamment. Ces thématiques, ou « points d’attention », sont développés dans la partie du présent document liée aux enjeux (cf. chapitre 7). 28 9.4 Premier axe : Des hautes écoles dont l'offre de formation évolue constamment pour répondre à la transformation des besoins des terrains professionnels Le premier axe",
+   "attendu": []
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_114",
+   "texte": "roulant actuel d’être manœuvré aisément Transformation des trémies actuelles et agrandissement de la halle des trémies Coopérative agricole et meunière d’Echallens 14 (actuellement dégâts réguliers). Améliorer la gestion des nuisances (poussières). Installation de grilles de trémies avec un anti- retour",
+   "attendu": [
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_QUE_76",
+   "texte": "Mont-sur-Lausanne à Epalinges, Croisettes. Par ailleurs, toujours en été 2025, deux paires de courses seront ajoutées en soirée du lundi au dimanche. • Ligne tl58 (Renens VD, gare – Crissier, centre – Mex VD – Vufflens-la-Ville – Cossonay-Penthalaz, gare) : Les nouvelles conditions de correspondances aux gares de Cossonay-Penthalaz,",
+   "attendu": [
+    5587,
+    5584,
+    5591,
+    5583,
+    5489,
+    5503
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "s’inscrit dans les deux mesures suivantes : • La mesure A21 porte sur les infrastructures de transports publics et mentionne que le projet de tramway entre Lausanne et Renens et son prolongement vers Villars-Ste-Croix relèvent du PDCn (coordination réglée). En matière de transports publics, les mesures du projet d'agglomération",
+   "attendu": [
+    5586,
+    5591,
+    5651
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_INT_179",
+   "texte": "être assimilé à un signe religieux : il est communément porté par de jeunes femmes, indépendamment de leurs croyances. Au demeurant, l’enseignante-stagiaire d’Yverdon a finalement renoncé à tout type d’accessoire et s’est ainsi pleinement ralliée aux demandes de sa direction. 3 3. Comment se fait-il que",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "première étape du tramway. Ainsi, sur ces bases, les montants exprimés ci-après, relatifs à la participation de l’État à la deuxième étape du tramway t1 entre Renens (Gare) et Villars-Sainte-Croix (Croix-du-Péage), sont des coûts dits nets, c’est-à-dire participations de tiers d’ores et déjà déduites. De ces montants est encore",
+   "attendu": [
+    5591,
+    5651
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_103",
+   "texte": "règlement sur le statut du personnel de la commune de Lucens du 28 janvier 2013 et son avenant 1 du 28 juin 2022 ;  le règlement général de police de la commune de Lucens du 18 novembre 2022 ;  le règlement sur le cimetière et les inhumations de la commune de Lucens du 30 octobre 1984 (en cours de révision) ;  le règlement",
+   "attendu": [
+    5675
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "Avant les communes, il y eut à la Vallée de Joux les monastères. On a très peu de renseignements sur le premier établissement religieux, fondé vers le VIIe siècle au Lieu par le moine Dom Poncet pour l’ordre bénédictin de St Claude. Ensuite, la colonisation de la Vallée commença vraiment avec Ebal 1er de Grandson, seigneur de La",
+   "attendu": [
+    5873
+   ],
+   "douteux": "« Ebal 1er de Grandson, seigneur de La… » : nom d'un seigneur, compté faux comme « Aymée de Villarzel »."
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_57",
+   "texte": "c la s s e s d e 4 e a n n é e 8 plans d’affectation. Force est de constater que ces reports des mises à disposition des Gymnases programmés à Aigle (2027, au lieu de 2024) et à Echallens (2027-28, au lieu de 2025) entraînent des manques potentiels dès la rentrée 2024. Cette pénurie est absorbée grâce à l’ouverture",
+   "attendu": [
+    5401,
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_57",
+   "texte": "transfert imposé dans un autre gymnase, etc.) 32 Les coûts d’entretien du nouveau passage inférieur sont à la charge de la Compagnie de Chemin de fer Lausanne – Echallens – Bercher. 3.6 Conséquences sur les communes La participation de la Commune d’Echallens au nouveau passage inférieur de la gare du LEB à Echallens",
+   "attendu": [
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_POS_58",
+   "texte": "12 Epalinges 44 Epalinges 44 0 Nyon 255 Nyon 255 0 PPBL 188 242 12 PPBL 430 12 RAdEGE 30 10 RAdEGE 40 0 ReAjY 47 22 ReAjY 47 22 REME 125 20 REME 145 0 Renens - Crissier 108 Renens - Crissier 108 0 Réseau-L 680 41 Réseau-L 721 0 REVE 63 56 344 REVE 119 344 Rymaje 10 Rymaje 10 0 Sainte-Croix Sainte-Croix 0 0 Toblerones 131 30",
+   "attendu": [
+    5584,
+    5724,
+    5591,
+    5583,
+    5568
+   ],
+   "douteux": "Tableau de réseaux d'accueil de jour nommés d'après leur commune (« Renens - Crissier », « Nyon »), comptés justes."
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_234",
+   "texte": "..................................................................................................................................... 43 3.3.1 Ecole Professionnelle Commerciale de Lausanne (EPCL) rue du Midi, à Lausanne .......... 43 3.3.2 Ressources humaines pour la gestion des projets ................................................................. 46 3.4 Synthèse ...........................................................................................................................................",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_INT_179",
+   "texte": "après l’entretien du 29 octobre 2024 ? 4. La Direction du Gymnase d’Yverdon fait-elle activement respecter les directives ? 5. Ce qui se passe au Gymnase d’Yverdon est-il une pratique qui se généralise dans les gymnases et les écoles vaudoises ? Sachant par exemple qu’une enseignante en informatique du gymnase du Bugnon",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_45",
+   "texte": "RC 501 B-P - Poliez-Pittet (PEL) Hors réseau cyclable cantonal : pas d'aménagement 3 Centre 626 B-P Chavannes-sur-Moudon (croisement avec la RC 627 IL-S) - Moudon (PEL) Hors réseau cyclable cantonal : pas d'aménagement 4 Ouest 19 B-P Gingins, Giratoire Derby - Trelex Hors réseau cantonal utilitaire: aménagements du croisement",
+   "attendu": [
+    5533,
+    5665,
+    5678,
+    5719,
+    5730
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "V 19.6.2026",
+   "texte": "2024. Les zones rurales correspondent aux types périurbain et montagne de la typologie de territoire de la DGMR. Les communes urbaines correspondent aux types Lausanne, centres principaux, suburbain dense, suburbain dispersé et centres secondaires. [19] Sources : OFS, OFROU – Nouvelles mises en circulation de véhicules routiers",
+   "attendu": [
+    5586
+   ],
+   "douteux": "« Les communes urbaines correspondent aux types Lausanne, centres principaux… » : une catégorie de typologie nommée d'après Lausanne, comptée juste."
+  },
+  {
+   "origine": "document",
+   "numero": "26_INT_111",
+   "texte": "La Légumerie ​Une idée WIN-WIN-WIN Appel à projets collaboratifs La famille [particulier], maraîchers bio dans la région de Morges, était confrontée à un problème de pertes car certains légumes, non calibrés par rapport aux attentes de la grande distribution, devaient être jetés. En discutant",
+   "attendu": []
+  },
+  {
+   "origine": "document",
+   "numero": "25_MOT_4",
+   "texte": "Partenaires arrow_forward_ios Film location Switzerland arrow_forward_ios Promove arrow_forward_ios Montreux-Vevey Tourisme arrow_forward_ios Commune de Vevey arrow_forward_ios Commune de Montreux Contact Film Location Riviera Montreux-Vevey Tourisme Rue du Théâtre 5 1820 Montreux Switzerland +41 21 962 84",
+   "attendu": [
+    5890,
+    5886
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_210",
+   "texte": "été renforcées par des travaux importants des micropieux pour garantir la sécurité statique. Le bâtiment est occupé par l’Ecole professionnelle de commerce de Lausanne, Direction générale de l’enseignement postobligatoire (DGEP). En lien avec le site du Midi, l’ensemble de l’école compte environ 2’600 élèves. Figure",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "26_HQU_78",
+   "texte": "couvre principalement les 15 au 17 juin 2026, avec une possible anticipation ou prolongation, et ne concerne que certains secteurs (ville de Lausanne, aérodrome de Payerne, etc.) — et non l'ensemble de la zone OFAC. Les télépilotes doivent impérativement s'annoncer sur Swiss U-Space et préciser la nature de la mission dans la rubrique",
+   "attendu": [
+    5586,
+    5822
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "routiers relie les centralités et les gares de l’armature ferroviaire principale 1.3.3 Politique du Conseil d’Etat Le projet de prolongement du tramway de Renens (Gare) à Villars-Sainte-Croix s’inscrit dans le programme de législature 2022-2027 du Conseil d’Etat. L’axe 2 « Durabilité et climat, agir à la hauteur des enjeux",
+   "attendu": [
+    5591,
+    5651
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_MOT_2",
+   "texte": "élevé va de pair avec une pratique du vélo plus fréquente. 9.4 MOTIVATIONS ET FREINS À UTILISER LE VÉLO De manière générale, les focus groupes à Bâle et à Yverdon-les-Bains révèlent des motivations et freins à l’usage du vélo très similaires. Pour les motivations, les cyclistes bâlois·e·s mentionnent autant que les jeunes Yverdonnois·e·s",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_252",
+   "texte": "mobilité réduite et la sécurisation des croisements avec le trafic automobile et avec le trafic ferroviaire (voie ferrée pour transport de marchandises Nyon - Eysins). Le projet comprend également des adaptations et des réfections de la chaussée et de ses équipements. Les études préliminaires ont été réalisées dans le cadre",
+   "attendu": [
+    5724,
+    5716
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_91",
+   "texte": "concierge 41 m² Locaux techniques 34 m² Circulations 236 m² 1.3 Descriptif du projet 1.3.1 Concept architectural et durable Le projet de la DIRNA d’Yverdon s’inscrit dans la démarche du regroupement des collaborateurs de la DIRNA présents sur le territoire vaudois. La mise en place du projet d’Yverdon permettra, par",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_MOT_46",
+   "texte": "crédits du prolongement du tramway de Renens à Villars-Sainte-Croix Le Conseil d’Etat soumet au Grand Conseil les crédits du prolongement du tramway de Renens à Villars-Sainte-Croix Publié le 18.11.2024 Tandis qu’entre Lausanne et Renens la pose des rails du tramway avance bon train, la réalisation du tracé jusqu’à Villars-Sainte-Croix franchit",
+   "attendu": [
+    5591,
+    5651,
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_155",
+   "texte": "en 2023 se monte à environ 2’375’000. TPC exploite les lignes de chemin de fer suivantes : • Aigle – Ollon – Monthey – Champéry • Aigle – Les Diablerets • Aigle – Leysin • Bex – Villars-sur-Ollon – Col-de-Bretaye 1.4 Financement de l’infrastructure ferroviaire suisse 1.4.1 Principe de financement selon la législation",
+   "attendu": [
+    5401,
+    5409,
+    5407,
+    5402
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "La Praz, Premier, Provence, Rances, Romainmôtier- Envy, Rovray, Sainte-Croix, Sergey, Suchy, Suscévaz, Tévenon, Treycovagnes, Ursins, Valeyres-sous-Montagny, Valeyres-sous-Rances, Valeyres-sous-Ursins, Vallorbe, Vaulion, Villars-Epeney, Vugelles-La Mothe, Vuiteboeuf, Yverdon-les-Bains et Yvonand. 1 Le district du Jura-Nord vaudois",
+   "attendu": [
+    5758,
+    5759,
+    5566,
+    5760,
+    5761,
+    5928,
+    5568,
+    5762,
+    5929,
+    5930,
+    5571,
+    5931,
+    5932,
+    5933,
+    5763,
+    5934,
+    5764,
+    5765,
+    5935,
+    5937,
+    5766,
+    5938,
+    5939
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_104",
+   "texte": "L'arrondissement du Jura-Nord vaudois comprend : 1 Sans changement. a. le sous-arrondissement de La Vallée formé des communes de L'Abbaye, Le Chenit et Le Lieu, avec Le Chenit pour chef-lieu ; a. le sous-arrondissement de la Vallée formée de la Commune de la Vallée de Joux, qui en constitue le chef-lieu. b. le sous-arrondissement",
+   "attendu": [
+    5871,
+    5872,
+    5873
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "trafic provenant de Crissier sur la route de Cossonay (RC 251) en direction de Sullens sur la route éponyme (RC 313) ; • d’une voie réservée aux bus provenant de Mex sur la route de Cossonay (RC 251) avant le carrefour giratoire. Ces mesures tiennent compte de l’accroissement du trafic prévu à l’horizon de mise en service",
+   "attendu": [
+    5583,
+    5501,
+    5489
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_79",
+   "texte": "DECRET accordant au Conseil d'État un crédit d’investissement de CHF 24'690'000.00 pour financer l’achat d’une fraction du bien-fonds n°870 de la commune de Prilly sis à la Route des Flumeaux 50, propriété de SICPA SA 2 TABLE DES MATIERES 1. Présentation du projet……………………………………………………………………………………..",
+   "attendu": [
+    5589
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "V 19.6.2026",
+   "texte": "une possibilité de stationnement sur leur lieu de travail, contre 39 % à Lausanne. En zone suburbaine, ce pourcentage s’élève à 43 % pour Berne, et 53 % pour Lausanne. Source : EPFL-LaSUR 2020. [33] Territoire des courtes distances : Diagnostic et enjeux pour le canton de Vaud et ses environs, 6t-bureau de recherche,",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_109",
+   "texte": "Cours d’eau : Le Grand Canal Type de projet : Renaturation Statut : Tronçon corrigé Longueur concernée : 1.2 km Commune : Chessel Carte de situation du projet Objectifs • Amélioration du cours d’eau pour retrouver un fonctionnement proche de l’état naturel • Augmentation de",
+   "attendu": [
+    5403
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "26_INT_111",
+   "texte": "édition. Grâce à la richesse des paysages de notre région, Ailyos propose une scénographie poétique et onirique pour plus de 70 sculptures réparties entre Aigle, Yvorne, le Col des Mosses, les Diablerets, Leysin et, pour la première fois cette année, Le Pays-d’Enhaut, Rossinière, Château-d’Oex et Rougemont. Les artistes ont travaillé",
+   "attendu": [
+    5401,
+    5415,
+    5407,
+    5842,
+    5841,
+    5843
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_155",
+   "texte": "lignes de chemin de fer TPC en 2023 se monte à environ 2’375’000. TPC exploite les lignes de chemin de fer suivantes : • Aigle – Ollon – Monthey – Champéry • Aigle – Les Diablerets • Aigle – Leysin • Bex – Villars-sur-Ollon – Col-de-Bretaye 1.4 Financement de l’infrastructure ferroviaire suisse 1.4.1 Principe de financement",
+   "attendu": [
+    5401,
+    5409,
+    5407,
+    5402
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_POS_58",
+   "texte": "EFAJE 73 104 177 Enfants Chablais 102 165 267 Epalinges 14 18 33 Nyon 89 70 159 PPBL 34",
+   "attendu": [
+    5584,
+    5724
+   ],
+   "douteux": "Tableau de réseaux d'accueil de jour nommés d'après leur commune, comptés justes."
+  },
+  {
+   "origine": "document",
+   "numero": "25_QUE_35",
+   "texte": "Revenu déterminant unifié (RDU) avant une éventuelle déduction pour enfant(s) à charge (lettre A dans le tableau sous point 1 de cette notice) *** Région 1 : Lausanne, l’Ouest lausannois, Nyon, La Côte, Lavaux, la Riviera Région 2 : le Chablais, le Pays d’Enhaut, Oron, Cossonay, la Broye, le Vully, le Gros-de-Vaud, le Jura,",
+   "attendu": [],
+   "douteux": "Même tableau des régions de primes que le cas précédent du même document : comptées fausses."
+  },
+  {
+   "origine": "document",
+   "numero": "25_POS_58",
+   "texte": "REME 203 203 132 122 132 Renens - Crissier 233 233 358 299 358 Réseau-L 2'778",
+   "attendu": [
+    5591,
+    5583
+   ],
+   "douteux": "Tableau de réseaux d'accueil de jour nommés d'après leur commune, comptés justes."
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_69",
+   "texte": "pour financer les travaux de transformation et d'aménagement du nouvel Office régional de protection des mineurs de la Couronne lausannoise et du Gros-de-Vaud, à Romanel-sur-Lausanne du 26 juin 2024 LE GRAND CONSEIL DU CANTON DE VAUD vu le projet de décret présenté par le Conseil d'Etat décrète Art. 1 1 Un crédit d'investissement de CHF",
+   "attendu": [
+    5592
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_234",
+   "texte": "réduire les consommations (actions de performances énergétiques), - Changement d’agent énergétique fossile au profit du réseau de Chauffage Urbain de la Ville de Lausanne pour le bâtiment Bains 21, - Mise en norme des installations techniques (sanitaires, électricité, éclairage, etc.), pour les bâtiments Bains 21, Cour 33 et",
+   "attendu": [
+    5586
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_166",
+   "texte": "mesure du possible, des conventions à l’amiable traitant des modifications des droits réels inscrits au registre foncier. La deuxième étape du tramway t1 entre Renens (Gare) et Villars-Sainte-Croix (Croix-du-Péage) génère ainsi des acquisitions définitives sur 80 parcelles situées sur les communes de Renens, Ecublens, Crissier,",
+   "attendu": [
+    5591,
+    5651,
+    5635,
+    5583
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_57",
+   "texte": "inférieur se partagera entre les acteurs selon une convention à établir liant la Compagnie du chemin de fer Lausanne – Echallens – Bercher (40%), la Commune d’Echallens (20%) et l’Etat de Vaud (40% plafonnés) conformément au chiffre 1.3.3. Cette subvention à fonds perdus d’un montant plafonné de CHF 5'450'000.- TTC sera versée",
+   "attendu": [
+    5518
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "25_LEG_103",
+   "texte": "modifiant la loi du 30 mai 2006 sur le découpage territorial 2 1. PREAMBULE Le 18 mai 2025, les corps électoraux des communes de Lucens et Curtilles ont accepté la convention de fusion ayant pour objet la création d’une nouvelle commune vaudoise ensuite de fusion du nom de Lucens. Le présent document charge",
+   "attendu": [
+    5675,
+    5669
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_114",
+   "texte": "Buvette d’alpage de Sugnens, Sugnens : Ce projet partiel repose sur le développement d’une activité d’accueil agritouristique sur un estivage à proximité de Sugnens. Il est envisagé de transformer une partie du bâtiment existant pour accueillir des hôtes et leur servir une restauration simple pendant la saison d’estivage.",
+   "attendu": [
+    5540
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_252",
+   "texte": "part Commune d’Eysins (=EMPD) - 470'000.00 - 449'500.00 - 919'500.00 Subvention fédérale du fonds d’infrastructure - part Etat de Vaud - part Commune d’Eysins (=EMPD) - 225'000.00 - 419'000.00 - 644'000.00 Subventions cantonales pour la mobilité douce, la route cantonale en localité et les plantations",
+   "attendu": [
+    5716
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_15",
+   "texte": "son terrain ». 4 La DGIP a travaillé sans relâche pour trouver une solution à l’absence d’installations sportives à proximité immédiate du Gymnase de Bussigny et finalement un accord a été trouvé avec le propriétaire des parcelles précitées qui construit une extension au bâtiment actuel pour la réalisation d’une salle",
+   "attendu": [
+    5624
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_98",
+   "texte": "fermer 19 classes à Burier, quatrième opération. En effet, ces classes avaient été ouvertes provisoirement en urgence face au retard conséquent dans le projet d’Aigle. Avec 75 classes restantes, le Gymnase de Burier demeurera un important site de formation, au-delà du Gymnase type d’une quarantaine de classes. Opérations 5",
+   "attendu": [
+    5401
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_155",
+   "texte": "200'000 Assainissement tunnel du Vernex, SIA 3 à 4 50'000 Système d’information voyageurs 400'000 Automatisation Montreux MVR-N, SIA 3 à 4 200'000 1 Adaptations pour répondre à la loi du 13 décembre 2002 sur l’égalité des personnes handicapées (LHand) qui stipule",
+   "attendu": [
+    5886
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_213",
+   "texte": "de Le Sentier. Article 13 - Bureau électoral Le bureau électoral de la nouvelle commune est sis dans la localité de Le Sentier. Les localités de L’Abbaye et Le Lieu conservent une boîte aux lettres pour le vote par correspondance. Article 14 - Archives Les documents et archives des trois communes conservent leur autonomie",
+   "attendu": [
+    5871,
+    5873
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "23_LEG_234",
+   "texte": "F) et d’un couvert pour véhicules 2 roues. Les bâtiments du site ne font pas l’objet de recensement patrimonial. Figure 1 Plan de situation - Gymnase d'Yverdon-les-Bains Le bâtiment C, aujourd’hui dans un état très dégradé, n’est pas propice à une exploitation de qualité pour les 16 salles de classe qu’il comporte. En effet,",
+   "attendu": [
+    5938
+   ]
+  },
+  {
+   "origine": "document",
+   "numero": "24_LEG_190",
+   "texte": "HEIG-VD et son expérience étudiante au sein de l’institution. Les présentations ont eu lieu devant un public conséquent, composé notamment d’étudiants du Gymnase d’Yverdon-les-Bains et de leurs enseignants. Elles ont par la suite connu un franc succès sur les réseaux sociaux sur lesquels elles ont été diffusées (pitchersafiliere2023 (https://heig.ch/YQWwQ)).",
+   "attendu": [
+    5938
+   ]
+  }
+ ]
+}

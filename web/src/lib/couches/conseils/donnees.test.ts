@@ -224,13 +224,12 @@ describe('localiser un Objet ou une Séance', () => {
 	});
 
 	it('ouvre un Objet du Grand Conseil dans ses communes rattachées, dans leur ordre, puis dans la fiche du Grand Conseil', async () => {
-		const rattache = {
-			...objet(),
+		const rattache = objet({
 			communes: [
 				{ ofs: 5606, origine: 'titre' },
 				{ ofs: 5590, origine: 'document' }
 			]
-		};
+		});
 		const { conseils } = donneesSur({ 'conseils/vd/objets/26_INT_140.json': rattache });
 
 		expect(await conseils.localiser('vd/26_INT_140')).toEqual({

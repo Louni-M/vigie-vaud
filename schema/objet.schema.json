@@ -1,6 +1,25 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "CommuneRattachee": {
+      "additionalProperties": false,
+      "description": "Une commune rattachée à un Objet du Grand Conseil (ADR 0016), avec l'origine du rattachement.",
+      "properties": {
+        "ofs": {
+          "$ref": "#/$defs/NumeroOfs"
+        },
+        "origine": {
+          "$ref": "#/$defs/OrigineCommune",
+          "description": "`titre` : nommée dans le titre ; `document` : citée dans un document ; `correction` : ajoutée à la main par `corrections.json`."
+        }
+      },
+      "required": [
+        "ofs",
+        "origine"
+      ],
+      "title": "CommuneRattachee",
+      "type": "object"
+    },
     "Contributeur": {
       "additionalProperties": false,
       "properties": {
@@ -105,6 +124,19 @@
     },
     "Lien": {
       "pattern": "^https?://\\S+$",
+      "type": "string"
+    },
+    "NumeroOfs": {
+      "maximum": 9999,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "OrigineCommune": {
+      "enum": [
+        "titre",
+        "document",
+        "correction"
+      ],
       "type": "string"
     },
     "SorteContributeur": {
@@ -223,6 +255,13 @@
         }
       ],
       "description": "Page de l'Objet chez le conseil (`url_external`)."
+    },
+    "communes": {
+      "description": "Grand Conseil : les communes rattachées par le nom (ADR 0016), dans l'ordre du rattachement (titre, puis documents de la plus à la moins citée, puis corrections), `corrections.json` appliqué. Vide pour un conseil communal, dont les Objets n'appartiennent qu'à leur commune.",
+      "items": {
+        "$ref": "#/$defs/CommuneRattachee"
+      },
+      "type": "array"
     }
   },
   "required": [
@@ -237,7 +276,8 @@
     "contributeurs",
     "etapes",
     "documents",
-    "lien"
+    "lien",
+    "communes"
   ],
   "title": "Objet",
   "type": "object"

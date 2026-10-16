@@ -4,7 +4,6 @@
 import { DONNEES } from '#lib/config.js';
 import type { Fiche, Lieu } from '#lib/registre/types.js';
 import type {
-	CommuneRattachee,
 	ConseilIndexe,
 	IndexConseils,
 	LigneObjet,
@@ -161,8 +160,8 @@ export function creerDonneesConseils({
 				const ofs = couverture.communes === 'canton' ? [] : couverture.communes;
 				return { fiches: ofs.flatMap(fiche) };
 			}
-			// Le Grand Conseil. Les communes rattachées n'existent dans l'archive qu'une fois le rattachement importé.
-			const rattachees = 'ordre_du_jour' in lu ? [] : ((lu as { communes?: CommuneRattachee[] }).communes ?? []);
+			// Le Grand Conseil : un Objet s'ouvre aussi dans les communes qu'il nomme, une Séance dans sa seule fiche.
+			const rattachees = 'ordre_du_jour' in lu ? [] : lu.communes;
 			return { fiches: [...rattachees.flatMap((c) => fiche(c.ofs)), { fiche: FICHE_GRAND_CONSEIL }] };
 		}
 	};
