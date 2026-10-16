@@ -115,8 +115,9 @@ fiche du Grand Conseil. Ses Objets sont rattachés aux communes qu'ils nomment ;
 
 **Objet** :
 Toute affaire qu'un conseil enregistre et suit (interpellation, motion, postulat, question, préavis, pétition,
-projet de loi ou de décret, rapport…), sauf les demandes de grâce, avec son titre, ses auteur·e·s, sa date, son type
-et son statut. Le type et le statut sont ceux que le conseil leur donne, sans regroupement de notre part. Correspond
+projet de loi ou de décret, rapport…), sauf les demandes de grâce, avec son numéro, son titre, ses auteur·e·s, sa
+date, son type et son statut. Le numéro, unique dans son conseil, est celui que le conseil lui donne (`26_INT_140`,
+`INT26/056`). Le type et le statut sont ceux que le conseil leur donne, sans regroupement de notre part. Correspond
 aux *affairs* d'OpenParlData.
 _À éviter_ : affaire, intervention
 
