@@ -2,7 +2,8 @@
 	/*
 	 * Coquille de la carte, commune à `/` et à `/commune/<slug>` : elle garde la carte montée pendant la
 	 * navigation. Rail des couches à gauche, volet posé sur la carte (celui d'une couche, ou le fil cantonal, ouvert à
-	 * l'arrivée), recherche flottante en haut, et la fiche commune en colonne à droite quand une commune est ouverte.
+	 * l'arrivée), recherche flottante en haut, et la fiche ouverte en colonne à droite : celle d'une commune, ou une
+	 * fiche propre (`/grand-conseil`).
 	 * Les pages du groupe ne portent que le <head>.
 	 *
 	 * Sur téléphone (requête `telephone`), une seule vue plein écran à la fois, choisie dans la barre Carte ·
@@ -24,7 +25,7 @@
 	import { sourcesCarte } from '#lib/registre/attribution.js';
 	import Rail from '#lib/registre/Rail.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
-	import FicheCommune from '#lib/registre/FicheCommune.svelte';
+	import FicheOuverte from '#lib/registre/FicheOuverte.svelte';
 	import Apercu from '#lib/registre/Apercu.svelte';
 	import Grisage from '#lib/registre/Grisage.svelte';
 	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
@@ -83,7 +84,7 @@
 
 	const vueCarte: VueCarte = {
 		aller: (c, anime) => carte?.aller(c, anime),
-		voler: (lon, lat, zoom) => carte?.voler(lon, lat, zoom, decalage()),
+		voler: (lon, lat, zoom, parDefaut) => carte?.voler(lon, lat, zoom, decalage(), parDefaut),
 		vueCanton: () => carte?.vueCanton(),
 		cadrer: (emprise, anime, parDefaut) => carte?.cadrer(emprise, anime, parDefaut)
 	};
@@ -143,7 +144,7 @@
 	}
 </script>
 
-<div class="app" class:avec-fiche={registre.commune} data-affichage={affichage}>
+<div class="app" class:avec-fiche={registre.commune ?? registre.propre} data-affichage={affichage}>
 	<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
 
 	<Rail {registre} />
@@ -229,10 +230,11 @@
 		</div>
 	{/if}
 
-	{#if registre.commune}
-		<!-- Une seule colonne : changer de commune remplace son contenu sans la refermer. -->
+	{#if registre.commune ?? registre.propre}
+		{@const ouverte = registre.commune ?? registre.propre!}
+		<!-- Une seule colonne, pour une commune ou une fiche propre : changer de fiche remplace son contenu sans la refermer. -->
 		<div class="colonne" in:fly={{ x: 40, duration: 200 }}>
-			<FicheCommune {registre} commune={registre.commune} />
+			<FicheOuverte {registre} {ouverte} />
 		</div>
 	{/if}
 

@@ -100,3 +100,18 @@ export function ordreDuJour(points: readonly PointOrdreDuJour[]): GroupePoints[]
 	}
 	return groupes;
 }
+
+/** Puce des Objets récents du Grand Conseil : tous, ceux qui nomment une commune, ceux qui n'en nomment aucune. */
+export type PuceObjets = 'tous' | 'avec' | 'sans';
+
+/** Les puces, dans l'ordre : « Tous · Nomment une commune · Sans commune ». */
+export const PUCES_OBJETS: { id: PuceObjets; nom: string }[] = [
+	{ id: 'tous', nom: 'Tous' },
+	{ id: 'avec', nom: 'Nomment une commune' },
+	{ id: 'sans', nom: 'Sans commune' }
+];
+
+/** Les Objets que garde la puce, dans leur ordre, par leurs communes rattachées. */
+export function filtrerObjets(objets: readonly LigneObjet[], puce: PuceObjets): LigneObjet[] {
+	return puce === 'tous' ? [...objets] : objets.filter((o) => o.communes.length > 0 === (puce === 'avec'));
+}

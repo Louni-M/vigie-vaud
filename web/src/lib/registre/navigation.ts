@@ -1,18 +1,18 @@
 import type { Centre } from '#lib/types.js';
 import type { Fiche, Lieu, Ouvert } from './types.js';
 
-/** Ce que l'adresse dit de la carte : la commune du chemin, la vue et l'élément de la requête. */
+/** Ce que l'adresse dit de la carte : la fiche du chemin (commune ou fiche propre), la vue et l'élément de la requête. */
 export interface Adresse {
-	commune: string | null;
+	fiche: Fiche | null;
 	vue: Centre | null;
 	ouvert: Ouvert | null;
 }
 
 /**
- * Ce que doit faire la carte : rétablir une vue, cadrer une commune, montrer l'élément ouvert (une fois
- * localisé par sa couche), revenir au canton, ou rien (`null`).
+ * Ce que doit faire la carte : rétablir une vue, cadrer une fiche (la commune entière, ou la position d'une fiche
+ * propre), montrer l'élément ouvert (une fois localisé par sa couche), revenir au canton, ou rien (`null`).
  */
-export type Mouvement = { aller: Centre } | { cadrer: string } | 'element' | 'canton' | null;
+export type Mouvement = { aller: Centre } | { cadrer: Fiche } | 'element' | 'canton' | null;
 
 /** Les deux désignent le même élément ouvert. */
 export const memeElement = (a: Ouvert | null, b: Ouvert | null) =>
@@ -22,16 +22,17 @@ export const memeElement = (a: Ouvert | null, b: Ouvert | null) =>
  * Mouvement de la carte quand l'adresse change sous le registre : arrivée sur le site (`initial`), lien suivi,
  * précédent ou suivant du navigateur. `avant` est ce que reflétait l'adresse précédente.
  *
- * Fermer un élément pour revenir à l'onglet de sa commune ne bouge jamais la carte, et corriger le chemin de
+ * Fermer un élément pour revenir à l'onglet de sa fiche ne bouge jamais la carte, et corriger le chemin de
  * l'élément ouvert non plus. Sinon la vue de l'adresse l'emporte ; à défaut, un élément qu'on vient d'ouvrir
- * est montré, une commune qu'on vient d'ouvrir est cadrée, et l'adresse nue « / » ramène au canton.
+ * est montré, une fiche qu'on vient d'ouvrir est cadrée, et l'adresse nue « / » ramène au canton.
  */
-export function mouvement(avant: Pick<Adresse, 'commune' | 'ouvert'>, apres: Adresse, initial: boolean): Mouvement {
-	if (avant.ouvert && !apres.ouvert && avant.commune === apres.commune) return null;
+export function mouvement(avant: Pick<Adresse, 'fiche' | 'ouvert'>, apres: Adresse, initial: boolean): Mouvement {
+	const memeFicheOuverte = avant.fiche === apres.fiche || memeFiche(avant.fiche, apres.fiche);
+	if (avant.ouvert && !apres.ouvert && memeFicheOuverte) return null;
 	if (memeElement(avant.ouvert, apres.ouvert)) return null;
 	if (apres.vue) return { aller: apres.vue };
 	if (apres.ouvert) return 'element';
-	if (apres.commune) return apres.commune === avant.commune ? null : { cadrer: apres.commune };
+	if (apres.fiche) return memeFicheOuverte ? null : { cadrer: apres.fiche };
 	return initial ? null : 'canton';
 }
 

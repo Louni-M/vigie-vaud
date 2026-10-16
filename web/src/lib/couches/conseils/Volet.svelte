@@ -2,11 +2,12 @@
 	/*
 	 * Volet de la couche Conseils, sous l'interrupteur, les badges et l'attribution du registre : la légende, puis une
 	 * carte par conseil couvert, lue dans `conseils/index.json`, et la phrase sur les communes grisées. Un conseil
-	 * communal ouvre la fiche de sa commune, sur l'onglet Conseil ; le Grand Conseil ouvrira la sienne quand elle existera.
+	 * communal ouvre la fiche de sa commune, sur l'onglet Conseil ; le Grand Conseil ouvre la sienne.
 	 */
 	import type { Contexte } from '#lib/registre/types.js';
 	import { listerConseils, SOURCES } from '#lib/sources.js';
 	import { carteConseil } from './cartes.js';
+	import { FICHE_GRAND_CONSEIL } from './cles.js';
 	import { conseils } from './donnees.js';
 	import { COULEUR_CONSEILS, coucheConseils } from './index.js';
 
@@ -24,7 +25,7 @@
 </script>
 
 <ul class="legende" style:--c={COULEUR_CONSEILS}>
-	<li><span class="fronton" aria-hidden="true">GC</span> Le Grand Conseil, au Parlement.</li>
+	<li><span class="fronton" aria-hidden="true">GC</span> Le Grand Conseil, au Parlement : un clic ouvre sa fiche.</li>
 	<li>
 		<span class="hotel" aria-hidden="true"></span> Les conseils communaux sont dans la fiche de leur commune, onglet
 		Conseil.
@@ -50,7 +51,9 @@
 							{@render contenu(carte)}
 						</button>
 					{:else}
-						<div class="carte">{@render contenu(carte)}</div>
+						<button type="button" class="carte" onclick={() => ctx.ouvrir({ fiche: FICHE_GRAND_CONSEIL })}>
+							{@render contenu(carte)}
+						</button>
 					{/if}
 				</li>
 			{/each}

@@ -33,7 +33,7 @@
 			<strong>{commune.nom}</strong> · <span>Voir la fiche ›</span>
 		</button>
 	{/if}
-	<button class="fermer" type="button" aria-label="Fermer l’aperçu de {commune.nom}" onclick={registre.fermerCommune}>
+	<button class="fermer" type="button" aria-label="Fermer l’aperçu de {commune.nom}" onclick={registre.fermerFiche}>
 		×
 	</button>
 </div>
