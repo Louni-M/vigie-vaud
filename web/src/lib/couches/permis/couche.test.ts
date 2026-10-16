@@ -65,6 +65,23 @@ describe('couche Permis', () => {
 		]);
 	});
 
+	it('ne donne pas au fil un dossier dont l’enquête ne commence que demain (« À venir » : les Séances annoncées)', async () => {
+		vi.stubGlobal(
+			'fetch',
+			fauxCanton([
+				entite(250010, { DATE_ENQUETE: 'Du 16.10.2026 au 15.11.2026' }),
+				entite(250011, { DATE_ENQUETE: 'Du 17.10.2026 au 16.11.2026' })
+			]).fetch
+		);
+		// Les dossiers en cours se chargent une fois par visite : une visite neuve, sans ceux du test précédent.
+		vi.resetModules();
+		const { couchePermis: neuve } = await import('./index.js');
+
+		expect((await neuve.fil?.entrees('2026-10-02'))?.map((e) => [e.element, e.date])).toEqual([
+			['250010', '2026-10-16']
+		]);
+	});
+
 	it('ne localise pas un n° inconnu du canton', async () => {
 		vi.stubGlobal('fetch', fauxCanton([]).fetch);
 

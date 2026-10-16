@@ -2,6 +2,7 @@ import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
 import type { Parametres } from './donnees.svelte.js';
 import { NATURES, STATUTS, STATUTS_EN_COURS, STATUTS_ORDRE, natureLabel } from '#lib/labels.js';
 import type { Statut } from '#lib/types.js';
+import { jourDe } from '#lib/fil/fil.js';
 
 /**
  * La couche Permis : dossiers CAMAC lus en direct sur le service du canton. Ses composants partagent
@@ -33,14 +34,15 @@ export const couchePermis: Couche<Parametres> = {
 	titre: (element, nomDeLaFiche) => `Dossier n° ${element} – ${nomDeLaFiche} – Vigie Vaud`,
 	resume: 'les permis de construire à l’enquête, en direct depuis le canton',
 	// Les nouveaux dossiers sont lus dans les dossiers en cours, chargés une seule fois par visite et partagés
-	// avec la carte : un dossier reste « nouveau » même si son enquête est close.
+	// avec la carte : un dossier reste « nouveau » même si son enquête est close. Une enquête qui ne commence que
+	// demain n'y est pas encore : « À venir » est fait des Séances annoncées.
 	fil: {
 		types: [{ id: 'nouveaux', nom: 'Nouveaux dossiers', signe: 'P', couleur: STATUTS.enquete.couleur }],
 		async entrees(depuis) {
 			const { permis } = await import('./donnees.svelte.js');
-			const actifs = await permis.chargerActifs();
+			const [actifs, aujourdhui] = [await permis.chargerActifs(), jourDe(new Date())];
 			return actifs
-				.filter((d) => d.debut && d.debut >= depuis)
+				.filter((d) => d.debut && d.debut >= depuis && d.debut <= aujourdhui)
 				.map((d) => ({
 					element: String(d.id),
 					type: 'nouveaux',
