@@ -7,7 +7,7 @@ C'est la version du cron de `web/src/lib/masquage.ts` (`masquerNoms`), elle-mêm
   épargnée que si son nom entier est celui d'un·e élu·e (à la casse et aux accents près) : un homonyme partiel est
   masqué ;
 - les **auteur·e·s d'une pétition** sont masqué·e·s même sans civilité, comme Lausanne les nomme (« Pétition de
-  Gaber Mark et crts », « Pétition déposée le 7 mai 2024 de Lya Blanc et crts : »), sauf élu·e connu·e ou entité ;
+  Exemple Paul et crts », « Pétition déposée le 7 mai 2024 de Julie Modèle et crts : »), sauf élu·e connu·e ou entité ;
 - les **pétitionnaires que la source connaît** (prénom et nom des contributeurs d'une pétition) sont masqué·e·s dans
   les textes de leur pétition sous toutes leurs formes : nom de fichier en snake_case
   (« 2025_08_rp_petition_paul_exemple_parc.pdf »), sans civilité ni « Pétition de » (« par Exemple Paul et crts »,
@@ -50,8 +50,8 @@ NOM = r"[A-ZÀ-Ý](?:\.(?:-[A-ZÀ-Ý]\.)?|[\w’'´-]*)"  # « Dupont », « J. 
 CIVILITE_RE = re.compile(rf"\b({CIVILITE}(?:\s+(?:et|&)\s+{CIVILITE})*\s+)({NOM}(?:\s+(?:et\s+|&\s+)?{NOM})*)")
 ENTRE_PERSONNES = re.compile(r"(\s+(?:et|&)\s+)")
 LIAISONS = {"et", "&", "de", "du", "des", "da", "dos", "von", "van", "der", "le", "la"}
-# L'auteur·e d'une pétition, sans civilité : une suite de noms propres, les particules comprises (« Jean de
-# Montmollin »), après « Pétition [au CC] [déposée le <date>] de » ; plusieurs auteur·e·s séparé·e·s par « et » ou une
+# L'auteur·e d'une pétition, sans civilité : une suite de noms propres, les particules comprises (« Paul de
+# Montexemple »), après « Pétition [au CC] [déposée le <date>] de » ; plusieurs auteur·e·s séparé·e·s par « et » ou une
 # virgule. La suite n'est prise que si un séparateur la termine (« et crts », « : », « - », « déposée »…) : « Pétition
 # de Montelly vit ! » n'est pas un nom.
 PARTICULE = r"(?:(?:de|du|des|von|van|der|da|dos|di|le|la)\s+|d[’'])"
