@@ -9,6 +9,7 @@ import type { Chargeur, Cible, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, O
 import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
 import { corrigerChemin, fermeture, memeElement, memeFiche, mouvement, type Adresse } from './navigation.js';
 import { ficheDuChemin, fichePropre } from './fiches.js';
+import { cheminFiche } from './liens.js';
 import { titreFiche } from './tete.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
 import { zoneDuFil } from '#lib/fil/fil.js';
@@ -168,7 +169,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	function ouvrirFiche(f: Fiche) {
 		if (memeFiche(f, fiche)) return cadrerFiche(f, true);
 		const q = ecrireUrl(couches, { ...etat(), vue: null, ouvert: null });
-		naviguer(`${cheminFiche(f)}${q}`, { reset: false });
+		naviguer(`${cheminFiche(couches, f)}${q}`, { reset: false });
 	}
 
 	/** Fermer la fiche, commune ou propre, ramène à « / », sans bouger la carte. */
@@ -184,14 +185,6 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	let suivi: Pick<Adresse, 'fiche' | 'ouvert'> = { fiche: null, ouvert: null };
 	/** Dernier élément demandé : une demande plus ancienne qui aboutit après lui est ignorée. */
 	let demande: Ouvert | null = null;
-
-	/** Chemin d'une fiche, sans la requête. */
-	function cheminFiche(f: Fiche): string {
-		if ('commune' in f) return resolve(ROUTE_COMMUNE, { slug: f.commune });
-		const declaree = fichePropre(couches, f.fiche);
-		if (!declaree) throw new Error(`Aucune couche ne déclare la fiche « ${f.fiche} »`);
-		return resolve(ROUTE_FICHE, { fiche: declaree.fiche.chemin.slice(1) });
-	}
 
 	/**
 	 * Montre l'élément ouvert dans la fiche `dans` : la carte va vers sa position (d'un saut si `saut`), ou cadre
@@ -249,7 +242,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		// Autre fiche : une nouvelle entrée, sans la vue (la carte vole vers l'élément). L'état suivra l'adresse,
 		// et la carte ne bougera pas une seconde fois.
 		const depuis = fiche;
-		const chemin = cheminFiche(k);
+		const chemin = cheminFiche(couches, k);
 		suivi = { fiche: k, ouvert: o };
 		const q = ecrireUrl(couches, { ...etat(), vue: null, ouvert: o });
 		naviguer(`${chemin}${q}`, {
@@ -277,7 +270,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		}
 		if (montrer) montrerElement(lieu!, k ?? fiche!, initial);
 		if (k === null) return;
-		const chemin = cheminFiche(k);
+		const chemin = cheminFiche(couches, k);
 		suivi = { fiche: k, ouvert: o };
 		naviguer(`${chemin}${ecrireUrl(couches, etat())}`, {
 			replace: true,
