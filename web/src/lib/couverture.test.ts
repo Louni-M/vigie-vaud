@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deduireCouverture, libelleEtat, libellePaire } from './couverture.js';
+import { deduireCouverture, libelleCellule, libelleCommunes, libelleEtat, libellePaire } from './couverture.js';
 import { chargerEtatSources, lienPannes, lireEtatSources } from './etat-sources.js';
 import type { CoucheInscrite } from './registre/types.js';
 import { COUCHES } from './registre/couches.js';
@@ -120,10 +120,10 @@ describe('Couverture déduite', () => {
 		expect(c.couvre('conseils', 5590)).toBe(false);
 	});
 
-	it("ne donne une Couverture qu'aux sources des couches qui ont un onglet, dans l'ordre du registre", () => {
+	it("ne donne une Couverture qu'aux sources des couches qui en ont une, dans l'ordre du registre", () => {
 		const c = deduireCouverture({
 			sources: [
-				source('ucv', { communes: 'canton', mode: 'api' }, false),
+				source('ucv', null, false),
 				source('camac', { communes: 'canton', mode: 'api' }),
 				source('presse', { communes: [5586, 5590], mode: 'scrape' }),
 				source('fond', { communes: 'canton', mode: 'api' }, false)
@@ -193,10 +193,16 @@ describe('grisage de la carte', () => {
 			sources: [
 				source('camac', { communes: 'canton', mode: 'api' }),
 				source('ouest', { communes: [5586], mode: 'api' }),
-				source('est', { communes: [5889], mode: 'scrape' })
+				source('est', { communes: [5889], mode: 'scrape' }),
+				source('ucv', null, false)
 			],
 			etat: e,
-			couches: [couche('permis', ['camac']), couche('conseils', ['ouest', 'est']), couche('fond', ['ouest'], false)],
+			couches: [
+				couche('permis', ['camac']),
+				couche('conseils', ['ouest', 'est']),
+				couche('fond', ['ucv'], false),
+				couche('ecoles', ['ouest'], false)
+			],
 			communes: COMMUNES,
 			maintenant: MAINTENANT
 		});
@@ -209,9 +215,13 @@ describe('grisage de la carte', () => {
 		expect(deduire(etat({})).grisees(null)).toEqual([]);
 	});
 
-	it('ne grise rien pour une couche cantonale, ni pour une couche sans onglet', () => {
+	it('ne grise rien pour une couche cantonale, ni pour une couche dont aucune source n’a de Couverture', () => {
 		expect(deduire(etat({})).grisees('permis')).toEqual([]);
 		expect(deduire(etat({})).grisees('fond')).toEqual([]);
+	});
+
+	it("grise selon les Couvertures de ses sources une couche sans onglet : la règle ne dépend pas de l'onglet", () => {
+		expect(deduire(etat({})).grisees('ecoles')).toEqual([5590, 5889]);
 	});
 
 	it('ne grise rien de plus pour une panne', () => {
@@ -220,19 +230,22 @@ describe('grisage de la carte', () => {
 		expect(c.grisees('conseils')).toEqual([5590]);
 	});
 
-	it('dans le registre, ne grise que pour la couche Conseils, et toutes les communes sauf Lausanne et Yverdon', () => {
+	it('grise, avec les couches inscrites, toutes les communes sauf Lausanne et Yverdon au volet Conseils, et rien ailleurs', () => {
 		const c = deduireCouverture({
 			sources: SOURCES,
-			etat: etat({ 'camac-permis': panne }),
+			etat: etat({ 'camac-permis': panne, 'openparldata-5586': panne }),
 			couches: COUCHES,
 			communes: communesJ0,
 			maintenant: MAINTENANT
 		});
 		expect(communesJ0).toHaveLength(300);
-		for (const couche of COUCHES.filter((c) => c.id !== 'conseils')) expect(c.grisees(couche.id)).toEqual([]);
-		expect(c.grisees('conseils')).toHaveLength(298);
-		expect(c.grisees('conseils')).not.toContain(5586);
-		expect(c.grisees('conseils')).not.toContain(5938);
+		const grisees = c.grisees('conseils');
+		expect(grisees).toHaveLength(298);
+		expect(grisees).not.toContain(5586);
+		expect(grisees).not.toContain(5938);
+		expect(grisees).toContain(5624); // Bussigny
+		expect(c.grisees('permis')).toEqual([]);
+		expect(c.grisees('hotels-de-ville')).toEqual([]);
 	});
 });
 
@@ -264,6 +277,66 @@ describe('Couverture des conseils déclarés dans sources.json', () => {
 		expect(c.couvre('conseils', 5938)).toBe(true);
 		expect(c.couvre('conseils', 5590)).toBe(false);
 		expect(c.grisees('conseils')).toHaveLength(298);
+	});
+});
+
+describe('tableau de la page Couverture : une colonne par couche', () => {
+	const tous = Object.fromEntries(SOURCES.map((s) => [s.id, disponible]));
+	const c = deduireCouverture({
+		sources: SOURCES,
+		etat: etat(tous),
+		couches: COUCHES,
+		communes: communesJ0,
+		maintenant: MAINTENANT
+	});
+	const cellule = (couche: string, bfs: number, charge = true) => libelleCellule(c.cellule(couche, bfs), charge);
+
+	it('a une colonne par couche qui a une Couverture, dans l’ordre du registre : Permis et Conseils', () => {
+		expect(c.colonnes.map((x) => x.nom)).toEqual(['Permis', 'Conseils']);
+	});
+
+	it('donne pour Conseils la paire du conseil communal à Lausanne et à Yverdon, « Non couvert » à Bussigny', () => {
+		expect(cellule('conseils', 5586)).toEqual(['API · disponible']);
+		expect(cellule('conseils', 5938)).toEqual(['API · séances seulement · disponible']);
+		expect(cellule('conseils', 5624)).toEqual(['Non couvert']);
+	});
+
+	it('donne pour Permis la paire de la CAMAC partout', () => {
+		expect(cellule('permis', 5586)).toEqual(['API · disponible']);
+		expect(cellule('permis', 5624)).toEqual(['API · disponible']);
+	});
+
+	it("liste chacune des sources qui couvrent la commune, et ne dit l'état qu'une fois chargé", () => {
+		const d = deduireCouverture({
+			sources: [source('ouest', { communes: [5586], mode: 'api' }), source('presse', { communes: 'canton', mode: 'scrape' })],
+			etat: etat({ ouest: disponible }),
+			couches: [couche('presse', ['ouest', 'presse'])],
+			communes: COMMUNES,
+			maintenant: MAINTENANT
+		});
+		expect(libelleCellule(d.cellule('presse', 5586))).toEqual(['API · disponible', 'Scrapé · inconnu']);
+		expect(libelleCellule(d.cellule('presse', 5590))).toEqual(['Scrapé · inconnu']);
+		expect(libelleCellule(d.cellule('presse', 5586), false)).toEqual(['API · …', 'Scrapé · …']);
+	});
+});
+
+describe('encarts de la page Couverture : un par source', () => {
+	const c = deduireCouverture({ sources: SOURCES, etat: null, couches: COUCHES, communes: communesJ0, maintenant: MAINTENANT });
+	const encart = (id: string) => c.sources.find((s) => s.source.id === id)!;
+
+	it('a un encart par source des couches Permis et Conseils, Grand Conseil compris', () => {
+		expect(c.sources.map((s) => s.source.id)).toEqual([
+			'camac-permis',
+			'openparldata-vd',
+			'openparldata-5586',
+			'openparldata-5938'
+		]);
+	});
+
+	it('dit « Porte sur le canton » pour une source sans Couverture, et le nombre de communes sinon', () => {
+		expect(libelleCommunes(encart('openparldata-vd'), 300)).toBe('Porte sur le canton');
+		expect(libelleCommunes(encart('openparldata-5586'), 300)).toBe('1 commune sur 300');
+		expect(libelleCommunes(encart('camac-permis'), 300)).toBe('300 communes sur 300');
 	});
 });
 
