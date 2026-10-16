@@ -61,7 +61,9 @@ Un dossier dont l'enquête publique a débuté depuis moins de 14 jours.
 _À éviter_ : nouveau permis
 
 **Badge de fraîcheur** :
-L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »).
+L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »). Pour une
+source qui passe par le cron une fois par jour (les conseils), c'est l'âge du dernier import réussi (« importé il y a
+6 h · Grand Conseil »).
 
 **Couverture** :
 Ce qu'une source apporte à chaque commune, selon deux axes : son **mode** (API, scrapé ou non couvert), déclaré
@@ -90,7 +92,7 @@ _À éviter_ : backend, proxy (pour le Worker)
 **Sonde** :
 La requête de vérification que le cron envoie à une source, quelle que soit sa voie d'accès, sans en conserver les
 données. Seules les sondes décident qu'une source est **en panne** : l'échec d'un visiteur ne change pas la
-Couverture.
+Couverture, pas plus qu'un import du cron en échec, qui ne fait que vieillir le badge de fraîcheur.
 _À éviter_ : ping, healthcheck, test
 
 **Rattachement** :

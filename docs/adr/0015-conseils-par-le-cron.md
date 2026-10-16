@@ -21,8 +21,8 @@ disparaît pendant une panne) ; une voie par conseil (pas de code propre à un c
 
 ## Conséquences
 
-- Les conseils sont importés une fois par jour, au premier passage du cron après une heure fixe. L'import demande ce
-  qui a changé depuis le jour du dernier import réussi (`from_updated_at`), avec au moins un jour de recouvrement, et
+- Les conseils sont importés une fois par jour, au premier passage du cron après une heure fixe. Chaque conseil s'importe
+  à part et demande ce qui a changé depuis le jour de son dernier import réussi (`from_updated_at`), avec au moins un jour de recouvrement, et
   ne committe que les vrais changements : `updated_at` change à chaque réimportation d'OpenParlData. Un import en échec
   est refait au passage suivant.
 - Tout l'historique disponible est importé une fois, à la main, avant la mise en ligne de J1 (rattrapage de
