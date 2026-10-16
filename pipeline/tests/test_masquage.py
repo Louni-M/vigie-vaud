@@ -44,10 +44,35 @@ def test_masquer(titre, attendu):
     assert masquer(titre, ELUS) == (titre if attendu is None else attendu)
 
 
-def test_sans_elu_connu_le_cron_masque_comme_le_site():
-    assert masquer("Postulat de M. Loris SOCCHI : « Nos beaux murs gris»") == (
-        "Postulat de [particulier] : « Nos beaux murs gris»"
-    )
-    assert masquer("Construction d’une villa pour le compte de Dupont Jean") == (
-        "Construction d’une villa pour le compte de [particulier]"
-    )
+# La même table que `web/src/lib/masquage.test.ts` (`masquerNoms`), cas pour cas : sans élu·e connu·e, le cron
+# masque comme le site. Un cas ajouté d'un côté s'ajoute de l'autre.
+CAS_DU_SITE = [
+    ("Construction d’une villa pour le compte de Dupont Jean", "Construction d’une villa pour le compte de [particulier]"),
+    ("Recours pour le compte de Swisscom SA", None),
+    ("Transformation pour le compte de Immobilière Rive S.A.", "Transformation pour le compte de Immobilière Rive SA"),
+    (
+        "Pétition de M. Paul Exemple et consorts (312 signatures) : « Pour un parc à chiens »",
+        "Pétition de [particulier] et consorts (312 signatures) : « Pour un parc à chiens »",
+    ),
+    ("Pétition de Mme et M. Exemple pour un trottoir", "Pétition de [particulier] pour un trottoir"),
+    ("Pétition de Madame Exemple", "Pétition de [particulier]"),
+    ("Postulat de M. Loris SOCCHI : « Nos beaux murs gris»", "Postulat de [particulier] : « Nos beaux murs gris»"),
+    ("Postulat de MM. Jean Dupont et Loris Socchi : « Des bancs »", "Postulat de [particulier] : « Des bancs »"),
+    ("Interpellation de Mme Anne-Laure Métraux : « Quel avenir ? »", "Interpellation de [particulier] : « Quel avenir ? »"),
+    ("Villa pour le compte de M. J.-P. Martin", "Villa pour le compte de [particulier]"),
+    ("Agrandissement pour le compte de Commune de Lutry", None),
+    ("Abri pour le compte de la Fondation Les Oliviers", None),
+    ("Rénovation pour le compte de l’Hoirie Favre", None),
+    ("Pose d’un velux pour compte d’Ébéniste Rochat S.à r.l.", "Pose d’un velux pour compte d’Ébéniste Rochat Sàrl"),
+    ("Garage pour le compte de Rossi Marco - Bianchi Anna", "Garage pour le compte de [particulier] - [particulier]"),
+    ("Garage pour le compte de Rossi Marco, architecte", "Garage pour le compte de [particulier], architecte"),
+    ("Couvert pour le compte de Dupont Jean avec garage", "Couvert pour le compte de [particulier] avec garage"),
+    ("Recours pour le compte des Époux Rochat", "Recours pour le compte des [particulier]"),
+    ("Simple question Laurence Cretegny et consorts - Galère La Liberté", None),
+    ("Covid 2020 six ans pour revenir en arrière", None),
+]
+
+
+@pytest.mark.parametrize(("titre", "attendu"), CAS_DU_SITE)
+def test_sans_elu_connu_le_cron_masque_comme_le_site(titre, attendu):
+    assert masquer(titre) == (titre if attendu is None else attendu)
