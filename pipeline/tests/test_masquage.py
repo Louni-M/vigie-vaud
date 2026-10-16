@@ -155,3 +155,52 @@ CAS_DU_SITE = [
 @pytest.mark.parametrize(("titre", "attendu"), CAS_DU_SITE)
 def test_sans_elu_connu_le_cron_masque_comme_le_site(titre, attendu):
     assert masquer(titre) == (titre if attendu is None else attendu)
+
+
+# Les pétitionnaires que la source connaît (prénom, nom), masqué·e·s dans les textes de leur pétition sous toutes les
+# formes que Lausanne leur donne : nom de fichier en snake_case, sans civilité ni « Pétition de », nom seul.
+PETITIONNAIRES = [("Paul", "Exemple"), ("Zoé", "Modèle"), ("Ariane", "Exemple-Témoin"), ("Léa", "Do")]
+
+
+@pytest.mark.parametrize(
+    ("titre", "attendu"),
+    [
+        ("2025_08_rp_petition_paul_exemple_parc_a_chiens.pdf v1.0", "2025_08_rp_petition_[particulier]_parc_a_chiens.pdf v1.0"),
+        ("39_24_nov_cc_rep_petition_exemple_parc.pdf v1.0", "39_24_nov_cc_rep_petition_[particulier]_parc.pdf v1.0"),
+        ("COPET_rapport pétition Exemple.pdf", "COPET_rapport pétition [particulier].pdf"),
+        ("Pétition Exemple Paul_toilettes du parc", "Pétition [particulier]_toilettes du parc"),
+        (
+            "Pétition du Collectif des Lilas par Exemple Paul et crts - Un parc",
+            "Pétition du Collectif des Lilas par [particulier] et crts - Un parc",
+        ),
+        (
+            "Réponse à la pétition de l'Association des Lilas (Paul Exemple)",
+            "Réponse à la pétition de l'Association des Lilas ([particulier])",
+        ),
+        ("Pétition Exemple Paul et Exemple Marc - Un banc", "Pétition [particulier] et [particulier] Marc - Un banc"),
+        # À la casse et aux accents près, nom composé compris.
+        ("Pétition MODELE Zoé - Un banc", "Pétition [particulier] - Un banc"),
+        ("30_11_sept_petition_zoe_modele_banc.pdf v1.0", "30_11_sept_petition_[particulier]_banc.pdf v1.0"),
+        ("Pétition Exemple Témoin Ariane - Un banc", "Pétition [particulier] - Un banc"),
+        ("petition_exemple_temoin_banc.pdf", "petition_[particulier]_banc.pdf"),
+        # Ses coordonnées le suivent.
+        ("Pétition Exemple Paul - Chemin des Lilas 2 - 1000 Lausanne", "Pétition [particulier] - [coordonnées]"),
+        # Un mot qui contient le nom n'est pas le nom ; un nom de deux lettres n'est masqué qu'avec le prénom.
+        ("Rapport sur l'exemplaire du plan", None),
+        ("Pétition Do Léa - Un banc", "Pétition [particulier] - Un banc"),
+        ("do_re_mi.pdf", None),
+    ],
+)
+def test_les_petitionnaires_connus_sont_masques_sous_toutes_leurs_formes(titre, attendu):
+    assert masquer(titre, ELUS, PETITIONNAIRES) == (titre if attendu is None else attendu)
+
+
+def test_un_petitionnaire_elu_connu_reste_et_son_nom_de_famille_seul_aussi():
+    # Jean Dupont est un élu connu : il reste. Marc Dupont n'en est pas un : il est masqué avec son prénom, mais
+    # « Dupont » seul peut être l'élu (« postulat_dupont ») et reste.
+    petitionnaires = [("Jean", "Dupont"), ("Marc", "Dupont")]
+    assert masquer("petition_jean_dupont_bancs.pdf", ELUS, petitionnaires) == "petition_jean_dupont_bancs.pdf"
+    assert (
+        masquer("rp_petition_marc_dupont_postulat_dupont.pdf", ELUS, petitionnaires)
+        == "rp_petition_[particulier]_postulat_dupont.pdf"
+    )

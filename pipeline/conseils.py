@@ -263,7 +263,9 @@ def vers_archive(
     l'Objet de chaque point d'ordre du jour et à départager deux Objets de même numéro (il y en a à Lausanne) : le
     plus petit identifiant l'emporte, d'un import à l'autre. Les demandes de grâce sont écartées, et leurs points
     d'ordre du jour retirés. Les titres des Objets, de leurs documents et des points sont masqués (ADR 0007), en
-    épargnant les élu·e·s connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`.
+    épargnant les élu·e·s connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`. Les pétitionnaires que la
+    source connaît le sont dans les textes de leur pétition : son titre, ceux de ses documents (et du même document
+    joint à un autre Objet) et ceux de ses points.
 
     Pour un conseil qui porte sur le canton, chaque Objet est rattaché par le nom (ADR 0016) d'après `communes`
     (`communes.json` par défaut) : son titre masqué, puis le texte de ses documents, qui n'est pas conservé ;
@@ -273,6 +275,7 @@ def vers_archive(
     corrections = corrections or {}
     elements: dict[str, Element] = {}
     textes: dict[str, list[str]] = {}
+    petitionnaires: dict[str, list[tuple[str, str]]] = {}
     graces: set[str] = set()
     for brut in sorted(bruts.objets, key=lambda o: o["id"]):
         if _fr(brut.get("type_name")) in TYPES_ECARTES or not brut.get("number"):
@@ -285,13 +288,25 @@ def vers_archive(
             continue
         elements[cle] = _objet(brut, genere)
         textes[cle] = [d["text"] for d in _relation(brut, "docs") if isinstance(d.get("text"), str)]
+        petitionnaires[cle] = _petitionnaires(brut) if elements[cle].type in TYPES_SANS_AUTEUR else []
 
     connus = {**archive, **elements}
     du_conseil = {cle: e for cle, e in connus.items() if isinstance(e, Objet) and cle.startswith(conseil + "/")}
     elus = elus_connus(du_conseil.values())
+    # Un document qui répond à la fois à une pétition et à un autre Objet est joint aux deux, sous le même titre.
+    petitionnaires_du_document: dict[str, list[tuple[str, str]]] = {}
     for cle, objet in elements.items():
-        titre = masquer(objet.titre, elus)
-        documents = [d.model_copy(update={"titre": d.titre and masquer(d.titre, elus)}) for d in objet.documents]
+        for d in objet.documents:
+            if d.titre and petitionnaires[cle]:
+                petitionnaires_du_document.setdefault(d.titre, []).extend(petitionnaires[cle])
+    for cle, objet in elements.items():
+        titre = masquer(objet.titre, elus, petitionnaires[cle])
+        documents = [
+            d.model_copy(update={"titre": masquer(d.titre, elus, petitionnaires_du_document.get(d.titre, []))})
+            if d.titre
+            else d
+            for d in objet.documents
+        ]
         rattachees = corriger(rattacher_objet(titre, textes[cle], communes), corrections.get(cle)) if canton else []
         elements[cle] = objet.model_copy(update={"titre": titre, "documents": documents, "communes": rattachees})
     if canton:
@@ -306,7 +321,7 @@ def vers_archive(
             if not est_point_de_grace(p.get("item_title") or "", p.get("item_affair_number"), graces)
         ]
         brut = {**brut, "agendas": {"data": points}}
-        seance = _seance(brut, genere, lambda p: _objet_du_point(p, conseil, connus, par_id), elus)
+        seance = _seance(brut, genere, lambda p: _objet_du_point(p, conseil, connus, par_id), elus, petitionnaires)
         if seance is not None:
             elements[f"{conseil}/{seance.date[:10]}"] = seance
     return elements
@@ -348,6 +363,23 @@ def _etapes(bruts: list[dict]) -> list[Etape]:
     return sorted(etapes, key=lambda e: e.date)
 
 
+def _petitionnaires(brut: dict) -> list[tuple[str, str]]:
+    """Les pétitionnaires (prénom, nom de famille) qu'OpenParlData donne en contributeurs d'une pétition. Son nom
+    complet est parfois celui d'une autre personne, un·e élu·e même : on garde les deux, le nom complet coupé après
+    le premier mot (« Prénom Nom », comme Lausanne les donne)."""
+    noms = []
+    for c in _relation(brut, "contributors"):
+        if c.get("type") != "person":
+            continue
+        prenom, nom, complet = c.get("firstname") or "", c.get("lastname") or "", c.get("fullname") or ""
+        if nom:
+            noms.append((prenom, nom))
+        if complet and complet.split() != f"{prenom} {nom}".split():
+            premier, _, reste = complet.strip().partition(" ")
+            noms.append((premier, reste) if reste else ("", premier))
+    return noms
+
+
 def _contributeurs(bruts: list[dict]) -> list[Contributeur]:
     contributeurs = []
     for c in sorted(bruts, key=lambda c: c.get("position") or 0):
@@ -376,7 +408,11 @@ def _documents(bruts: list[dict]) -> list[DocumentObjet]:
 
 
 def _seance(
-    brut: dict, genere: datetime, objet_du_point: Callable[[dict], str | None], elus: frozenset[str]
+    brut: dict,
+    genere: datetime,
+    objet_du_point: Callable[[dict], str | None],
+    elus: frozenset[str],
+    petitionnaires: Mapping[str, list[tuple[str, str]]],
 ) -> Seance | None:
     debut = brut.get("begin_date")
     if not debut:
@@ -390,16 +426,19 @@ def _seance(
         date=jour if heure in ("", "00:00") else f"{jour}T{heure}",
         nom=_fr(brut.get("name")) or "",
         lien=_lien(_fr(brut.get("url_external"))),
-        ordre_du_jour=[
-            PointOrdreDuJour(
-                numero=p.get("item_number_display") or (str(p["item_number"]) if p.get("item_number") else None),
-                titre=masquer(p.get("item_title") or "", elus),
-                categorie=p.get("item_category"),
-                resultat=p.get("item_result"),
-                objet=objet_du_point(p),
-            )
-            for _, p in points
-        ],
+        ordre_du_jour=[_point(p, objet_du_point(p), elus, petitionnaires) for _, p in points],
+    )
+
+
+def _point(
+    brut: dict, objet: str | None, elus: frozenset[str], petitionnaires: Mapping[str, list[tuple[str, str]]]
+) -> PointOrdreDuJour:
+    return PointOrdreDuJour(
+        numero=brut.get("item_number_display") or (str(brut["item_number"]) if brut.get("item_number") else None),
+        titre=masquer(brut.get("item_title") or "", elus, petitionnaires.get(objet or "", [])),
+        categorie=brut.get("item_category"),
+        resultat=brut.get("item_result"),
+        objet=objet,
     )
 
 

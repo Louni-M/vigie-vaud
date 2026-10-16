@@ -21,7 +21,20 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
   Chemin de la Colline 6-8 - Vente du bien-fonds »).
   Un titre de document est souvent le nom du fichier (« 17_17_mai_reponse_interpellation_exemple.pdf v1.0 ») ou, au
   Grand Conseil, une URL : il passe par le même masquage, qui n'y voit un nom qu'après une civilité ou « Pétition
-  de ». Un nom de famille fondu dans un nom de fichier (« …_petition_exemple_parc.pdf ») reste donc lisible.
+  de ».
+  Les pétitionnaires que la source connaît (prénom et nom des contributeurs d'une pétition, qu'OpenParlData donne
+  mais que le dépôt n'affiche pas) sont en plus masqué·e·s dans les textes de leur pétition, sous toutes les formes
+  que Lausanne leur donne : nom de fichier (« 2025_08_rp_petition_paul_exemple_parc.pdf »), sans civilité ni « de »
+  (« Pétition Exemple Paul_toilettes », « par Exemple Paul et crts », « (Paul Exemple) »), nom de famille seul
+  (« rapport pétition Exemple.pdf »), à la casse et aux accents près. Les textes de la pétition : son titre, ceux de
+  ses documents et de ses points d'ordre du jour, et le même document joint à un autre Objet (un rapport-préavis
+  qui répond à la pétition et à un postulat). Un·e élu·e connu·e reste ; un nom de famille porté par un·e élu·e
+  connu·e, ou de moins de trois lettres, n'est masqué qu'avec le prénom. Ailleurs dans le conseil, le nom de
+  famille seul n'est pas masqué : il masquerait des élu·e·s homonymes (prénom d'une élue = nom d'un pétitionnaire).
+  OpenParlData nomme parfois un·e pétitionnaire du nom complet d'une autre personne, un·e élu·e même : le prénom et
+  le nom de famille de la source comptent aussi. Au Grand Conseil, les contributeurs d'une pétition sont ses
+  rapporteur·e·s, élu·e·s connu·e·s : rien n'y change. Un nom qu'OpenParlData ne connaît pas, seul dans un nom de
+  fichier (« …_reponse_interpellation_exemple.pdf »), reste lisible.
   Les demandes de grâce ne sont pas des Objets, et leurs points d'ordre du jour sont retirés.
 - Une amélioration du masquage vaut pour les imports suivants. L'historique n'est réécrit qu'à la main, sur demande
   ou quand un nom est signalé ; l'À propos dit comment demander un retrait.
