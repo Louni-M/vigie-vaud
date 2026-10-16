@@ -10,8 +10,10 @@ import {
 	grandConseil,
 	indexConseils,
 	ligneObjet,
+	objet,
 	seance
 } from '#tests/faux-conseils.js';
+import { LUTRY, PULLY, commune } from '#tests/faux-canton.js';
 
 describe('index des conseils', () => {
 	it('lit les conseils couverts dans conseils/index.json, à l’adresse des Pages du dépôt de données', async () => {
@@ -179,5 +181,93 @@ describe('Séances d’un conseil', () => {
 		await conseils.seance('5586/2026-10-06');
 
 		expect(depot.requetes).toEqual(['conseils/5586/seances.json', 'conseils/5586/seances/2026-10-06.json']);
+	});
+});
+
+const LAUSANNE = commune(5586, 'Lausanne', [6.58, 46.5, 6.72, 46.6]);
+const YVERDON = { ...commune(5938, 'Yverdon-les-Bains', [6.6, 46.75, 6.68, 46.8]), slug: 'yverdon-les-bains' };
+
+/** Les données des conseils sur ce faux dépôt, avec un index des communes réduit. */
+function donneesSur(fichiers: Record<string, unknown>) {
+	const depot = fauxDepotConseils(fichiers);
+	const communes = async () => [PULLY, LUTRY, LAUSANNE, YVERDON];
+	return { depot, conseils: creerDonneesConseils({ fetch: depot.fetch, donnees: DONNEES, communes }) };
+}
+
+describe('localiser un Objet ou une Séance', () => {
+	it('ouvre un Objet d’un conseil communal dans la seule fiche de sa commune, sans position, après avoir lu son archive', async () => {
+		const { depot, conseils } = donneesSur({
+			'conseils/5586/objets/POS25-115.json': objet({ numero: 'POS25/115', type: 'Postulat' })
+		});
+
+		expect(await conseils.localiser('5586/POS25-115')).toEqual({ fiches: [{ commune: 'lausanne' }] });
+		expect(depot.requetes).toEqual(['conseils/5586/objets/POS25-115.json']);
+	});
+
+	it('ouvre une Séance d’un conseil communal dans la fiche de sa commune', async () => {
+		const { depot, conseils } = donneesSur({
+			'conseils/5938/seances/2026-10-01.json': seance({ date: '2026-10-01T20:00' })
+		});
+
+		expect(await conseils.localiser('5938/2026-10-01')).toEqual({ fiches: [{ commune: 'yverdon-les-bains' }] });
+		expect(depot.requetes).toEqual(['conseils/5938/seances/2026-10-01.json']);
+	});
+
+	it('ouvre une Séance du Grand Conseil et un Objet sans commune dans la seule fiche du Grand Conseil', async () => {
+		const { conseils } = donneesSur({
+			'conseils/vd/seances/2026-10-06.json': seance(),
+			'conseils/vd/objets/26_INT_140.json': objet()
+		});
+
+		expect(await conseils.localiser('vd/2026-10-06')).toEqual({ fiches: [{ fiche: 'grand-conseil' }] });
+		expect(await conseils.localiser('vd/26_INT_140')).toEqual({ fiches: [{ fiche: 'grand-conseil' }] });
+	});
+
+	it('ouvre un Objet du Grand Conseil dans ses communes rattachées, dans leur ordre, puis dans la fiche du Grand Conseil', async () => {
+		const rattache = {
+			...objet(),
+			communes: [
+				{ ofs: 5606, origine: 'titre' },
+				{ ofs: 5590, origine: 'document' }
+			]
+		};
+		const { conseils } = donneesSur({ 'conseils/vd/objets/26_INT_140.json': rattache });
+
+		expect(await conseils.localiser('vd/26_INT_140')).toEqual({
+			fiches: [{ commune: 'lutry' }, { commune: 'pully' }, { fiche: 'grand-conseil' }]
+		});
+	});
+
+	it('ne trouve pas une clé absente du dépôt, et ne demande rien pour une clé qui n’est pas celle d’un conseil', async () => {
+		const { depot, conseils } = donneesSur({});
+
+		expect(await conseils.localiser('5586/POS25-999')).toBeNull();
+		expect(await conseils.localiser('9999/POS25-115')).toBeNull();
+		expect(await conseils.localiser('POS25-115')).toBeNull();
+		expect(await conseils.localiser('5586/../index')).toBeNull();
+		expect(depot.requetes).toEqual(['conseils/5586/objets/POS25-999.json']);
+	});
+
+	it('rejette quand l’archive n’a pas pu être lue, et la relit à la demande suivante', async () => {
+		const { depot, conseils } = donneesSur({ 'conseils/5586/objets/POS25-115.json': objet() });
+		depot.horsLigne(true);
+		await expect(conseils.localiser('5586/POS25-115')).rejects.toThrow();
+		depot.horsLigne(false);
+		depot.panne(503);
+		await expect(conseils.localiser('5586/POS25-115')).rejects.toThrow(/503/);
+
+		depot.panne(null);
+		expect(await conseils.localiser('5586/POS25-115')).toEqual({ fiches: [{ commune: 'lausanne' }] });
+	});
+
+	it('donne le fichier d’archive de l’élément ouvert', async () => {
+		const { conseils } = donneesSur({
+			'conseils/5586/objets/POS25-115.json': objet({ numero: 'POS25/115' }),
+			'conseils/5586/seances/2026-10-06.json': seance()
+		});
+
+		expect(await conseils.element('5586/POS25-115')).toMatchObject({ numero: 'POS25/115' });
+		expect(await conseils.element('5586/2026-10-06')).toMatchObject({ date: '2026-10-06' });
+		expect(await conseils.element('5586/POS25-999')).toBeNull();
 	});
 });

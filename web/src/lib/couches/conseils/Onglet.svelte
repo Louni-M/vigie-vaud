@@ -4,12 +4,14 @@
 	 * couvre pas, « Non couvert » en tête ; il remonte l'onglet quand on change de commune. Pour une commune dont le
 	 * conseil est couvert, lu dans `conseils/index.json` : le nom du conseil (et, s'il ne donne que ses Séances,
 	 * « OpenParlData ne donne que ses séances »), l'en-tête de séance, « Objets récents », « Séances passées ».
-	 * « Au Grand Conseil » viendra après, pour toutes les communes.
+	 * « Au Grand Conseil » viendra après, pour toutes les communes. Une ligne d'Objet ou de Séance, et un point de
+	 * l'en-tête lié à un Objet, ouvrent l'élément par le registre, dans cet onglet (`?c=`).
 	 */
 	import { untrack } from 'svelte';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Commune } from '#lib/types.js';
 	import { conseils } from './donnees.js';
+	import { coucheConseils } from './index.js';
 	import ObjetsRecents from './ObjetsRecents.svelte';
 	import SeancesPassees from './SeancesPassees.svelte';
 	import TeteSeance from './TeteSeance.svelte';
@@ -20,6 +22,8 @@
 	const commune = untrack(() => ctx.commune) as Commune;
 
 	let lecture = $state(conseils.index());
+
+	const ouvrir = (cle: string) => ctx.ouvrir({ couche: coucheConseils.id, element: cle });
 </script>
 
 {#await lecture}
@@ -29,9 +33,9 @@
 	{#if conseil}
 		<h3>{conseil.nom}</h3>
 		{#if !conseil.donne.includes('objets')}<p class="note">OpenParlData ne donne que ses séances.</p>{/if}
-		<TeteSeance {conseil} />
-		{#if conseil.donne.includes('objets')}<ObjetsRecents {conseil} />{/if}
-		{#if conseil.donne.includes('seances')}<SeancesPassees {conseil} />{/if}
+		<TeteSeance {conseil} {ouvrir} />
+		{#if conseil.donne.includes('objets')}<ObjetsRecents {conseil} {ouvrir} />{/if}
+		{#if conseil.donne.includes('seances')}<SeancesPassees {conseil} {ouvrir} />{/if}
 	{/if}
 {:catch}
 	<p class="erreur" role="alert">

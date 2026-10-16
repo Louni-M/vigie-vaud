@@ -137,6 +137,8 @@ export interface Couche<P = unknown> {
 	introuvable?(element: string): string;
 	/** Synchrone : la recherche du socle l'appelle à chaque frappe. */
 	chercher?(texte: string): ResultatCouche[];
+	/** Ce que le fil d'Ariane dit de l'élément ouvert (« Permis › n° 248845 ») ; sinon « n° <élément> ». */
+	libelle?(element: string): string;
 	/** Titre du document quand l'élément est ouvert ; `nomDeLaFiche` est le nom de la fiche où il est ouvert. */
 	titre?(element: string, nomDeLaFiche: string): string;
 	/**

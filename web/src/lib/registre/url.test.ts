@@ -49,6 +49,15 @@ describe('adresse du registre', () => {
 		expect(lire(attendu.slice(1))).toEqual(e);
 	});
 
+	it('écrit en clair la barre oblique d’une clé d’élément (`?c=5586/POS25-115`)', () => {
+		const couches = [...COUCHES, couche('c', { activeParDefaut: true, cleElement: 'c' })];
+		const e = { ...DEFAUTS, actives: ['a', 'h', 'c'], ouvert: { couche: 'c', element: '5586/POS25-115' } };
+
+		expect(ecrireUrl(couches, e)).toBe('?c=5586/POS25-115');
+		expect(lireUrl(couches, new URLSearchParams('c=5586/POS25-115'))).toEqual(e);
+		expect(lireUrl(couches, new URLSearchParams('c=5586%2FPOS25-115')).ouvert).toEqual(e.ouvert);
+	});
+
 	it('garde toujours une couche permanente, sans l’écrire', () => {
 		expect(lire('couches=b').actives).toEqual(['b', 'h']);
 		expect(ecrireUrl(COUCHES, { ...DEFAUTS, actives: ['a'] })).toBe('');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { auteursObjet, dateObjet, nomSeance, seancesPassees, teteSeance } from './lignes.js';
+import { auteursObjet, dateObjet, nomSeance, ordreDuJour, seancesPassees, siteDuLien, teteSeance } from './lignes.js';
 import { conseilLausanne, conseilYverdon, ligneObjet } from '#tests/faux-conseils.js';
 import type { LigneSeance } from '#lib/schema.js';
 
@@ -61,5 +61,39 @@ describe('Séances passées', () => {
 	it('garde celles d’avant aujourd’hui, de la plus récente à la plus ancienne', () => {
 		const seances = [ligne('2026-11-03'), ligne('2026-10-20T19:30'), ligne('2026-10-16'), ligne('2026-10-06T19:30')];
 		expect(seancesPassees(seances, '2026-10-16').map((s) => s.cle)).toEqual(['5586/2026-10-06']);
+	});
+});
+
+describe('ordre du jour d’une Séance', () => {
+	const point = (titre: string, categorie: string | null) => ({
+		numero: null,
+		titre,
+		categorie,
+		resultat: null,
+		objet: null
+	});
+
+	it('regroupe les points qui se suivent sous leur catégorie, dans l’ordre de la source', () => {
+		const groupes = ordreDuJour([
+			point('Communications', null),
+			point('Postulat A', 'Postulats'),
+			point('Postulat B', 'Postulats'),
+			point('Interpellation C', 'Interpellations'),
+			point('Postulat D', 'Postulats')
+		]);
+
+		expect(groupes.map((g) => [g.categorie, g.points.map((p) => p.titre)])).toEqual([
+			[null, ['Communications']],
+			['Postulats', ['Postulat A', 'Postulat B']],
+			['Interpellations', ['Interpellation C']],
+			['Postulats', ['Postulat D']]
+		]);
+	});
+});
+
+describe('lien vers le site du conseil', () => {
+	it('nomme le site par son hôte, sans « www. » : « Voir sur lausanne.ch › »', () => {
+		expect(siteDuLien('https://www.lausanne.ch/officiel/conseil-communal/objet.html')).toBe('lausanne.ch');
+		expect(siteDuLien('https://www.vd.ch/gc/objet?id=1')).toBe('vd.ch');
 	});
 });

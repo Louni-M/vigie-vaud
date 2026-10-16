@@ -1,5 +1,6 @@
 import type { Couche } from '#lib/registre/types.js';
 import { SOURCES } from '#lib/sources.js';
+import { libelleElement, messageIntrouvable, titreElement } from './cles.js';
 import { resumeConseils } from './resume.js';
 
 /** Sarcelle : la couleur de la couche, de son marqueur et des pastilles de ses Objets et Séances. */
@@ -22,11 +23,21 @@ export const coucheConseils: Couche<undefined> = {
 	activeParDefaut: true,
 	icone: { signe: 'C', couleur: COULEUR_CONSEILS },
 	cleElement: 'c',
+	// Un Objet ou une Séance ne s'ouvre qu'une fois son fichier d'archive lu : le module de données n'est importé
+	// qu'à ce moment, et la description reste légère.
+	async localiser(element) {
+		const { conseils } = await import('./donnees.js');
+		return conseils.localiser(element);
+	},
+	introuvable: messageIntrouvable,
+	titre: titreElement,
+	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
 	nonCouvert: (commune) => `OpenParlData ne donne pas le conseil communal de ${commune.nom}.`,
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),
-		Onglet: () => import('./Onglet.svelte')
+		Onglet: () => import('./Onglet.svelte'),
+		Fiche: () => import('./Fiche.svelte')
 	}
 };
