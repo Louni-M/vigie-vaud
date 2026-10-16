@@ -17,7 +17,7 @@
 
 <style>
 	.apercu { display: grid; gap: 3px; width: 100%; padding: 10px 14px; border: 0; border-radius: 10px; background: var(--surface); font: inherit; text-align: left; cursor: pointer; }
-	.meta { font-size: 12px; color: #7a3e9d; font-weight: 600; }
+	.meta { font-size: 12px; color: #0b7285; font-weight: 600; }
 	.titre { font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 	.voir { font-size: 14px; color: var(--accent); font-weight: 600; }
 </style>

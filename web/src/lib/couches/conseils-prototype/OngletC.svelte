@@ -84,16 +84,16 @@
 	h3 { font-size: 15px; margin: 4px 0 6px; }
 	h3.gc { margin-top: 22px; padding-top: 12px; border-top: 2px solid var(--line); }
 	ul { margin: 0; padding: 0; }
-	.tete { padding: 10px 12px; border-radius: 8px; background: #f3ecf7; border-left: 4px solid #7a3e9d; }
-	.etiquette { margin: 0; font-size: 12px; font-weight: 600; color: #7a3e9d; }
+	.tete { padding: 10px 12px; border-radius: 8px; background: #e3f2f4; border-left: 4px solid #0b7285; }
+	.etiquette { margin: 0; font-size: 12px; font-weight: 600; color: #0b7285; }
 	.date { padding: 0; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; text-align: left; }
 	ol { margin: 6px 0 0; padding-left: 20px; font-size: 13px; }
 	ol li { margin: 2px 0; }
 	.point { padding: 0; border: 0; background: none; font: inherit; color: var(--accent); text-align: left; cursor: pointer; text-decoration: underline; }
 	.bloc { margin-top: 12px; }
-	.seance { display: flex; gap: 6px; align-items: center; width: 100%; padding: 6px 4px; border: 0; border-bottom: 2px solid #2f6f8f; background: none; font: inherit; font-size: 13px; font-weight: 700; color: #2f6f8f; cursor: pointer; text-align: left; }
+	.seance { display: flex; gap: 6px; align-items: center; width: 100%; padding: 6px 4px; border: 0; border-bottom: 2px solid #0b7285; background: none; font: inherit; font-size: 13px; font-weight: 700; color: #0b7285; cursor: pointer; text-align: left; }
 	.seance-0 { margin: 0; padding: 6px 4px; font-size: 13px; font-weight: 700; color: var(--muted); border-bottom: 2px dashed var(--line); }
-	.pastille { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; background: #2f6f8f; color: #fff; font-size: 10px; }
+	.pastille { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; background: #0b7285; color: #fff; font-size: 10px; }
 	.note { font-size: 12px; color: var(--muted); margin: 4px 0; }
 	.plus { margin-top: 6px; padding: 0; border: 0; background: none; font: inherit; font-size: 13px; color: var(--accent); cursor: pointer; }
 </style>

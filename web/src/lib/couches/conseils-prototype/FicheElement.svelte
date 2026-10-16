@@ -70,14 +70,14 @@
 <p class="source">Source: OpenParlData.ch</p>
 
 <style>
-	.type { font-size: 13px; color: #7a3e9d; font-weight: 600; margin: 0; }
+	.type { font-size: 13px; color: #0b7285; font-weight: 600; margin: 0; }
 	h3 { margin: 4px 0 10px; font-size: 17px; line-height: 1.3; }
 	dl { display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; margin: 0 0 8px; font-size: 14px; }
 	dt { color: var(--muted); }
 	dd { margin: 0; }
 	.aide { display: block; font-size: 12px; color: var(--muted); }
 	h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 14px 0 4px; }
-	.etapes { list-style: none; margin: 0; padding: 0 0 0 12px; border-left: 2px solid #d9c8e4; font-size: 13px; }
+	.etapes { list-style: none; margin: 0; padding: 0 0 0 12px; border-left: 2px solid #b9dde2; font-size: 13px; }
 	.etapes li { margin: 3px 0; }
 	.d { color: var(--muted); font-size: 12px; }
 	.docs { margin: 0; padding-left: 18px; font-size: 13px; }

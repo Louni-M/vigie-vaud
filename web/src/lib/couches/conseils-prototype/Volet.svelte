@@ -132,28 +132,28 @@
 <style>
 	h3 { font-size: 13px; margin: 14px 0 4px; }
 	.note { font-size: 12px; color: var(--muted); }
-	.voir { width: 100%; min-height: 40px; margin: 4px 0 8px; border: 1px solid #7a3e9d; border-radius: 8px; background: #f3ecf7; color: #7a3e9d; font: inherit; font-weight: 600; cursor: pointer; }
+	.voir { width: 100%; min-height: 40px; margin: 4px 0 8px; border: 1px solid #0b7285; border-radius: 8px; background: #e3f2f4; color: #0b7285; font: inherit; font-weight: 600; cursor: pointer; }
 	.legende { list-style: none; margin: 4px 0; padding: 0; font-size: 13px; display: grid; gap: 6px; }
 	.legende li { display: flex; gap: 8px; align-items: center; }
-	.gc { flex: none; display: grid; place-items: center; width: 26px; height: 22px; background: #7a3e9d; color: #fff; font-size: 10px; font-weight: 700; clip-path: polygon(50% 0, 100% 28%, 100% 100%, 0 100%, 0 28%); padding-top: 4px; }
+	.gc { flex: none; display: grid; place-items: center; width: 26px; height: 22px; background: #0b7285; color: #fff; font-size: 10px; font-weight: 700; clip-path: polygon(50% 0, 100% 28%, 100% 100%, 0 100%, 0 28%); padding-top: 4px; }
 	.hdv { flex: none; width: 14px; height: 14px; border-radius: 50%; background: #1f3a5f; border: 2px solid #fff; box-shadow: 0 0 0 1px #1f3a5f; }
 	.pt { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700; }
-	.pt.fonce { background: #7a3e9d; }
-	.pt.clair { background: #b48fcb; }
+	.pt.fonce { background: #0b7285; }
+	.pt.clair { background: #66a9b5; }
 	.conseils { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 	.conseils button { display: grid; gap: 1px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: inherit; font-size: 12px; color: var(--muted); text-align: left; cursor: pointer; }
-	.conseils button:hover { border-color: #7a3e9d; }
+	.conseils button:hover { border-color: #0b7285; }
 	.conseils strong { font-size: 14px; color: var(--text); }
 	.actives { margin: 0; padding-left: 20px; font-size: 13px; }
 	.actives button { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--accent); cursor: pointer; }
 	.actives span { color: var(--muted); font-size: 12px; }
 	.filtre { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-	.filtre button { border: 1px solid #7a3e9d; color: #7a3e9d; background: var(--surface); border-radius: 999px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
-	.filtre button[aria-pressed='true'] { background: #7a3e9d; color: #fff; }
+	.filtre button { border: 1px solid #0b7285; color: #0b7285; background: var(--surface); border-radius: 999px; padding: 3px 9px; font: inherit; font-size: 12px; cursor: pointer; }
+	.filtre button[aria-pressed='true'] { background: #0b7285; color: #fff; }
 	.seance { border-bottom: 1px solid var(--line); }
 	.seance > button { display: flex; gap: 8px; width: 100%; padding: 6px 2px; border: 0; background: none; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 	.seance > button:hover { background: var(--bg); }
-	.jour { flex: none; width: 92px; font-weight: 600; color: #2f6f8f; }
+	.jour { flex: none; width: 92px; font-weight: 600; color: #0b7285; }
 	.fl { margin-left: auto; color: var(--muted); }
 	.seance ol { margin: 0 0 6px; padding-left: 22px; font-size: 12px; }
 	.seance a { font-size: 12px; }

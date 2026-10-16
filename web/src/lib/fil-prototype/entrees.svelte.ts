@@ -11,7 +11,7 @@ import type { Commune, Dossier, Zone } from '#lib/types.js';
 
 export type TypeEntree = 'objet' | 'seance' | 'permis';
 export const TYPES: { id: TypeEntree; nom: string; couleur: string; signe: string }[] = [
-	{ id: 'objet', nom: 'Objets', couleur: '#7a3e9d', signe: '§' },
+	{ id: 'objet', nom: 'Objets', couleur: '#0b7285', signe: '§' },
 	{ id: 'seance', nom: 'Séances', couleur: '#2f6f8f', signe: '◷' },
 	{ id: 'permis', nom: 'Nouveaux dossiers', couleur: '#c0392b', signe: 'P' }
 ];

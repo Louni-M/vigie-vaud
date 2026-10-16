@@ -59,12 +59,12 @@
 <style>
 	.parties { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
 	.parties button { flex: 1; padding: 8px 6px; border: 0; background: var(--surface); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); }
-	.parties button[aria-checked='true'] { background: #7a3e9d; color: #fff; }
+	.parties button[aria-checked='true'] { background: #0b7285; color: #fff; }
 	.parties button:disabled { cursor: default; opacity: 0.5; }
 	.n { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: rgb(0 0 0 / 0.12); font-size: 11px; }
 	.puces { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
-	.puces button { border: 1px solid #7a3e9d; color: #7a3e9d; background: var(--surface); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
-	.puces button[aria-pressed='true'] { background: #7a3e9d; color: #fff; }
+	.puces button { border: 1px solid #0b7285; color: #0b7285; background: var(--surface); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+	.puces button[aria-pressed='true'] { background: #0b7285; color: #fff; }
 	h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 12px 0 2px; }
 	ul { margin: 0; padding: 0; }
 	.note { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }

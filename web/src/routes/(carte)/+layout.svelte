@@ -489,7 +489,7 @@
 		margin: 0;
 		padding: 4px 4px 4px 12px;
 		border-radius: 999px;
-		background: #7a3e9d;
+		background: #0b7285;
 		color: #fff;
 		font-size: 14px;
 		font-weight: 600;
@@ -527,7 +527,7 @@
 	}
 	.apercu-gc strong {
 		font-size: 17px;
-		color: #7a3e9d;
+		color: #0b7285;
 	}
 	.apercu-gc span {
 		color: var(--accent);

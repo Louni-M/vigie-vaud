@@ -7,6 +7,7 @@
 	import type { Commune } from '#lib/types.js';
 	import { CONSEILS, auGrandConseil, dateDe, jourLong, objetsDe, seancesDe } from './donnees.svelte.js';
 	import Ligne from './Ligne.svelte';
+	import TeteSeance from './TeteSeance.svelte';
 
 	let { commune, ouvrir, nom }: { commune: Commune; ouvrir: (id: string) => void; nom: (s: string) => string } = $props();
 
@@ -23,16 +24,7 @@
 	<h3>{conseil.nom}</h3>
 	{#if conseil.donne === 'séances seulement'}<p class="note">OpenParlData ne donne que ses séances, pas ses objets.</p>{/if}
 
-	<div class="prochaine">
-		{#if seances.avenir.length}
-			{@const s = seances.avenir.at(-1)!}
-			<p class="etiquette">Prochaine séance</p>
-			<button type="button" class="lien-carte" onclick={() => ouvrir(s.id)}>{jourLong.format(dateDe(s))} ›</button>
-		{:else}
-			<p class="etiquette">Prochaine séance</p>
-			<p class="vide">Pas encore annoncée.{#if seances.passees[0]}{" "}Dernière : {jourLong.format(dateDe(seances.passees[0]))}.{/if}</p>
-		{/if}
-	</div>
+	<TeteSeance conseil={commune.slug} {ouvrir} />
 
 	{#if objets.length}
 		<h4>Objets récents</h4>
@@ -59,8 +51,8 @@
 	h3.gc { margin-top: 22px; padding-top: 12px; border-top: 2px solid var(--line); }
 	h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 14px 0 2px; }
 	ul { margin: 0; padding: 0; }
-	.prochaine { padding: 8px 10px; border-radius: 8px; background: #f3ecf7; }
-	.etiquette { margin: 0; font-size: 12px; font-weight: 600; color: #7a3e9d; }
+	.prochaine { padding: 8px 10px; border-radius: 8px; background: #e3f2f4; }
+	.etiquette { margin: 0; font-size: 12px; font-weight: 600; color: #0b7285; }
 	.lien-carte { padding: 0; border: 0; background: none; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; text-align: left; }
 	.note, .vide { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
 	.prochaine .vide { margin: 2px 0 0; font-size: 13px; }

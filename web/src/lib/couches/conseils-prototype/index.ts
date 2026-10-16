@@ -13,7 +13,7 @@ export const coucheConseils: Couche<undefined> = {
 	sources: ['openparldata-prototype'],
 	permanente: false,
 	activeParDefaut: true,
-	icone: { signe: 'C', couleur: '#7a3e9d' },
+	icone: { signe: 'C', couleur: '#0b7285' },
 	cleElement: 'o',
 	async localiser(id) {
 		const cs = await lireCommunes();

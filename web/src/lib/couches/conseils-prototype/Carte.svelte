@@ -120,7 +120,7 @@
 		padding: 0;
 		border: 2px solid #fff;
 		border-radius: 4px 4px 2px 2px;
-		background: #7a3e9d;
+		background: #0b7285;
 		color: #fff;
 		font: 700 12px system-ui, sans-serif;
 		box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
@@ -137,7 +137,7 @@
 		white-space: nowrap;
 		padding: 1px 6px;
 		border-radius: 4px;
-		background: #7a3e9d;
+		background: #0b7285;
 		color: #fff;
 		font-size: 11px;
 	}
@@ -154,13 +154,13 @@
 		height: var(--t);
 		border-radius: 50%;
 		border: 2px solid #fff;
-		background: #b48fcb;
+		background: #66a9b5;
 		color: #fff;
 		font: 700 11px system-ui, sans-serif;
 		box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
 	}
 	:global(.proto-activite.communal span) {
-		background: #7a3e9d;
+		background: #0b7285;
 	}
 	:global(.proto-agenda) {
 		display: flex;
@@ -176,20 +176,20 @@
 		width: 26px;
 		height: 26px;
 		border-radius: 50%;
-		border: 3px solid #7a3e9d;
+		border: 3px solid #0b7285;
 		box-shadow: 0 0 0 2px #fff;
 	}
 	:global(.proto-agenda .date) {
 		padding: 1px 6px;
 		border-radius: 4px;
 		background: #fff;
-		color: #7a3e9d;
+		color: #0b7285;
 		font: 600 11px system-ui, sans-serif;
 		white-space: nowrap;
 		box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
 	}
 	:global(.proto-agenda .date.avenir) {
-		background: #7a3e9d;
+		background: #0b7285;
 		color: #fff;
 	}
 </style>

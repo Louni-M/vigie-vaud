@@ -47,9 +47,9 @@
 	li.actif { background: #fff6d6; }
 	button { display: grid; gap: 2px; width: 100%; padding: 7px 4px; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
 	button:hover { background: var(--bg); }
-	.meta { font-size: 12px; color: #7a3e9d; font-weight: 600; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-	.pastille { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; background: #7a3e9d; color: #fff; font-size: 10px; }
-	.pastille.seance { background: #2f6f8f; }
+	.meta { font-size: 12px; color: #0b7285; font-weight: 600; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+	.pastille { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; background: #0b7285; color: #fff; font-size: 10px; }
+	.pastille.seance { background: #fff; color: #0b7285; box-shadow: inset 0 0 0 1.5px #0b7285; }
 	.titre { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 	.sous { font-size: 12px; color: var(--muted); }
 </style>
