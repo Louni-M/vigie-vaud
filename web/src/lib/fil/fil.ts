@@ -26,7 +26,7 @@ export interface ContexteFil {
 	aujourdhui: string;
 	/** Zone du fil (voir `zoneDuFil`), `null` tant que la carte n'a rien affiché. */
 	zone: Zone | null;
-	communes: readonly Pick<Commune, 'slug' | 'hotel'>[];
+	communes: readonly Pick<Commune, 'slug' | 'hotel' | 'nom'>[];
 }
 
 /** Une entrée prête à afficher : avec sa couche et sa pastille. */
@@ -38,6 +38,11 @@ export interface LigneFil extends EntreeFil {
 	couleur: string;
 	/** Nom du type (« Nouveaux dossiers »). */
 	nomType: string;
+	/**
+	 * Noms de ses communes, dans leur ordre, quand `qui` n'en nomme aucune (« Grand Conseil → Morges, Lausanne ») ;
+	 * vide sinon (« Conseil communal de Lausanne », « Lutry »).
+	 */
+	nommees: string[];
 }
 
 /** Clé d'une puce : les types sont déclarés par couche, deux couches peuvent avoir le même. */
@@ -91,6 +96,11 @@ export function depuisFil(aujourdhui: string): string {
 
 export function calculerFil(sources: readonly SourceFil[], reglages: ReglagesFil, ctx: ContexteFil): VueFil {
 	const depuis = depuisFil(ctx.aujourdhui);
+	const noms = new Map(ctx.communes.map((c) => [c.slug, c.nom]));
+	const nommees = (e: EntreeFil) => {
+		const n = e.communes.flatMap((c) => noms.get(c) ?? []);
+		return n.some((nom) => e.qui.includes(nom)) ? [] : n;
+	};
 	// Dans l'ordre du rail, puis des types déclarés : le tri par date, stable, garde cet ordre dans un jour.
 	const lignes: LigneFil[] = [];
 	const puces: PuceFil[] = [];
@@ -108,7 +118,8 @@ export function calculerFil(sources: readonly SourceFil[], reglages: ReglagesFil
 						cle: `${s.couche}:${e.element}`,
 						signe: t.signe,
 						couleur: t.couleur,
-						nomType: t.nom
+						nomType: t.nom,
+						nommees: nommees(e)
 					});
 		}
 	const { zone } = ctx;
