@@ -51,7 +51,8 @@ _À éviter_ : permis (pour un dossier isolé), demande
 
 **Fil cantonal** :
 La colonne qui liste les nouveautés de toutes les sources des 14 derniers jours (Objets déposés, Séances tenues,
-nouveaux dossiers), plus les Séances à venir, groupées par jour. Elle est filtrable par type et limitée à la zone
+nouveaux dossiers, restrictions de circulation commencées), plus les Séances et les restrictions à venir, groupées par
+jour. Une restriction y entre par son début, jamais par sa levée. Elle est filtrable par type et limitée à la zone
 visible de la carte ou étendue à tout le canton. Elle ne dépend pas des couches activées : l'interrupteur d'une couche
 gouverne la carte, pas le fil.
 _À éviter_ : flux, timeline, actualités
