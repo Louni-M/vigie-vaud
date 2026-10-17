@@ -65,6 +65,12 @@ Un tronçon de route touché par une mesure publiée par la DGMR (fermeture, dé
 avec ses dates et sa route, en cours ou à venir. Une fermeture et sa déviation sont deux restrictions distinctes.
 _À éviter_ : tracé, perturbation (réservé aux Trains), chantier (Chantiers Vaud désigne la couche Permis)
 
+**Travaux** :
+Les restrictions de circulation que la DGMR publie sous un même nom pour une même route (une fermeture, sa déviation,
+un sens unique…). Ce n'est pas un élément qu'on ouvre : chaque restriction renvoie aux autres de ses travaux. Deux noms
+différents font deux travaux, même au même endroit (« Morcles Le Revers feux » et « … nuit »).
+_À éviter_ : chantier, intervention
+
 **Badge de fraîcheur** :
 L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »). Pour une
 source qui passe par le cron une fois par jour (les conseils), c'est l'âge du dernier import réussi (« importé il y a
