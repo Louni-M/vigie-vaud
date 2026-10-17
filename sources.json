@@ -31,6 +31,25 @@
 			}
 		},
 		{
+			"id": "dgmr-restrictions",
+			"nom": "Restrictions de circulation DGMR (MapServer/595, 596), PROTOTYPE",
+			"nom_court": "DGMR",
+			"attribution": {
+				"texte": "Géodonnées Etat de Vaud (DGMR)",
+				"lien": "https://www.vd.ch/mobilite/routes",
+				"licence": "Norme DCG 8401, sans rediffusion"
+			},
+			"voie_acces": "direct",
+			"fraicheur": "requete",
+			"couverture": { "communes": "canton", "mode": "api" },
+			"sonde": {
+				"url": "https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/596/query?where=1%3D1&outFields=OBJECTID&returnGeometry=false&resultRecordCount=1&f=json",
+				"delai": 20,
+				"champs": ["OBJECTID"],
+				"jamais_vide": false
+			}
+		},
+		{
 			"id": "swisstopo-fond",
 			"nom": "Fond de carte swisstopo (carte de base et SWISSIMAGE)",
 			"nom_court": "swisstopo",
