@@ -60,6 +60,11 @@ _À éviter_ : flux, timeline, actualités
 Un dossier dont l'enquête publique a débuté depuis moins de 14 jours.
 _À éviter_ : nouveau permis
 
+**Restriction de circulation** :
+Un tronçon de route touché par une mesure publiée par la DGMR (fermeture, déviation, feux, restriction particulière…),
+avec ses dates et sa route, en cours ou à venir. Une fermeture et sa déviation sont deux restrictions distinctes.
+_À éviter_ : tracé, perturbation (réservé aux Trains), chantier (Chantiers Vaud désigne la couche Permis)
+
 **Badge de fraîcheur** :
 L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »). Pour une
 source qui passe par le cron une fois par jour (les conseils), c'est l'âge du dernier import réussi (« importé il y a
@@ -70,9 +75,10 @@ Ce qu'une source apporte à chaque commune, selon deux axes : son **mode** (API,
 une fois pour toutes, et son **état** (disponible, en panne depuis une date donnée, surveillance interrompue, non
 surveillée ou inconnu), mesuré par les sondes. Seules les sources des couches qui ont un onglet dans la fiche commune
 ont une Couverture, et parmi elles seulement celles dont les éléments appartiennent à une commune, par leur position
-(dossiers) ou parce qu'ils viennent de son conseil : une source dont les éléments n'atteignent une commune que par
-rattachement par nom (le Grand Conseil, la presse) **porte sur le canton** et n'a pas de Couverture. Une couche couvre
-une commune dès qu'une de ses sources la couvre ; une couche dont aucune source n'a de Couverture les couvre toutes.
+(dossiers, restrictions de circulation) ou parce qu'ils viennent de son conseil : une source dont les éléments
+n'atteignent une commune que par rattachement par nom (le Grand Conseil, la presse) **porte sur le canton** et n'a pas
+de Couverture. Une couche couvre une commune dès qu'une de ses sources la couvre ; une couche dont aucune source n'a de
+Couverture les couvre toutes.
 Une commune **non couverte** par la couche choisie (sur bureau, celle dont le volet est ouvert ; sur mobile, celle
 dont on a demandé à voir la Couverture) est grisée sur la carte ; une panne ne grise rien.
 _À éviter_ : disponibilité (pour la Couverture entière)
@@ -112,11 +118,12 @@ Couverture, pas plus qu'un import du cron en échec, qui ne fait que vieillir le
 _À éviter_ : ping, healthcheck, test
 
 **Rattachement** :
-L'association d'un élément à une commune : par sa position (dossiers), par son conseil (Objets et Séances d'un
-conseil communal, qui n'appartiennent qu'à leur commune), ou, pour une source qui porte sur le canton (Grand Conseil,
-presse), par le nom de la commune dans son texte. Le nom d'une ancienne commune ou un ancien nom rattache à la commune
-actuelle. Un élément sans rattachement n'a pas de fiche commune : il n'apparaît que dans le fil cantonal et, s'il
-vient du Grand Conseil, dans la fiche du Grand Conseil.
+L'association d'un élément à une commune : par sa position (dossiers ; restrictions de circulation, rattachées à
+chaque commune qu'elles traversent), par son conseil (Objets et Séances d'un conseil communal, qui n'appartiennent
+qu'à leur commune), ou, pour une source qui porte sur le canton (Grand Conseil, presse), par le nom de la commune dans
+son texte. Le nom d'une ancienne commune ou un ancien nom rattache à la commune actuelle. Un élément sans
+rattachement n'a pas de fiche commune : il n'apparaît que dans le fil cantonal et, s'il vient du Grand Conseil, dans
+la fiche du Grand Conseil.
 _À éviter_ : géolocalisation, affectation
 
 **Incident** :
