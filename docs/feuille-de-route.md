@@ -69,6 +69,8 @@ accidents.
   particuliers.
 - **Un flux RSS par commune** généré par le cron, en remplacement des comptes et des alertes.
 - **Résumés IA** et **mode dense**.
+- **Recherche des restrictions de circulation par le nom de leurs travaux** : il faudrait charger les données
+  au moment de chercher, alors que `chercher` reste synchrone. En J2, la commune suffit.
 - **Nom de domaine** (par exemple `vigievaud.ch`), après J4, acheté par Loulou. En attendant, le site garde
   l'adresse GitHub Pages ouverte à la fin de J0.
 
