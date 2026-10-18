@@ -64,7 +64,9 @@ describe('restrictions en cours et à venir', () => {
 				]
 			],
 			longueur: expect.closeTo(765.4, 0),
-			milieu: [expect.closeTo(6.715, 9), expect.closeTo(46.5, 9)]
+			milieu: [expect.closeTo(6.715, 9), expect.closeTo(46.5, 9)],
+			// Les communes viennent après, avec les limites des communes.
+			communes: null
 		});
 	});
 
@@ -263,3 +265,92 @@ describe('état de la source DGMR', () => {
 		});
 	});
 });
+
+describe('rattachement aux communes', () => {
+	/** Un `fetch` qui retient les limites des communes jusqu'à `ouvrir()`, et note l'ordre des adresses demandées. */
+	function limitesRetenues(dgmr: ReturnType<typeof fauxDgmr>) {
+		let ouvrir!: () => void;
+		const barriere = new Promise<void>((ok) => (ouvrir = ok));
+		const adresses: string[] = [];
+		const f: typeof fetch = async (entree, init) => {
+			const adresse = String(entree);
+			adresses.push(adresse);
+			if (adresse.endsWith('/communes-limites.json')) await barriere;
+			return dgmr.fetch(entree, init);
+		};
+		return { fetch: f, adresses, ouvrir };
+	}
+
+	// Les limites sont gardées par le module des communes pour toute la visite : un module neuf à chaque cas.
+	beforeEach(() => vi.resetModules());
+
+	it('charge les limites après le premier affichage, puis donne à chaque restriction ses communes dans l’ordre', async () => {
+		const { creerDonneesRoutes } = await import('./donnees.svelte.js');
+		// Une déviation de Pully à Lutry : 0,01° chez Pully, 0,03° chez Lutry.
+		const deviation = restriction(2, { RESTRICTION: 'Déviation' }, [[6.69, 46.5], [6.73, 46.5]]);
+		const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [deviation] });
+		const limites = limitesRetenues(dgmr);
+		const routes = creerDonneesRoutes({ fetch: limites.fetch, maintenant });
+
+		const affichees = await routes.charger();
+
+		expect(affichees.map((r) => [r.id, r.communes])).toEqual([
+			[1, null],
+			[2, null]
+		]);
+		expect(routes.rattache).toBe(false);
+		const premiereLimite = limites.adresses.findIndex((a) => a.endsWith('/communes-limites.json'));
+		const derniereDgmr = limites.adresses.findLastIndex((a) => a.includes('/MapServer/'));
+		expect(premiereLimite).toBeGreaterThan(derniereDgmr);
+
+		limites.ouvrir();
+		const rattachees = await routes.rattachees();
+
+		const communes = (r: (typeof rattachees)[number]) => r.communes?.map((p) => [p.commune.slug, Math.round(p.metres)]);
+		expect(rattachees.map((r) => [r.id, communes(r)])).toEqual([
+			[1, [['pully', 765]]],
+			[2, [['lutry', 2296], ['pully', 765]]]
+		]);
+		expect(routes.restrictions).toEqual(rattachees);
+		expect(routes.rattache).toBe(true);
+	});
+
+	it('rattache aussitôt une couche chargée après les limites', async () => {
+		vi.useFakeTimers();
+		try {
+			const { creerDonneesRoutes } = await import('./donnees.svelte.js');
+			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2, {}, [[6.71, 46.5], [6.72, 46.5]])] });
+			dgmr.panne(500, 595);
+			const routes = creerDonneesRoutes({ fetch: dgmr.fetch, maintenant });
+			routes.charger().catch(() => {});
+			await vi.advanceTimersByTimeAsync(6_000);
+			expect(routes.restrictions.map((r) => r.communes?.map((p) => p.commune.slug))).toEqual([['pully']]);
+
+			dgmr.panne(null);
+			routes.source.recharger();
+			await vi.advanceTimersByTimeAsync(10);
+
+			expect(routes.restrictions.map((r) => r.communes?.map((p) => p.commune.slug))).toEqual([['pully'], ['lutry']]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('redemande les limites qui n’ont pas pu être chargées', async () => {
+		const { creerDonneesRoutes } = await import('./donnees.svelte.js');
+		const dgmr = fauxDgmr({ enCours: [restriction(1)] });
+		let panne = true;
+		const f: typeof fetch = async (entree, init) =>
+			panne && String(entree).endsWith('/communes-limites.json') ? new Response('', { status: 503 }) : dgmr.fetch(entree, init);
+		const routes = creerDonneesRoutes({ fetch: f, maintenant });
+
+		await expect(routes.rattachees()).rejects.toThrow();
+		expect(routes.restrictions.map((r) => r.communes)).toEqual([null]);
+		expect(routes.source.erreur).toBeNull();
+
+		panne = false;
+		const [r] = await routes.rattachees();
+		expect(r.communes?.map((p) => p.commune.slug)).toEqual(['pully']);
+	});
+});
+
