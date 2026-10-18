@@ -34,6 +34,24 @@ const PUBLIEES: Record<string, Sorte> = {
 export const sorteDe = (restriction: string | null): Sorte =>
 	restriction && Object.hasOwn(PUBLIEES, restriction) ? PUBLIEES[restriction] : 'autre';
 
+/** Une déviation se dessine en tirets : sur la carte, dans la légende et devant chaque restriction listée. */
+export const enTirets = (s: Sorte) => s === 'deviation';
+
+/** Ce qui précède une restriction dans une liste ou une fiche : sa sorte telle que publiée, sa couleur et son trait. */
+export interface Pastille {
+	/** La sorte telle que publiée (« Fermeture », ou une valeur inconnue comme « Manifestation »). */
+	sorte: string;
+	couleur: string;
+	/** Une déviation : son trait est en tirets, comme sur la carte. */
+	tirets: boolean;
+}
+
+export const pastille = (r: { sorte: Sorte; libelleSorte: string }): Pastille => ({
+	sorte: r.libelleSorte,
+	couleur: SORTES[r.sorte].couleur,
+	tirets: enTirets(r.sorte)
+});
+
 /**
  * Priorité au clic sur des restrictions superposées, de la plus contraignante à la moins contraignante : ce qui
  * bloque d'abord, la déviation en dernier (elle reste à un clic par « Mêmes travaux »).

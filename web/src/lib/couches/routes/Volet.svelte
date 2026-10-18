@@ -13,7 +13,7 @@
 	import { ouvrirRestriction, restrictionOuverte } from './index.js';
 	import { puces } from './puces.svelte.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
-	import { SORTES } from './sortes.js';
+	import { enTirets, SORTES } from './sortes.js';
 	import { sortesDesPuces, visibles as restrictionsVisibles } from './volet.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
@@ -47,7 +47,7 @@
 				type="button"
 				class="puce"
 				class:off={!f.sortes.includes(s)}
-				class:tirets={s === 'deviation'}
+				class:tirets={enTirets(s)}
 				aria-pressed={f.sortes.includes(s)}
 				style:--c={SORTES[s].couleur}
 				onclick={() => puces.basculerSorte(s)}

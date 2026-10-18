@@ -2,7 +2,7 @@ import { communesTexte, longueurTexte, ordreListe } from './cartes.js';
 import type { Restriction } from './donnees.svelte.js';
 import { ETATS, type EtatRestriction } from './etats.js';
 import { echeance, leveeLeWeekEnd, ligneHoraires, periode } from './horaires.js';
-import { SORTES } from './sortes.js';
+import { pastille, type Pastille } from './sortes.js';
 
 /**
  * Ce que montre la fiche d'une restriction de circulation : la route en clair, les autres restrictions de ses
@@ -43,11 +43,8 @@ export interface CommuneTraversee {
 }
 
 /** Ce que montre la fiche d'une restriction, dans l'ordre de la fiche. */
-export interface FicheRestriction {
-	/** 1. La sorte telle que publiée, l'état, l'échéance, puis le `NOM`. */
-	sorte: string;
-	couleur: string;
-	tirets: boolean;
+export interface FicheRestriction extends Pastille {
+	/** 1. La pastille (sorte telle que publiée), l'état, l'échéance, puis le `NOM`. */
 	etat: (typeof ETATS)[EtatRestriction]['nom'];
 	echeance: string;
 	nom: string;
@@ -67,9 +64,7 @@ export interface FicheRestriction {
 /** La fiche d'une restriction ; `aujourdhui` (AAAA-MM-JJ à Lausanne) date l'échéance. */
 export function ficheRestriction(r: Restriction, { aujourdhui }: { aujourdhui: string }): FicheRestriction {
 	return {
-		sorte: r.libelleSorte,
-		couleur: SORTES[r.sorte].couleur,
-		tirets: r.sorte === 'deviation',
+		...pastille(r),
 		etat: ETATS[r.etat].nom,
 		echeance: echeance(r, aujourdhui),
 		nom: r.nom,
@@ -86,12 +81,10 @@ export function ficheRestriction(r: Restriction, { aujourdhui }: { aujourdhui: s
 }
 
 /** Une autre restriction des mêmes travaux, en une ligne : « Déviation · Lutry, Pully et 1 autre ». */
-export function ligneMemesTravaux(r: Restriction): { sorte: string; couleur: string; tirets: boolean; detail: string } {
+export function ligneMemesTravaux(r: Restriction): Pastille & { detail: string } {
 	const etat = ETATS[r.etat].minuscules;
 	return {
-		sorte: r.libelleSorte,
-		couleur: SORTES[r.sorte].couleur,
-		tirets: r.sorte === 'deviation',
+		...pastille(r),
 		detail: [etat, r.communes ? communesTexte(r.communes) : null, longueurTexte(r.longueur)].filter(Boolean).join(' · ')
 	};
 }
