@@ -17,7 +17,8 @@
 	} from 'maplibre-gl';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { retirerDeLaCarte } from '#lib/socle/carte.js';
-	import { routes, type EtatRestriction, type Restriction } from './donnees.svelte.js';
+	import { routes, type Restriction } from './donnees.svelte.js';
+	import type { EtatRestriction } from './etats.js';
 	import { ouvrirRestriction, restrictionOuverte } from './index.js';
 	import { puces } from './puces.svelte.js';
 	import { plusContraignante, SORTES, type Sorte } from './sortes.js';

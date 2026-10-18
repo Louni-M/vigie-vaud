@@ -2,6 +2,7 @@ import { ErreurApi } from '#lib/api.js';
 import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
 import { getCommunes, getLimites } from '#lib/socle/communes.js';
 import { creerClientDgmr, type CoucheDgmr, type EntiteDgmr } from './dgmr.js';
+import type { EtatRestriction } from './etats.js';
 import { instant } from './horaires.js';
 import { rattacher, type CommuneLimitee, type Passage } from './rattachement.js';
 import { sorteDe, type Sorte } from './sortes.js';
@@ -15,9 +16,6 @@ import { lignesDe, longueur, milieu, type Point } from './trace.js';
  */
 
 type Fetch = typeof fetch;
-
-/** En cours si la restriction vient de la 596, à venir si elle vient de la 595 : le site ne le recalcule pas. */
-export type EtatRestriction = 'en_cours' | 'a_venir';
 
 const ETAT: Record<CoucheDgmr, EtatRestriction> = { 596: 'en_cours', 595: 'a_venir' };
 

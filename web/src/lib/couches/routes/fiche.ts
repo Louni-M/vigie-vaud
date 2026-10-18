@@ -1,5 +1,6 @@
 import { communesTexte, longueurTexte, ordreListe } from './cartes.js';
 import type { Restriction } from './donnees.svelte.js';
+import { ETATS, type EtatRestriction } from './etats.js';
 import { echeance, leveeLeWeekEnd, ligneHoraires, periode } from './horaires.js';
 import { SORTES } from './sortes.js';
 
@@ -47,7 +48,7 @@ export interface FicheRestriction {
 	sorte: string;
 	couleur: string;
 	tirets: boolean;
-	etat: 'En cours' | 'À venir';
+	etat: (typeof ETATS)[EtatRestriction]['nom'];
 	echeance: string;
 	nom: string;
 	/** 2. La période en toutes lettres, la ligne d'horaires, et « Levée le week-end » s'il y a lieu. */
@@ -69,7 +70,7 @@ export function ficheRestriction(r: Restriction, { aujourdhui }: { aujourdhui: s
 		sorte: r.libelleSorte,
 		couleur: SORTES[r.sorte].couleur,
 		tirets: r.sorte === 'deviation',
-		etat: r.etat === 'en_cours' ? 'En cours' : 'À venir',
+		etat: ETATS[r.etat].nom,
 		echeance: echeance(r, aujourdhui),
 		nom: r.nom,
 		periode: periode(r, 'longue'),
@@ -86,7 +87,7 @@ export function ficheRestriction(r: Restriction, { aujourdhui }: { aujourdhui: s
 
 /** Une autre restriction des mêmes travaux, en une ligne : « Déviation · Lutry, Pully et 1 autre ». */
 export function ligneMemesTravaux(r: Restriction): { sorte: string; couleur: string; tirets: boolean; detail: string } {
-	const etat = r.etat === 'a_venir' ? 'à venir' : 'en cours';
+	const etat = ETATS[r.etat].minuscules;
 	return {
 		sorte: r.libelleSorte,
 		couleur: SORTES[r.sorte].couleur,

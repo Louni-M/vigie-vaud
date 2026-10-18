@@ -12,7 +12,8 @@
 	import { source } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
 	import { encadreLimites, sectionsDeLaCommune } from './cartes.js';
-	import { routes, type EtatRestriction } from './donnees.svelte.js';
+	import { routes } from './donnees.svelte.js';
+	import { ETATS, type EtatRestriction } from './etats.js';
 	import { ouvrirRestriction } from './index.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
 
@@ -35,20 +36,12 @@
 	});
 
 	const sections = $derived(sectionsDeLaCommune(routes.restrictions, commune.slug));
-	const SECTIONS: { etat: EtatRestriction; titre: string; vide: string; echec: string }[] = [
-		{
-			etat: 'en_cours',
-			titre: 'En cours',
-			vide: 'Aucune restriction en cours.',
-			echec: 'Les restrictions en cours n’ont pas pu être chargées.'
-		},
-		{
-			etat: 'a_venir',
-			titre: 'À venir',
-			vide: 'Aucune restriction à venir.',
-			echec: 'Les restrictions à venir n’ont pas pu être chargées.'
-		}
-	];
+	const SECTIONS = (Object.keys(ETATS) as EtatRestriction[]).map((etat) => ({
+		etat,
+		titre: ETATS[etat].nom,
+		vide: `Aucune restriction ${ETATS[etat].minuscules}.`,
+		echec: `Les restrictions ${ETATS[etat].minuscules} n’ont pas pu être chargées.`
+	}));
 </script>
 
 <EchecSource source="dgmr-restrictions" message="Les restrictions de circulation n’ont pas pu être chargées" />

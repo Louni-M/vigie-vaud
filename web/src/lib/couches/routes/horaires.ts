@@ -1,4 +1,4 @@
-import type { EtatRestriction } from './donnees.svelte.js';
+import type { EtatRestriction } from './etats.js';
 
 /**
  * Dates et heures d'une restriction de circulation, fonctions pures. `DATE_DEBUT` et `DATE_FIN` portent l'heure

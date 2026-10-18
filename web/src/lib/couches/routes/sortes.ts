@@ -4,6 +4,8 @@
  * priorité au clic.
  */
 
+import type { EtatRestriction } from './etats.js';
+
 export type Sorte = 'fermeture' | 'deviation' | 'feux' | 'particuliere' | 'autre';
 
 /**
@@ -42,7 +44,7 @@ export const PRIORITE_CLIC: readonly Sorte[] = ['fermeture', 'feux', 'particulie
  * Le tracé à ouvrir parmi ceux sous le clic : le plus contraignant ; à sorte égale l'en cours, dessiné au-dessus de
  * l'à venir, puis le plus petit `OBJECTID`, pour que le même clic ouvre toujours la même restriction.
  */
-export function plusContraignante<T extends { id: number; sorte: Sorte; etat: 'en_cours' | 'a_venir' }>(
+export function plusContraignante<T extends { id: number; sorte: Sorte; etat: EtatRestriction }>(
 	traces: readonly T[]
 ): T | null {
 	const rang = (t: T) => PRIORITE_CLIC.indexOf(t.sorte);
