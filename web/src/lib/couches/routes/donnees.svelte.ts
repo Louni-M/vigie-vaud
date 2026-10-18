@@ -134,6 +134,23 @@ export interface DonneesRoutes {
 	readonly source: EtatSourceExecution;
 }
 
+/**
+ * `g`, gardée par clé pour la visite : un appel pendant qu'elle est en cours, ou après sa réussite, reçoit la même
+ * promesse ; un échec est oublié, pour être redemandé au prochain appel. `demandee(cle)` : en cours ou réussie.
+ */
+function retenue<K, T>(g: (cle: K) => Promise<T>): ((cle: K) => Promise<T>) & { demandee(cle: K): boolean } {
+	const promesses = new Map<K, Promise<T>>();
+	function obtenir(cle: K): Promise<T> {
+		let p = promesses.get(cle);
+		if (!p) {
+			promesses.set(cle, (p = g(cle)));
+			p.catch(() => promesses.delete(cle));
+		}
+		return p;
+	}
+	return Object.assign(obtenir, { demandee: (cle: K) => promesses.has(cle) });
+}
+
 export interface Options {
 	/** `fetch` du navigateur, pour la DGMR. */
 	fetch: Fetch;
@@ -176,24 +193,17 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	let chargees = $state.raw<Record<EtatRestriction, boolean>>({ en_cours: false, a_venir: false });
 	/** Les deux états réunis et rattachés, recalculés à chaque état lu et à l'arrivée des limites. */
 	let restrictions = $state.raw<Restriction[]>([]);
-	const chargements = new Map<EtatRestriction, Promise<void>>();
 
 	/** Une demande à la DGMR, retentée une fois au bout de quelques secondes. */
 	const avecRetente = (etat: EtatRestriction, where: string) => retenterUneFois(() => dgmr.chercher(etat, where));
 
-	function chargerEtat(etat: EtatRestriction): Promise<void> {
-		let p = chargements.get(etat);
-		if (p) return p;
-		p = avecRetente(etat, '1=1')
-			.then((es) => {
-				lues[etat] = es.flatMap((e) => versRestriction(e, etat) ?? []);
-				chargees = { ...chargees, [etat]: true };
-				publier();
-			});
-		chargements.set(etat, p);
-		p.catch(() => chargements.delete(etat));
-		return p;
-	}
+	const chargerEtat = retenue((etat: EtatRestriction) =>
+		avecRetente(etat, '1=1').then((es) => {
+			lues[etat] = es.flatMap((e) => versRestriction(e, etat) ?? []);
+			chargees = { ...chargees, [etat]: true };
+			publier();
+		})
+	);
 
 	/* ---- Rattachement : les limites des communes, chargées une fois après les restrictions. ---- */
 
@@ -219,27 +229,18 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 			: rs;
 	}
 
-	let limites: Promise<void> | null = null;
-
 	/** Les limites des communes, sans passer par la DGMR (elles ne datent pas sa consultation). */
-	function chargerLimites(): Promise<void> {
-		if (limites) return limites;
-		const p = Promise.all([getCommunes(f), getLimites(f)]).then(([cs, ls]) => {
+	const chargerLimites = retenue<void, void>(() =>
+		Promise.all([getCommunes(f), getLimites(f)]).then(([cs, ls]) => {
 			communes = cs.map((commune) => ({ commune, limites: ls[commune.bfs] ?? [] }));
 			publier();
-		});
-		limites = p;
-		p.catch(() => (limites = null));
-		return p;
-	}
+		})
+	);
 
 	/* ---- Les deux états : une panne de l'un, même de la seule 595, met la source en erreur. ---- */
 
-	let chargement: Promise<Restriction[]> | null = null;
-
-	function charger(): Promise<Restriction[]> {
-		if (chargement) return chargement;
-		const p = suivie(
+	const charger = retenue<void, Restriction[]>(() =>
+		suivie(
 			Promise.allSettled([chargerEtat('en_cours'), chargerEtat('a_venir')]).then((resultats) => {
 				// Après le premier affichage des restrictions : les limites ne retardent ni la carte ni le fil.
 				chargerLimites().catch(() => {});
@@ -247,11 +248,8 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 				if (echec) throw echec.reason;
 				return restrictions;
 			})
-		);
-		chargement = p;
-		p.catch(() => (chargement = null));
-		return p;
-	}
+		)
+	);
 
 	async function rattachees(): Promise<Restriction[]> {
 		await charger();
@@ -288,19 +286,16 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	/* ---- Le fil : ce qui a commencé depuis son premier jour, et tout l'à venir. ---- */
 
 	/** La 596 réduite au fil, par premier jour, gardée pour la visite ; un échec est oublié. */
-	const reduites = new Map<string, Promise<Restriction[]>>();
+	const reduite = retenue((jour: string) =>
+		avecRetente('en_cours', `DATE_DEBUT >= DATE '${jour}'`).then((es) =>
+			es.flatMap((e) => versRestriction(e, 'en_cours') ?? [])
+		)
+	);
 
 	function enCoursDepuis(jour: string): Promise<Restriction[]> {
 		// La carte l'a déjà demandée en entier (ou est en train de le faire) : le fil s'en sert.
-		if (chargements.has('en_cours')) return chargerEtat('en_cours').then(() => lues.en_cours);
-		let p = reduites.get(jour);
-		if (p) return p;
-		p = avecRetente('en_cours', `DATE_DEBUT >= DATE '${jour}'`).then((es) =>
-			es.flatMap((e) => versRestriction(e, 'en_cours') ?? [])
-		);
-		reduites.set(jour, p);
-		p.catch(() => reduites.delete(jour));
-		return p;
+		if (chargerEtat.demandee('en_cours')) return chargerEtat('en_cours').then(() => lues.en_cours);
+		return reduite(jour);
 	}
 
 	async function depuis(jour: string): Promise<Restriction[]> {
