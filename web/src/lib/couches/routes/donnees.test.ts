@@ -315,6 +315,21 @@ describe('rattachement aux communes', () => {
 		expect(routes.rattache).toBe(true);
 	});
 
+	it('écarte, une fois rattachée, une restriction hors de toute commune : ni carte, ni liste, rien ne l’ouvre', async () => {
+		const { creerDonneesRoutes } = await import('./donnees.svelte.js');
+		const horsCanton = restriction(2, {}, [[6.6, 46.5], [6.61, 46.5]]);
+		const dgmr = fauxDgmr({ enCours: [restriction(1), horsCanton] });
+		const limites = limitesRetenues(dgmr);
+		const routes = creerDonneesRoutes({ fetch: limites.fetch, maintenant });
+
+		// Avant les limites, rien ne permet encore de l'écarter.
+		expect(ids(await routes.charger())).toEqual([1, 2]);
+
+		limites.ouvrir();
+		expect(ids(await routes.rattachees())).toEqual([1]);
+		expect(ids(routes.restrictions)).toEqual([1]);
+	});
+
 	it('rattache aussitôt une couche chargée après les limites', async () => {
 		vi.useFakeTimers();
 		try {

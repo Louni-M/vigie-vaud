@@ -99,7 +99,7 @@ function reunir(enCours: Restriction[], aVenir: Restriction[]): Restriction[] {
 export interface DonneesRoutes {
 	/**
 	 * Restrictions en cours et à venir déjà chargées, par `OBJECTID` croissant (vide tant que rien n'est chargé),
-	 * avec leurs communes dès que les limites sont là.
+	 * avec leurs communes dès que les limites sont là ; celles qui ne parcourent alors aucune commune sont écartées.
 	 */
 	readonly restrictions: Restriction[];
 	/** La couche de cet état (596 en cours, 595 à venir) a été lue : sans elle, rien n'est dit de ses restrictions. */
@@ -224,10 +224,16 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		return p;
 	}
 
+	/** Une fois rattachées, une restriction hors de toute commune (hors du canton) est écartée : rien ne l'ouvre. */
 	function publier() {
 		const rs = reunir(lues[596], lues[595]);
 		const cs = communes;
-		restrictions = cs ? rs.map((r) => ({ ...r, communes: communesDe(r, cs) })) : rs;
+		restrictions = cs
+			? rs.flatMap((r) => {
+					const passages = communesDe(r, cs);
+					return passages.length ? { ...r, communes: passages } : [];
+				})
+			: rs;
 	}
 
 	let limites: Promise<void> | null = null;
@@ -286,7 +292,8 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	}
 
 	async function restriction(id: number): Promise<Restriction | null> {
-		const chargee = restrictions.find((r) => r.id === id);
+		// Une restriction hors de toute commune, écartée de `restrictions`, n'est pas redemandée pour autant.
+		const chargee = lues[596].find((r) => r.id === id) ?? lues[595].find((r) => r.id === id);
 		const r = chargee ?? (parId.has(id) ? parId.get(id)! : await suivie(demander(id)));
 		if (!chargee) parId.set(id, r);
 		if (!r) return null;

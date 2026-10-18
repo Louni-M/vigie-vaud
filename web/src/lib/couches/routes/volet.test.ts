@@ -8,11 +8,10 @@ vi.mock('$app/env', () => ({ browser: true }));
 
 const maintenant = () => new Date('2026-10-18T10:00:00Z');
 
-/** Les restrictions telles que les lit le module de données. */
+/** Les restrictions telles que les lit le module de données, rattachées à leurs communes. */
 async function lues(dgmr: { enCours?: RestrictionDgmr[]; aVenir?: RestrictionDgmr[] }): Promise<Restriction[]> {
 	const donnees = creerDonneesRoutes({ fetch: fauxDgmr(dgmr).fetch, maintenant });
-	await donnees.charger();
-	return donnees.restrictions;
+	return donnees.rattachees();
 }
 
 /** Zone visible : Pully et Lutry (le tracé par défaut traverse Pully). */
@@ -58,7 +57,8 @@ describe('visibles', () => {
 				true
 			],
 			['un tracé qui passe au coin de la zone, sans y entrer', [[6.74, 46.54], [6.77, 46.51]], false],
-			['un tracé qui entre dans la zone par un coin', [[6.74, 46.53], [6.76, 46.51]], true],
+			// Quelque 270 m dans le coin de Lutry : assez pour l'y rattacher, sans que son milieu ni ses sommets soient dans la zone.
+			['un tracé qui entre dans la zone par un coin', [[6.7, 46.568], [6.755, 46.513]], true],
 			['une MultiLineString dont un seul morceau est dans la zone', [[[6.9, 46.6], [6.95, 46.6]], [[6.7, 46.5], [6.71, 46.5]]], true],
 			['une MultiLineString dont aucun morceau n’est dans la zone', [[[6.9, 46.6], [6.95, 46.6]], [[6.6, 46.4], [6.6, 46.45]]], false]
 		])('%s', async (_, trace, dedans) => {
