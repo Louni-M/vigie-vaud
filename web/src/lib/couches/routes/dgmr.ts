@@ -59,6 +59,8 @@ export interface ClientDgmr {
 	/**
 	 * Toutes les restrictions d'une couche qui répondent à `where` (SQL ArcGIS : `1=1`, `OBJECTID IN (…)`,
 	 * `DATE_DEBUT >= DATE 'AAAA-MM-JJ'`), en WGS84, pages de 2000 suivies jusqu'au bout. Rejette par `ErreurApi`.
+	 * Le service compare `DATE '…'` à la date telle qu'écrite, minuit compris, sans conversion de fuseau (vérifié
+	 * sur la 596 le 18.10.2026).
 	 */
 	chercher(couche: CoucheDgmr, where: string): Promise<EntiteDgmr[]>;
 }
