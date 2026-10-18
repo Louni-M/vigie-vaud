@@ -45,7 +45,8 @@ function dansAnneau(lon: number, lat: number, anneau: number[][]): boolean {
 	return dedans;
 }
 
-const dansLimites = (lon: number, lat: number, l: Limites) =>
+/** Le point est dans les limites : dans un de leurs polygones, hors de ses trous. */
+export const dansLimites = (lon: number, lat: number, l: Limites) =>
 	l.some(([ext, ...trous]) => dansAnneau(lon, lat, ext) && !trous.some((t) => dansAnneau(lon, lat, t)));
 
 /** Distance approximative (degrés, latitude corrigée) d'un point au contour le plus proche. */

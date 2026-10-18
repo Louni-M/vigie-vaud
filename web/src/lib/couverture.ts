@@ -188,11 +188,16 @@ export function libelleCommunes({ source, communes }: SourceCouverte, total: num
 }
 
 /**
- * Ligne Limites d'un encart, pour une source qui déclare des `limites` (une phrase qui complète « La DGMR
- * publie … ») : « Publie surtout les routes cantonales ; … », avec l'apostrophe typographique. Sinon `null`.
+ * Les `limites` d'une source (une phrase qui complète « La DGMR publie … »), avec l'apostrophe typographique ;
+ * `null` pour une source qui n'en déclare pas.
  */
+export const limitesDe = (source: Pick<Source, 'limites'>): string | null =>
+	source.limites ? source.limites.replace(/'/g, '’') : null;
+
+/** Ligne Limites d'un encart : « Publie surtout les routes cantonales ; … ». Sinon `null`. */
 export function libelleLimites(source: Pick<Source, 'limites'>): string | null {
-	return source.limites ? `Publie ${source.limites.replace(/'/g, '’')}.` : null;
+	const limites = limitesDe(source);
+	return limites ? `Publie ${limites}.` : null;
 }
 
 /**

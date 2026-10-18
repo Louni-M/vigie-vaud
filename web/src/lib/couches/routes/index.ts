@@ -18,6 +18,7 @@ export const coucheRoutes: Couche<undefined> = {
 	resume: 'les restrictions de circulation en cours et à venir',
 	composants: {
 		Carte: () => import('./Carte.svelte'),
-		Volet: () => import('./Volet.svelte')
+		Volet: () => import('./Volet.svelte'),
+		Onglet: () => import('./Onglet.svelte')
 	}
 };

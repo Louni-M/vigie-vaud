@@ -1,13 +1,16 @@
 import { ErreurApi } from '#lib/api.js';
 import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
+import { getCommunes, getLimites } from '#lib/socle/communes.js';
 import { creerClientDgmr, type CoucheDgmr, type EntiteDgmr } from './dgmr.js';
+import { rattacher, type CommuneLimitee, type Passage } from './rattachement.js';
 import { sorteDe, type Sorte } from './sortes.js';
 import { lignesDe, longueur, milieu, type Point } from './trace.js';
 
 /**
  * Module de données de la couche Routes, partagé par ses composants : les restrictions de circulation de la DGMR,
  * en cours (couche 596) et à venir (595), lues en direct depuis le navigateur pour tout le canton, sans emprise.
- * Chaque couche n'est demandée qu'une fois par visite, pour tous les usages.
+ * Chaque couche n'est demandée qu'une fois par visite, pour tous les usages. Les restrictions sont ensuite
+ * rattachées à leurs communes par leur tracé, une fois chargées les limites des communes (voie Préparée).
  */
 
 type Fetch = typeof fetch;
@@ -52,6 +55,11 @@ export interface Restriction {
 	longueur: number;
 	/** Point à mi-longueur du tracé : sa position sur la carte et dans le fil. */
 	milieu: Point;
+	/**
+	 * Les communes que parcourt le tracé, de la plus grande longueur à la plus petite (la première est celle de sa
+	 * fiche et du fil) ; `null` tant que les limites des communes ne sont pas chargées.
+	 */
+	communes: Passage[] | null;
 }
 
 const texte = (v: unknown) => (v == null || String(v).trim() === '' ? null : String(v).trim());
@@ -76,7 +84,8 @@ function versRestriction({ properties: p, geometry }: EntiteDgmr, etat: EtatRest
 		remarque: texte(p.REMARQUE),
 		lignes,
 		longueur: longueur(lignes),
-		milieu: milieu(lignes)
+		milieu: milieu(lignes),
+		communes: null
 	};
 }
 
@@ -87,14 +96,26 @@ function reunir(enCours: Restriction[], aVenir: Restriction[]): Restriction[] {
 }
 
 export interface DonneesRoutes {
-	/** Restrictions en cours et à venir déjà chargées, par `OBJECTID` croissant (vide tant que rien n'est chargé). */
+	/**
+	 * Restrictions en cours et à venir déjà chargées, par `OBJECTID` croissant (vide tant que rien n'est chargé),
+	 * avec leurs communes dès que les limites sont là.
+	 */
 	readonly restrictions: Restriction[];
+	/** La couche de cet état (596 en cours, 595 à venir) a été lue : sans elle, rien n'est dit de ses restrictions. */
+	chargee(etat: EtatRestriction): boolean;
+	/** Les restrictions ont leurs communes : les limites des communes sont chargées. */
+	readonly rattache: boolean;
 	/**
 	 * Charge les deux couches, chacune une seule fois par visite. Un échec d'une couche est retenté une fois au bout
 	 * d'environ 5 s ; s'il persiste, la source passe en erreur et la promesse rejette, mais ce que l'autre couche a
 	 * donné reste dans `restrictions`. Un nouvel appel ne redemande que la couche manquée.
 	 */
 	charger(): Promise<Restriction[]>;
+	/**
+	 * Charge les deux couches puis les limites des communes, et donne les restrictions rattachées. Rejette si la
+	 * DGMR a échoué, ou si les limites n'ont pas pu être chargées (elles sont alors redemandées au prochain appel).
+	 */
+	rattachees(): Promise<Restriction[]>;
 	/** État de la source DGMR : heure de la dernière consultation réussie, échec, nouvel essai. */
 	readonly source: EtatSourceExecution;
 }
@@ -127,7 +148,8 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	/* ---- Une couche : une requête par visite, retentée une fois ; un échec est oublié. ---- */
 
 	const lues: Record<CoucheDgmr, Restriction[]> = { 596: [], 595: [] };
-	/** Les deux couches réunies, recalculées à chaque couche lue. */
+	let chargees = $state.raw<Record<EtatRestriction, boolean>>({ en_cours: false, a_venir: false });
+	/** Les deux couches réunies et rattachées, recalculées à chaque couche lue et à l'arrivée des limites. */
 	let restrictions = $state.raw<Restriction[]>([]);
 	const chargements = new Map<CoucheDgmr, Promise<void>>();
 
@@ -144,10 +166,43 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 				const etat = ETAT[couche];
 				const rs = es.flatMap((e) => versRestriction(e, etat) ?? []);
 				lues[couche] = rs;
-				restrictions = reunir(lues[596], lues[595]);
+				chargees = { ...chargees, [etat]: true };
+				publier();
 			});
 		chargements.set(couche, p);
 		p.catch(() => chargements.delete(couche));
+		return p;
+	}
+
+	/* ---- Rattachement : les limites des communes, chargées une fois après les restrictions. ---- */
+
+	let communes = $state.raw<CommuneLimitee[] | null>(null);
+	/** Les communes de chaque restriction lue, calculées une seule fois. */
+	const rattachements = new WeakMap<Restriction, Passage[]>();
+
+	function communesDe(r: Restriction, cs: CommuneLimitee[]): Passage[] {
+		let p = rattachements.get(r);
+		if (!p) rattachements.set(r, (p = rattacher({ type: 'MultiLineString', coordinates: r.lignes }, cs)));
+		return p;
+	}
+
+	function publier() {
+		const rs = reunir(lues[596], lues[595]);
+		const cs = communes;
+		restrictions = cs ? rs.map((r) => ({ ...r, communes: communesDe(r, cs) })) : rs;
+	}
+
+	let limites: Promise<void> | null = null;
+
+	/** Les limites des communes, sans passer par la DGMR (elles ne datent pas sa consultation). */
+	function chargerLimites(): Promise<void> {
+		if (limites) return limites;
+		const p = Promise.all([getCommunes(f), getLimites(f)]).then(([cs, ls]) => {
+			communes = cs.map((commune) => ({ commune, limites: ls[commune.bfs] ?? [] }));
+			publier();
+		});
+		limites = p;
+		p.catch(() => (limites = null));
 		return p;
 	}
 
@@ -158,6 +213,8 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	function charger(): Promise<Restriction[]> {
 		if (chargement) return chargement;
 		const p = Promise.allSettled([chargerCouche(596), chargerCouche(595)]).then((resultats) => {
+			// Après le premier affichage des restrictions : les limites ne retardent ni la carte ni le fil.
+			chargerLimites().catch(() => {});
 			const echec = resultats.find((r) => r.status === 'rejected');
 			if (echec) {
 				erreur = causeDe(echec.reason);
@@ -171,11 +228,22 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		return p;
 	}
 
+	async function rattachees(): Promise<Restriction[]> {
+		await charger();
+		await chargerLimites();
+		return restrictions;
+	}
+
 	return {
 		get restrictions() {
 			return restrictions;
 		},
+		chargee: (etat) => chargees[etat],
+		get rattache() {
+			return communes !== null;
+		},
 		charger,
+		rattachees,
 		source: {
 			get derniere() {
 				return derniere;
