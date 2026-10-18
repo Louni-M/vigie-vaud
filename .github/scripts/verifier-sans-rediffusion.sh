@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Vérifie qu'aucune donnée CAMAC n'est dans le site construit (DCG 8401 : pas de rediffusion).
-# Les dossiers sont chargés en direct par le navigateur ; l'ancienne version les écrivait dans web/build/data.
+# Vérifie qu'aucune donnée CAMAC ni DGMR n'est dans le site construit (norme DCG 8401 : pas de rediffusion).
+# Les dossiers et les restrictions de circulation sont chargés en direct par le navigateur ; l'ancienne version
+# écrivait les dossiers dans web/build/data.
 # Utilisé par la CI des PR (ci.yml) et par la publication (publier.yml).
 set -euo pipefail
 
@@ -10,7 +11,7 @@ if [ ! -d "$build" ]; then
 	exit 1
 fi
 if [ -e "$build/data" ]; then
-	echo "$build/data ne doit pas exister : aucune donnée CAMAC ne doit être publiée" >&2
+	echo "$build/data ne doit pas exister : aucune donnée CAMAC ni DGMR ne doit être publiée (norme DCG 8401)" >&2
 	exit 1
 fi
-echo "Aucune donnée CAMAC dans $build"
+echo "Aucune donnée CAMAC ni DGMR dans $build"
