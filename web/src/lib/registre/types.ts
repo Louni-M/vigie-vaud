@@ -172,6 +172,11 @@ export interface Couche<P = unknown> {
 	/** Message affiché près de la recherche quand `localiser` ne trouve pas l'élément (« Aucun dossier n° … »). */
 	introuvable?(element: string): string;
 	/**
+	 * Message affiché près de la recherche quand `localiser` a rejeté, sa source injoignable (« La restriction de
+	 * circulation n'a pas pu être cherchée… ») ; sinon le message commun du registre.
+	 */
+	nonCherche?(element: string): string;
+	/**
 	 * Synchrone : la recherche du socle l'appelle à chaque frappe. `communes` sont les communes de la visite, pour
 	 * nommer un résultat sans rien charger.
 	 */
