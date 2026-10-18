@@ -18,7 +18,8 @@ const ROUTES: CoucheInscrite = {
 		'La restriction de circulation n’a pas pu être cherchée : vérifiez votre connexion, puis réessayez.',
 	composants: { Carte: () => Promise.reject(new Error()), Onglet: () => Promise.reject(new Error()) }
 };
-const AVEC_ROUTES = [...COUCHES, ROUTES];
+// Remplace la couche Routes inscrite, qui ne déclare pas encore ses messages.
+const AVEC_ROUTES = [...COUCHES.filter((c) => c.id !== ROUTES.id), ROUTES];
 
 describe('élément que sa couche n’a pas pu chercher', () => {
 	it('affiche le message de la couche quand elle le déclare', () => {
