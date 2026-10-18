@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from urllib.parse import parse_qsl, urlsplit
 
 import pytest
 from pydantic import ValidationError
@@ -11,11 +12,12 @@ from schema import Conseil, lire_sources, nom_du_conseil
 RACINE = Path(__file__).resolve().parents[2]
 
 
-def test_sources_json_declare_les_sources_de_j0_puis_les_trois_conseils():
+def test_sources_json_declare_les_sources_de_j0_la_dgmr_et_les_trois_conseils():
     fichier = lire_sources(RACINE / "sources.json")
 
     assert [s.id for s in fichier.sources] == [
         "camac-permis",
+        "dgmr-restrictions",
         "swisstopo-fond",
         "swisstopo-recherche",
         "swisstopo-limites",
@@ -30,12 +32,13 @@ def test_sources_json_declare_les_sources_de_j0_puis_les_trois_conseils():
     assert all(s.nom_court for s in fichier.sources)
 
 
-def test_seule_la_camac_garde_une_couverture_parmi_les_sources_de_j0():
+def test_la_camac_et_la_dgmr_couvrent_le_canton_et_chaque_conseil_communal_sa_commune():
     fichier = lire_sources(RACINE / "sources.json")
 
     couvertures = {s.id: s.couverture for s in fichier.sources if s.couverture is not None}
     assert {id: (c.communes, c.mode) for id, c in couvertures.items()} == {
         "camac-permis": ("canton", "api"),
+        "dgmr-restrictions": ("canton", "api"),
         "openparldata-5586": ([5586], "api"),
         "openparldata-5938": ([5938], "api"),
     }
@@ -84,6 +87,59 @@ def test_chaque_conseil_a_une_sonde_legere_sur_openparldata_qui_lit_data():
         ),
     }
     assert all(s.enregistrements == "data" and s.jamais_vide for s in sondes.values())
+
+
+def test_la_dgmr_est_une_source_direct_du_canton_sans_rediffusion_avec_ses_limites():
+    fichier = lire_sources(RACINE / "sources.json")
+
+    (dgmr,) = [s for s in fichier.sources if s.id == "dgmr-restrictions"]
+    assert (dgmr.nom, dgmr.nom_court) == ("Restrictions de circulation DGMR (MapServer/596 et 595)", "DGMR")
+    assert dgmr.attribution.model_dump() == {
+        "texte": "Géodonnées État de Vaud (DGMR)",
+        "lien": "https://www.vd.ch/mobilite/loffre-de-mobilite-a-votre-disposition/transports-individuels-motorises-tim/"
+        "restrictions-de-circulation-et-travaux",
+        "licence": "Norme DCG 8401, sans rediffusion",
+    }
+    assert (dgmr.voie_acces, dgmr.fraicheur) == ("direct", "requete")
+    assert dgmr.limites == "surtout les routes cantonales ; les routes communales n'y figurent pas toujours"
+
+
+def test_la_sonde_de_la_dgmr_lit_une_restriction_en_cours_et_ses_11_champs():
+    fichier = lire_sources(RACINE / "sources.json")
+
+    (sonde,) = [s.sonde for s in fichier.sources if s.id == "dgmr-restrictions"]
+    url = urlsplit(str(sonde.url))
+    assert f"{url.scheme}://{url.netloc}{url.path}" == (
+        "https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/596/query"
+    )
+    champs = [
+        "OBJECTID",
+        "NOM",
+        "RESTRICTION",
+        "RHRC",
+        "DATE_DEBUT",
+        "DATE_FIN",
+        "HEURE_DEBUT",
+        "HEURE_FIN",
+        "WEEK_END",
+        "TYPE",
+        "REMARQUE",
+    ]
+    assert dict(parse_qsl(url.query)) == {
+        "where": "1=1",
+        "outFields": ",".join(champs),
+        "returnGeometry": "false",
+        "resultRecordCount": "1",
+        "f": "json",
+    }
+    assert sonde.champs == champs
+    assert (sonde.delai, sonde.enregistrements, sonde.jamais_vide) == (20, "features", True)
+
+
+def test_seule_la_dgmr_declare_des_limites():
+    fichier = lire_sources(RACINE / "sources.json")
+
+    assert [s.id for s in fichier.sources if s.limites is not None] == ["dgmr-restrictions"]
 
 
 def test_les_sondes_de_j0_lisent_toujours_features():
@@ -144,6 +200,7 @@ def test_une_source_sans_couverture_qui_donne_un_conseil_est_lue(tmp_path):
         pytest.param([_source(conseil={"body_key": "VD", "donne": []})], id="conseil qui ne donne rien"),
         pytest.param([_source(conseil={"body_key": "VD", "donne": ["votes"]})], id="conseil qui donne l'inconnu"),
         pytest.param([_source(conseil={"donne": ["objets"]})], id="conseil sans body_key"),
+        pytest.param([_source(limites="")], id="limites vides"),
     ],
 )
 def test_une_declaration_invalide_est_refusee(tmp_path, sources):
