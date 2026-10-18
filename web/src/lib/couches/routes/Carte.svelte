@@ -3,18 +3,22 @@
 	 * Carte de la couche Routes : un tracé par restriction de circulation, coloré par sorte sur un liseré blanc ; les
 	 * déviations en tirets plus fins, toujours visibles ; l'à venir plus pâle, et l'en cours dessiné au-dessus de lui.
 	 * Sous le zoom 11, un point par restriction au milieu de son tracé, sauf les déviations. Fondu à l'activation.
+	 * Un clic ouvre le tracé le plus contraignant sous le doigt (la carte vole vers lui tout de suite), et la
+	 * restriction ouverte est soulignée d'un contour noir, sous ses couleurs.
 	 */
 	import { onMount, untrack } from 'svelte';
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
 		GeoJSONSourceSpecification,
-		LayerSpecification
+		LayerSpecification,
+		MapMouseEvent
 	} from 'maplibre-gl';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import { routes, type EtatRestriction, type Restriction } from './donnees.svelte.js';
-	import { SORTES, type Sorte } from './sortes.js';
+	import { ouvrirRestriction, restrictionOuverte } from './index.js';
+	import { plusContraignante, SORTES, type Sorte } from './sortes.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
 
@@ -23,6 +27,7 @@
 	const avant = untrack(() => ctx.avant);
 	const TRACES = 'routes-traces';
 	const MILIEUX = 'routes-milieux';
+	const SELECTION = 'routes-selection';
 	/** Sous ce zoom, un point par restriction s'ajoute aux tracés, trop fins pour être vus à l'échelle du canton. */
 	const ZOOM_POINTS = 11;
 	/** Fondu à l'activation et à la désactivation, sauf si le visiteur a demandé moins d'animations. */
@@ -47,6 +52,18 @@
 	type Opacite = 'line-opacity' | 'circle-opacity' | 'circle-stroke-opacity';
 	/** Calques ajoutés, du dessous au dessus, avec leurs opacités pleines : le fondu les multiplie par 0 ou 1. */
 	const calques: { spec: LayerSpecification; opacites: [Opacite, number][] }[] = [];
+
+	// Le contour noir de la restriction ouverte, sous tout le reste : il déborde du liseré blanc de chaque côté.
+	calques.push({
+		spec: {
+			id: SELECTION,
+			type: 'line',
+			source: SELECTION,
+			layout: { 'line-cap': 'round', 'line-join': 'round' },
+			paint: { 'line-color': '#111', 'line-width': largeur(7, 10, 16) }
+		},
+		opacites: [['line-opacity', 0.85]]
+	});
 
 	/*
 	 * Les calques d'un état : liseré blanc, tracés pleins, déviations en tirets, puis points au petit zoom. L'à venir
@@ -136,6 +153,7 @@
 	// Calques ajoutés transparents : le premier passage de l'effet du fondu les fait apparaître.
 	map.addSource(TRACES, { type: 'geojson', data: traces(routes.restrictions) });
 	map.addSource(MILIEUX, { type: 'geojson', data: milieux(routes.restrictions) });
+	map.addSource(SELECTION, { type: 'geojson', data: traces([]) });
 	for (const { spec, opacites } of calques) {
 		const paint = { ...spec.paint } as Record<string, unknown>;
 		for (const [prop] of opacites) {
@@ -145,11 +163,65 @@
 		map.addLayer({ ...spec, paint } as LayerSpecification, avant);
 	}
 	const ids = calques.map((c) => c.spec.id);
+	/** Les calques qu'un clic peut toucher : le liseré élargit la prise, au doigt surtout. */
+	const cliquables = ids.filter((id) => id !== SELECTION);
+
+	/*
+	 * Clic sur la carte : parmi les tracés à quelques pixels, le plus contraignant s'ouvre (fermeture, feux,
+	 * restriction particulière, autre, déviation), et la carte vole vers le milieu de son tracé sans attendre sa fiche.
+	 */
+	function clic(e: MapMouseEvent) {
+		// Un hôtel de ville sous le clic, dessiné au-dessus, l'emporte sur les tracés voisins.
+		if (!ctx.active || ctx.recouvert([e.point.x, e.point.y])) return;
+		const r = 8;
+		const touches = map.queryRenderedFeatures(
+			[
+				[e.point.x - r, e.point.y - r],
+				[e.point.x + r, e.point.y + r]
+			],
+			{ layers: cliquables }
+		);
+		const touchees = new Set(touches.map((f) => Number(f.properties?.id)));
+		const choisie = plusContraignante(routes.restrictions.filter((x) => touchees.has(x.id)));
+		if (choisie) ouvrirRestriction(ctx, choisie);
+	}
+	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
+	const sansPointeur = () => (map.getCanvas().style.cursor = '');
+	map.on('click', clic);
+	for (const id of cliquables) {
+		map.on('mouseenter', id, pointeur);
+		map.on('mouseleave', id, sansPointeur);
+	}
+
+	/** Le tracé de la restriction ouverte : celui déjà chargé, sinon celui que le registre vient de chercher. */
+	let ouverte = $state.raw<Restriction | null>(null);
+	$effect(() => {
+		const id = restrictionOuverte(ctx.ouvert);
+		if (id === null) return void (ouverte = null);
+		const chargee = routes.restrictions.find((x) => x.id === id);
+		if (chargee) return void (ouverte = chargee);
+		let actuelle = true;
+		routes.restriction(id).then(
+			(x) => actuelle && (ouverte = x),
+			() => {}
+		);
+		return () => (actuelle = false);
+	});
+	$effect(() => {
+		(map.getSource(SELECTION) as GeoJSONSource).setData(traces(ctx.active && ouverte ? [ouverte] : []));
+	});
 
 	onMount(() => {
 		// Un échec est signalé par le badge et le volet, qui propose de réessayer.
 		routes.charger().catch(() => {});
-		return () => retirerDeLaCarte(map, ids, [TRACES, MILIEUX]);
+		return () => {
+			map.off('click', clic);
+			for (const id of cliquables) {
+				map.off('mouseenter', id, pointeur);
+				map.off('mouseleave', id, sansPointeur);
+			}
+			retirerDeLaCarte(map, ids, [TRACES, MILIEUX, SELECTION]);
+		};
 	});
 
 	$effect(() => {

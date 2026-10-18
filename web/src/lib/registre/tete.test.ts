@@ -97,6 +97,11 @@ describe('titre de la page, qui suit la fiche ouverte', () => {
 			'Dossier n° 248845 – Parlement – Vigie Vaud'
 		);
 	});
+	it('est « Restriction de circulation – Lutry – Vigie Vaud » pour une restriction ouverte, sans son numéro', () => {
+		expect(titreFiche('Lutry', { couche: 'routes', element: '5031' }, COUCHES)).toBe(
+			'Restriction de circulation – Lutry – Vigie Vaud'
+		);
+	});
 	it('reste celui de la fiche pour une couche qui ne titre pas ses éléments', () => {
 		expect(titreFiche('Pully', { couche: 'routes', element: 'A9' }, [permis, sansTitre])).toBe('Pully – Vigie Vaud');
 	});

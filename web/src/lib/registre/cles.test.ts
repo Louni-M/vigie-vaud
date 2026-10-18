@@ -21,8 +21,8 @@ describe('clés d’URL', () => {
 		expect(clesEnDouble(COUCHES)).toEqual([]);
 	});
 
-	it('comptent la clé d’élément de chaque couche inscrite, `c` des Conseils comprise', () => {
-		expect(COUCHES.map((c) => c.cleElement).filter(Boolean)).toEqual(['d', 'c']);
+	it('comptent la clé d’élément de chaque couche inscrite, `c` des Conseils et `r` des Routes comprises', () => {
+		expect(COUCHES.map((c) => c.cleElement).filter(Boolean)).toEqual(['d', 'c', 'r']);
 	});
 
 	it('signale une clé prise par deux couches', () => {

@@ -1,6 +1,7 @@
 /**
  * Les sortes de restriction de circulation, lues du champ `RESTRICTION` de la DGMR, et leurs couleurs sur la carte.
- * Module léger : la description de la couche l'importe sans charger le module de données.
+ * Module léger : la description de la couche l'importe sans charger le module de données. La carte y prend sa
+ * priorité au clic.
  */
 
 export type Sorte = 'fermeture' | 'deviation' | 'feux' | 'particuliere' | 'autre';
@@ -27,3 +28,22 @@ const PUBLIEES: Record<string, Sorte> = {
  */
 export const sorteDe = (restriction: string | null): Sorte =>
 	restriction && Object.hasOwn(PUBLIEES, restriction) ? PUBLIEES[restriction] : 'autre';
+
+/**
+ * Priorité au clic sur des tracés superposés, du plus contraignant au moins contraignant : ce qui bloque d'abord,
+ * la déviation en dernier (elle reste à un clic par « Mêmes travaux »).
+ */
+export const PRIORITE_CLIC: readonly Sorte[] = ['fermeture', 'feux', 'particuliere', 'autre', 'deviation'];
+
+/**
+ * Le tracé à ouvrir parmi ceux sous le clic : le plus contraignant ; à sorte égale l'en cours, dessiné au-dessus de
+ * l'à venir, puis le plus petit `OBJECTID`, pour que le même clic ouvre toujours la même restriction.
+ */
+export function plusContraignante<T extends { id: number; sorte: Sorte; etat: 'en_cours' | 'a_venir' }>(
+	traces: readonly T[]
+): T | null {
+	const rang = (t: T) => PRIORITE_CLIC.indexOf(t.sorte);
+	const ordre = (a: T, b: T) =>
+		rang(a) - rang(b) || Number(a.etat === 'a_venir') - Number(b.etat === 'a_venir') || a.id - b.id;
+	return [...traces].sort(ordre)[0] ?? null;
+}

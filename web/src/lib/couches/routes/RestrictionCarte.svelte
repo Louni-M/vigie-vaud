@@ -5,6 +5,7 @@
 	 * remarque sur une ligne coupée. Sans `onclick`, elle ne s'ouvre pas. Rendue dans le navigateur seulement (les
 	 * restrictions y sont lues) : l'échéance est comptée depuis le jour du visiteur, à Lausanne.
 	 */
+	import type { Snippet } from 'svelte';
 	import { jourDe } from '#lib/fil/fil.js';
 	import { carteRestriction } from './cartes.js';
 	import type { Restriction } from './donnees.svelte.js';
@@ -13,13 +14,16 @@
 		r,
 		commune,
 		actif = false,
-		onclick
+		onclick,
+		children
 	}: {
 		r: Restriction;
 		/** Slug de la commune de l'onglet : la carte y dit la longueur parcourue quand il y en a plusieurs. */
 		commune?: string;
 		actif?: boolean;
 		onclick?: () => void;
+		/** Une dernière ligne propre à l'endroit (« Voir la fiche › » de l'aperçu sur téléphone). */
+		children?: Snippet;
 	} = $props();
 
 	const c = $derived(carteRestriction(r, { aujourdhui: jourDe(new Date()), commune }));
@@ -52,6 +56,7 @@
 		{#if c.dansLaCommune}<span>{c.dansLaCommune}</span>{/if}
 		<span class="source">{c.source}</span>
 	</span>
+	{@render children?.()}
 </svelte:element>
 
 <style>
