@@ -19,6 +19,7 @@ import {
 import { ficheDuChemin, fichePropre } from './fiches.js';
 import { cheminFiche } from './liens.js';
 import { titreFiche } from './tete.js';
+import { avisIntrouvable, avisNonCherche } from './avis.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
 import { zoneDuFil } from '#lib/fil/fil.js';
 
@@ -209,10 +210,15 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		}
 	}
 
-	const messageIntrouvable = (o: Ouvert) =>
-		couches.find((c) => c.id === o.couche)?.introuvable?.(o.element) ?? `Aucun élément n° ${o.element}.`;
-	const messageNonCherche = (o: Ouvert) =>
-		`Le n° ${o.element} n’a pas pu être cherché : vérifiez votre connexion, puis réessayez.`;
+	/**
+	 * L'élément est introuvable : le message près de la recherche, et la fiche commune du chemin passe sur l'onglet
+	 * de sa couche (`avisIntrouvable`).
+	 */
+	function introuvable(o: Ouvert) {
+		const a = avisIntrouvable(couches, o, fiche);
+		avis = a.avis;
+		if (a.onglet) onglet = a.onglet;
+	}
 
 	/**
 	 * Ouvre un élément dans l'une de ses fiches, trouvées par `localiser` : celle du chemin si elle en fait partie,
@@ -229,9 +235,9 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		const lieu = await localiser(o);
 		if (demande !== o) return;
 		demande = null;
-		if (lieu === 'echec') return void (avis = messageNonCherche(o));
+		if (lieu === 'echec') return void (avis = avisNonCherche(couches, o));
 		const k = corrigerChemin(fiche, lieu);
-		if (k === 'retirer') return void (avis = messageIntrouvable(o));
+		if (k === 'retirer') return introuvable(o);
 		if (!cible.position) montrerElement(lieu!, k ?? fiche!, false);
 		if (k === null) {
 			// Même fiche : l'adresse suit l'état (entrée poussée si rien n'était ouvert).
@@ -253,7 +259,8 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	/**
 	 * L'adresse porte un élément qu'on n'a pas ouvert soi-même (lien partagé, précédent ou suivant du navigateur) :
-	 * on corrige son chemin vers l'une de ses fiches, ou on retire l'élément introuvable. `montrer` : la carte va
+	 * on corrige son chemin vers l'une de ses fiches, ou on retire l'élément introuvable, et la fiche du chemin
+	 * s'ouvre sur l'onglet de sa couche. `montrer` : la carte va
 	 * vers lui, d'un saut à l'arrivée sur le site.
 	 */
 	async function corriger(o: Ouvert, montrer: boolean, initial: boolean) {
@@ -261,10 +268,10 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		const lieu = await localiser(o);
 		if (demande !== o || !memeElement(ouvert, o)) return;
 		demande = null;
-		if (lieu === 'echec') return void (avis = messageNonCherche(o));
+		if (lieu === 'echec') return void (avis = avisNonCherche(couches, o));
 		const k = corrigerChemin(fiche, lieu);
 		if (k === 'retirer') {
-			avis = messageIntrouvable(o);
+			introuvable(o);
 			ouvert = null;
 			return;
 		}
