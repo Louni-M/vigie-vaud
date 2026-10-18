@@ -86,6 +86,8 @@ ont une Couverture, et parmi elles seulement celles dont les éléments appartie
 n'atteignent une commune que par rattachement par nom (le Grand Conseil, la presse) **porte sur le canton** et n'a pas
 de Couverture. Une couche couvre une commune dès qu'une de ses sources la couvre ; une couche dont aucune source n'a de
 Couverture les couvre toutes.
+Une source peut déclarer ses **limites** : ce qu'elle ne publie pas toujours dans les communes qu'elle couvre (la
+DGMR : les routes communales). Elles ne changent ni le mode ni l'état.
 Une commune **non couverte** par la couche choisie (sur bureau, celle dont le volet est ouvert ; sur mobile, celle
 dont on a demandé à voir la Couverture) est grisée sur la carte ; une panne ne grise rien.
 _À éviter_ : disponibilité (pour la Couverture entière)
