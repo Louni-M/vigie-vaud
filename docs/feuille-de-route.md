@@ -25,7 +25,7 @@ propre PR.
   - une page **Couverture** liste les 300 communes avec l'état de chaque source (API, scrapé, non couvert, en
     panne depuis…) ;
   - les communes non couvertes sont grisées sur la carte ;
-  - chaque couche porte un **badge de fraîcheur** (« il y a 4 min · DGMR ») et l'attribution de sa source.
+  - chaque couche porte un **badge de fraîcheur** (« consulté il y a 2 min · DGMR ») et l'attribution de sa source.
 
 ## Jalons
 
