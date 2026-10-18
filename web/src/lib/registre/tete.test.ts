@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { teteCommune, teteFiche, titreFiche } from './tete.js';
 import type { CoucheInscrite } from './types.js';
+import { COUCHES } from './couches.js';
 import { commune } from '#tests/faux-canton.js';
 import type { AncienNom } from '#lib/types.js';
 
@@ -52,6 +53,12 @@ describe('<head> d’une commune', () => {
 			'Pully (VD) sur Vigie Vaud : les permis ; les objets du Grand Conseil qui la nomment.'
 		);
 		expect(teteCommune(LAUSANNE, couches).titre).toBe('Lausanne – Vigie Vaud');
+	});
+
+	it('nomme, avec les couches inscrites, les permis, puis les conseils, puis les restrictions de circulation', () => {
+		const description = teteCommune(PULLY, COUCHES).description;
+		expect(description).toMatch(/^Pully \(VD\) sur Vigie Vaud : les permis de construire à l’enquête, en direct depuis le canton ; /);
+		expect(description).toMatch(/ ; les restrictions de circulation en cours et à venir\.$/);
 	});
 
 	it('nomme les anciennes communes et les anciens noms', () => {

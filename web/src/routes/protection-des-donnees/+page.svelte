@@ -88,8 +88,8 @@
 			d’adresses : votre adresse IP, la zone affichée et le texte d’une recherche d’adresse.
 		</li>
 		<li>
-			<strong>L’État de Vaud</strong> (<code>ogc.vd.ch</code>, Suisse), pour les permis de construire : votre
-			adresse IP et la zone affichée.
+			<strong>L’État de Vaud</strong> (<code>ogc.vd.ch</code>, Suisse), pour les permis de construire et les
+			restrictions de circulation : votre adresse IP et, pour les permis, la zone affichée.
 		</li>
 	</ul>
 	<p>

@@ -73,9 +73,10 @@ différents font deux travaux, même au même endroit (« Morcles Le Revers feux
 _À éviter_ : chantier, intervention
 
 **Badge de fraîcheur** :
-L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »). Pour une
-source qui passe par le cron une fois par jour (les conseils), c'est l'âge du dernier import réussi (« importé il y a
-6 h · Grand Conseil »).
+L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source. Pour une source lue en direct qui ne
+date pas ses données (la CAMAC, la DGMR), c'est l'heure de la dernière consultation (« consulté il y a 2 min ·
+DGMR ») ; pour une source qui passe par le cron une fois par jour (les conseils), l'âge du dernier import réussi
+(« importé il y a 6 h · Grand Conseil »).
 
 **Couverture** :
 Ce qu'une source apporte à chaque commune, selon deux axes : son **mode** (API, scrapé ou non couvert), déclaré
