@@ -11,7 +11,7 @@ const maintenant = () => new Date('2026-10-18T10:00:00Z');
 const ids = (rs: { id: number }[]) => rs.map((r) => r.id);
 
 describe('restrictions en cours et à venir', () => {
-	it('réunit les deux couches, chacune dans l’état de sa couche d’origine', async () => {
+	it('réunit l’en cours (596) et l’à venir (595), chacune dans l’état de son origine', async () => {
 		const dgmr = fauxDgmr({ enCours: [restriction(3), restriction(1)], aVenir: [restriction(2)] });
 		const routes = creerDonneesRoutes({ fetch: dgmr.fetch, maintenant });
 
@@ -109,14 +109,14 @@ describe('restrictions en cours et à venir', () => {
 });
 
 describe('requêtes à la DGMR', () => {
-	it('demande chaque couche une seule fois par visite, pour tous les usages', async () => {
+	it('demande la 596 et la 595 une seule fois par visite, pour tous les usages', async () => {
 		const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
 		const routes = creerDonneesRoutes({ fetch: dgmr.fetch, maintenant });
 
 		await Promise.all([routes.charger(), routes.charger()]);
 		await routes.charger();
 
-		expect(dgmr.requetes.map((q) => [q.couche, q.where]).sort()).toEqual([
+		expect(dgmr.requetes.map((q) => [q.numero, q.where]).sort()).toEqual([
 			[595, '1=1'],
 			[596, '1=1']
 		]);
@@ -143,7 +143,7 @@ describe('requêtes à la DGMR', () => {
 
 		expect(restrictions).toHaveLength(4501);
 		expect(new Set(ids(restrictions)).size).toBe(4501);
-		expect(dgmr.requetes.filter((q) => q.couche === 596)).toHaveLength(3);
+		expect(dgmr.requetes.filter((q) => q.numero === 596)).toHaveLength(3);
 	});
 });
 
@@ -224,7 +224,7 @@ describe('état de la source DGMR', () => {
 			expect(routes.restrictions.map((r) => [r.id, r.etat])).toEqual([[1, 'en_cours']]);
 		});
 
-		it('« Réessayer » lève l’erreur et ne redemande que la couche manquée', async () => {
+		it('« Réessayer » lève l’erreur et ne redemande que l’état manqué', async () => {
 			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
 			dgmr.panne(500, 595);
 			const routes = creerDonneesRoutes({ fetch: dgmr.fetch, maintenant });
@@ -242,11 +242,11 @@ describe('état de la source DGMR', () => {
 				[1, 'en_cours'],
 				[2, 'a_venir']
 			]);
-			expect(dgmr.requetes.map((q) => q.couche)).toEqual([595]);
+			expect(dgmr.requetes.map((q) => q.numero)).toEqual([595]);
 			expect(routes.source.erreur).toBeNull();
 		});
 
-		it('« Réessayer » après une coupure recharge les deux couches', async () => {
+		it('« Réessayer » après une coupure recharge les deux états', async () => {
 			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
 			dgmr.horsLigne(true);
 			vi.stubGlobal('navigator', { onLine: false });
@@ -330,7 +330,7 @@ describe('rattachement aux communes', () => {
 		expect(ids(routes.restrictions)).toEqual([1]);
 	});
 
-	it('rattache aussitôt une couche chargée après les limites', async () => {
+	it('rattache aussitôt un état chargé après les limites', async () => {
 		vi.useFakeTimers();
 		try {
 			const { creerDonneesRoutes } = await import('./donnees.svelte.js');
@@ -391,7 +391,7 @@ describe('une restriction par son OBJECTID', () => {
 		expect(dgmr.requetes).toHaveLength(avant);
 	});
 
-	it('demande une restriction pas encore chargée par son OBJECTID aux deux couches, sans tout charger', async () => {
+	it('demande une restriction pas encore chargée par son OBJECTID à la 596 et à la 595, sans tout charger', async () => {
 		const creer = await neuf();
 		const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2, {}, [[6.71, 46.5], [6.72, 46.5]])] });
 		const routes = creer({ fetch: dgmr.fetch, maintenant });
@@ -400,7 +400,7 @@ describe('une restriction par son OBJECTID', () => {
 
 		expect(r).toMatchObject({ id: 2, etat: 'a_venir' });
 		expect(communes(r)).toEqual(['lutry']);
-		expect(dgmr.requetes.map((q) => [q.couche, q.where]).sort()).toEqual([
+		expect(dgmr.requetes.map((q) => [q.numero, q.where]).sort()).toEqual([
 			[595, 'OBJECTID IN (2)'],
 			[596, 'OBJECTID IN (2)']
 		]);
@@ -426,7 +426,7 @@ describe('une restriction par son OBJECTID', () => {
 		expect(await routes.restriction(5031)).toBeNull();
 	});
 
-	it('rejette quand la DGMR est injoignable, même pour une seule de ses couches', async () => {
+	it('rejette quand la DGMR est injoignable, même pour la seule 595', async () => {
 		const creer = await neuf();
 		const dgmr = fauxDgmr({ enCours: [restriction(1)] });
 		dgmr.horsLigne(true, 595);
@@ -497,7 +497,7 @@ describe('restrictions du fil', () => {
 
 		const rs = await routes.depuis('2026-10-02');
 
-		expect(dgmr.requetes.map((q) => [q.couche, q.where]).sort()).toEqual([
+		expect(dgmr.requetes.map((q) => [q.numero, q.where]).sort()).toEqual([
 			[595, '1=1'],
 			[596, "DATE_DEBUT >= DATE '2026-10-02'"]
 		]);
@@ -507,7 +507,7 @@ describe('restrictions du fil', () => {
 		]);
 	});
 
-	it('se sert de ce que la couche a déjà chargé en entier, sans nouvelle requête', async () => {
+	it('se sert de ce que la carte a déjà chargé en entier, sans nouvelle requête', async () => {
 		const creer = await neuf();
 		const dgmr = fauxDgmr({
 			enCours: [
@@ -536,7 +536,7 @@ describe('restrictions du fil', () => {
 
 		const [, rs] = await Promise.all([routes.charger(), routes.depuis('2026-10-02')]);
 
-		expect(dgmr.requetes.map((q) => [q.couche, q.where]).sort()).toEqual([
+		expect(dgmr.requetes.map((q) => [q.numero, q.where]).sort()).toEqual([
 			[595, '1=1'],
 			[596, '1=1']
 		]);
@@ -553,10 +553,10 @@ describe('restrictions du fil', () => {
 			vi.unstubAllGlobals();
 		});
 
-		it.each([596, 595] as const)('rejette quand la %i ne répond pas, après une seule nouvelle tentative', async (couche) => {
+		it.each([596, 595] as const)('rejette quand la %i ne répond pas, après une seule nouvelle tentative', async (numero) => {
 			const creer = await neuf();
 			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
-			dgmr.panne(503, couche);
+			dgmr.panne(503, numero);
 			const routes = creer({ fetch: dgmr.fetch, maintenant });
 
 			const rs = routes.depuis('2026-10-02');

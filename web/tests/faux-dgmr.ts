@@ -10,8 +10,8 @@ import { carre, LUTRY, PULLY } from './faux-canton.js';
  * avec des noms et des numéros inventés.
  */
 
-/** Les deux couches de la DGMR : 596 les restrictions en cours, 595 celles à venir. */
-export type CoucheDgmr = 596 | 595;
+/** Les numéros des restrictions dans le MapServer de la DGMR : 596 celles en cours, 595 celles à venir. */
+export type NumeroDgmr = 596 | 595;
 
 export type Point = [number, number];
 /** Un tracé : une ligne (`LineString`) ou plusieurs (`MultiLineString`), en WGS84. */
@@ -154,7 +154,7 @@ function filtre(where: string): (r: RestrictionDgmr) => boolean {
 }
 
 export interface RequeteDgmr {
-	couche: CoucheDgmr;
+	numero: NumeroDgmr;
 	where: string;
 	/** Tous les paramètres reçus, pour vérifier par exemple qu'aucune emprise n'est envoyée. */
 	parametres: URLSearchParams;
@@ -164,10 +164,10 @@ export interface FauxDgmr {
 	fetch: typeof fetch;
 	/** Requêtes reçues par la DGMR, dans l'ordre (pas celles des fichiers des communes). */
 	requetes: RequeteDgmr[];
-	/** La couche (les deux par défaut) répond désormais par cette erreur HTTP (`null` : rétablie). */
-	panne(statut: number | null, couche?: CoucheDgmr): void;
-	/** La couche (les deux par défaut) devient injoignable, comme sans réseau (`false` : rétablie). */
-	horsLigne(oui: boolean, couche?: CoucheDgmr): void;
+	/** Le numéro (les deux par défaut) répond désormais par cette erreur HTTP (`null` : rétabli). */
+	panne(statut: number | null, numero?: NumeroDgmr): void;
+	/** Le numéro (les deux par défaut) devient injoignable, comme sans réseau (`false` : rétabli). */
+	horsLigne(oui: boolean, numero?: NumeroDgmr): void;
 }
 
 /**
@@ -181,12 +181,12 @@ export function fauxDgmr(
 	communes: Commune[] = [PULLY, LUTRY]
 ): FauxDgmr {
 	const requetes: RequeteDgmr[] = [];
-	const pannes = new Map<CoucheDgmr, number | null>();
-	const injoignables = new Map<CoucheDgmr, boolean>();
-	const couches: Record<CoucheDgmr, RestrictionDgmr[]> = { 596: enCours, 595: aVenir };
+	const pannes = new Map<NumeroDgmr, number | null>();
+	const injoignables = new Map<NumeroDgmr, boolean>();
+	const numeros: Record<NumeroDgmr, RestrictionDgmr[]> = { 596: enCours, 595: aVenir };
 	const json = (corps: unknown, status = 200) =>
 		new Response(JSON.stringify(corps), { status, headers: { 'Content-Type': 'application/json' } });
-	const pour = (couche: CoucheDgmr | undefined): CoucheDgmr[] => (couche ? [couche] : [596, 595]);
+	const pour = (numero: NumeroDgmr | undefined): NumeroDgmr[] => (numero ? [numero] : [596, 595]);
 
 	const repondre = async (entree: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const url = new URL(entree instanceof Request ? entree.url : String(entree), 'http://localhost');
@@ -195,16 +195,16 @@ export function fauxDgmr(
 			return json(Object.fromEntries(communes.map((c) => [c.bfs, carre(c.bbox)])));
 		const m = url.pathname.match(/\/MapServer\/(596|595)\/query$/);
 		if (url.hostname !== 'www.ogc.vd.ch' || !m) throw new Error(`Adresse non prévue : ${url}`);
-		const couche = Number(m[1]) as CoucheDgmr;
-		if (injoignables.get(couche)) throw new TypeError('Failed to fetch');
-		const statut = pannes.get(couche);
+		const numero = Number(m[1]) as NumeroDgmr;
+		if (injoignables.get(numero)) throw new TypeError('Failed to fetch');
+		const statut = pannes.get(numero);
 		if (statut) return new Response('', { status: statut });
 
 		const p = init?.body ? new URLSearchParams(String(init.body)) : url.searchParams;
 		if (p.get('f') !== 'geojson') throw new Error(`Format non prévu par le faux DGMR : ${p.get('f')}`);
 		const where = p.get('where') ?? '';
-		requetes.push({ couche, where, parametres: p });
-		const choisies = couches[couche].filter(filtre(where));
+		requetes.push({ numero, where, parametres: p });
+		const choisies = numeros[numero].filter(filtre(where));
 		choisies.sort((a, b) => a.properties.OBJECTID - b.properties.OBJECTID);
 		const debut = Number(p.get('resultOffset') ?? 0);
 		const n = Math.min(Number(p.get('resultRecordCount') ?? PAGE), PAGE);
@@ -219,7 +219,7 @@ export function fauxDgmr(
 	return {
 		fetch: repondre as typeof fetch,
 		requetes,
-		panne: (s, couche) => pour(couche).forEach((c) => pannes.set(c, s)),
-		horsLigne: (oui, couche) => pour(couche).forEach((c) => injoignables.set(c, oui))
+		panne: (s, numero) => pour(numero).forEach((c) => pannes.set(c, s)),
+		horsLigne: (oui, numero) => pour(numero).forEach((c) => injoignables.set(c, oui))
 	};
 }

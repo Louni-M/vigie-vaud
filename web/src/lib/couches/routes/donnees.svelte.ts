@@ -1,7 +1,7 @@
 import { ErreurApi } from '#lib/api.js';
 import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
 import { getCommunes, getLimites } from '#lib/socle/communes.js';
-import { creerClientDgmr, type CoucheDgmr, type EntiteDgmr } from './dgmr.js';
+import { creerClientDgmr, type EntiteDgmr } from './dgmr.js';
 import type { EtatRestriction } from './etats.js';
 import { instant } from './horaires.js';
 import { rattacher, type CommuneLimitee, type Passage } from './rattachement.js';
@@ -10,14 +10,12 @@ import { lignesDe, longueur, milieu, type Point } from './trace.js';
 
 /**
  * Module de données de la couche Routes, partagé par ses composants : les restrictions de circulation de la DGMR,
- * en cours (couche 596) et à venir (595), lues en direct depuis le navigateur pour tout le canton, sans emprise.
- * Chaque couche n'est demandée qu'une fois par visite, pour tous les usages. Les restrictions sont ensuite
+ * en cours (596) et à venir (595), lues en direct depuis le navigateur pour tout le canton, sans emprise.
+ * Chaque état n'est demandé qu'une fois par visite, pour tous les usages. Les restrictions sont ensuite
  * rattachées à leurs communes par leur tracé, une fois chargées les limites des communes (voie Préparée).
  */
 
 type Fetch = typeof fetch;
-
-const ETAT: Record<CoucheDgmr, EtatRestriction> = { 596: 'en_cours', 595: 'a_venir' };
 
 /**
  * Une restriction de circulation, ses champs tels que la DGMR les écrit (textes vides ramenés à `null`).
@@ -88,7 +86,7 @@ function versRestriction({ properties: p, geometry }: EntiteDgmr, etat: EtatRest
 	};
 }
 
-/** Les deux couches réunies par `OBJECTID` croissant ; une restriction présente dans les deux compte en cours. */
+/** Les deux états réunis par `OBJECTID` croissant ; une restriction présente dans les deux compte en cours. */
 function reunir(enCours: Restriction[], aVenir: Restriction[]): Restriction[] {
 	const ids = new Set(enCours.map((r) => r.id));
 	return [...enCours, ...aVenir.filter((r) => !ids.has(r.id))].sort((a, b) => a.id - b.id);
@@ -100,24 +98,24 @@ export interface DonneesRoutes {
 	 * avec leurs communes dès que les limites sont là ; celles qui ne parcourent alors aucune commune sont écartées.
 	 */
 	readonly restrictions: Restriction[];
-	/** La couche de cet état (596 en cours, 595 à venir) a été lue : sans elle, rien n'est dit de ses restrictions. */
+	/** Les restrictions de cet état (596 en cours, 595 à venir) ont été lues : sans elles, rien n'en est dit. */
 	chargee(etat: EtatRestriction): boolean;
 	/** Les restrictions ont leurs communes : les limites des communes sont chargées. */
 	readonly rattache: boolean;
 	/**
-	 * Charge les deux couches, chacune une seule fois par visite. Un échec d'une couche est retenté une fois au bout
-	 * d'environ 5 s ; s'il persiste, la source passe en erreur et la promesse rejette, mais ce que l'autre couche a
-	 * donné reste dans `restrictions`. Un nouvel appel ne redemande que la couche manquée.
+	 * Charge les deux états, chacun une seule fois par visite. Un échec d'un état est retenté une fois au bout
+	 * d'environ 5 s ; s'il persiste, la source passe en erreur et la promesse rejette, mais ce que l'autre état a
+	 * donné reste dans `restrictions`. Un nouvel appel ne redemande que l'état manqué.
 	 */
 	charger(): Promise<Restriction[]>;
 	/**
-	 * Charge les deux couches puis les limites des communes, et donne les restrictions rattachées. Rejette si la
+	 * Charge les deux états puis les limites des communes, et donne les restrictions rattachées. Rejette si la
 	 * DGMR a échoué, ou si les limites n'ont pas pu être chargées (elles sont alors redemandées au prochain appel).
 	 */
 	rattachees(): Promise<Restriction[]>;
 	/**
 	 * Une restriction et ses communes, par son `OBJECTID` : celle déjà chargée sans nouvelle requête à la DGMR,
-	 * sinon demandée aux deux couches par `OBJECTID IN (…)`, sans tout charger. `null` si la DGMR ne la publie ni
+	 * sinon demandée à la 596 et à la 595 par `OBJECTID IN (…)`, sans tout charger. `null` si la DGMR ne la publie ni
 	 * en cours ni à venir ; rejette si la DGMR n'a pas pu être interrogée (la source passe alors en erreur) ou les
 	 * limites des communes chargées.
 	 */
@@ -125,8 +123,8 @@ export interface DonneesRoutes {
 	/**
 	 * Pour le fil : les restrictions rattachées qui commencent le jour `jour` (AAAA-MM-JJ) ou après, à venir
 	 * comprises, par `OBJECTID` croissant. La 596 n'est demandée que pour `DATE_DEBUT >= jour`, la 595 en entier ;
-	 * une couche déjà chargée en entier sert sans nouvelle requête. Rejette si l'une des deux couches échoue (la
-	 * source passe alors en erreur), ou si les limites des communes n'ont pas pu être chargées.
+	 * un état déjà chargé en entier sert sans nouvelle requête. Rejette si l'une des deux échoue (la source passe
+	 * alors en erreur), ou si les limites des communes n'ont pas pu être chargées.
 	 */
 	depuis(jour: string): Promise<Restriction[]>;
 	/**
@@ -179,34 +177,32 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		);
 	}
 
-	/* ---- Une couche : une requête par visite, retentée une fois ; un échec est oublié. ---- */
+	/* ---- Un état : une requête par visite, retentée une fois ; un échec est oublié. ---- */
 
-	const lues: Record<CoucheDgmr, Restriction[]> = { 596: [], 595: [] };
+	const lues: Record<EtatRestriction, Restriction[]> = { en_cours: [], a_venir: [] };
 	let chargees = $state.raw<Record<EtatRestriction, boolean>>({ en_cours: false, a_venir: false });
-	/** Les deux couches réunies et rattachées, recalculées à chaque couche lue et à l'arrivée des limites. */
+	/** Les deux états réunis et rattachés, recalculés à chaque état lu et à l'arrivée des limites. */
 	let restrictions = $state.raw<Restriction[]>([]);
-	const chargements = new Map<CoucheDgmr, Promise<void>>();
+	const chargements = new Map<EtatRestriction, Promise<void>>();
 
 	/** Une demande à la DGMR, retentée une fois au bout de quelques secondes. */
-	const avecRetente = (couche: CoucheDgmr, where: string) =>
-		dgmr.chercher(couche, where).catch(async () => {
+	const avecRetente = (etat: EtatRestriction, where: string) =>
+		dgmr.chercher(etat, where).catch(async () => {
 			await new Promise((ok) => setTimeout(ok, RETENTE_MS));
-			return dgmr.chercher(couche, where);
+			return dgmr.chercher(etat, where);
 		});
 
-	function chargerCouche(couche: CoucheDgmr): Promise<void> {
-		let p = chargements.get(couche);
+	function chargerEtat(etat: EtatRestriction): Promise<void> {
+		let p = chargements.get(etat);
 		if (p) return p;
-		p = avecRetente(couche, '1=1')
+		p = avecRetente(etat, '1=1')
 			.then((es) => {
-				const etat = ETAT[couche];
-				const rs = es.flatMap((e) => versRestriction(e, etat) ?? []);
-				lues[couche] = rs;
+				lues[etat] = es.flatMap((e) => versRestriction(e, etat) ?? []);
 				chargees = { ...chargees, [etat]: true };
 				publier();
 			});
-		chargements.set(couche, p);
-		p.catch(() => chargements.delete(couche));
+		chargements.set(etat, p);
+		p.catch(() => chargements.delete(etat));
 		return p;
 	}
 
@@ -224,7 +220,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 
 	/** Une fois rattachées, une restriction hors de toute commune (hors du canton) est écartée : rien ne l'ouvre. */
 	function publier() {
-		const rs = reunir(lues[596], lues[595]);
+		const rs = reunir(lues.en_cours, lues.a_venir);
 		const cs = communes;
 		restrictions = cs
 			? rs.flatMap((r) => {
@@ -248,14 +244,14 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		return p;
 	}
 
-	/* ---- Les deux couches : une panne de l'une, même de la seule 595, met la source en erreur. ---- */
+	/* ---- Les deux états : une panne de l'un, même de la seule 595, met la source en erreur. ---- */
 
 	let chargement: Promise<Restriction[]> | null = null;
 
 	function charger(): Promise<Restriction[]> {
 		if (chargement) return chargement;
 		const p = suivie(
-			Promise.allSettled([chargerCouche(596), chargerCouche(595)]).then((resultats) => {
+			Promise.allSettled([chargerEtat('en_cours'), chargerEtat('a_venir')]).then((resultats) => {
 				// Après le premier affichage des restrictions : les limites ne retardent ni la carte ni le fil.
 				chargerLimites().catch(() => {});
 				const echec = resultats.find((r) => r.status === 'rejected');
@@ -274,24 +270,24 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		return restrictions;
 	}
 
-	/* ---- Une restriction : celle déjà chargée, sinon demandée par son OBJECTID aux deux couches. ---- */
+	/* ---- Une restriction : celle déjà chargée, sinon demandée par son OBJECTID à la 596 et à la 595. ---- */
 
 	/** Restrictions trouvées par leur `OBJECTID` hors du chargement complet (lien partagé), gardées pour la visite. */
 	const parId = new Map<number, Restriction | null>();
 
 	async function demander(id: number): Promise<Restriction | null> {
 		const where = `OBJECTID IN (${id})`;
-		const [enCours, aVenir] = await Promise.all([dgmr.chercher(596, where), dgmr.chercher(595, where)]);
+		const [enCours, aVenir] = await Promise.all([dgmr.chercher('en_cours', where), dgmr.chercher('a_venir', where)]);
 		const [r] = reunir(
-			enCours.flatMap((e) => versRestriction(e, ETAT[596]) ?? []),
-			aVenir.flatMap((e) => versRestriction(e, ETAT[595]) ?? [])
+			enCours.flatMap((e) => versRestriction(e, 'en_cours') ?? []),
+			aVenir.flatMap((e) => versRestriction(e, 'a_venir') ?? [])
 		);
 		return r ?? null;
 	}
 
 	async function restriction(id: number): Promise<Restriction | null> {
 		// Une restriction hors de toute commune, écartée de `restrictions`, n'est pas redemandée pour autant.
-		const chargee = lues[596].find((r) => r.id === id) ?? lues[595].find((r) => r.id === id);
+		const chargee = lues.en_cours.find((r) => r.id === id) ?? lues.a_venir.find((r) => r.id === id);
 		const r = chargee ?? (parId.has(id) ? parId.get(id)! : await suivie(demander(id)));
 		if (!chargee) parId.set(id, r);
 		if (!r) return null;
@@ -307,11 +303,11 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 
 	function enCoursDepuis(jour: string): Promise<Restriction[]> {
 		// La carte l'a déjà demandée en entier (ou est en train de le faire) : le fil s'en sert.
-		if (chargements.has(596)) return chargerCouche(596).then(() => lues[596]);
+		if (chargements.has('en_cours')) return chargerEtat('en_cours').then(() => lues.en_cours);
 		let p = reduites.get(jour);
 		if (p) return p;
-		p = avecRetente(596, `DATE_DEBUT >= DATE '${jour}'`).then((es) =>
-			es.flatMap((e) => versRestriction(e, ETAT[596]) ?? [])
+		p = avecRetente('en_cours', `DATE_DEBUT >= DATE '${jour}'`).then((es) =>
+			es.flatMap((e) => versRestriction(e, 'en_cours') ?? [])
 		);
 		reduites.set(jour, p);
 		p.catch(() => reduites.delete(jour));
@@ -319,12 +315,12 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	}
 
 	async function depuis(jour: string): Promise<Restriction[]> {
-		const [enCours] = await suivie(Promise.all([enCoursDepuis(jour), chargerCouche(595)]));
+		const [enCours] = await suivie(Promise.all([enCoursDepuis(jour), chargerEtat('a_venir')]));
 		// Comme pour la carte : les limites ne retardent pas la lecture de la DGMR.
 		await chargerLimites();
 		const cs = communes!;
 		// La date telle qu'écrite par la DGMR, sans conversion de fuseau.
-		return reunir(enCours, lues[595])
+		return reunir(enCours, lues.a_venir)
 			.filter((r) => instant(r.dateDebut).jour >= jour)
 			.map((r) => ({ ...r, communes: communesDe(r, cs) }));
 	}
@@ -348,7 +344,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 			get erreur() {
 				return erreur;
 			},
-			/** Lève l'erreur, ce qui fait recharger les composants qui l'affichaient, et redemande la couche manquée. */
+			/** Lève l'erreur, ce qui fait recharger les composants qui l'affichaient, et redemande l'état manqué. */
 			recharger() {
 				erreur = null;
 				charger().catch(() => {});

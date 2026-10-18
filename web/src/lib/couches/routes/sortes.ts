@@ -35,20 +35,20 @@ export const sorteDe = (restriction: string | null): Sorte =>
 	restriction && Object.hasOwn(PUBLIEES, restriction) ? PUBLIEES[restriction] : 'autre';
 
 /**
- * Priorité au clic sur des tracés superposés, du plus contraignant au moins contraignant : ce qui bloque d'abord,
- * la déviation en dernier (elle reste à un clic par « Mêmes travaux »).
+ * Priorité au clic sur des restrictions superposées, de la plus contraignante à la moins contraignante : ce qui
+ * bloque d'abord, la déviation en dernier (elle reste à un clic par « Mêmes travaux »).
  */
 export const PRIORITE_CLIC: readonly Sorte[] = ['fermeture', 'feux', 'particuliere', 'autre', 'deviation'];
 
 /**
- * Le tracé à ouvrir parmi ceux sous le clic : le plus contraignant ; à sorte égale l'en cours, dessiné au-dessus de
- * l'à venir, puis le plus petit `OBJECTID`, pour que le même clic ouvre toujours la même restriction.
+ * La restriction à ouvrir parmi celles sous le clic : la plus contraignante ; à sorte égale l'en cours, dessinée
+ * au-dessus de l'à venir, puis le plus petit `OBJECTID`, pour que le même clic ouvre toujours la même restriction.
  */
 export function plusContraignante<T extends { id: number; sorte: Sorte; etat: EtatRestriction }>(
-	traces: readonly T[]
+	restrictions: readonly T[]
 ): T | null {
-	const rang = (t: T) => PRIORITE_CLIC.indexOf(t.sorte);
+	const rang = (r: T) => PRIORITE_CLIC.indexOf(r.sorte);
 	const ordre = (a: T, b: T) =>
 		rang(a) - rang(b) || Number(a.etat === 'a_venir') - Number(b.etat === 'a_venir') || a.id - b.id;
-	return [...traces].sort(ordre)[0] ?? null;
+	return [...restrictions].sort(ordre)[0] ?? null;
 }
