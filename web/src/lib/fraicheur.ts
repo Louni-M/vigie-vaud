@@ -47,9 +47,10 @@ const PAS_ENCORE: Record<SansMillesime, string> = {
 };
 
 /**
- * Libellé du badge d'une source, suivi de son nom court : « consulté il y a 2 min · CAMAC » (`requete`),
- * « il y a 4 min · DGMR » (`donnee`), « édition 2025 · UCV » (`millesime`), « importé il y a 6 h · Grand
- * Conseil » (`import`, dernier import réussi du conseil), ou la cause d'un échec.
+ * Libellé du badge d'une source, suivi de son nom court : « consulté il y a 2 min · CAMAC » ou « consulté il y a
+ * 2 min · DGMR » (`requete`), « il y a 4 min · … » (`donnee`, l'âge de la donnée elle-même, qu'aucune source ne
+ * donne encore), « édition 2025 · UCV » (`millesime`), « importé il y a 6 h · Grand Conseil » (`import`, dernier
+ * import réussi du conseil), ou la cause d'un échec.
  */
 export function libelleBadge(
 	source: Pick<Source, 'fraicheur' | 'nom_court'>,

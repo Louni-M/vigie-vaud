@@ -164,6 +164,13 @@ class Source(Modele):
         description="Absente, la source n'a pas de Couverture : elle porte sur le canton (Grand Conseil) ou ses "
         "éléments n'appartiennent à aucune commune.",
     )
+    limites: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Ce que la source ne publie pas toujours dans les communes qu'elle couvre : une phrase qui "
+        "complète « La DGMR publie … ». Reprise par la page Couverture et par l'onglet de la couche ; "
+        "ne change ni le mode ni l'état.",
+    )
     sonde: Sonde | None = Field(default=None, description="Sans sonde, la source n'est pas surveillée.")
     conseil: Conseil | None = Field(default=None, description="Le conseil que donne la source, importé par le cron.")
 
