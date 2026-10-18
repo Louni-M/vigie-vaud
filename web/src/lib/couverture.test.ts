@@ -252,6 +252,7 @@ describe('grisage de la carte', () => {
 		expect(grisees).not.toContain(5938);
 		expect(grisees).toContain(5624); // Bussigny
 		expect(c.grisees('permis')).toEqual([]);
+		expect(c.grisees('routes')).toEqual([]);
 		expect(c.grisees('hotels-de-ville')).toEqual([]);
 	});
 });
@@ -298,8 +299,8 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 	});
 	const cellule = (couche: string, bfs: number, charge = true) => libelleCellule(c.cellule(couche, bfs), charge);
 
-	it('a une colonne par couche qui a une Couverture, dans l’ordre du registre : Permis et Conseils', () => {
-		expect(c.colonnes.map((x) => x.nom)).toEqual(['Permis', 'Conseils']);
+	it('a une colonne par couche qui a une Couverture, dans l’ordre du registre : Permis, Conseils et Routes', () => {
+		expect(c.colonnes.map((x) => x.nom)).toEqual(['Permis', 'Conseils', 'Routes']);
 	});
 
 	it('donne pour Conseils la paire du conseil communal à Lausanne et à Yverdon, « Non couvert » à Bussigny', () => {
@@ -311,6 +312,11 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 	it('donne pour Permis la paire de la CAMAC partout', () => {
 		expect(cellule('permis', 5586)).toEqual(['API · disponible']);
 		expect(cellule('permis', 5624)).toEqual(['API · disponible']);
+	});
+
+	it('donne pour Routes la paire de la DGMR partout', () => {
+		expect(cellule('routes', 5586)).toEqual(['API · disponible']);
+		expect(cellule('routes', 5624)).toEqual(['API · disponible']);
 	});
 
 	it("liste chacune des sources qui couvrent la commune, et ne dit l'état qu'une fois chargé", () => {
@@ -331,13 +337,21 @@ describe('encarts de la page Couverture : un par source', () => {
 	const c = deduireCouverture({ sources: SOURCES, etat: null, couches: COUCHES, communes: communesJ0, maintenant: MAINTENANT });
 	const encart = (id: string) => c.sources.find((s) => s.source.id === id)!;
 
-	it('a un encart par source des couches Permis et Conseils, Grand Conseil compris', () => {
+	it('a un encart par source des couches Permis, Conseils et Routes, Grand Conseil compris', () => {
 		expect(c.sources.map((s) => s.source.id)).toEqual([
 			'camac-permis',
 			'openparldata-vd',
 			'openparldata-5586',
-			'openparldata-5938'
+			'openparldata-5938',
+			'dgmr-restrictions'
 		]);
+	});
+
+	it('donne à l’encart de la DGMR tout le canton et sa ligne Limites', () => {
+		expect(libelleCommunes(encart('dgmr-restrictions'), 300)).toBe('300 communes sur 300');
+		expect(libelleLimites(encart('dgmr-restrictions').source)).toBe(
+			'Publie surtout les routes cantonales ; les routes communales n’y figurent pas toujours.'
+		);
 	});
 
 	it('dit « Porte sur le canton » pour une source sans Couverture, et le nombre de communes sinon', () => {
