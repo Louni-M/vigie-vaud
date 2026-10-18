@@ -421,3 +421,109 @@ describe('une restriction par son OBJECTID', () => {
 	});
 });
 
+describe('restrictions du fil', () => {
+	// Les limites sont gardées par le module des communes pour toute la visite : un module neuf à chaque cas.
+	beforeEach(() => vi.resetModules());
+	const neuf = async () => (await import('./donnees.svelte.js')).creerDonneesRoutes;
+	const resume = (rs: { id: number; etat: string; communes: { commune: { slug: string } }[] | null }[]) =>
+		rs.map((r) => [r.id, r.etat, r.communes?.map((p) => p.commune.slug)]);
+
+	it('ne demande à la 596 que ce qui a commencé depuis le premier jour du fil, et toute la 595', async () => {
+		const creer = await neuf();
+		const dgmr = fauxDgmr({
+			enCours: [
+				restriction(1, { DATE_DEBUT: heureLocale('2026-10-01T23:30') }),
+				restriction(2, { DATE_DEBUT: heureLocale('2026-10-02') })
+			],
+			aVenir: [restriction(3, { DATE_DEBUT: heureLocale('2026-10-20') })]
+		});
+		const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+		const rs = await routes.depuis('2026-10-02');
+
+		expect(dgmr.requetes.map((q) => [q.couche, q.where]).sort()).toEqual([
+			[595, '1=1'],
+			[596, "DATE_DEBUT >= DATE '2026-10-02'"]
+		]);
+		expect(resume(rs)).toEqual([
+			[2, 'en_cours', ['pully']],
+			[3, 'a_venir', ['pully']]
+		]);
+	});
+
+	it('se sert de ce que la couche a déjà chargé en entier, sans nouvelle requête', async () => {
+		const creer = await neuf();
+		const dgmr = fauxDgmr({
+			enCours: [
+				restriction(1, { DATE_DEBUT: heureLocale('2026-10-01T23:30') }),
+				restriction(2, { DATE_DEBUT: heureLocale('2026-10-02') })
+			],
+			aVenir: [restriction(3, { DATE_DEBUT: heureLocale('2026-10-20') })]
+		});
+		const routes = creer({ fetch: dgmr.fetch, maintenant });
+		await routes.charger();
+		const avant = dgmr.requetes.length;
+
+		const rs = await routes.depuis('2026-10-02');
+
+		expect(dgmr.requetes).toHaveLength(avant);
+		expect(resume(rs)).toEqual([
+			[2, 'en_cours', ['pully']],
+			[3, 'a_venir', ['pully']]
+		]);
+	});
+
+	it('attend le chargement entier que la carte a lancé plutôt que de demander la 596 une seconde fois', async () => {
+		const creer = await neuf();
+		const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(3)] });
+		const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+		const [, rs] = await Promise.all([routes.charger(), routes.depuis('2026-10-02')]);
+
+		expect(dgmr.requetes.map((q) => [q.couche, q.where]).sort()).toEqual([
+			[595, '1=1'],
+			[596, '1=1']
+		]);
+		expect(rs.map((r) => r.id)).toEqual([1, 3]);
+	});
+
+	describe('échecs', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.stubGlobal('navigator', { onLine: true });
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.unstubAllGlobals();
+		});
+
+		it.each([596, 595] as const)('rejette quand la %i ne répond pas, après une seule nouvelle tentative', async (couche) => {
+			const creer = await neuf();
+			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
+			dgmr.panne(503, couche);
+			const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+			const rs = routes.depuis('2026-10-02');
+			const attendu = expect(rs).rejects.toThrow();
+			await vi.advanceTimersByTimeAsync(6_000);
+
+			await attendu;
+		});
+
+		it('redemande ce qui a échoué au nouvel essai du fil', async () => {
+			const creer = await neuf();
+			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
+			dgmr.horsLigne(true, 596);
+			const routes = creer({ fetch: dgmr.fetch, maintenant });
+			const echec = expect(routes.depuis('2026-10-02')).rejects.toThrow();
+			await vi.advanceTimersByTimeAsync(6_000);
+			await echec;
+
+			dgmr.horsLigne(false, 596);
+			const rs = await routes.depuis('2026-10-02');
+
+			expect(rs.map((r) => r.id)).toEqual([1, 2]);
+		});
+	});
+});
+
