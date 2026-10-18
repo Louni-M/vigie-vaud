@@ -4,7 +4,7 @@ import { source } from '#lib/sources.js';
 import type { Restriction } from './donnees.svelte.js';
 import { echeance, ligneHoraires, periode } from './horaires.js';
 import type { Passage } from './rattachement.js';
-import { SORTES } from './sortes.js';
+import { pastille, type Pastille } from './sortes.js';
 
 /**
  * Ce que montrent l'onglet Routes de la fiche commune et la carte d'une restriction (partagée par l'onglet, la
@@ -47,13 +47,8 @@ export function communesTexte(passages: readonly Passage[], max = 2): string {
 	return autres > 0 ? `${noms} et ${autres} ${autres > 1 ? 'autres' : 'autre'}` : noms;
 }
 
-/** Ce que montre la carte d'une restriction. */
-export interface CarteRestriction {
-	/** La sorte telle que publiée (« Fermeture », ou une valeur inconnue comme « Manifestation »). */
-	sorte: string;
-	couleur: string;
-	/** Une déviation : son trait est en tirets, comme sur la carte. */
-	tirets: boolean;
+/** Ce que montre la carte d'une restriction, après sa pastille. */
+export interface CarteRestriction extends Pastille {
 	aVenir: boolean;
 	/** Les communes, de la plus grande longueur parcourue à la plus petite ; `null` avant le rattachement. */
 	communes: string | null;
@@ -75,9 +70,7 @@ export interface CarteRestriction {
 export function carteRestriction(r: Restriction, { aujourdhui, commune }: { aujourdhui: string; commune?: string }): CarteRestriction {
 	const ici = commune && r.communes && r.communes.length > 1 ? r.communes.find((p) => p.commune.slug === commune) : undefined;
 	return {
-		sorte: r.libelleSorte,
-		couleur: SORTES[r.sorte].couleur,
-		tirets: r.sorte === 'deviation',
+		...pastille(r),
 		aVenir: r.etat === 'a_venir',
 		communes: r.communes ? communesTexte(r.communes) : null,
 		source: source('dgmr-restrictions').nom_court,

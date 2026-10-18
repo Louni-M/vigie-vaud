@@ -8,21 +8,19 @@
 	 */
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import type { Contexte } from '#lib/registre/types.js';
-	import { routes, type EtatRestriction } from './donnees.svelte.js';
+	import { routes } from './donnees.svelte.js';
+	import { ETATS, type EtatRestriction } from './etats.js';
 	import { ouvrirRestriction, restrictionOuverte } from './index.js';
 	import { puces } from './puces.svelte.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
-	import { SORTES } from './sortes.js';
+	import { enTirets, SORTES } from './sortes.js';
 	import { sortesDesPuces, visibles as restrictionsVisibles } from './volet.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
 
 	/** Restrictions listées au plus : au-delà, on invite à zoomer. */
 	const LISTE_MAX = 150;
-	const ETATS: [EtatRestriction, string][] = [
-		['en_cours', 'En cours'],
-		['a_venir', 'À venir']
-	];
+	const etats = Object.keys(ETATS) as EtatRestriction[];
 
 	const f = $derived(puces.filtres);
 	const sortes = $derived(sortesDesPuces(routes.restrictions));
@@ -32,7 +30,6 @@
 	/** Les états demandés par les puces : chargés, en cours de chargement, ou manqués (la source est en erreur). */
 	const charges = $derived(f.etats.filter((e) => routes.chargee(e)));
 	const enAttente = $derived(f.etats.filter((e) => !routes.chargee(e)));
-	const nomEtat = (e: EtatRestriction) => (e === 'en_cours' ? 'en cours' : 'à venir');
 
 	// La carte charge déjà les restrictions ; le volet s'en assure (la promesse est partagée). Un échec est porté par
 	// l'état de la source, que « Réessayer » recharge.
@@ -50,7 +47,7 @@
 				type="button"
 				class="puce"
 				class:off={!f.sortes.includes(s)}
-				class:tirets={s === 'deviation'}
+				class:tirets={enTirets(s)}
 				aria-pressed={f.sortes.includes(s)}
 				style:--c={SORTES[s].couleur}
 				onclick={() => puces.basculerSorte(s)}
@@ -60,7 +57,7 @@
 		{/each}
 	</div>
 	<div class="puces" role="group" aria-label="Restrictions affichées : en cours, à venir">
-		{#each ETATS as [e, nom] (e)}
+		{#each etats as e (e)}
 			<button
 				type="button"
 				class="puce etat"
@@ -69,7 +66,7 @@
 				aria-pressed={f.etats.includes(e)}
 				onclick={() => puces.basculerEtat(e)}
 			>
-				<span></span>{nom}
+				<span></span>{ETATS[e].nom}
 			</button>
 		{/each}
 	</div>
@@ -88,9 +85,9 @@
 				<strong>{visibles.length}</strong> restriction{visibles.length > 1 ? 's' : ''} de circulation dans la zone affichée
 				{#each enAttente as e (e)}
 					{#if routes.source.erreur}
-						<span class="erreur"> · les restrictions {nomEtat(e)} n’ont pas pu être chargées</span>
+						<span class="erreur"> · les restrictions {ETATS[e].minuscules} n’ont pas pu être chargées</span>
 					{:else}
-						<span class="muted"> · chargement des restrictions {nomEtat(e)}…</span>
+						<span class="muted"> · chargement des restrictions {ETATS[e].minuscules}…</span>
 					{/if}
 				{/each}
 			{/if}

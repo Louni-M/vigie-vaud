@@ -4,6 +4,9 @@ import { SORTES } from './sortes.js';
 /** Ce que le fil d'Ariane et le titre disent d'une restriction ouverte : jamais son `OBJECTID`, que l'on ne voit pas. */
 const RESTRICTION = 'Restriction de circulation';
 
+/** L'`OBJECTID` que porte un élément `?r=`, ou `null` s'il n'en est pas un. */
+const idRestriction = (element: string) => (/^\d+$/.test(element) ? Number(element) : null);
+
 /** Pastille du rail, reprise par la puce du fil. */
 const ICONE = { signe: 'R', couleur: SORTES.fermeture.couleur };
 
@@ -25,9 +28,10 @@ export const coucheRoutes: Couche<undefined> = {
 	// Le module de données n'est importé qu'à la première ouverture d'une restriction. Elle s'ouvre dans la commune
 	// où elle est la plus longue, sauf si la fiche du chemin est une de ses communes.
 	async localiser(element) {
-		if (!/^\d+$/.test(element)) return null;
+		const id = idRestriction(element);
+		if (id === null) return null;
 		const { routes } = await import('./donnees.svelte.js');
-		const r = await routes.restriction(Number(element));
+		const r = await routes.restriction(id);
 		return r && { fiches: (r.communes ?? []).map((p) => ({ commune: p.commune.slug })), position: r.milieu };
 	},
 	// Sans numéro : il n'est jamais affiché. Levée, retrait ou renumérotation ne se distinguent pas.
@@ -79,5 +83,4 @@ export function ouvrirRestriction(ctx: Pick<Contexte, 'ouvrir'>, r: { id: number
 }
 
 /** `OBJECTID` de la restriction ouverte, ou `null` si ce qui est ouvert n'en est pas une. */
-export const restrictionOuverte = (o: Ouvert | null) =>
-	o?.couche === coucheRoutes.id && /^\d+$/.test(o.element) ? Number(o.element) : null;
+export const restrictionOuverte = (o: Ouvert | null) => (o?.couche === coucheRoutes.id ? idRestriction(o.element) : null);

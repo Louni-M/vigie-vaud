@@ -1,6 +1,7 @@
 import type { Zone } from '#lib/types.js';
 import { ordreListe } from './cartes.js';
-import type { EtatRestriction, Restriction } from './donnees.svelte.js';
+import type { Restriction } from './donnees.svelte.js';
+import { ETATS, type EtatRestriction } from './etats.js';
 import { SORTES, type Sorte } from './sortes.js';
 import type { Point } from './trace.js';
 
@@ -18,11 +19,11 @@ export interface Filtres {
 /** Toutes les puces allumées. */
 export const FILTRES_INITIAUX: Filtres = {
 	sortes: Object.keys(SORTES) as Sorte[],
-	etats: ['en_cours', 'a_venir']
+	etats: Object.keys(ETATS) as EtatRestriction[]
 };
 
 /**
- * Les puces des sortes, qui servent aussi de légende, dans l'ordre de la légende. « Autre » (une sorte que la DGMR
+ * Les puces des sortes, qui servent aussi de légende, dans l'ordre de la légende. « Autres » (une sorte que la DGMR
  * prévoit sans la publier à ce jour) n'apparaît que si une restriction chargée en est.
  */
 export function sortesDesPuces(restrictions: readonly Restriction[]): Sorte[] {

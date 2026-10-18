@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fauxDgmr, heureLocale, restriction, type RestrictionDgmr } from '#tests/faux-dgmr.js';
 import { creerDonneesRoutes, type Restriction } from './donnees.svelte.js';
+import { SORTES } from './sortes.js';
 import { FILTRES_INITIAUX, sortesDesPuces, visibles, type Filtres } from './volet.js';
 
 // Le module de données refuse d'interroger la DGMR ailleurs que dans un navigateur.
@@ -8,11 +9,10 @@ vi.mock('$app/env', () => ({ browser: true }));
 
 const maintenant = () => new Date('2026-10-18T10:00:00Z');
 
-/** Les restrictions telles que les lit le module de données. */
+/** Les restrictions telles que les lit le module de données, rattachées à leurs communes. */
 async function lues(dgmr: { enCours?: RestrictionDgmr[]; aVenir?: RestrictionDgmr[] }): Promise<Restriction[]> {
 	const donnees = creerDonneesRoutes({ fetch: fauxDgmr(dgmr).fetch, maintenant });
-	await donnees.charger();
-	return donnees.restrictions;
+	return donnees.rattachees();
 }
 
 /** Zone visible : Pully et Lutry (le tracé par défaut traverse Pully). */
@@ -35,7 +35,7 @@ describe('visibles', () => {
 			['toutes les sortes, en cours et à venir', {}, [1, 2, 3, 4, 5]],
 			['les fermetures seulement', { sortes: ['fermeture'] }, [1, 5]],
 			['les déviations et les feux', { sortes: ['deviation', 'feux'] }, [2, 3]],
-			['« Autre » pour une sorte inconnue', { sortes: ['autre'] }, [4]],
+			['« Autres » pour une sorte inconnue', { sortes: ['autre'] }, [4]],
 			['aucune sorte', { sortes: [] }, []],
 			['l’en cours seulement', { etats: ['en_cours'] }, [1, 2, 3, 4]],
 			['l’à venir seulement', { etats: ['a_venir'] }, [5]],
@@ -58,7 +58,8 @@ describe('visibles', () => {
 				true
 			],
 			['un tracé qui passe au coin de la zone, sans y entrer', [[6.74, 46.54], [6.77, 46.51]], false],
-			['un tracé qui entre dans la zone par un coin', [[6.74, 46.53], [6.76, 46.51]], true],
+			// Quelque 270 m dans le coin de Lutry : assez pour l'y rattacher, sans que son milieu ni ses sommets soient dans la zone.
+			['un tracé qui entre dans la zone par un coin', [[6.7, 46.568], [6.755, 46.513]], true],
 			['une MultiLineString dont un seul morceau est dans la zone', [[[6.9, 46.6], [6.95, 46.6]], [[6.7, 46.5], [6.71, 46.5]]], true],
 			['une MultiLineString dont aucun morceau n’est dans la zone', [[[6.9, 46.6], [6.95, 46.6]], [[6.6, 46.4], [6.6, 46.45]]], false]
 		])('%s', async (_, trace, dedans) => {
@@ -93,15 +94,22 @@ describe('visibles', () => {
 });
 
 describe('puces des sortes', () => {
-	it('suivent l’ordre de la légende, sans « Autre » tant qu’aucune restriction n’en est', async () => {
+	it('suivent l’ordre de la légende, sans « Autres » tant qu’aucune restriction n’en est', async () => {
 		const rs = await lues({ enCours: [restriction(1, { RESTRICTION: 'Feux' })] });
 		expect(sortesDesPuces(rs)).toEqual(['fermeture', 'deviation', 'feux', 'particuliere']);
 		expect(sortesDesPuces([])).toEqual(['fermeture', 'deviation', 'feux', 'particuliere']);
 	});
 
-	it('montrent « Autre » dès qu’une restriction d’une sorte inconnue est chargée, en cours ou à venir', async () => {
+	it('montrent « Autres » dès qu’une restriction d’une sorte inconnue est chargée, en cours ou à venir', async () => {
 		const autre = restriction(2, { RESTRICTION: 'Manifestation', DATE_DEBUT: heureLocale('2026-10-25') });
 		const rs = await lues({ enCours: [restriction(1)], aVenir: [autre] });
 		expect(sortesDesPuces(rs)).toEqual(['fermeture', 'deviation', 'feux', 'particuliere', 'autre']);
+		expect(sortesDesPuces(rs).map((s) => SORTES[s].nom)).toEqual([
+			'Fermeture',
+			'Déviation',
+			'Feux',
+			'Restriction particulière',
+			'Autres'
+		]);
 	});
 });

@@ -207,7 +207,7 @@ describe('Routes dans le fil cantonal', () => {
 		expect(v.sansCommune).toEqual([]);
 	});
 
-	it('rejette quand une des couches de la DGMR est en panne', async () => {
+	it('rejette quand la 596 ou la 595 de la DGMR est en panne', async () => {
 		vi.useFakeTimers({ toFake: ['setTimeout'] });
 		try {
 			const dgmr = fauxDgmr({ enCours: [restriction(1)] });

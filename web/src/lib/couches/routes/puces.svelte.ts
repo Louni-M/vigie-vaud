@@ -1,4 +1,4 @@
-import type { EtatRestriction } from './donnees.svelte.js';
+import type { EtatRestriction } from './etats.js';
 import type { Sorte } from './sortes.js';
 import { FILTRES_INITIAUX, type Filtres } from './volet.js';
 
