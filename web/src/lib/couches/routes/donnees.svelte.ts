@@ -120,17 +120,21 @@ export interface DonneesRoutes {
 	/**
 	 * Une restriction et ses communes, par son `OBJECTID` : celle déjà chargée sans nouvelle requête à la DGMR,
 	 * sinon demandée aux deux couches par `OBJECTID IN (…)`, sans tout charger. `null` si la DGMR ne la publie ni
-	 * en cours ni à venir ; rejette si la DGMR n'a pas pu être interrogée ou les limites des communes chargées.
+	 * en cours ni à venir ; rejette si la DGMR n'a pas pu être interrogée (la source passe alors en erreur) ou les
+	 * limites des communes chargées.
 	 */
 	restriction(id: number): Promise<Restriction | null>;
 	/**
 	 * Pour le fil : les restrictions rattachées qui commencent le jour `jour` (AAAA-MM-JJ) ou après, à venir
 	 * comprises, par `OBJECTID` croissant. La 596 n'est demandée que pour `DATE_DEBUT >= jour`, la 595 en entier ;
-	 * une couche déjà chargée en entier sert sans nouvelle requête. Rejette si l'une des deux couches échoue, ou si
-	 * les limites des communes n'ont pas pu être chargées.
+	 * une couche déjà chargée en entier sert sans nouvelle requête. Rejette si l'une des deux couches échoue (la
+	 * source passe alors en erreur), ou si les limites des communes n'ont pas pu être chargées.
 	 */
 	depuis(jour: string): Promise<Restriction[]>;
-	/** État de la source DGMR : heure de la dernière consultation réussie, échec, nouvel essai. */
+	/**
+	 * État de la source DGMR : heure de la dernière consultation réussie, échec, nouvel essai. Toute lecture de la DGMR
+	 * le met à jour, celle de la carte comme celles du fil et d'un lien vers une restriction.
+	 */
 	readonly source: EtatSourceExecution;
 }
 
@@ -158,6 +162,24 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		return r;
 	});
 	let erreur = $state<CauseEchec | null>(null);
+
+	/**
+	 * Une lecture de la DGMR, quel que soit l'usage (carte, fil, lien vers une restriction) : son échec met la source
+	 * en erreur ou hors ligne, sa réussite la rétablit. Les limites des communes n'en sont pas : elles ne viennent
+	 * pas de la DGMR.
+	 */
+	function suivie<T>(p: Promise<T>): Promise<T> {
+		return p.then(
+			(r) => {
+				erreur = null;
+				return r;
+			},
+			(e) => {
+				erreur = causeDe(e);
+				throw e;
+			}
+		);
+	}
 
 	/* ---- Une couche : une requête par visite, retentée une fois ; un échec est oublié. ---- */
 
@@ -228,17 +250,15 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 
 	function charger(): Promise<Restriction[]> {
 		if (chargement) return chargement;
-		const p = Promise.allSettled([chargerCouche(596), chargerCouche(595)]).then((resultats) => {
-			// Après le premier affichage des restrictions : les limites ne retardent ni la carte ni le fil.
-			chargerLimites().catch(() => {});
-			const echec = resultats.find((r) => r.status === 'rejected');
-			if (echec) {
-				erreur = causeDe(echec.reason);
-				throw echec.reason;
-			}
-			erreur = null;
-			return restrictions;
-		});
+		const p = suivie(
+			Promise.allSettled([chargerCouche(596), chargerCouche(595)]).then((resultats) => {
+				// Après le premier affichage des restrictions : les limites ne retardent ni la carte ni le fil.
+				chargerLimites().catch(() => {});
+				const echec = resultats.find((r) => r.status === 'rejected');
+				if (echec) throw echec.reason;
+				return restrictions;
+			})
+		);
 		chargement = p;
 		p.catch(() => (chargement = null));
 		return p;
@@ -267,7 +287,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 
 	async function restriction(id: number): Promise<Restriction | null> {
 		const chargee = restrictions.find((r) => r.id === id);
-		const r = chargee ?? (parId.has(id) ? parId.get(id)! : await demander(id));
+		const r = chargee ?? (parId.has(id) ? parId.get(id)! : await suivie(demander(id)));
 		if (!chargee) parId.set(id, r);
 		if (!r) return null;
 		await chargerLimites();
@@ -294,7 +314,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	}
 
 	async function depuis(jour: string): Promise<Restriction[]> {
-		const [enCours] = await Promise.all([enCoursDepuis(jour), chargerCouche(595)]);
+		const [enCours] = await suivie(Promise.all([enCoursDepuis(jour), chargerCouche(595)]));
 		// Comme pour la carte : les limites ne retardent pas la lecture de la DGMR.
 		await chargerLimites();
 		const cs = communes!;

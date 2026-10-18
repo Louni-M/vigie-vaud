@@ -419,6 +419,47 @@ describe('une restriction par son OBJECTID', () => {
 
 		await expect(routes.restriction(1)).rejects.toThrow();
 	});
+
+	describe('état de la source', () => {
+		afterEach(() => vi.unstubAllGlobals());
+
+		it('passe en erreur quand la restriction d’un lien ne peut pas être cherchée, et se rétablit au succès suivant', async () => {
+			vi.stubGlobal('navigator', { onLine: true });
+			const creer = await neuf();
+			const dgmr = fauxDgmr({ enCours: [restriction(1)] });
+			dgmr.panne(503, 596);
+			const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+			await expect(routes.restriction(1)).rejects.toThrow();
+			expect(routes.source.erreur).toBe('indisponible');
+
+			dgmr.panne(null);
+			expect(await routes.restriction(1)).toMatchObject({ id: 1 });
+			expect(routes.source.erreur).toBeNull();
+		});
+
+		it('passe hors ligne quand le navigateur n’a plus de réseau', async () => {
+			vi.stubGlobal('navigator', { onLine: false });
+			const creer = await neuf();
+			const dgmr = fauxDgmr({ enCours: [restriction(1)] });
+			dgmr.horsLigne(true);
+			const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+			await expect(routes.restriction(1)).rejects.toThrow();
+			expect(routes.source.erreur).toBe('hors_ligne');
+		});
+
+		it('ne touche pas à la source quand seules les limites des communes manquent', async () => {
+			const creer = await neuf();
+			const dgmr = fauxDgmr({ enCours: [restriction(1)] });
+			const f: typeof fetch = async (entree, init) =>
+				String(entree).endsWith('/communes-limites.json') ? new Response('', { status: 503 }) : dgmr.fetch(entree, init);
+			const routes = creer({ fetch: f, maintenant });
+
+			await expect(routes.restriction(1)).rejects.toThrow();
+			expect(routes.source.erreur).toBeNull();
+		});
+	});
 });
 
 describe('restrictions du fil', () => {
@@ -523,6 +564,35 @@ describe('restrictions du fil', () => {
 			const rs = await routes.depuis('2026-10-02');
 
 			expect(rs.map((r) => r.id)).toEqual([1, 2]);
+		});
+
+		it('met la source en erreur quand le fil ne peut pas lire la DGMR, et la rétablit au succès suivant', async () => {
+			const creer = await neuf();
+			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
+			dgmr.panne(503, 595);
+			const routes = creer({ fetch: dgmr.fetch, maintenant });
+			const echec = expect(routes.depuis('2026-10-02')).rejects.toThrow();
+			await vi.advanceTimersByTimeAsync(6_000);
+			await echec;
+			expect(routes.source.erreur).toBe('indisponible');
+
+			dgmr.panne(null);
+			await routes.depuis('2026-10-02');
+
+			expect(routes.source.erreur).toBeNull();
+		});
+
+		it('met la source hors ligne quand le fil n’a plus de réseau', async () => {
+			const creer = await neuf();
+			const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
+			dgmr.horsLigne(true);
+			vi.stubGlobal('navigator', { onLine: false });
+			const routes = creer({ fetch: dgmr.fetch, maintenant });
+			const echec = expect(routes.depuis('2026-10-02')).rejects.toThrow();
+			await vi.advanceTimersByTimeAsync(6_000);
+			await echec;
+
+			expect(routes.source.erreur).toBe('hors_ligne');
 		});
 	});
 });
