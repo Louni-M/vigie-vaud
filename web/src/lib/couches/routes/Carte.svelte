@@ -4,7 +4,8 @@
 	 * déviations en tirets plus fins, toujours visibles ; l'à venir plus pâle, et l'en cours dessiné au-dessus de lui.
 	 * Sous le zoom 11, un point par restriction au milieu de son tracé, sauf les déviations. Fondu à l'activation.
 	 * Un clic ouvre le tracé le plus contraignant sous le doigt (la carte vole vers lui tout de suite), et la
-	 * restriction ouverte est soulignée d'un contour noir, sous ses couleurs.
+	 * restriction ouverte est soulignée d'un contour noir, sous ses couleurs. Les puces du volet filtrent les calques :
+	 * un tracé masqué n'est ni dessiné ni cliquable.
 	 */
 	import { onMount, untrack } from 'svelte';
 	import type {
@@ -18,6 +19,7 @@
 	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import { routes, type EtatRestriction, type Restriction } from './donnees.svelte.js';
 	import { ouvrirRestriction, restrictionOuverte } from './index.js';
+	import { puces } from './puces.svelte.js';
 	import { plusContraignante, SORTES, type Sorte } from './sortes.js';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
@@ -209,6 +211,23 @@
 	});
 	$effect(() => {
 		(map.getSource(SELECTION) as GeoJSONSource).setData(traces(ctx.active && ouverte ? [ouverte] : []));
+	});
+
+	/*
+	 * Puces du volet : chaque calque garde son propre filtre (état, déviation ou non) et ne montre que les sortes et
+	 * les états allumés. Filtrer les calques plutôt que les sources rend les tracés masqués incliquables. Le contour
+	 * de la restriction ouverte reste, elle, toujours visible.
+	 */
+	$effect(() => {
+		const { sortes, etats } = puces.filtres;
+		const montre = [
+			['in', ['get', 'sorte'], ['literal', [...sortes]]],
+			['in', ['get', 'etat'], ['literal', [...etats]]]
+		];
+		for (const { spec } of calques) {
+			if (spec.id === SELECTION || !('filter' in spec) || !spec.filter) continue;
+			map.setFilter(spec.id, ['all', spec.filter, ...montre] as unknown as ExpressionSpecification);
+		}
 	});
 
 	onMount(() => {
