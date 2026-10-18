@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { existsSync, readFileSync } from 'node:fs';
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
@@ -14,6 +15,9 @@ function readJson<T>(path: string, fallback: T): T {
 const communes = readJson<{ slug: string }[]>('static/communes.json', []);
 
 export default defineConfig({
+	// Toute la suite de tests à l'heure de Lausanne : une heure DGMR (heure locale codée comme de l'UTC) lue
+	// par erreur en heure locale y décale de 1 ou 2 h, et le test échoue même sur une machine en UTC (la CI).
+	test: { env: { TZ: 'Europe/Zurich' } },
 	// MapLibre 6 charge son worker par une URL relative au module : le pré-bundling de Vite la casse.
 	optimizeDeps: { exclude: ['maplibre-gl'] },
 	plugins: [
