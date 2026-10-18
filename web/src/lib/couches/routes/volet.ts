@@ -22,7 +22,7 @@ export const FILTRES_INITIAUX: Filtres = {
 };
 
 /**
- * Les puces des sortes, qui servent aussi de légende, dans l'ordre de la légende. « Autre » (une sorte que la DGMR
+ * Les puces des sortes, qui servent aussi de légende, dans l'ordre de la légende. « Autres » (une sorte que la DGMR
  * prévoit sans la publier à ce jour) n'apparaît que si une restriction chargée en est.
  */
 export function sortesDesPuces(restrictions: readonly Restriction[]): Sorte[] {

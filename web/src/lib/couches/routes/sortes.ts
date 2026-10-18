@@ -6,13 +6,16 @@
 
 export type Sorte = 'fermeture' | 'deviation' | 'feux' | 'particuliere' | 'autre';
 
-/** Nom et couleur de chaque sorte, dans l'ordre de la légende. « Autre » reçoit toute valeur inconnue, en gris. */
+/**
+ * Nom de la puce et couleur de chaque sorte, dans l'ordre de la légende. La puce « Autres » reçoit toute valeur
+ * inconnue, en gris ; la restriction, elle, garde son libellé publié.
+ */
 export const SORTES: Record<Sorte, { nom: string; couleur: string }> = {
 	fermeture: { nom: 'Fermeture', couleur: '#c92a2a' },
 	deviation: { nom: 'Déviation', couleur: '#e8590c' },
 	feux: { nom: 'Feux', couleur: '#e0a800' },
 	particuliere: { nom: 'Restriction particulière', couleur: '#7048e8' },
-	autre: { nom: 'Autre', couleur: '#868e96' }
+	autre: { nom: 'Autres', couleur: '#868e96' }
 };
 
 const PUBLIEES: Record<string, Sorte> = {
