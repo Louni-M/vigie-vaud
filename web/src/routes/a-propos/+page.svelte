@@ -3,7 +3,7 @@
 	import { COURRIEL, DEPOT, DEPOT_DONNEES } from '#lib/config.js';
 	import { canonique } from '#lib/indexation.js';
 	import { COUCHES } from '#lib/registre/couches.js';
-	import { grouperSources, libelleVoie, listerConseils, SENS_VOIES, SOURCES } from '#lib/sources.js';
+	import { grouperSources, libelleVoie, listerConseils, SENS_VOIES, source, SOURCES } from '#lib/sources.js';
 
 	// La liste Sources est générée depuis sources.json : une source ajoutée y apparaît sous la couche qui la
 	// déclare, ou sous « Carte et communes » si aucune couche ne la déclare.
@@ -12,6 +12,8 @@
 	const voies = [...new Map(SOURCES.map((s) => [s.voie_acces, s])).values()];
 	// La liste des conseils couverts aussi : une source de sources.json qui a un bloc `conseil` y apparaît.
 	const conseils = listerConseils(SOURCES);
+	// Le lien vers la page vd.ch des Routes est celui de l'attribution, déclaré une fois dans sources.json.
+	const DGMR = source('dgmr-restrictions');
 </script>
 
 <svelte:head>
@@ -146,6 +148,28 @@
 		Objets ne nomment d’ailleurs aucune commune ; ils restent visibles dans la fiche du Grand Conseil. Pour
 		signaler une erreur de rattachement, écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>, ou ouvrez une issue
 		sur le <a href="{DEPOT}/issues" target="_blank" rel="noopener">dépôt public</a> : elle sera corrigée à la main.
+	</p>
+
+	<h3>Routes</h3>
+	<p>
+		Les restrictions de circulation en cours et à venir publiées par la Direction générale de la mobilité et des
+		routes (DGMR) : fermetures, déviations, feux et restrictions particulières, tirées des géodonnées de l’État de
+		Vaud. Le canton les présente aussi sur sa page
+		<a href={DGMR.attribution.lien} target="_blank" rel="noopener">Restrictions de circulation et travaux</a>.
+	</p>
+	<p>
+		Elles portent surtout sur les routes cantonales, avec quelques traversées de localité et chemins communaux. Les
+		travaux sur les routes communales (à Lausanne, par exemple) n’y figurent pas toujours, et les autoroutes pas du
+		tout.
+	</p>
+	<p>
+		Comme pour les permis, <strong>ce site ne stocke ni ne rediffuse ces données</strong>, comme le demande la norme
+		DCG 8401 : votre navigateur les lit directement auprès du canton, à chaque visite. Une restriction levée
+		disparaît du site, qui n’en garde aucune trace. <strong>La signalisation sur place fait foi</strong>.
+	</p>
+	<p>
+		Une restriction est rattachée à chaque commune où son tracé parcourt au moins 20 m, sinon à celle qui en contient
+		la plus grande part ; une déviation l’est à toutes les communes qu’elle traverse.
 	</p>
 
 	<h2 id="sources">Sources</h2>
