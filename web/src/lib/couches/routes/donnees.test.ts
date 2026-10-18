@@ -354,3 +354,70 @@ describe('rattachement aux communes', () => {
 	});
 });
 
+describe('une restriction par son OBJECTID', () => {
+	// Les limites sont gardées par le module des communes pour toute la visite : un module neuf à chaque cas.
+	beforeEach(() => vi.resetModules());
+	const neuf = async () => (await import('./donnees.svelte.js')).creerDonneesRoutes;
+	const communes = (r: { communes: { commune: { slug: string } }[] | null } | null) =>
+		r?.communes?.map((p) => p.commune.slug);
+
+	it('trouve une restriction déjà chargée sans nouvelle requête à la DGMR, avec ses communes', async () => {
+		const creer = await neuf();
+		const deviation = restriction(2, { RESTRICTION: 'Déviation' }, [[6.69, 46.5], [6.73, 46.5]]);
+		const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [deviation] });
+		const routes = creer({ fetch: dgmr.fetch, maintenant });
+		await routes.charger();
+		const avant = dgmr.requetes.length;
+
+		const r = await routes.restriction(2);
+
+		expect(r).toMatchObject({ id: 2, etat: 'a_venir', sorte: 'deviation' });
+		expect(communes(r)).toEqual(['lutry', 'pully']);
+		expect(dgmr.requetes).toHaveLength(avant);
+	});
+
+	it('demande une restriction pas encore chargée par son OBJECTID aux deux couches, sans tout charger', async () => {
+		const creer = await neuf();
+		const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2, {}, [[6.71, 46.5], [6.72, 46.5]])] });
+		const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+		const r = await routes.restriction(2);
+
+		expect(r).toMatchObject({ id: 2, etat: 'a_venir' });
+		expect(communes(r)).toEqual(['lutry']);
+		expect(dgmr.requetes.map((q) => [q.couche, q.where]).sort()).toEqual([
+			[595, 'OBJECTID IN (2)'],
+			[596, 'OBJECTID IN (2)']
+		]);
+		expect(routes.restrictions).toEqual([]);
+	});
+
+	it('ne redemande pas une restriction déjà trouvée par son OBJECTID', async () => {
+		const creer = await neuf();
+		const dgmr = fauxDgmr({ enCours: [restriction(1)] });
+		const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+		await routes.restriction(1);
+		const r = await routes.restriction(1);
+
+		expect(r).toMatchObject({ id: 1, etat: 'en_cours' });
+		expect(dgmr.requetes).toHaveLength(2);
+	});
+
+	it('donne null pour une restriction que la DGMR ne publie plus', async () => {
+		const creer = await neuf();
+		const routes = creer({ fetch: fauxDgmr({ enCours: [restriction(1)] }).fetch, maintenant });
+
+		expect(await routes.restriction(5031)).toBeNull();
+	});
+
+	it('rejette quand la DGMR est injoignable, même pour une seule de ses couches', async () => {
+		const creer = await neuf();
+		const dgmr = fauxDgmr({ enCours: [restriction(1)] });
+		dgmr.horsLigne(true, 595);
+		const routes = creer({ fetch: dgmr.fetch, maintenant });
+
+		await expect(routes.restriction(1)).rejects.toThrow();
+	});
+});
+

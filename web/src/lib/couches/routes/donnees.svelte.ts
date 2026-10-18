@@ -116,6 +116,12 @@ export interface DonneesRoutes {
 	 * DGMR a échoué, ou si les limites n'ont pas pu être chargées (elles sont alors redemandées au prochain appel).
 	 */
 	rattachees(): Promise<Restriction[]>;
+	/**
+	 * Une restriction et ses communes, par son `OBJECTID` : celle déjà chargée sans nouvelle requête à la DGMR,
+	 * sinon demandée aux deux couches par `OBJECTID IN (…)`, sans tout charger. `null` si la DGMR ne la publie ni
+	 * en cours ni à venir ; rejette si la DGMR n'a pas pu être interrogée ou les limites des communes chargées.
+	 */
+	restriction(id: number): Promise<Restriction | null>;
 	/** État de la source DGMR : heure de la dernière consultation réussie, échec, nouvel essai. */
 	readonly source: EtatSourceExecution;
 }
@@ -234,6 +240,31 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		return restrictions;
 	}
 
+	/* ---- Une restriction : celle déjà chargée, sinon demandée par son OBJECTID aux deux couches. ---- */
+
+	/** Restrictions trouvées par leur `OBJECTID` hors du chargement complet (lien partagé), gardées pour la visite. */
+	const parId = new Map<number, Restriction | null>();
+
+	async function demander(id: number): Promise<Restriction | null> {
+		const where = `OBJECTID IN (${id})`;
+		const [enCours, aVenir] = await Promise.all([dgmr.chercher(596, where), dgmr.chercher(595, where)]);
+		const [r] = reunir(
+			enCours.flatMap((e) => versRestriction(e, ETAT[596]) ?? []),
+			aVenir.flatMap((e) => versRestriction(e, ETAT[595]) ?? [])
+		);
+		return r ?? null;
+	}
+
+	async function restriction(id: number): Promise<Restriction | null> {
+		const chargee = restrictions.find((r) => r.id === id);
+		const r = chargee ?? (parId.has(id) ? parId.get(id)! : await demander(id));
+		if (!chargee) parId.set(id, r);
+		if (!r) return null;
+		await chargerLimites();
+		// Les limites arrivées entre-temps ont rattaché les restrictions chargées.
+		return restrictions.find((x) => x.id === id) ?? { ...r, communes: communesDe(r, communes!) };
+	}
+
 	return {
 		get restrictions() {
 			return restrictions;
@@ -244,6 +275,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		},
 		charger,
 		rattachees,
+		restriction,
 		source: {
 			get derniere() {
 				return derniere;

@@ -3,7 +3,8 @@
 	 * Onglet Routes de la fiche commune : l'encadré des limites de la source, puis « En cours (n) » et « À venir (n) »,
 	 * en cartes de restriction, dans l'ordre des listes. Le registre a déjà rendu l'en-tête, la barre d'onglets et le
 	 * badge de la DGMR sous le nom de l'onglet ; il remonte l'onglet quand on change de commune. Les restrictions sont
-	 * lues en direct, puis rattachées aux communes une fois chargées leurs limites. Les cartes ne s'ouvrent pas encore.
+	 * lues en direct, puis rattachées aux communes une fois chargées leurs limites. Une carte ouvre sa restriction,
+	 * dans cette fiche : la commune de l'onglet est l'une des siennes.
 	 */
 	import { untrack } from 'svelte';
 	import EchecSource from '#lib/components/EchecSource.svelte';
@@ -12,6 +13,7 @@
 	import type { Commune } from '#lib/types.js';
 	import { encadreLimites, sectionsDeLaCommune } from './cartes.js';
 	import { routes, type EtatRestriction } from './donnees.svelte.js';
+	import { ouvrirRestriction } from './index.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
@@ -66,7 +68,9 @@
 	<h3>{s.titre}{pret ? ` (${liste.length})` : ''}</h3>
 	{#if pret && liste.length}
 		<ul class="grille">
-			{#each liste as r (r.id)}<li><RestrictionCarte {r} commune={commune.slug} /></li>{/each}
+			{#each liste as r (r.id)}
+				<li><RestrictionCarte {r} commune={commune.slug} onclick={() => ouvrirRestriction(ctx, r)} /></li>
+			{/each}
 		</ul>
 	{:else if pret}
 		<p class="muted">{s.vide}</p>
