@@ -1,4 +1,4 @@
-import { ErreurApi } from '#lib/api.js';
+import { causeEchec, retenterUneFois } from '#lib/api.js';
 import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
 import { getCommunes, getLimites } from '#lib/socle/communes.js';
 import { creerClientDgmr, type EntiteDgmr } from './dgmr.js';
@@ -134,13 +134,6 @@ export interface DonneesRoutes {
 	readonly source: EtatSourceExecution;
 }
 
-/** Délai avant l'unique nouvelle tentative automatique d'un chargement raté. */
-const RETENTE_MS = 5_000;
-
-/** Hors ligne si le navigateur le dit (ou le client), sinon le service est tenu pour indisponible. */
-const causeDe = (e: unknown): CauseEchec =>
-	(e instanceof ErreurApi && e.hors_ligne) || globalThis.navigator?.onLine === false ? 'hors_ligne' : 'indisponible';
-
 export interface Options {
 	/** `fetch` du navigateur, pour la DGMR. */
 	fetch: Fetch;
@@ -171,7 +164,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 				return r;
 			},
 			(e) => {
-				erreur = causeDe(e);
+				erreur = causeEchec(e);
 				throw e;
 			}
 		);
@@ -186,11 +179,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	const chargements = new Map<EtatRestriction, Promise<void>>();
 
 	/** Une demande à la DGMR, retentée une fois au bout de quelques secondes. */
-	const avecRetente = (etat: EtatRestriction, where: string) =>
-		dgmr.chercher(etat, where).catch(async () => {
-			await new Promise((ok) => setTimeout(ok, RETENTE_MS));
-			return dgmr.chercher(etat, where);
-		});
+	const avecRetente = (etat: EtatRestriction, where: string) => retenterUneFois(() => dgmr.chercher(etat, where));
 
 	function chargerEtat(etat: EtatRestriction): Promise<void> {
 		let p = chargements.get(etat);
