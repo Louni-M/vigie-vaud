@@ -497,6 +497,17 @@ etape_apercu() {
   say "Il ne contient aucune donnée de la DGMR : le navigateur interroge lui-même ogc.vd.ch, comme en ligne."
   arreter_apercu
   apercu_repond && arreter "$LOCAL répond déjà : arrêter ce serveur, ou choisir un autre PORT"
+  # web/static/data : les données CAMAC de la version initiale, ignorées par git (absentes en CI) et lues par rien.
+  # Vite copie static/ dans le site construit, que verifier-sans-rediffusion.sh refuserait à juste titre.
+  local ancienne="$WEB/static/data"
+  if [[ -e "$ancienne" ]]; then
+    warn "$ancienne existe ($(du -sh "$ancienne" | cut -f1)) : les données de la version initiale, ignorées par git"
+    note "Elles finiraient dans web/build/data, que la vérification refuse (norme DCG 8401). Rien ne les lit plus."
+    local rangee; rangee="$TRAVAIL/static-data-$(date +%Y%m%d-%H%M%S)"
+    confirm "Les déplacer dans $rangee (rien n'est supprimé) ?" || arreter "déplacer ou supprimer $ancienne, puis reprendre"
+    lancer mv "$ancienne" "$rangee"
+    noter "web/static/data déplacé dans $rangee"
+  fi
   note "Journal : $TRAVAIL/build.log"
   printf '  %s$ BASE_PATH= pnpm build%s\n' "$DIM" "$RESET"
   if ! (cd "$WEB" && BASE_PATH='' pnpm build) > "$TRAVAIL/build.log" 2>&1; then
