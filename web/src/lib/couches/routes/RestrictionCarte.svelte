@@ -124,7 +124,9 @@
 	.plage {
 		color: #5f3dc4;
 	}
+	/* Sans largeur propre (`contain`) : la ligne entière élargirait la carte, et la grille du volet avec elle. */
 	.remarque {
+		contain: inline-size;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
