@@ -25,7 +25,7 @@ propre PR.
   - une page **Couverture** liste les 300 communes avec l'état de chaque source (API, scrapé, non couvert, en
     panne depuis…) ;
   - les communes non couvertes sont grisées sur la carte ;
-  - chaque couche porte un **badge de fraîcheur** (« il y a 4 min · DGMR ») et l'attribution de sa source.
+  - chaque couche porte un **badge de fraîcheur** (« consulté il y a 2 min · DGMR ») et l'attribution de sa source.
 
 ## Jalons
 
@@ -69,6 +69,8 @@ accidents.
   particuliers.
 - **Un flux RSS par commune** généré par le cron, en remplacement des comptes et des alertes.
 - **Résumés IA** et **mode dense**.
+- **Recherche des restrictions de circulation par le nom de leurs travaux** : il faudrait charger les données
+  au moment de chercher, alors que `chercher` reste synchrone. En J2, la commune suffit.
 - **Nom de domaine** (par exemple `vigievaud.ch`), après J4, acheté par Loulou. En attendant, le site garde
   l'adresse GitHub Pages ouverte à la fin de J0.
 

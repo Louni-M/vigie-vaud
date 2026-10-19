@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { teteCommune, teteFiche, titreFiche } from './tete.js';
 import type { CoucheInscrite } from './types.js';
+import { COUCHES } from './couches.js';
 import { commune } from '#tests/faux-canton.js';
 import type { AncienNom } from '#lib/types.js';
 
@@ -54,6 +55,12 @@ describe('<head> d’une commune', () => {
 		expect(teteCommune(LAUSANNE, couches).titre).toBe('Lausanne – Vigie Vaud');
 	});
 
+	it('nomme, avec les couches inscrites, les permis, puis les conseils, puis les restrictions de circulation', () => {
+		const description = teteCommune(PULLY, COUCHES).description;
+		expect(description).toMatch(/^Pully \(VD\) sur Vigie Vaud : les permis de construire à l’enquête, en direct depuis le canton ; /);
+		expect(description).toMatch(/ ; les restrictions de circulation en cours et à venir\.$/);
+	});
+
 	it('nomme les anciennes communes et les anciens noms', () => {
 		const ancienne = (nom: string): AncienNom => ({ nom, slug: nom.toLowerCase(), type: 'Ancienne commune', annee: 2011 });
 		const bel = {
@@ -88,6 +95,11 @@ describe('titre de la page, qui suit la fiche ouverte', () => {
 		);
 		expect(titreFiche('Parlement', { couche: 'permis', element: '248845' }, [permis])).toBe(
 			'Dossier n° 248845 – Parlement – Vigie Vaud'
+		);
+	});
+	it('est « Restriction de circulation – Lutry – Vigie Vaud » pour une restriction ouverte, sans son numéro', () => {
+		expect(titreFiche('Lutry', { couche: 'routes', element: '5031' }, COUCHES)).toBe(
+			'Restriction de circulation – Lutry – Vigie Vaud'
 		);
 	});
 	it('reste celui de la fiche pour une couche qui ne titre pas ses éléments', () => {

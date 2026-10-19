@@ -1,20 +1,27 @@
 import { browser } from '$app/env';
+import type { CauseEchec } from './fraicheur.js';
 import type { Emprise } from './types.js';
 
 /**
- * Client minimal du service ArcGIS du canton (couche « vd.demande_permis_construire », CAMAC).
+ * Client minimal du service ArcGIS du canton (couche « vd.demande_permis_construire », CAMAC), et ce qu'il partage
+ * avec celui des restrictions de circulation de la DGMR, sur le même MapServer : l'appel `/query`, la pagination,
+ * la nouvelle tentative et la cause d'un échec.
  *
- * Le site ne stocke ni ne rediffuse aucune donnée CAMAC : c'est le navigateur du visiteur qui interroge
- * directement ogc.vd.ch. Ce module refuse donc de s'exécuter ailleurs que dans le navigateur
+ * Le site ne stocke ni ne rediffuse aucune donnée CAMAC ni DGMR : c'est le navigateur du visiteur qui interroge
+ * directement www.ogc.vd.ch. Ce module refuse donc de s'exécuter ailleurs que dans le navigateur
  * (pré-génération, serveur de développement).
  */
 
-export const SERVICE = 'https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/537';
+/** Le MapServer public de l'État de Vaud. Le nom d'hôte sans `www.` ne se résout pas. */
+export const MAPSERVER = 'https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer';
+export const SERVICE = `${MAPSERVER}/537`;
 /** Limite du serveur par réponse (`maxRecordCount`). */
-const PAGE = 2000;
+export const PAGE = 2000;
 /** Requêtes simultanées au plus vers le canton : par politesse, et les navigateurs en limitent le nombre. */
 const SIMULTANEES = 6;
 const DELAI_MS = 20_000;
+/** Délai avant l'unique nouvelle tentative automatique d'un chargement raté. */
+const RETENTE_MS = 5_000;
 /** Au-delà, la requête part en POST (polygone d'une commune, longue liste de numéros). */
 const URL_MAX = 1800;
 
@@ -47,6 +54,69 @@ export class ErreurApi extends Error {
 	}
 }
 
+/** Un service, tel que le nomment ses messages d'erreur. */
+export interface NomService {
+	/** « Le service du canton », « La DGMR » : « … ne répond pas. » */
+	sujet: string;
+	/** « du service du canton », « de la DGMR » : « Réponse illisible … » */
+	complement: string;
+}
+
+/** Une réponse `/query` d'ArcGIS, en JSON ou en GeoJSON. */
+export interface ReponseArcgis<E> {
+	features?: E[];
+	/** ArcGIS le place à la racine ou, en GeoJSON, sous `properties` selon les versions. */
+	exceededTransferLimit?: boolean;
+	properties?: { exceededTransferLimit?: boolean };
+	error?: { message?: string };
+}
+
+/**
+ * Un appel `/query` à un service ArcGIS, depuis le navigateur seulement, avec délai d'attente. Service injoignable
+ * ou trop lent, erreur HTTP, réponse illisible et réponse d'erreur ArcGIS (HTTP 200) rejettent par `ErreurApi`,
+ * hors ligne si le navigateur le dit.
+ */
+export async function appelArcgis<R>(f: Fetch, nom: NomService, adresse: string, init: RequestInit = {}): Promise<R> {
+	if (!browser) throw new Error(`${nom.sujet} : appel réservé au navigateur.`);
+	let r: Response;
+	try {
+		r = await f(adresse, { ...init, signal: AbortSignal.timeout(DELAI_MS) });
+	} catch (e) {
+		const delai = e instanceof DOMException && e.name === 'TimeoutError';
+		throw new ErreurApi(
+			delai ? `${nom.sujet} ne répond pas.` : `${nom.sujet} est injoignable.`,
+			!delai && globalThis.navigator?.onLine === false
+		);
+	}
+	if (!r.ok) throw new ErreurApi(`${nom.sujet} a répondu ${r.status}.`);
+	const json: R & Pick<ReponseArcgis<unknown>, 'error'> = await r.json().catch(() => {
+		throw new ErreurApi(`Réponse illisible ${nom.complement}.`);
+	});
+	if (json.error) throw new ErreurApi(`Erreur ${nom.complement} : ${json.error.message ?? 'inconnue'}.`);
+	return json;
+}
+
+/**
+ * La réponse annonce-t-elle une page suivante ? Oui si ArcGIS le dit (`exceededTransferLimit`), ou si la page est
+ * pleine ; jamais après une page vide.
+ */
+export function aUneSuite(r: ReponseArcgis<unknown>): boolean {
+	const n = r.features?.length ?? 0;
+	return n > 0 && (Boolean(r.exceededTransferLimit || r.properties?.exceededTransferLimit) || n >= PAGE);
+}
+
+/** `g()`, et s'il échoue, une seule nouvelle tentative automatique au bout d'environ 5 s. */
+export function retenterUneFois<T>(g: () => Promise<T>): Promise<T> {
+	return g().catch(async () => {
+		await new Promise((ok) => setTimeout(ok, RETENTE_MS));
+		return g();
+	});
+}
+
+/** La cause d'un échec : hors ligne si le navigateur le dit (ou le client), sinon le service est indisponible. */
+export const causeEchec = (e: unknown): CauseEchec =>
+	(e instanceof ErreurApi && e.hors_ligne) || globalThis.navigator?.onLine === false ? 'hors_ligne' : 'indisponible';
+
 export interface ClientCanton {
 	compter(q: Requete): Promise<number>;
 	/**
@@ -55,6 +125,8 @@ export interface ClientCanton {
 	 */
 	chercher(q: Requete): Promise<Entite[]>;
 }
+
+const CANTON: NomService = { sujet: 'Le service du canton', complement: 'du service du canton' };
 
 /**
  * Client du service du canton, à créer une seule fois : il tient la file d'attente (au plus SIMULTANEES
@@ -79,32 +151,15 @@ export function creerClientCanton(f: Fetch): ClientCanton {
 
 	/** Un appel `/query`, avec délai d'attente ; la réponse d'erreur ArcGIS (HTTP 200) devient une exception. */
 	async function appel<T>(p: URLSearchParams): Promise<T> {
-		if (!browser) throw new Error('API cantonale : appel réservé au navigateur.');
-		return tour(async () => {
+		return tour(() => {
 			const corps = p.toString();
 			const get = SERVICE.length + corps.length + 8 < URL_MAX;
-			let r: Response;
-			try {
-				r = await f(get ? `${SERVICE}/query?${corps}` : `${SERVICE}/query`, {
-					method: get ? 'GET' : 'POST',
-					// Formulaire simple : pas de requête CORS préalable (OPTIONS).
-					headers: get ? undefined : { 'Content-Type': 'application/x-www-form-urlencoded' },
-					body: get ? undefined : corps,
-					signal: AbortSignal.timeout(DELAI_MS)
-				});
-			} catch (e) {
-				const delai = e instanceof DOMException && e.name === 'TimeoutError';
-				throw new ErreurApi(
-					delai ? 'Le service du canton ne répond pas.' : 'Le service du canton est injoignable.',
-					!delai && !navigator.onLine
-				);
-			}
-			if (!r.ok) throw new ErreurApi(`Le service du canton a répondu ${r.status}.`);
-			const json = await r.json().catch(() => {
-				throw new ErreurApi('Réponse illisible du service du canton.');
+			return appelArcgis<T>(f, CANTON, get ? `${SERVICE}/query?${corps}` : `${SERVICE}/query`, {
+				method: get ? 'GET' : 'POST',
+				// Formulaire simple : pas de requête CORS préalable (OPTIONS).
+				headers: get ? undefined : { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: get ? undefined : corps
 			});
-			if (json.error) throw new ErreurApi(`Erreur du service du canton : ${json.error.message ?? 'inconnue'}.`);
-			return json as T;
 		});
 	}
 
@@ -130,15 +185,13 @@ export function creerClientCanton(f: Fetch): ClientCanton {
 		const base = { orderByFields: 'OBJECTID', ...q };
 		return enCache(`q:${parametres(base)}`, async () => {
 			const page = (offset: number, n = PAGE) =>
-				appel<{ features: Entite[]; exceededTransferLimit?: boolean }>(
-					parametres({ ...base, resultOffset: offset, resultRecordCount: n })
-				);
-			if (q.resultRecordCount) return (await page(0, q.resultRecordCount)).features;
+				appel<ReponseArcgis<Entite>>(parametres({ ...base, resultOffset: offset, resultRecordCount: n }));
+			if (q.resultRecordCount) return (await page(0, q.resultRecordCount)).features ?? [];
 			const [total, premiere] = await Promise.all([compter(q), page(0)]);
-			if (!premiere.exceededTransferLimit && premiere.features.length < PAGE) return premiere.features;
+			if (!aUneSuite(premiere)) return premiere.features ?? [];
 			const suite = [];
 			for (let o = PAGE; o < total; o += PAGE) suite.push(page(o));
-			return [premiere, ...(await Promise.all(suite))].flatMap((r) => r.features);
+			return [premiere, ...(await Promise.all(suite))].flatMap((r) => r.features ?? []);
 		});
 	}
 

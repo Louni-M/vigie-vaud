@@ -512,6 +512,10 @@ export interface Source {
 	 */
 	couverture?: CouvertureDeclaree | null;
 	/**
+	 * Ce que la source ne publie pas toujours dans les communes qu'elle couvre : une phrase qui complète « La DGMR publie … ». Reprise par la page Couverture et par l'onglet de la couche ; ne change ni le mode ni l'état.
+	 */
+	limites?: string | null;
+	/**
 	 * Sans sonde, la source n'est pas surveillée.
 	 */
 	sonde?: Sonde | null;

@@ -10,9 +10,9 @@ Vérification du 13 octobre 2026 : appels `curl` avec un en-tête `Origin`, lect
 
 | Domaine | Source | Accès | Remarques |
 |---|---|---|---|
-| Permis | `ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/537` | Direct | Existant |
+| Permis | `www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/537` | Direct | Existant |
 | Parlement | `api.openparldata.ch/v1/` | Cron | CORS ouvert, mais passé par le cron pour le rattachement, l'archive et l'usage loyal (ADR-0015). CC BY 4.0, « Source: OpenParlData.ch ». Vaud : Grand Conseil (`body_key=VD`), Lausanne (`5586`), Yverdon (`5938`, séances seulement). Ni votes ni débats |
-| Routes | `ogc.vd.ch/…/wmsVD/MapServer/596` (en cours), `/595` (à venir) | Direct | Restrictions de circulation DGMR |
+| Routes | `www.ogc.vd.ch/…/wmsVD/MapServer/596` (en cours), `/595` (à venir) | Direct | Restrictions de circulation DGMR |
 | Routes (autoroutes) | ASTRA DATEX II, `api.opentransportdata.swiss/TDP/…` | Worker | SOAP, clé, conditions OFROU |
 | Trains | `data.sbb.ch/api/explore/v2.1/catalog/datasets/rail-traffic-information/records` | Direct | Perturbations, filtre Vaud par mots-clés |
 | Trains | `transport.opendata.ch/v1/stationboard` | Direct | Départs et retards par gare, cache court |

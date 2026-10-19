@@ -6,7 +6,7 @@ const maintenant = new Date('2026-10-15T10:00:00Z');
 const ilYa = (minutes: number) => new Date(maintenant.getTime() - minutes * 60_000);
 
 const camac = { fraicheur: 'requete', nom_court: 'CAMAC' } as const;
-const dgmr = { fraicheur: 'donnee', nom_court: 'DGMR' } as const;
+const datee = { fraicheur: 'donnee', nom_court: 'Datée' } as const;
 const ucv = { fraicheur: 'millesime', nom_court: 'UCV' } as const;
 const gc = { fraicheur: 'import', nom_court: 'Grand Conseil' } as const;
 
@@ -16,7 +16,7 @@ describe('libellé du badge de fraîcheur', () => {
 	});
 
 	it('donne l’âge de la donnée elle-même', () => {
-		expect(libelleBadge(dgmr, { derniere: ilYa(4), erreur: null }, maintenant)).toBe('il y a 4 min · DGMR');
+		expect(libelleBadge(datee, { derniere: ilYa(4), erreur: null }, maintenant)).toBe('il y a 4 min · Datée');
 	});
 
 	it('donne l’édition d’une source préparée', () => {
@@ -34,17 +34,17 @@ describe('libellé du badge de fraîcheur', () => {
 	});
 
 	it('passe des minutes aux heures puis aux jours', () => {
-		const libelle = (minutes: number) => libelleBadge(dgmr, { derniere: ilYa(minutes), erreur: null }, maintenant);
-		expect(libelle(0.5)).toBe('à l’instant · DGMR');
-		expect(libelle(59)).toBe('il y a 59 min · DGMR');
-		expect(libelle(60)).toBe('il y a 1 h · DGMR');
-		expect(libelle(23 * 60 + 59)).toBe('il y a 23 h · DGMR');
-		expect(libelle(3 * 24 * 60)).toBe('il y a 3 j · DGMR');
+		const libelle = (minutes: number) => libelleBadge(datee, { derniere: ilYa(minutes), erreur: null }, maintenant);
+		expect(libelle(0.5)).toBe('à l’instant · Datée');
+		expect(libelle(59)).toBe('il y a 59 min · Datée');
+		expect(libelle(60)).toBe('il y a 1 h · Datée');
+		expect(libelle(23 * 60 + 59)).toBe('il y a 23 h · Datée');
+		expect(libelle(3 * 24 * 60)).toBe('il y a 3 j · Datée');
 	});
 
 	it('dit qu’une source n’a pas encore été obtenue', () => {
 		expect(libelleBadge(camac, { derniere: null, erreur: null }, maintenant)).toBe('pas encore consulté · CAMAC');
-		expect(libelleBadge(dgmr, { derniere: null, erreur: null }, maintenant)).toBe('pas encore chargé · DGMR');
+		expect(libelleBadge(datee, { derniere: null, erreur: null }, maintenant)).toBe('pas encore chargé · Datée');
 		expect(libelleBadge(ucv, { derniere: null, erreur: null }, maintenant)).toBe('édition inconnue · UCV');
 	});
 

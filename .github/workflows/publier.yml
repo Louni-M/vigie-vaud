@@ -37,8 +37,8 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
 
-      - name: Vérifier qu'aucune donnée CAMAC n'est publiée
-        run: .github/scripts/verifier-sans-camac.sh web/build
+      - name: Vérifier qu'aucune donnée CAMAC ni DGMR n'est publiée
+        run: .github/scripts/verifier-sans-rediffusion.sh web/build
 
       - if: vars.PUBLIER == 'true'
         uses: actions/upload-pages-artifact@v5

@@ -16,7 +16,7 @@ export const PULLY: Commune = commune(5590, 'Pully', [6.65, 46.49, 6.7, 46.52]);
 export const LUTRY: Commune = commune(5606, 'Lutry', [6.7, 46.49, 6.75, 46.52]);
 
 /** Limites carrées, sans lac : le rattachement par position est alors évident. */
-const carre = ([w, s, e, n]: Commune['bbox']) => [[[[w, s], [e, s], [e, n], [w, n], [w, s]]]];
+export const carre = ([w, s, e, n]: Commune['bbox']) => [[[[w, s], [e, s], [e, n], [w, n], [w, s]]]];
 
 export interface EntiteCamac {
 	attributes: Record<string, string | number | null>;

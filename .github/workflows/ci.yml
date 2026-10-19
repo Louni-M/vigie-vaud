@@ -41,9 +41,9 @@ jobs:
       - name: Construire le site
         run: pnpm build
 
-      - name: Vérifier qu'aucune donnée CAMAC n'est dans le site construit
+      - name: Vérifier qu'aucune donnée CAMAC ni DGMR n'est dans le site construit
         working-directory: .
-        run: .github/scripts/verifier-sans-camac.sh web/build
+        run: .github/scripts/verifier-sans-rediffusion.sh web/build
 
   # Schéma commun (ADR 0013) : les modèles Pydantic sont la seule source. Le JSON Schema et les types TypeScript
   # versionnés doivent être ceux qu'une nouvelle génération produit.

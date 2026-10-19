@@ -188,6 +188,19 @@ export function libelleCommunes({ source, communes }: SourceCouverte, total: num
 }
 
 /**
+ * Les `limites` d'une source (une phrase qui complète « La DGMR publie … »), avec l'apostrophe typographique ;
+ * `null` pour une source qui n'en déclare pas.
+ */
+export const limitesDe = (source: Pick<Source, 'limites'>): string | null =>
+	source.limites ? source.limites.replace(/'/g, '’') : null;
+
+/** Ligne Limites d'un encart : « Publie surtout les routes cantonales ; … ». Sinon `null`. */
+export function libelleLimites(source: Pick<Source, 'limites'>): string | null {
+	const limites = limitesDe(source);
+	return limites ? `Publie ${limites}.` : null;
+}
+
+/**
  * Libellé d'une cellule du tableau, une ligne par source qui couvre la commune : « API · disponible »,
  * « API · séances seulement · disponible » pour un conseil qui ne donne pas tout, ou « Non couvert ».
  * Tant que l'état des sources n'est pas chargé (`charge` faux), l'état est remplacé par « … ».

@@ -1,4 +1,4 @@
-import { creerClientCanton, ErreurApi, sql, type Entite, type Requete } from '#lib/api.js';
+import { causeEchec, creerClientCanton, retenterUneFois, sql, type Entite, type Requete } from '#lib/api.js';
 import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
 import { getRattachement, type Rattachement } from '#lib/socle/communes.js';
 import { masquerNoms, nettoyer } from '#lib/masquage.js';
@@ -133,13 +133,6 @@ export interface ChiffresCommune {
 	historique: PointHisto[];
 }
 
-/** Délai avant l'unique nouvelle tentative automatique d'un chargement raté. */
-const RETENTE_MS = 5_000;
-
-/** Hors ligne si le navigateur le dit (ou le client du canton), sinon le service est tenu pour indisponible. */
-const causeDe = (e: unknown): CauseEchec =>
-	(e instanceof ErreurApi && e.hors_ligne) || globalThis.navigator?.onLine === false ? 'hors_ligne' : 'indisponible';
-
 /** Marge autour de l'emprise : dossiers sur un lac, rattachés à la commune riveraine la plus proche. */
 const MARGE = 0.01;
 
@@ -163,18 +156,15 @@ export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: 
 	let erreur = $state<CauseEchec | null>(null);
 	/**
 	 * Un chargement principal de la source (dossiers en cours, chiffres d'une commune) : un échec est retenté une
-	 * seule fois, au bout de RETENTE_MS ; si la nouvelle tentative échoue aussi, la source passe en erreur.
+	 * seule fois, au bout d'environ 5 s ; si la nouvelle tentative échoue aussi, la source passe en erreur.
 	 */
 	async function charge<T>(g: () => Promise<T>): Promise<T> {
 		try {
-			const r = await g().catch(async () => {
-				await new Promise((ok) => setTimeout(ok, RETENTE_MS));
-				return g();
-			});
+			const r = await retenterUneFois(g);
 			erreur = null;
 			return r;
 		} catch (e) {
-			erreur = causeDe(e);
+			erreur = causeEchec(e);
 			throw e;
 		}
 	}

@@ -31,6 +31,38 @@
 			}
 		},
 		{
+			"id": "dgmr-restrictions",
+			"nom": "Restrictions de circulation DGMR (MapServer/596 et 595)",
+			"nom_court": "DGMR",
+			"attribution": {
+				"texte": "Géodonnées État de Vaud (DGMR)",
+				"lien": "https://www.vd.ch/mobilite/loffre-de-mobilite-a-votre-disposition/transports-individuels-motorises-tim/restrictions-de-circulation-et-travaux",
+				"licence": "Norme DCG 8401, sans rediffusion"
+			},
+			"voie_acces": "direct",
+			"fraicheur": "requete",
+			"couverture": { "communes": "canton", "mode": "api" },
+			"limites": "surtout les routes cantonales ; les routes communales n'y figurent pas toujours",
+			"sonde": {
+				"url": "https://www.ogc.vd.ch/public/rest/services/OGC/wmsVD/MapServer/596/query?where=1%3D1&outFields=OBJECTID,NOM,RESTRICTION,RHRC,DATE_DEBUT,DATE_FIN,HEURE_DEBUT,HEURE_FIN,WEEK_END,TYPE,REMARQUE&returnGeometry=false&resultRecordCount=1&f=json",
+				"delai": 20,
+				"champs": [
+					"OBJECTID",
+					"NOM",
+					"RESTRICTION",
+					"RHRC",
+					"DATE_DEBUT",
+					"DATE_FIN",
+					"HEURE_DEBUT",
+					"HEURE_FIN",
+					"WEEK_END",
+					"TYPE",
+					"REMARQUE"
+				],
+				"jamais_vide": true
+			}
+		},
+		{
 			"id": "swisstopo-fond",
 			"nom": "Fond de carte swisstopo (carte de base et SWISSIMAGE)",
 			"nom_court": "swisstopo",

@@ -51,7 +51,8 @@ _À éviter_ : permis (pour un dossier isolé), demande
 
 **Fil cantonal** :
 La colonne qui liste les nouveautés de toutes les sources des 14 derniers jours (Objets déposés, Séances tenues,
-nouveaux dossiers), plus les Séances à venir, groupées par jour. Elle est filtrable par type et limitée à la zone
+nouveaux dossiers, restrictions de circulation commencées), plus les Séances et les restrictions à venir, groupées par
+jour. Une restriction y entre par son début, jamais par sa levée. Elle est filtrable par type et limitée à la zone
 visible de la carte ou étendue à tout le canton. Elle ne dépend pas des couches activées : l'interrupteur d'une couche
 gouverne la carte, pas le fil.
 _À éviter_ : flux, timeline, actualités
@@ -72,9 +73,10 @@ différents font deux travaux, même au même endroit (« Morcles Le Revers feux
 _À éviter_ : chantier, intervention
 
 **Badge de fraîcheur** :
-L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source (« il y a 4 min · DGMR »). Pour une
-source qui passe par le cron une fois par jour (les conseils), c'est l'âge du dernier import réussi (« importé il y a
-6 h · Grand Conseil »).
+L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source. Pour une source lue en direct qui ne
+date pas ses données (la CAMAC, la DGMR), c'est l'heure de la dernière consultation (« consulté il y a 2 min ·
+DGMR ») ; pour une source qui passe par le cron une fois par jour (les conseils), l'âge du dernier import réussi
+(« importé il y a 6 h · Grand Conseil »).
 
 **Couverture** :
 Ce qu'une source apporte à chaque commune, selon deux axes : son **mode** (API, scrapé ou non couvert), déclaré
@@ -85,6 +87,8 @@ ont une Couverture, et parmi elles seulement celles dont les éléments appartie
 n'atteignent une commune que par rattachement par nom (le Grand Conseil, la presse) **porte sur le canton** et n'a pas
 de Couverture. Une couche couvre une commune dès qu'une de ses sources la couvre ; une couche dont aucune source n'a de
 Couverture les couvre toutes.
+Une source peut déclarer ses **limites** : ce qu'elle ne publie pas toujours dans les communes qu'elle couvre (la
+DGMR : les routes communales). Elles ne changent ni le mode ni l'état.
 Une commune **non couverte** par la couche choisie (sur bureau, celle dont le volet est ouvert ; sur mobile, celle
 dont on a demandé à voir la Couverture) est grisée sur la carte ; une panne ne grise rien.
 _À éviter_ : disponibilité (pour la Couverture entière)

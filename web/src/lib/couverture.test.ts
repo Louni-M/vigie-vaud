@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { deduireCouverture, libelleCellule, libelleCommunes, libelleEtat, libellePaire } from './couverture.js';
+import {
+	deduireCouverture,
+	libelleCellule,
+	libelleCommunes,
+	libelleEtat,
+	libelleLimites,
+	libellePaire
+} from './couverture.js';
 import { chargerEtatSources, lienPannes, lireEtatSources } from './etat-sources.js';
 import type { CoucheInscrite } from './registre/types.js';
 import { COUCHES } from './registre/couches.js';
@@ -245,6 +252,7 @@ describe('grisage de la carte', () => {
 		expect(grisees).not.toContain(5938);
 		expect(grisees).toContain(5624); // Bussigny
 		expect(c.grisees('permis')).toEqual([]);
+		expect(c.grisees('routes')).toEqual([]);
 		expect(c.grisees('hotels-de-ville')).toEqual([]);
 	});
 });
@@ -291,8 +299,8 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 	});
 	const cellule = (couche: string, bfs: number, charge = true) => libelleCellule(c.cellule(couche, bfs), charge);
 
-	it('a une colonne par couche qui a une Couverture, dans l’ordre du registre : Permis et Conseils', () => {
-		expect(c.colonnes.map((x) => x.nom)).toEqual(['Permis', 'Conseils']);
+	it('a une colonne par couche qui a une Couverture, dans l’ordre du registre : Permis, Conseils et Routes', () => {
+		expect(c.colonnes.map((x) => x.nom)).toEqual(['Permis', 'Conseils', 'Routes']);
 	});
 
 	it('donne pour Conseils la paire du conseil communal à Lausanne et à Yverdon, « Non couvert » à Bussigny', () => {
@@ -304,6 +312,11 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 	it('donne pour Permis la paire de la CAMAC partout', () => {
 		expect(cellule('permis', 5586)).toEqual(['API · disponible']);
 		expect(cellule('permis', 5624)).toEqual(['API · disponible']);
+	});
+
+	it('donne pour Routes la paire de la DGMR partout', () => {
+		expect(cellule('routes', 5586)).toEqual(['API · disponible']);
+		expect(cellule('routes', 5624)).toEqual(['API · disponible']);
 	});
 
 	it("liste chacune des sources qui couvrent la commune, et ne dit l'état qu'une fois chargé", () => {
@@ -324,19 +337,71 @@ describe('encarts de la page Couverture : un par source', () => {
 	const c = deduireCouverture({ sources: SOURCES, etat: null, couches: COUCHES, communes: communesJ0, maintenant: MAINTENANT });
 	const encart = (id: string) => c.sources.find((s) => s.source.id === id)!;
 
-	it('a un encart par source des couches Permis et Conseils, Grand Conseil compris', () => {
+	it('a un encart par source des couches Permis, Conseils et Routes, Grand Conseil compris', () => {
 		expect(c.sources.map((s) => s.source.id)).toEqual([
 			'camac-permis',
 			'openparldata-vd',
 			'openparldata-5586',
-			'openparldata-5938'
+			'openparldata-5938',
+			'dgmr-restrictions'
 		]);
+	});
+
+	it('donne à l’encart de la DGMR tout le canton et sa ligne Limites', () => {
+		expect(libelleCommunes(encart('dgmr-restrictions'), 300)).toBe('300 communes sur 300');
+		expect(libelleLimites(encart('dgmr-restrictions').source)).toBe(
+			'Publie surtout les routes cantonales ; les routes communales n’y figurent pas toujours.'
+		);
 	});
 
 	it('dit « Porte sur le canton » pour une source sans Couverture, et le nombre de communes sinon', () => {
 		expect(libelleCommunes(encart('openparldata-vd'), 300)).toBe('Porte sur le canton');
 		expect(libelleCommunes(encart('openparldata-5586'), 300)).toBe('1 commune sur 300');
 		expect(libelleCommunes(encart('camac-permis'), 300)).toBe('300 communes sur 300');
+	});
+
+	it('donne une ligne Limites à une source qui en déclare, et aucune sinon', () => {
+		const limitee = { ...source('limitee', { communes: 'canton', mode: 'api' }), limites: 'surtout les rues principales' };
+		expect(libelleLimites(limitee)).toBe('Publie surtout les rues principales.');
+		expect(libelleLimites(source('entiere', { communes: 'canton', mode: 'api' }))).toBeNull();
+	});
+
+	it('reprend les limites de la DGMR déclarées dans sources.json, et aucune pour la CAMAC', () => {
+		expect(libelleLimites(SOURCES.find((s) => s.id === 'dgmr-restrictions')!)).toBe(
+			'Publie surtout les routes cantonales ; les routes communales n’y figurent pas toujours.'
+		);
+		expect(libelleLimites(SOURCES.find((s) => s.id === 'camac-permis')!)).toBeNull();
+	});
+});
+
+describe('source DGMR déclarée dans sources.json', () => {
+	const dgmr = SOURCES.find((s) => s.id === 'dgmr-restrictions')!;
+	const c = deduireCouverture({
+		sources: SOURCES,
+		etat: etat({ 'dgmr-restrictions': disponible }),
+		couches: [couche('routes', ['dgmr-restrictions'])],
+		communes: communesJ0,
+		maintenant: MAINTENANT
+	});
+
+	it('couvre le canton en mode API, sans griser aucune commune', () => {
+		expect(dgmr.couverture).toEqual({ communes: 'canton', mode: 'api' });
+		expect(libelleCellule(c.cellule('routes', 5586))).toEqual(['API · disponible']);
+		expect(libelleCellule(c.cellule('routes', 5624))).toEqual(['API · disponible']);
+		expect(c.grisees('routes')).toEqual([]);
+	});
+
+	it('ne change ni le mode ni l’état par ses limites', () => {
+		const sans = deduireCouverture({
+			sources: [{ ...dgmr, limites: null }],
+			etat: etat({ 'dgmr-restrictions': disponible }),
+			couches: [couche('routes', ['dgmr-restrictions'])],
+			communes: communesJ0,
+			maintenant: MAINTENANT
+		});
+		expect(c.paire('dgmr-restrictions', 5586)).toEqual(sans.paire('dgmr-restrictions', 5586));
+		expect(c.sources).toHaveLength(1);
+		expect(c.sources[0].communes).toBe(300);
 	});
 });
 

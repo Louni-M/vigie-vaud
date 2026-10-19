@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { dateHeure, libelleCellule, libelleCommunes, libelleEtat, libelleMode } from '#lib/couverture.js';
+	import {
+		dateHeure,
+		libelleCellule,
+		libelleCommunes,
+		libelleEtat,
+		libelleLimites,
+		libelleMode
+	} from '#lib/couverture.js';
 	import { couvertureChargee, couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import { lienPannes } from '#lib/etat-sources.js';
 	import { dernierImport } from '#lib/imports-conseils.js';
@@ -72,6 +79,10 @@
 					{/if}
 					<dt>Communes</dt>
 					<dd>{libelleCommunes(s, data.communes.length)}</dd>
+					{#if s.source.limites}
+						<dt>Limites</dt>
+						<dd>{libelleLimites(s.source)}</dd>
+					{/if}
 					{#if s.source.conseil}
 						<dt>Donne</dt>
 						<dd>{libelleDonne(s.source.conseil)}</dd>
