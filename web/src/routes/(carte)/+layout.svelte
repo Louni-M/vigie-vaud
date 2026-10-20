@@ -509,13 +509,6 @@
 		font-size: 12px;
 		color: var(--muted);
 	}
-	/* Bureau : MapLibre déplie les sources sur une ligne qui passerait sous les liens ; elles s'arrêtent à leur droite
-	 * et passent à la ligne. Les liens font environ 215 px ; la marge couvre une police plus large. */
-	@media (min-width: 761px) {
-		.zone-carte :global(.maplibregl-ctrl-bottom-right) {
-			left: 250px;
-		}
-	}
 	.apercu {
 		position: absolute;
 		z-index: 4;

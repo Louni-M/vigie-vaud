@@ -21,7 +21,6 @@
 		Map as MlMap
 	} from 'maplibre-gl';
 	import type { Centre, Zone } from '#lib/types.js';
-	import { TELEPHONE } from './telephone.js';
 
 	/** Emprise du canton : vue de départ, et retour par le logo. */
 	const CANTON: LngLatBoundsLike = [5.9, 46.18, 7.25, 46.99];
@@ -228,11 +227,9 @@
 		if (controle) map.removeControl(controle);
 		controle = new maplibre.AttributionControl({ compact: true, customAttribution: textes });
 		map.addControl(controle);
-		// MapLibre déplie les sources jusqu'au premier glissement : sur téléphone, elles passeraient sous les liens
-		// et l'aperçu. Elles restent derrière le bouton « i », comme après un glissement.
-		if (matchMedia(TELEPHONE).matches) {
-			map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
-		}
+		// MapLibre déplie les sources jusqu'au premier glissement : elles passeraient sous les liens, l'aperçu ou le
+		// volet. Elles restent derrière le bouton « i », comme après un glissement.
+		map.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
 	});
 
 	$effect(() => {
@@ -258,10 +255,8 @@
 			height: 44px;
 		}
 	}
-	/* Téléphone : les sources ouvertes par le bouton « i » passent devant l'aperçu et les liens, le temps de les lire. */
-	@media (max-width: 760px) {
-		:global(.maplibregl-ctrl-bottom-right:has(.maplibregl-compact-show)) {
-			z-index: 5;
-		}
+	/* Les sources ouvertes par le bouton « i » passent devant les liens, le volet et l'aperçu, le temps de les lire. */
+	:global(.maplibregl-ctrl-bottom-right:has(.maplibregl-compact-show)) {
+		z-index: 5;
 	}
 </style>
