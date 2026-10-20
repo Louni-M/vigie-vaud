@@ -72,6 +72,17 @@ un sens unique…). Ce n'est pas un élément qu'on ouvre : chaque restriction r
 différents font deux travaux, même au même endroit (« Morcles Le Revers feux » et « … nuit »).
 _À éviter_ : chantier, intervention
 
+**Gare** :
+Un point d'arrêt du train dans le canton, quel que soit l'exploitant (CFF, MOB, LEB…), marqué sur la carte par la
+couche Trains ; on y consulte ses prochains départs et leurs retards. Les arrêts de métro, de bus et de bateau n'en
+sont pas.
+_À éviter_ : arrêt, station
+
+**Perturbation** :
+Une information sur le trafic ferroviaire (interruption, travaux, retards…) publiée par les CFF et qui touche le
+canton.
+_À éviter_ : incident (réservé à la police), restriction (réservé aux Routes)
+
 **Badge de fraîcheur** :
 L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source. Pour une source lue en direct qui ne
 date pas ses données (la CAMAC, la DGMR), c'est l'heure de la dernière consultation (« consulté il y a 2 min ·
@@ -163,6 +174,6 @@ _À éviter_ : réunion, session
 ### Planification
 
 **Jalon** :
-Une étape de développement publiable seule (J0 à J6), avec sa branche et sa PR. Ce qui vient après J6 forme la
+Une étape de développement publiable seule (J0 à J7), avec sa branche et sa PR. Ce qui vient après J7 forme la
 **phase 2**.
 _À éviter_ : sprint, version
