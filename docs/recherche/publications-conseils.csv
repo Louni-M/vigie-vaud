@@ -1,0 +1,159 @@
+ofs,commune,habitants,conseil,plateforme,mesure,pages_lues,seances,preavis,autres_objets,iweb_seances,iweb_objets,recueils_preavis,recueils_pv,depuis,derniere_seance,niveau_auto,niveau,note
+5401,Aigle,11752,conseil communal,Quicksite,échantillon,4,12,9,9,0,0,0,0,2016,2026-10-19,Objets complets,Objets complets,"Quicksite ancien, bibliothèque typée (préavis, décisions, M/P/I numérotés)"
+5402,Bex,8841,conseil communal,Quicksite,balayage,5,6,0,69,0,0,0,0,2020,2020-12-09,Séances seules,Séances seules,
+5403,Chessel,527,conseil général,imedia Communes,échantillon,4,95,100,0,0,0,0,0,2011,2026-07-01,Séances et préavis,Séances seules,"imedia, PV depuis 2016 ; PDF interdits par robots"
+5405,Gryon,1519,conseil communal,Quicksite,balayage,1,0,0,0,0,0,0,0,,,rien,rien,
+5406,Lavey-Morcles,1015,conseil communal,OIOI web,balayage,3,1,85,0,0,0,0,0,2026,2026-09-25,Préavis seuls,Préavis seuls,
+5409,Ollon,8221,conseil communal,Quicksite,échantillon,3,2,8,0,0,0,0,0,2026,2026-10-08,Séances et préavis,Objets complets,"Quicksite, module Conseil (comme Montreux) : 567 documents typés et numérotés"
+5410,Ormont-Dessous,1242,conseil communal,i-web,balayage,3,29,0,0,0,0,21,28,2020,2026-10-08,Séances et préavis,Séances et préavis,
+5412,Rennaz,949,conseil général,OIOI web,échantillon,7,23,2,0,0,0,0,0,2021,2026-09-24,Séances et préavis,Séances et préavis,"OIOI, PV par séance, préavis par législature"
+5413,Roche,1994,conseil communal,Quicksite,balayage,3,4,7,0,0,0,0,0,2025,2026-09-09,Séances et préavis,Séances et préavis,
+5414,Villeneuve,6039,conseil communal,i-web,balayage,3,72,0,2,72,0,118,0,2021,2026-10-08,Séances et préavis,Séances et préavis,
+5415,Yvorne,1109,conseil communal,Quicksite,balayage,5,21,39,1,0,0,0,0,2023,2026-09-10,Séances et préavis,Séances et préavis,
+5422,Aubonne,3856,conseil communal,Webcommunes,échantillon,6,43,79,1,0,0,0,0,2020,2026-09-29,Séances et préavis,Objets complets,"Webcommunes, OdJ/PV, préavis datés, motions et postulats"
+5423,Ballens,579,conseil général,OIOI web,balayage,4,22,0,0,0,0,0,0,2018,2026-06-11,Séances seules,Séances seules,
+5426,Bougy-Villars,514,conseil général,OIOI web,échantillon,4,11,15,0,0,0,0,0,2025,2026-10-06,Séances et préavis,rien,"OIOI, un PDF compilé par année"
+5428,Gimel,2457,conseil communal,WebForge,balayage,2,2,16,0,0,0,0,0,2013,2026-06-18,Séances et préavis,Séances et préavis,
+5431,Mollens,324,conseil général,Quicksite,balayage,4,33,0,0,0,0,0,0,2017,2026-06-23,Séances seules,Séances seules,
+5435,Saint-Livres,715,conseil communal,OIOI web,balayage,5,25,10,0,0,0,0,0,2020,2026-10-01,Séances et préavis,Séances et préavis,
+5436,Saint-Oyens,457,conseil général,WebForge,balayage,3,5,0,0,0,0,0,0,2024,2024-12-11,Séances seules,Séances seules,
+5458,Faoug,895,conseil communal,i-web,balayage,5,16,87,0,6,0,87,15,2024,2026-10-06,Séances et préavis,Séances et préavis,
+5464,Vully-les-Lacs,3627,conseil communal,OIOI web,échantillon,6,15,45,6,0,0,0,0,2024,2026-09-22,Objets complets,Séances et préavis,"OIOI, page par année : séance, points, préavis, postulats"
+5472,Bournens,531,conseil général,WebForge,échantillon,3,2,5,0,0,0,0,0,2026,2026-06-23,Séances et préavis,Séances et préavis,"WebForge, PV depuis 2021, préavis 2025"
+5474,La Chaux (Cossonay),432,conseil général,Quicksite,balayage,3,23,0,0,0,0,0,0,2021,2026-07-01,Séances seules,Séances seules,
+5480,Daillens,1097,conseil communal,WebForge,balayage,3,28,0,1,0,0,0,0,2021,2026-08-24,Séances seules,Séances seules,
+5481,Dizy,238,conseil général,WebForge,balayage,2,2,4,0,0,0,0,0,2025,2025-12-09,Séances et préavis,Séances et préavis,
+5482,Eclépens,1210,conseil communal,WebForge,balayage,2,1,0,0,0,0,0,0,,,rien,rien,
+5483,Ferreyres,309,conseil général,WebForge,balayage,1,0,0,0,0,0,0,0,,,rien,rien,
+5486,L'Isle,1094,conseil communal,WebForge,balayage,3,64,65,0,0,0,0,0,2011,2026-10-08,Séances et préavis,Séances et préavis,
+5487,Lussery-Villars,470,conseil général,i-web,balayage,3,0,26,0,0,0,29,0,,,Préavis seuls,Préavis seuls,
+5492,Montricher,943,conseil communal,COMMUNEapp WEB,balayage,2,22,44,0,0,0,0,0,2014,2026-03-26,Séances et préavis,Séances et préavis,
+5493,Orny,497,conseil général,i-web,balayage,1,12,0,0,0,0,0,0,2025,2026-09-07,Séances seules,Séances seules,
+5496,Penthaz,1945,conseil communal,WebForge,échantillon,2,5,101,1,0,0,0,0,2013,2026-10-06,Séances et préavis,Séances et préavis,"WebForge, PV et préavis depuis 2021"
+5497,Pompaples,932,conseil général,Quicksite,balayage,1,2,0,0,0,0,0,0,2025,2026-10-08,Séances seules,Séances seules,
+5498,La Sarraz,2615,conseil communal,imedia Communes,balayage,5,42,100,3,0,0,0,0,2018,2026-10-09,Séances et préavis,Séances et préavis,
+5511,Assens,1717,conseil communal,imedia Communes,balayage,1,0,0,0,0,0,0,0,,,rien,rien,
+5512,Bercher,1344,conseil communal,Quicksite,balayage,2,22,0,0,0,0,0,0,2020,2026-09-30,Séances seules,Séances seules,
+5514,Bottens,1354,conseil communal,i-web,balayage,5,9,0,0,8,0,6,0,2025,2026-10-05,Séances et préavis,Séances et préavis,
+5515,Bretigny-sur-Morrens,899,conseil général,OIOI web,balayage,5,31,29,0,0,0,0,0,2016,2026-06-11,Séances et préavis,Séances et préavis,
+5516,Cugy,2787,conseil communal,COMMUNEapp WEB,échantillon,2,40,51,0,0,0,0,0,2019,2026-09-29,Séances et préavis,Séances et préavis,"COMMUNEapp, PV depuis 2022, préavis depuis 2021"
+5518,Echallens,6719,conseil communal,imedia Communes,échantillon,5,49,74,12,0,0,0,0,2019,2026-10-01,Objets complets,Objets complets,"imedia, préavis, postulats et motions avec rapports ; PDF interdits par robots"
+5521,Etagnières,1191,conseil communal,Quicksite,balayage,2,29,21,0,0,0,0,0,2021,2026-06-30,Séances et préavis,Séances et préavis,
+5523,Froideville,2729,conseil communal,i-web,balayage,4,77,207,0,75,0,0,0,2011,2026-10-06,Séances et préavis,Séances et préavis,
+5529,Oulens-sous-Echallens,603,conseil général,i-web,balayage,1,2,0,0,0,0,0,0,2026,2026-10-05,Séances seules,Séances seules,
+5530,Pailly,575,conseil général,COMMUNEapp WEB,balayage,1,3,0,0,0,0,0,0,2024,2025-11-25,Séances seules,Séances seules,
+5531,Penthéréaz,430,conseil général,Quicksite,balayage,1,2,0,0,0,0,0,0,,,Séances seules,Séances seules,
+5535,Saint-Barthélemy,834,conseil communal,OIOI web,balayage,6,33,0,0,0,0,0,0,2017,2026-10-05,Séances seules,Séances seules,
+5541,Goumoëns,1206,conseil communal,WebForge,balayage,4,19,34,0,0,0,0,0,2022,2026-09-16,Séances et préavis,Séances et préavis,
+5568,Sainte-Croix,5139,conseil communal,i-web,balayage,5,1,0,0,0,0,17,0,,,Préavis seuls,Préavis seuls,
+5585,Jouxtens-Mézery,1478,conseil communal,Quicksite,balayage,7,34,46,0,0,0,0,0,2019,2026-10-12,Séances et préavis,Séances et préavis,
+5588,Paudex,1509,conseil communal,WebForge,balayage,3,31,31,0,0,0,0,0,2021,2026-06-22,Séances et préavis,Séances et préavis,
+5592,Romanel-sur-Lausanne,4321,conseil communal,Webcommunes,balayage,5,6,0,7,0,0,0,0,2022,2026-10-01,Séances seules,Séances seules,
+5601,Chexbres,2261,conseil communal,imedia Communes,balayage,3,4,28,0,0,0,0,0,2023,2026-10-06,Séances et préavis,Séances et préavis,
+5604,Forel (Lavaux),2087,conseil communal,Webcommunes,balayage,7,14,139,0,0,0,0,0,2013,2026-10-08,Séances et préavis,Séances et préavis,
+5607,Puidoux,2974,conseil communal,i-web,balayage,2,25,50,0,25,0,0,0,2021,2026-10-01,Séances et préavis,Séances et préavis,
+5609,Rivaz,329,conseil général,WebForge,balayage,1,0,0,0,0,0,0,0,,,rien,rien,
+5621,Aclens,585,conseil général,Quicksite,balayage,3,26,42,0,0,0,0,0,2020,2025-11-20,Séances et préavis,Séances et préavis,
+5622,Bremblens,614,conseil général,Hekl@,échantillon,1,1,0,0,0,0,0,0,,,rien,Séances seules,"Hekl@, prochaine séance seulement"
+5623,Buchillon,686,conseil communal,OIOI web,balayage,3,34,0,0,0,0,0,0,2019,2026-10-06,Séances seules,Séances seules,
+5624,Bussigny,11632,conseil communal,imedia Communes,balayage,4,83,172,56,0,0,0,0,2016,2026-10-08,Objets complets,Objets complets,
+5627,Chavannes-près-Renens,9774,conseil communal,imedia Communes,balayage,5,170,89,8,0,0,0,0,2006,2026-10-08,Objets complets,Objets complets,
+5631,Denens,742,conseil général,OIOI web,balayage,4,30,0,1,0,0,0,0,2016,2026-10-07,Séances seules,Séances seules,
+5634,Echichens,3222,conseil communal,i-web,balayage,5,58,1,2,38,0,71,34,2016,2026-09-24,Séances et préavis,Séances et préavis,
+5635,Ecublens,13364,conseil communal,imedia Communes,échantillon,5,61,19,1,0,0,0,0,2007,2026-10-08,Séances et préavis,Séances et préavis,"imedia, OdJ depuis 2007, préavis par séance ; réponses aux interpellations"
+5636,Etoy,2962,conseil communal,Quicksite,balayage,4,92,136,0,0,0,0,0,2010,2026-09-28,Séances et préavis,Séances et préavis,
+5639,Lully,836,conseil général,Quicksite,balayage,3,7,17,0,0,0,0,0,2025,2026-09-28,Séances et préavis,Séances et préavis,
+5643,Préverenges,5260,conseil communal,i-web,échantillon,6,85,93,0,81,0,116,0,2015,2026-09-10,Séances et préavis,Séances et préavis,"i-web, module Séances ; préavis en recueil"
+5648,Saint-Sulpice,5155,conseil communal,Webcommunes,échantillon,6,115,213,51,0,0,0,0,2014,2026-10-07,Objets complets,Objets complets,"Webcommunes, motions/postulats/interpellations avec auteur et statut en texte"
+5649,Tolochenaz,1934,conseil communal,i-web,balayage,5,47,0,0,38,0,34,0,2016,2026-10-05,Séances et préavis,Séances et préavis,
+5650,Vaux-sur-Morges,185,conseil général,COMMUNEapp WEB,balayage,1,14,50,0,0,0,0,0,2021,2025-06-02,Séances et préavis,Séances et préavis,
+5653,Vufflens-le-Château,837,conseil général,COMMUNEapp WEB,balayage,1,17,21,0,0,0,0,0,2021,2026-03-23,Séances et préavis,Séances et préavis,
+5654,Vullierens,547,conseil général,i-web,balayage,5,10,0,0,6,0,18,0,2020,2026-10-06,Séances et préavis,Séances et préavis,
+5656,Hautemorges,4383,conseil communal,i-web,balayage,2,35,0,0,33,0,0,0,2021,2026-09-14,Séances seules,Séances seules,
+5669,Curtilles,308,conseil général,imedia Communes,balayage,1,1,0,0,0,0,0,0,2015,2015-04-23,rien,rien,
+5673,Hermenches,373,conseil général,Quicksite,balayage,4,13,20,0,0,0,0,0,2023,2026-10-06,Séances et préavis,Séances et préavis,
+5674,Lovatens,146,conseil général,i-web,échantillon,4,13,0,0,0,0,6,0,2021,2025-12-02,Séances et préavis,Séances seules,"i-web, séances à venir et recueil de PV"
+5675,Lucens,4736,conseil communal,Quicksite,balayage,4,53,56,1,0,0,0,0,2017,2026-10-12,Séances et préavis,Séances et préavis,
+5680,Ogens,341,conseil général,COMMUNEapp WEB,balayage,3,2,0,0,0,0,0,0,2023,2026-09-07,Séances seules,Séances seules,
+5701,Arnex-sur-Nyon,270,conseil général,COMMUNEapp WEB,balayage,1,21,12,0,0,0,0,0,2020,2026-09-29,Séances et préavis,Séances et préavis,
+5702,Arzier-Le Muids,2968,conseil communal,OIOI web,balayage,6,89,1,0,0,0,0,0,2013,2026-09-28,Séances seules,Séances seules,
+5704,Begnins,2035,conseil communal,i-web,balayage,3,12,0,0,12,0,0,0,2024,2026-10-06,Séances seules,Séances seules,
+5705,Bogis-Bossey,991,conseil communal,COMMUNEapp WEB,balayage,1,6,0,0,0,0,0,0,2025,2026-06-13,Séances seules,Séances seules,
+5706,Borex,1146,conseil communal,COMMUNEapp WEB,échantillon,1,23,51,0,0,0,0,0,2021,2026-10-06,Séances et préavis,Séances et préavis,"COMMUNEapp, convocations, PV, préavis et décisions"
+5707,Chavannes-de-Bogis,1384,conseil communal,Quicksite,balayage,4,13,58,0,0,0,0,0,2023,2026-10-07,Séances et préavis,Séances et préavis,
+5708,Chavannes-des-Bois,983,conseil communal,OIOI web,balayage,4,0,6,0,0,0,0,0,,,Préavis seuls,Préavis seuls,
+5709,Chéserex,1279,conseil communal,OIOI web,balayage,6,80,4,0,0,0,0,0,2006,2026-10-08,Séances et préavis,Séances et préavis,
+5710,Coinsins,519,conseil général,OIOI web,balayage,3,14,44,0,0,0,0,0,2021,2026-06-22,Séances et préavis,Séances et préavis,
+5711,Commugny,2973,conseil communal,Quicksite,balayage,3,26,13,0,0,0,0,0,2020,2026-09-16,Séances et préavis,Séances et préavis,
+5712,Coppet,3232,conseil communal,i-web,balayage,4,268,0,0,107,0,202,0,2011,2026-10-08,Séances et préavis,Séances et préavis,
+5713,Crans,2445,conseil communal,COMMUNEapp WEB,balayage,2,24,33,0,0,0,0,0,2021,2026-09-07,Séances et préavis,Séances et préavis,
+5714,Crassier,1275,conseil communal,Quicksite,balayage,3,10,24,0,0,0,0,0,2023,2026-03-12,Séances et préavis,Séances et préavis,
+5715,Duillier,1140,conseil communal,Quicksite,balayage,7,58,32,0,0,0,0,0,2005,2026-09-24,Séances et préavis,Séances et préavis,
+5717,Founex,3763,conseil communal,Quicksite,échantillon,5,20,47,0,0,0,0,0,2015,2026-09-28,Séances et préavis,Séances et préavis,"Quicksite nouveau, coreapi groupé par séance ; postulats en documents"
+5718,Genolier,2012,conseil communal,Quicksite,balayage,4,22,104,4,0,0,0,0,2021,2026-09-17,Séances et préavis,Séances et préavis,
+5719,Gingins,1256,conseil communal,Quicksite,balayage,4,9,10,0,0,0,0,0,2025,2026-10-08,Séances et préavis,Séances et préavis,
+5720,Givrins,1068,conseil communal,Quicksite,balayage,7,35,0,0,0,0,0,0,2018,2026-10-07,Séances seules,Séances seules,
+5722,Grens,391,conseil général,COMMUNEapp WEB,balayage,1,2,43,0,0,0,0,0,2026,2026-10-05,Séances et préavis,Séances et préavis,
+5723,Mies,2180,conseil communal,Quicksite,balayage,4,10,11,0,0,0,0,0,2020,2026-10-07,Séances et préavis,Séances et préavis,
+5726,La Rippe,1196,conseil communal,Quicksite,balayage,3,0,50,0,0,0,0,0,,,Préavis seuls,Préavis seuls,
+5727,Saint-Cergue,3009,conseil communal,i-web,balayage,5,0,0,0,0,0,32,22,,,Séances et préavis,Séances et préavis,
+5728,Signy-Avenex,608,conseil général,Quicksite,balayage,3,6,19,0,0,0,0,0,2024,2026-03-25,Séances et préavis,Séances et préavis,
+5729,Tannay,1746,conseil communal,WebForge,balayage,5,73,0,0,0,0,0,0,2011,2026-09-14,Séances seules,Séances seules,
+5730,Trélex,1426,conseil communal,Quicksite,balayage,6,9,47,1,0,0,0,0,2025,2026-07-01,Séances et préavis,Séances et préavis,
+5732,Vich,1182,conseil communal,OIOI web,balayage,6,41,0,5,0,0,0,0,2016,2026-06-16,Séances seules,Séances seules,
+5741,L'Abergement,270,conseil général,WebForge,balayage,1,12,12,0,0,0,0,0,2021,2026-06-15,Séances et préavis,Séances et préavis,
+5743,Arnex-sur-Orbe,694,conseil général,WebForge,balayage,4,24,42,0,0,0,0,0,2020,2026-09-17,Séances et préavis,Séances et préavis,
+5744,Ballaigues,1218,conseil communal,imedia Communes,balayage,3,1,0,0,0,0,0,0,2021,2021-05-17,rien,rien,
+5746,Bavois,1041,conseil communal,WebForge,balayage,1,0,0,0,0,0,0,0,,,rien,rien,
+5747,Bofflens,200,conseil général,i-web,balayage,2,1,0,0,0,0,0,5,2021,2021-12-17,Séances seules,Séances seules,
+5749,Chavornay,5440,conseil communal,i-web,balayage,4,71,0,0,51,0,0,24,2018,2026-09-17,Séances seules,Séances seules,
+5750,Les Clées,193,conseil général,WebForge,balayage,1,4,0,0,0,0,0,0,2025,2026-10-06,Séances seules,Séances seules,
+5754,Juriens,348,conseil général,Quicksite,balayage,5,47,46,0,0,0,0,0,2011,2026-10-15,Séances et préavis,Séances et préavis,
+5757,Orbe,7978,conseil communal,imedia Communes,balayage,5,134,27,10,0,0,0,0,2006,2026-09-03,Objets complets,Objets complets,
+5762,Sergey,133,conseil général,WebForge,balayage,1,11,0,0,0,0,0,0,2021,2026-06-10,Séances seules,Séances seules,
+5763,Valeyres-sous-Rances,578,conseil général,COMMUNEapp WEB,balayage,1,0,0,0,0,0,0,0,,,rien,rien,
+5764,Vallorbe,4319,conseil communal,i-web,balayage,4,104,19,1,82,0,145,0,2013,2026-10-12,Séances et préavis,Séances et préavis,
+5765,Vaulion,488,conseil communal,OIOI web,balayage,4,6,1,0,0,0,0,0,2024,2025-10-08,Séances seules,Séances seules,
+5785,Corcelles-le-Jorat,499,conseil communal,i-web,balayage,2,0,0,0,0,0,0,14,,,Séances seules,Séances seules,
+5792,Montpreveyres,656,conseil général,WebForge,balayage,2,0,0,0,0,0,0,0,,,rien,rien,
+5798,Ropraz,530,conseil général,Quicksite,échantillon,3,29,34,0,0,0,0,0,2017,2026-04-23,Séances et préavis,Séances et préavis,"Quicksite nouveau, coreapi ; PV et préavis, dates de séance fausses"
+5799,Servion,2228,conseil communal,Quicksite,balayage,4,4,14,0,0,0,0,0,2026,2026-10-06,Séances et préavis,Séances et préavis,
+5803,Vulliens,628,conseil général,COMMUNEapp WEB,échantillon,1,51,0,0,0,0,0,0,2011,2026-10-01,Séances seules,Séances et préavis,"COMMUNEapp, OdJ et préavis depuis 2024"
+5804,Jorat-Menthue,1574,conseil communal,Hekl@,échantillon,1,11,0,0,0,0,0,0,2023,2025-12-08,Séances seules,Séances seules,"Hekl@, 10 derniers PV"
+5805,Oron,6341,conseil communal,Quicksite,balayage,4,6,13,1,0,0,0,0,2026,2026-10-05,Séances et préavis,Séances et préavis,
+5806,Jorat-Mézières,3189,conseil communal,WebForge,échantillon,3,9,32,0,0,0,0,0,2025,2026-10-06,Séances et préavis,Séances et préavis,"WebForge, page de séances ; 2025-2026 seulement"
+5813,Chevroux,494,conseil général,Quicksite,balayage,3,13,32,0,0,0,0,0,2023,2026-06-22,Séances et préavis,Séances et préavis,
+5816,Corcelles-près-Payerne,2982,conseil communal,OIOI web,balayage,4,32,0,0,0,0,0,0,2019,2026-06-17,Séances seules,Séances seules,
+5817,Grandcour,976,conseil communal,imedia Communes,balayage,5,8,138,1,0,0,0,0,2025,2026-07-29,Séances et préavis,Séances et préavis,
+5821,Missy,383,conseil général,OIOI web,balayage,4,8,3,0,0,0,0,0,2025,2026-10-06,Séances et préavis,Séances et préavis,
+5831,Valbroye,3425,conseil communal,imedia Communes,balayage,3,81,231,2,0,0,0,0,2011,2026-10-05,Séances et préavis,Séances et préavis,
+5841,Château-d'Oex,3653,conseil communal,i-web,balayage,4,128,0,0,72,0,0,70,2016,2026-10-05,Séances seules,Séances seules,
+5842,Rossinière,499,conseil communal,OIOI web,balayage,5,16,0,0,0,0,0,0,2023,2026-10-06,Séances seules,Séances seules,
+5843,Rougemont,813,conseil communal,OIOI web,balayage,4,21,0,2,0,0,0,0,2022,2026-10-20,Séances seules,Séances seules,
+5851,Allaman,430,conseil général,i-web,échantillon,6,67,4,0,66,0,16,0,2011,2026-09-10,Séances et préavis,Séances et préavis,"i-web, module Séances ; OdJ en texte ; préavis par année"
+5853,Bursins,814,conseil communal,COMMUNEapp WEB,balayage,2,1,0,0,0,0,0,0,2026,2026-10-06,rien,rien,
+5854,Burtigny,401,conseil général,Quicksite,balayage,5,3,0,0,0,0,0,0,2026,2026-06-11,Séances seules,Séances seules,
+5855,Dully,620,conseil général,i-web,balayage,2,0,0,0,0,0,6,0,,,Préavis seuls,Préavis seuls,
+5856,Essertines-sur-Rolle,785,conseil général,COMMUNEapp WEB,balayage,2,10,14,0,0,0,0,0,2024,2026-06-23,Séances et préavis,Séances et préavis,
+5857,Gilly,1441,conseil communal,COMMUNEapp WEB,balayage,2,19,54,0,0,0,0,0,2021,2026-06-16,Séances et préavis,Séances et préavis,
+5859,Mont-sur-Rolle,2752,conseil communal,imedia Communes,balayage,3,32,50,3,0,0,0,0,2021,2026-09-29,Séances et préavis,Séances et préavis,
+5860,Perroy,1584,conseil communal,Quicksite,balayage,3,1,0,0,0,0,0,0,2026,2026-03-26,rien,rien,
+5861,Rolle,6540,conseil communal,Quicksite,balayage,3,8,2,2,0,0,0,0,2026,2026-10-06,Séances et préavis,Séances et préavis,
+5862,Tartegnin,235,conseil général,COMMUNEapp WEB,balayage,1,19,32,0,0,0,0,0,2021,2026-09-09,Séances et préavis,Séances et préavis,
+5873,Le Lieu,918,conseil communal,i-web,balayage,2,55,0,0,55,0,0,0,2009,2026-10-06,Séances seules,Séances seules,
+5883,Corseaux,2320,conseil communal,i-web,balayage,5,9,9,0,5,0,10,30,2026,2026-09-11,Séances et préavis,Séances et préavis,
+5891,Veytaux,1038,conseil communal,OIOI web,balayage,6,33,76,0,0,0,0,0,2016,2026-09-07,Séances et préavis,Séances et préavis,
+5892,Blonay - Saint-Légier,12464,conseil communal,i-web,échantillon,7,248,261,63,235,337,0,0,2011,2026-10-12,Objets complets,Objets complets,"i-web, modules Séances et Objets ; statut pas tenu"
+5911,Cuarny,241,conseil général,Webcommunes,échantillon,3,18,23,0,0,0,0,0,2021,2026-06-15,Séances et préavis,Séances et préavis,"Webcommunes, archives par séance"
+5922,Montagny-près-Yverdon,780,conseil communal,Hekl@,balayage,1,9,16,0,0,0,0,0,2024,2026-06-22,Séances et préavis,Séances et préavis,
+5930,Suscévaz,234,conseil général,WebForge,balayage,1,1,0,0,0,0,0,0,2026,2026-09-27,rien,rien,
+5931,Treycovagnes,515,conseil communal,COMMUNEapp WEB,balayage,1,0,3,0,0,0,0,0,,,Préavis seuls,Préavis seuls,
+5886,Montreux,26955,conseil communal,sur mesure : module Conseil de Quicksite (conseilmontreux.ch),échantillon,,,,,,,,,,,,Objets complets,"séances depuis 2006, points d'OdJ liés aux Objets, auteur ; pas de statut"
+5724,Nyon,23351,conseil communal,sur mesure : Nuxt (iomedia),échantillon,,,,,,,,,,,,Objets complets,"séances 2008-2026 (état planifiée/tenue), Objets par séance, date de dépôt, décisions"
+5591,Renens,21541,conseil communal,sur mesure : Nuxt (iomedia),échantillon,,,,,,,,,,,,Objets complets,"50 séances 2020-2026, 1 060 documents, statut (Accepté, Répondu) ; menu en JS, entrée par le sitemap"
+5890,Vevey,20142,conseil communal,sur mesure : Drupal + module Conseil de Quicksite (conseil.vevey.ch),échantillon,,,,,,,,,,,,Objets complets,"documents filtrés par type et auteur, codes 2026/P12 ; robots restrictif sur conseil.vevey.ch"
+5590,Pully,19538,conseil communal,sur mesure : Umbraco,échantillon,,,,,,,,,,,,Objets complets,"une page de 3 Mo, 1 364 PDF, Objets numérotés 2018-2026 avec auteur·e, statut en texte libre"
+5642,Morges,17701,conseil communal,sur mesure : Symfony (iomedia),échantillon,,,,,,,,,,,,Objets complets,"8 types d'Objets par année 2004-2026, n° et date ; séances : page de dates"
+5721,Gland,13987,conseil communal,sur mesure : TYPO3,échantillon,,,,,,,,,,,,Objets complets,"page par séance, Objets avec auteur·e et statut (Traité, Refusé)"
+5889,La Tour-de-Peilz,12812,conseil communal,sur mesure : PHP maison (Equateur),échantillon,,,,,,,,,,,,Objets complets,"préavis Nr./année, motions/postulats/interpellations avec auteur·e, parti et statut en texte"
+5589,Prilly,12758,conseil communal,sur mesure : TYPO3 (WNG),échantillon,,,,,,,,,,,,Séances et préavis,"page par année : OdJ, préavis, rapports ; chemins de PDF très réguliers"
