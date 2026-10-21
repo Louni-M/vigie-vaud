@@ -144,6 +144,11 @@ données. Seules les sondes décident qu'une source est **en panne** : l'échec 
 Couverture, pas plus qu'un import du cron en échec, qui ne fait que vieillir le badge de fraîcheur.
 _À éviter_ : ping, healthcheck, test
 
+**Rattrapage** :
+La relecture, lancée à la main, de tout l'historique qu'une source garde, pour un conseil, une plateforme ou toutes
+les sources à la fois. Il complète le dépôt de données sans rien en effacer.
+_À éviter_ : backfill, réimport
+
 **Rattachement** :
 L'association d'un élément à une commune : par sa position (dossiers ; restrictions de circulation, rattachées à
 chaque commune qu'elles traversent), par son conseil (Objets et Séances d'un conseil communal, qui n'appartiennent
