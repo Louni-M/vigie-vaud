@@ -10,7 +10,8 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
   `masquage`, fidèle à celle du site.
 - Pour les conseils, le masquage s'applique au titre des Objets, à celui de leurs documents et au titre des points
   d'ordre du jour, mais épargne les élu·e·s connu·e·s du conseil : toute personne qui apparaît comme contributrice
-  d'un Objet de ce conseil autre qu'une pétition, sur tout l'historique. Une pétition n'affiche pas d'auteur·e : on ne
+  d'un Objet de ce conseil autre qu'une pétition, ou comme membre du conseil sur sa page des membres, sur tout
+  l'historique. Une pétition n'affiche pas d'auteur·e : on ne
   sait pas qui l'a déposée. Ses auteur·e·s, que Lausanne nomme sans civilité dans les titres (« Pétition de Exemple
   Paul et crts »), y sont masqué·e·s comme après une civilité, sauf élu·e connu·e ou entité ; le site, qui ne masque
   que les permis, n'a pas cette règle.
@@ -36,5 +37,21 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
   rapporteur·e·s, élu·e·s connu·e·s : rien n'y change. Un nom qu'OpenParlData ne connaît pas, seul dans un nom de
   fichier (« …_reponse_interpellation_exemple.pdf »), reste lisible.
   Les demandes de grâce ne sont pas des Objets, et leurs points d'ordre du jour sont retirés.
+- Les conseils scrapés (J3) ne donnent souvent ni auteur·e·s ni contributeurs : leurs élu·e·s connu·e·s viennent
+  alors de la page des membres du conseil, lue en HTML (tableau des membres d'i-web, page `conseillers` du module
+  Conseil de Quicksite, page « membres » ou « composition »), jamais d'une liste en PDF ni d'une liste tenue à la
+  main. Une personne vue un jour comme membre reste connue : le cron garde, dans le dépôt de données, une liste
+  par conseil, qui ne fait que s'allonger. Un conseil sans page des membres en HTML est importé quand même : ses
+  élu·e·s nommé·e·s après une civilité y sont masqué·e·s, puisqu'en cas de doute on masque. Les titres des
+  documents d'une Séance passent par le même masquage.
+  Deux règles valent pour tous les conseils, Grand Conseil compris (pas pour le site, qui ne masque que les
+  permis) :
+  - un nom partiel après une civilité (« (Rapp. M. Exemple) », « Interpellation C. Exemple ») reste quand un·e
+    élu·e connu·e du conseil porte ce nom de famille, avec la même initiale s'il y en a une, et qu'un contexte
+    d'élu·e le précède : « Rapp. », rapporteur·e, interpellation, postulat, motion, question, conseiller·ère,
+    consorts. Sans ce contexte, il est masqué : dans un village, un opposant porte souvent le nom d'un·e élu·e ;
+  - un nom sans civilité est masqué comme après une civilité, sauf entité ou élu·e connu·e, quand il suit
+    « succession de », « hoirie », « feu », « legs de », « opposition de » ou « acquéreur » : ce sont les préavis
+    de succession, de legs, de vente et d'aménagement qui nomment des particuliers.
 - Une amélioration du masquage vaut pour les imports suivants. L'historique n'est réécrit qu'à la main, sur demande
   ou quand un nom est signalé ; l'À propos dit comment demander un retrait.
