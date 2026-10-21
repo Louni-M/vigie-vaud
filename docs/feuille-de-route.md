@@ -37,7 +37,7 @@ météo, radios, accidents.
 | **J0 Socle** | Renommage, licence, registre des couches, fiche commune à onglets (seulement ceux des couches présentes), hôtels de ville, dépôt de données et cron (qui surveille les sources pour la Couverture), page Couverture, badges de fraîcheur, permis migrés en couche, suppression du code de la version hébergée ; à la fin, dépôt rendu public sous le nom `vigie-vaud` et GitHub Pages activé. Décisions : carte [#1](https://github.com/Louni-M/CyberSwissNews/issues/1) |
 | **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal |
 | **J2 Routes** | Restrictions de circulation DGMR en cours et à venir |
-| **J3 Conseils communaux** | Scrapers des sites communaux pour couvrir le plus de communes possible dans la couche Conseils, plateforme par plateforme ; une commune est couverte dès ses Séances. Décisions : carte « J3 Conseils communaux spécifié » |
+| **J3 Conseils communaux** | Scrapers des sites communaux pour couvrir le plus de communes possible dans la couche Conseils, plateforme par plateforme : i-web, Quicksite (avec Montreux et Vevey), Webcommunes et COMMUNEapp, publiés l'un après l'autre (environ 80 communes et 230 000 habitants) ; une commune est couverte dès ses Séances. Décisions : carte « J3 Conseils communaux spécifié » |
 | **J4 Trains** | Panneau des perturbations CFF filtré sur Vaud ; gares sur la carte, départs et retards au clic |
 | **J5 Presse et incidents** | Flux RSS via le cron ; couche « Incidents » tirée des communiqués de police et rattachée aux communes |
 | **J6 Météo** | Mesures actuelles MétéoSuisse ; prévisions Open-Meteo dans la fiche ; pas d'alertes officielles (pas en données ouvertes), lien vers MétéoSuisse à la place |
@@ -45,8 +45,11 @@ météo, radios, accidents.
 
 ### Phase 2
 
-- **Scrapers communaux** : avancés en J3 Conseils communaux (choix des communes par plateforme, et non plus la liste
-  Yverdon (objets), Montreux, Nyon, Renens, Vevey, Pully, Morges et Gland).
+- **Scrapers communaux, suite** : ce que J3 Conseils communaux ne couvre pas. Dans l'ordre :
+  - les villes sur mesure : Nyon et Renens (même développement), Pully, Morges, Gland, La Tour-de-Peilz et Prilly,
+    environ 120 000 habitants, presque toutes avec leurs Objets complets ;
+  - puis imedia, OIOI web et WebForge, dont les pages rédigées à la main demandent des règles par commune ;
+  - les objets d'Yverdon, qu'OpenParlData ne donne pas.
   - Ils produisent ce qu'OpenParlData appelle *affairs* et *meetings* :
     - les **séances**, avec leur date et leur ordre du jour ;
     - les **objets** (interpellations, motions, postulats, préavis, questions), avec type, titre, auteur·e, date
@@ -56,6 +59,8 @@ météo, radios, accidents.
   - En production, un résultat vide ou un format inattendu ouvre une **issue GitHub** et passe la commune « en
     panne » sur la page Couverture.
   - Le format compatible avec OpenParlData permet de leur proposer ces scrapers (le contact est pris par Loulou).
+- **Statuts et auteur·e·s des Objets communaux tirés des PDF** (règles fixes, OCR ou IA) : les scrapers de J3
+  ne lisent que le HTML et les noms de fichiers.
 - **Worker Cloudflare** :
   - bouchons et incidents autoroutiers (ASTRA DATEX II) ;
   - carte des retards du réseau (GTFS-RT).
