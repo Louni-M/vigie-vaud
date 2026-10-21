@@ -29,22 +29,24 @@ propre PR.
 
 ## Jalons
 
-Chaque jalon est publiable seul. L'ordre suit les priorités : conseils, routes, trains, presse, météo, radios,
-accidents.
+Chaque jalon est publiable seul. L'ordre suit les priorités : conseils, routes, conseils communaux, trains, presse,
+météo, radios, accidents.
 
 | Jalon | Contenu |
 |---|---|
 | **J0 Socle** | Renommage, licence, registre des couches, fiche commune à onglets (seulement ceux des couches présentes), hôtels de ville, dépôt de données et cron (qui surveille les sources pour la Couverture), page Couverture, badges de fraîcheur, permis migrés en couche, suppression du code de la version hébergée ; à la fin, dépôt rendu public sous le nom `vigie-vaud` et GitHub Pages activé. Décisions : carte [#1](https://github.com/Louni-M/CyberSwissNews/issues/1) |
 | **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal |
 | **J2 Routes** | Restrictions de circulation DGMR en cours et à venir |
-| **J3 Trains** | Panneau des perturbations CFF filtré sur Vaud ; gares sur la carte, départs et retards au clic |
-| **J4 Presse et incidents** | Flux RSS via le cron ; couche « Incidents » tirée des communiqués de police et rattachée aux communes |
-| **J5 Météo** | Mesures actuelles MétéoSuisse ; prévisions Open-Meteo dans la fiche ; pas d'alertes officielles (pas en données ouvertes), lien vers MétéoSuisse à la place |
-| **J6 Radios** | Lecteur persistant, environ 8 stations choisies à la main, « Radios locales ici » par commune, raccourci vers le dernier journal RTS |
+| **J3 Conseils communaux** | Scrapers des sites communaux pour couvrir le plus de communes possible dans la couche Conseils, plateforme par plateforme ; une commune est couverte dès ses Séances. Décisions : carte « J3 Conseils communaux spécifié » |
+| **J4 Trains** | Panneau des perturbations CFF filtré sur Vaud ; gares sur la carte, départs et retards au clic |
+| **J5 Presse et incidents** | Flux RSS via le cron ; couche « Incidents » tirée des communiqués de police et rattachée aux communes |
+| **J6 Météo** | Mesures actuelles MétéoSuisse ; prévisions Open-Meteo dans la fiche ; pas d'alertes officielles (pas en données ouvertes), lien vers MétéoSuisse à la place |
+| **J7 Radios** | Lecteur persistant, environ 8 stations choisies à la main, « Radios locales ici » par commune, raccourci vers le dernier journal RTS |
 
 ### Phase 2
 
-- **Scrapers communaux** pour Yverdon (objets), Montreux, Nyon, Renens, Vevey, Pully, Morges et Gland.
+- **Scrapers communaux** : avancés en J3 Conseils communaux (choix des communes par plateforme, et non plus la liste
+  Yverdon (objets), Montreux, Nyon, Renens, Vevey, Pully, Morges et Gland).
   - Ils produisent ce qu'OpenParlData appelle *affairs* et *meetings* :
     - les **séances**, avec leur date et leur ordre du jour ;
     - les **objets** (interpellations, motions, postulats, préavis, questions), avec type, titre, auteur·e, date
@@ -71,11 +73,11 @@ accidents.
 - **Résumés IA** et **mode dense**.
 - **Recherche des restrictions de circulation par le nom de leurs travaux** : il faudrait charger les données
   au moment de chercher, alors que `chercher` reste synchrone. En J2, la commune suffit.
-- **Nom de domaine** (par exemple `vigievaud.ch`), après J4, acheté par Loulou. En attendant, le site garde
+- **Nom de domaine** (par exemple `vigievaud.ch`), après J5, acheté par Loulou. En attendant, le site garde
   l'adresse GitHub Pages ouverte à la fin de J0.
 
 ## Actions de Loulou
 
 - Contacter OpenParlData au sujet des scrapers communaux.
 - Créer le compte opentransportdata.swiss et accepter les conditions OFROU (phase 2).
-- Acheter le nom de domaine (après J4).
+- Acheter le nom de domaine (après J5).
