@@ -126,6 +126,12 @@ _À éviter_ : barre d'adresse, géocodeur
 Un service ou un site d'où provient une donnée : API, flux RSS ou site scrapé. C'est à la source, pas à la couche,
 que tiennent l'attribution, la voie d'accès, la fraîcheur et la Couverture.
 
+**Plateforme** :
+Le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes (i-web, Quicksite…). Les communes d'une
+plateforme se lisent de la même façon ; la source reste le site de chaque commune, qui porte l'attribution et la
+Couverture.
+_À éviter_ : CMS, éditeur (pour la plateforme)
+
 **Voie d'accès** :
 La manière dont le site obtient une source : **Direct** (le navigateur appelle la source), **Cron** (la source
 passe par le cron et le dépôt de données), **Worker** (la source passe par le relais Cloudflare) ou **Préparée**
@@ -161,10 +167,11 @@ fiche du Grand Conseil. Ses Objets sont rattachés aux communes qu'ils nomment ;
 
 **Objet** :
 Toute affaire qu'un conseil enregistre et suit (interpellation, motion, postulat, question, préavis, pétition,
-projet de loi ou de décret, rapport…), sauf les demandes de grâce, avec son numéro, son titre, ses auteur·e·s, sa
-date, son type et son statut. Le numéro, unique dans son conseil, est celui que le conseil lui donne (`26_INT_140`,
-`INT26/056`). Le type et le statut sont ceux que le conseil leur donne, sans regroupement de notre part. Correspond
-aux *affairs* d'OpenParlData.
+projet de loi ou de décret, rapport…), sauf les demandes de grâce, avec son numéro, son titre, sa date, son type et,
+quand le conseil les publie, ses auteur·e·s et son statut. Le numéro, unique dans son conseil, est celui que le conseil
+lui donne (`26_INT_140`, `INT26/056`). Le type et le statut sont ceux que le conseil leur donne, sans regroupement de
+notre part ; ce qu'il ne publie pas reste inconnu, jamais déduit (un préavis n'a pas d'office la Municipalité pour
+auteure, ni un statut « adopté » parce que sa Séance est passée). Correspond aux *affairs* d'OpenParlData.
 _À éviter_ : affaire, intervention
 
 **Séance** :
