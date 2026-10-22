@@ -5,7 +5,27 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
 
 ## Conséquences
 
-- Chaque scraper est testé sur des pages HTML enregistrées.
+- Chaque scraper est testé sur des pages HTML enregistrées, comme l'import de J1 sur son échantillon réel
+  d'OpenParlData. Un échantillon par variante de plateforme (et non par commune) donne, pour une commune choisie,
+  chaque sorte de page que le scraper lit : liste des Séances, page d'une Séance, liste et page des Objets, page des
+  membres. Chaque réponse est gardée avec les en-têtes dont dépend la lecture (`Content-Type` et son charset,
+  `Content-Disposition`, `Content-Encoding`). Les pages sont réduites au bloc que le scraper lit (le tableau
+  `data-entities` d'i-web, le fragment `coreapi`, la section d'une page COMMUNEapp…), avec le marqueur de la sonde
+  et le chemin de balises qui y mène : ni scripts, ni styles, ni menus, ni textes rédigés. Il ne reste que des
+  dates, des titres et des liens d'actes officiels (LDA, art. 5), ce que le robot garde de toute façon (ADR-0006).
+  Les listes ne gardent que quelques lignes choisies par identifiant, qui portent les cas à couvrir et ne nomment
+  aucun particulier. Un commentaire en tête de chaque page donne la commune, l'URL, la date d'enregistrement et la
+  réduction faite. Un script de `pipeline/` à part (et non celui qui prépare les déclarations des sources) enregistre et
+  réduit les pages sans retouche à la main, avec le débit de l'ADR-0006. Il est lancé à la main, jamais par le cron :
+  au début de chaque étape de J3 pour sa plateforme, puis dans la PR qui corrige une refonte si celle-ci touche la
+  commune d'un échantillon. Après chaque passage, on relit l'échantillon : aucun particulier ne doit y figurer.
+  Les cas que le réel n'offre pas de façon stable (liste vide, ligne ou liste illisible, marqueur absent, date
+  fictive, ligne en `dd.mm.yy` disparue du site) sont fabriqués dans les tests par de petites retouches de
+  l'échantillon. Les noms de particuliers des tests du masquage restent inventés. Les comportements du réseau (429,
+  503, `Retry-After`, délai dépassé, `robots.txt`, plafond de requêtes, redirections) passent par un faux transport
+  écrit à la main, comme le faux OpenParlData de J1. Écartés : les pages entières, même compressées (340 ko par page
+  i-web, et les menus et textes rédigés d'une commune dans un dépôt public) ; des pages entièrement fabriquées,
+  comme pour la DGMR (leur forme ne serait pas celle des plateformes).
 - Comme pour toute source, seules les sondes décident d'une panne. La sonde d'une commune scrapée lit sa page de
   liste et y cherche le marqueur de sa plateforme (`icmsTablePastSitzungen` chez i-web, la réponse `coreapi` chez
   Quicksite…). Elle passe une fois par jour, juste avant l'import, et non toutes les 30 minutes (3 840 requêtes
