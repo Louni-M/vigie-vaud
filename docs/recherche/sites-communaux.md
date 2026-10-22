@@ -2,6 +2,11 @@
 
 Recherche pour l'issue #118 (carte #117, J3 Conseils communaux spécifié). Mesure du 20 octobre 2026.
 
+> **Mesure datée, non corrigée.** Ce recensement ne fait pas foi : les communes scrapées sont déclarées dans
+> `sources.json`, qui fait foi (ADR-0010, [Registre des communes scrapées](https://github.com/Louni-M/vigie-vaud/issues/128)).
+> Erreur connue : 15 sites classés i-web (motif `i-web\.ch`) sont en fait sur OIOI web, et la colonne `page_conseil`
+> est fausse pour quelques communes.
+
 **Question.** Sur quelles plateformes reposent les sites des 300 communes vaudoises, et lesquelles ont un conseil
 communal ou un conseil général ? Pour chaque commune : l'URL du site officiel, la plateforme ou le prestataire,
 l'URL de la page du conseil si elle se trouve facilement, et ce qu'en dit `robots.txt`.
