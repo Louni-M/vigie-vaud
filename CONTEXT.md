@@ -129,8 +129,9 @@ que tiennent l'attribution, la voie d'accès, la fraîcheur et la Couverture.
 **Plateforme** :
 Le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes (i-web, Quicksite…). Les communes d'une
 plateforme se lisent de la même façon ; la source reste le site de chaque commune, qui porte l'attribution et la
-Couverture.
-_À éviter_ : CMS, éditeur (pour la plateforme)
+Couverture. Chaque commune emploie l'une des **variantes** de sa plateforme, qui dit où sont ses Séances et ses Objets
+(i-web : module Séances, module Objets ou pages ; Quicksite : ancienne génération, `coreapi` ou module Conseil).
+_À éviter_ : CMS, éditeur (pour la plateforme) ; registre des communes scrapées (ce sont leurs sources déclarées)
 
 **Voie d'accès** :
 La manière dont le site obtient une source : **Direct** (le navigateur appelle la source), **Cron** (la source

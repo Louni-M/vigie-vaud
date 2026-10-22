@@ -38,3 +38,29 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
 - Les ancien·ne·s élu·e·s nommé·e·s dans les titres rattrapés, absent·e·s de la page des membres actuelle et
   jamais vu·e·s comme auteur·e·s, sont masqué·e·s après une civilité (ADR-0007) : c'est le prix d'un historique
   sans plancher.
+- Les communes scrapées sont déclarées dans `sources.json`, une source par commune (`site-<n° OFS>`), comme toute
+  source (ADR-0013) : il n'y a pas de registre à part. Chaque source donne sa plateforme, sa variante, sa page de liste
+  des Séances (la page sondée), et selon le cas celles des Objets et des membres et les paramètres `coreapi` ; son
+  niveau se déclare dans `conseil.donne` (Objets, préavis ou Séances seules), et non d'après ce que l'import trouve.
+  Une section `plateformes` déclare une fois chaque plateforme, ses variantes, leur marqueur de sonde et les niveaux
+  qu'elles permettent. Une commune non couverte d'une plateforme retenue a aussi sa source, sans conseil ni sonde,
+  avec une raison prise dans une liste fermée (« préavis seuls », « rien en ligne », « à la demande de la commune »,
+  « le site refuse les robots », « nouveau site pas encore lu »). Écartés : un fichier préparé à part, comme
+  `hotels-de-ville.csv` (deux déclarations d'une même source) ; la découverte des pages par le cron (une erreur y
+  publierait n'importe quelle page).
+- Ces déclarations ne changent que par une PR dans le dépôt principal, jamais par le cron. Un script de `pipeline/`
+  les prépare une fois en remesurant chaque site (plateforme réelle, variante, pages, plafond de requêtes), puis les
+  revérifie à la demande sans les écrire ; le recensement du 20 octobre 2026 reste une mesure datée, non corrigée.
+  Ce qui se lit au passage n'y est pas : le /24 (résolu à chaque passage), `robots.txt` et `Crawl-delay`, l'encodage.
+  Seul le ralentissement d'un /24 à la main y figure. Ce qui reste à rattraper est un état : le dépôt de données garde
+  la date du dernier rattrapage de chaque conseil.
+- Les tests du dépôt principal vérifient, sans réseau, que chaque commune déclarée existe dans `communes.json` (une
+  fusion qui l'efface fait échouer la PR qui met `communes.json` à jour), qu'un conseil n'a qu'une source, que chaque
+  plateforme et variante citées sont déclarées et permettent le niveau déclaré, et qu'une commune non couverte a une
+  raison et pas de conseil.
+- Une étape de J3 ajoute les sources de sa plateforme dans sa PR, puis un rattrapage ciblé est lancé à la main ; une
+  commune ajoutée plus tard suit le même chemin. Après une refonte, la commune reste en panne jusqu'à la PR qui la
+  corrige : nouvelles pages, autre plateforme retenue, ou non couverte « nouveau site pas encore lu ».
+- Les communes qui disparaissent au 1er janvier 2027 (Le Lieu sur i-web, Lucens sur Quicksite) ne sont pas
+  scrapées ; les nouvelles communes entrent comme des communes ajoutées, une fois leur site en ligne et s'il tourne
+  sur une plateforme retenue.
