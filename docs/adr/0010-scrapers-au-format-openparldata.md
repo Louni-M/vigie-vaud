@@ -6,8 +6,21 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
 ## Conséquences
 
 - Chaque scraper est testé sur des pages HTML enregistrées.
-- En production, un résultat vide ou un format inattendu ouvre une issue GitHub et passe la commune « en panne »
-  sur la page Couverture.
+- Comme pour toute source, seules les sondes décident d'une panne. La sonde d'une commune scrapée lit sa page de
+  liste et y cherche le marqueur de sa plateforme (`icmsTablePastSitzungen` chez i-web, la réponse `coreapi` chez
+  Quicksite…). Elle passe une fois par jour, juste avant l'import, et non toutes les 30 minutes (3 840 requêtes
+  par jour vers des sites communaux). Une sonde en échec est refaite au passage suivant, et l'import du jour
+  attend qu'elle réussisse. Sont des pannes : une erreur HTTP, un délai dépassé, un marqueur absent (refonte du
+  site), une page illisible. Une liste vide n'en est pas une (un conseil général entre deux séances, un site qui
+  ne garde que les Séances à venir). Une liste dont aucune ligne ne se lit est un import en échec, un élément
+  illisible est sauté et noté dans le journal, et une date fictive est importée telle quelle. Écartée : la panne
+  au premier résultat vide ou inattendu du scraper, qui faisait deux règles et prenait chaque silence pour une
+  panne.
+- Les issues des communes scrapées (`panne-source`, `import-conseils`, et `a-verifier` pour un conseil sans
+  nouvelle Séance, tenue ou annoncée, depuis 9 mois) s'ouvrent par plateforme : une seule issue par sorte, avec la
+  liste des communes touchées, que le cron tient à jour. Elle s'ouvre avec la première commune touchée et se
+  ferme au retour de la dernière. L'état reste mesuré commune par commune. Écartée : une issue par commune, car
+  une refonte de plateforme en ouvrirait des dizaines d'un coup.
 - Le rattrapage d'une commune scrapée (ADR-0008) prend tout ce que son site garde, sans plancher. À la différence
   de J1, le passage ordinaire ne lit jamais l'historique, même au premier import d'une commune : sur une
   trentaine de communes ajoutées d'un coup, il ne tiendrait pas dans un passage. L'historique arrive par un
