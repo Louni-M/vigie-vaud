@@ -98,6 +98,8 @@ ont une Couverture, et parmi elles seulement celles dont les éléments appartie
 n'atteignent une commune que par rattachement par nom (le Grand Conseil, la presse) **porte sur le canton** et n'a pas
 de Couverture. Une couche couvre une commune dès qu'une de ses sources la couvre ; une couche dont aucune source n'a de
 Couverture les couvre toutes.
+La source d'un conseil communal déclare aussi son **niveau**, ce qu'elle en donne : « objets et séances »,
+« séances et préavis » ou « séances seulement ». Un niveau ne change ni le mode ni l'état.
 Une source peut déclarer ses **limites** : ce qu'elle ne publie pas toujours dans les communes qu'elle couvre (la
 DGMR : les routes communales). Elles ne changent ni le mode ni l'état.
 Une commune **non couverte** par la couche choisie (sur bureau, celle dont le volet est ouvert ; sur mobile, celle
