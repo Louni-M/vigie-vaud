@@ -76,6 +76,20 @@
     },
     "CouvertureDeclaree": {
       "additionalProperties": false,
+      "else": {
+        "properties": {
+          "raison": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "non_couvert"
+          }
+        }
+      },
       "properties": {
         "communes": {
           "anyOf": [
@@ -91,16 +105,40 @@
               "type": "array"
             }
           ],
-          "description": "« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes."
+          "description": "« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes ; en `non_couvert`, la commune d'une plateforme retenue que Vigie Vaud ne lit pas."
         },
         "mode": {
           "$ref": "#/$defs/ModeCouverture"
+        },
+        "raison": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RaisonNonCouvert"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pourquoi une commune d'une plateforme retenue n'est pas couverte : obligatoire en `non_couvert`, interdite ailleurs. Les phrases de la Couverture et de l'onglet ne s'écrivent que côté site."
         }
       },
       "required": [
         "communes",
         "mode"
       ],
+      "then": {
+        "properties": {
+          "raison": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "raison"
+        ]
+      },
       "title": "CouvertureDeclaree",
       "type": "object"
     },
@@ -126,7 +164,8 @@
     "ModeCouverture": {
       "enum": [
         "api",
-        "scrape"
+        "scrape",
+        "non_couvert"
       ],
       "type": "string"
     },
@@ -169,22 +208,48 @@
       "title": "Plateforme",
       "type": "object"
     },
+    "RaisonNonCouvert": {
+      "enum": [
+        "preavis_seuls",
+        "rien_en_ligne",
+        "demande_commune",
+        "refus_robots",
+        "nouveau_site"
+      ],
+      "type": "string"
+    },
     "Site": {
       "additionalProperties": false,
-      "description": "Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.",
+      "description": "Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.\nUne commune non couverte d'une plateforme retenue n'y déclare que sa plateforme.",
       "properties": {
         "plateforme": {
           "$ref": "#/$defs/IdPlateforme",
           "description": "Identifiant de la plateforme, déclarée dans `plateformes`."
         },
         "variante": {
-          "description": "Identifiant de la variante, déclarée dans sa plateforme.",
-          "minLength": 1,
-          "type": "string"
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Identifiant de la variante, déclarée dans sa plateforme ; obligatoire avec un bloc `conseil`."
         },
         "seances": {
-          "$ref": "#/$defs/Lien",
-          "description": "Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée."
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée. Obligatoire avec un bloc `conseil`."
         },
         "objets": {
           "anyOf": [
@@ -212,9 +277,7 @@
         }
       },
       "required": [
-        "plateforme",
-        "variante",
-        "seances"
+        "plateforme"
       ],
       "title": "Site",
       "type": "object"
@@ -270,6 +333,21 @@
     },
     "Source": {
       "additionalProperties": false,
+      "if": {
+        "properties": {
+          "couverture": {
+            "properties": {
+              "mode": {
+                "const": "non_couvert"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "couverture"
+        ]
+      },
       "properties": {
         "id": {
           "$ref": "#/$defs/IdSource",
@@ -352,7 +430,7 @@
             }
           ],
           "default": null,
-          "description": "Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData."
+          "description": "Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData. Une commune non couverte d'une plateforme retenue y déclare sa plateforme."
         }
       },
       "required": [
@@ -363,6 +441,16 @@
         "voie_acces",
         "fraicheur"
       ],
+      "then": {
+        "properties": {
+          "conseil": {
+            "type": "null"
+          },
+          "sonde": {
+            "type": "null"
+          }
+        }
+      },
       "title": "Source",
       "type": "object"
     },

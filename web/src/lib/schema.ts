@@ -31,7 +31,8 @@ export type SorteContributeur = 'personne' | 'groupe';
 export type Lien = string;
 export type VoieAcces = 'direct' | 'cron' | 'worker' | 'preparee';
 export type SorteFraicheur = 'donnee' | 'requete' | 'millesime' | 'import';
-export type ModeCouverture = 'api' | 'scrape';
+export type ModeCouverture = 'api' | 'scrape' | 'non_couvert';
+export type RaisonNonCouvert = 'preavis_seuls' | 'rien_en_ligne' | 'demande_commune' | 'refus_robots' | 'nouveau_site';
 
 /**
  * Une correction de rattachement écrite à la main dans `corrections.json` (ADR 0016).
@@ -570,7 +571,7 @@ export interface Source {
 	 */
 	conseil?: Conseil | null;
 	/**
-	 * Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData.
+	 * Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData. Une commune non couverte d'une plateforme retenue y déclare sa plateforme.
 	 */
 	site?: Site | null;
 }
@@ -584,10 +585,14 @@ export interface Attribution {
 }
 export interface CouvertureDeclaree {
 	/**
-	 * « canton » (les 300 communes) ou la liste des n° OFS des communes couvertes.
+	 * « canton » (les 300 communes) ou la liste des n° OFS des communes couvertes ; en `non_couvert`, la commune d'une plateforme retenue que Vigie Vaud ne lit pas.
 	 */
 	communes: 'canton' | [NumeroOfs, ...NumeroOfs[]];
 	mode: ModeCouverture;
+	/**
+	 * Pourquoi une commune d'une plateforme retenue n'est pas couverte : obligatoire en `non_couvert`, interdite ailleurs. Les phrases de la Couverture et de l'onglet ne s'écrivent que côté site.
+	 */
+	raison?: RaisonNonCouvert | null;
 }
 /**
  * Requête de vérification envoyée par le cron, sans conserver de données.
@@ -640,6 +645,7 @@ export interface Conseil {
 }
 /**
  * Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.
+ * Une commune non couverte d'une plateforme retenue n'y déclare que sa plateforme.
  */
 export interface Site {
 	/**
@@ -647,13 +653,13 @@ export interface Site {
 	 */
 	plateforme: string;
 	/**
-	 * Identifiant de la variante, déclarée dans sa plateforme.
+	 * Identifiant de la variante, déclarée dans sa plateforme ; obligatoire avec un bloc `conseil`.
 	 */
-	variante: string;
+	variante?: string | null;
 	/**
-	 * Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée.
+	 * Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée. Obligatoire avec un bloc `conseil`.
 	 */
-	seances: string;
+	seances?: Lien | null;
 	/**
 	 * Page de liste des Objets ou des préavis, selon la variante.
 	 */

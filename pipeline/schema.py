@@ -76,7 +76,10 @@ class Enveloppe(Modele):
 IdSource = TypeAliasType("IdSource", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")])
 VoieAcces = TypeAliasType("VoieAcces", Literal["direct", "cron", "worker", "preparee"])
 SorteFraicheur = TypeAliasType("SorteFraicheur", Literal["donnee", "requete", "millesime", "import"])
-ModeCouverture = TypeAliasType("ModeCouverture", Literal["api", "scrape"])
+ModeCouverture = TypeAliasType("ModeCouverture", Literal["api", "scrape", "non_couvert"])
+RaisonNonCouvert = TypeAliasType(
+    "RaisonNonCouvert", Literal["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site"]
+)
 
 
 class Attribution(Modele):
@@ -85,11 +88,33 @@ class Attribution(Modele):
     licence: str = Field(min_length=1)
 
 
+# Une raison en `non_couvert`, aucune ailleurs : la règle du validateur, pour le contrôle du site (Ajv).
+_RAISON_SI_NON_COUVERT = {
+    "if": {"properties": {"mode": {"const": "non_couvert"}}},
+    "then": {"required": ["raison"], "properties": {"raison": {"not": {"type": "null"}}}},
+    "else": {"properties": {"raison": {"type": "null"}}},
+}
+
+
 class CouvertureDeclaree(Modele):
+    model_config = ConfigDict(json_schema_extra=_RAISON_SI_NON_COUVERT)
+
     communes: Literal["canton"] | Annotated[list[NumeroOfs], Field(min_length=1)] = Field(
-        description="« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes."
+        description="« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes ; en `non_couvert`, "
+        "la commune d'une plateforme retenue que Vigie Vaud ne lit pas."
     )
     mode: ModeCouverture
+    raison: RaisonNonCouvert | None = Field(
+        default=None,
+        description="Pourquoi une commune d'une plateforme retenue n'est pas couverte : obligatoire en `non_couvert`, "
+        "interdite ailleurs. Les phrases de la Couverture et de l'onglet ne s'écrivent que côté site.",
+    )
+
+    @model_validator(mode="after")
+    def _raison_si_non_couvert(self) -> CouvertureDeclaree:
+        if (self.mode == "non_couvert") != (self.raison is not None):
+            raise ValueError("une raison en mode `non_couvert`, et seulement là")
+        return self
 
 
 class Sonde(Modele):
@@ -163,12 +188,19 @@ IdPlateforme = TypeAliasType("IdPlateforme", Annotated[str, StringConstraints(pa
 
 
 class Site(Modele):
-    """Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal."""
+    """Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.
+    Une commune non couverte d'une plateforme retenue n'y déclare que sa plateforme."""
 
     plateforme: IdPlateforme = Field(description="Identifiant de la plateforme, déclarée dans `plateformes`.")
-    variante: str = Field(min_length=1, description="Identifiant de la variante, déclarée dans sa plateforme.")
-    seances: Lien = Field(
-        description="Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée."
+    variante: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Identifiant de la variante, déclarée dans sa plateforme ; obligatoire avec un bloc `conseil`.",
+    )
+    seances: Lien | None = Field(
+        default=None,
+        description="Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée. "
+        "Obligatoire avec un bloc `conseil`.",
     )
     objets: Lien | None = Field(default=None, description="Page de liste des Objets ou des préavis, selon la variante.")
     membres: Lien | None = Field(
@@ -196,7 +228,20 @@ class Plateforme(Modele):
     variantes: Annotated[list[Variante], Field(min_length=1)]
 
 
+# La règle du validateur de `Source` pour une commune non couverte, ni conseil ni sonde, reprise pour le contrôle de
+# `sources.json` à la construction du site (Ajv). Un seul `if` : un `allOf` ferait de `Source` un alias en TypeScript.
+_NON_COUVERTE_SANS_CONSEIL_NI_SONDE = {
+    "if": {
+        "properties": {"couverture": {"type": "object", "properties": {"mode": {"const": "non_couvert"}}}},
+        "required": ["couverture"],
+    },
+    "then": {"properties": {"conseil": {"type": "null"}, "sonde": {"type": "null"}}},
+}
+
+
 class Source(Modele):
+    model_config = ConfigDict(json_schema_extra=_NON_COUVERTE_SANS_CONSEIL_NI_SONDE)
+
     id: IdSource = Field(description="Identifiant stable, clé de la source dans l'état des sources.")
     nom: str = Field(min_length=1)
     nom_court: str = Field(min_length=1, description="Nom affiché dans le badge de fraîcheur (« · CAMAC »).")
@@ -220,8 +265,18 @@ class Source(Modele):
     site: Site | None = Field(
         default=None,
         description="Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu "
-        "d'OpenParlData.",
+        "d'OpenParlData. Une commune non couverte d'une plateforme retenue y déclare sa plateforme.",
     )
+
+    @model_validator(mode="after")
+    def _non_couverte_sans_conseil_ni_sonde(self) -> Source:
+        if self.couverture is not None and self.couverture.mode == "non_couvert":
+            if self.conseil is not None or self.sonde is not None:
+                raise ValueError(f"{self.id} : une commune non couverte n'a ni conseil ni sonde")
+        if self.conseil is not None and self.site is not None:
+            if self.site.variante is None or self.site.seances is None:
+                raise ValueError(f"{self.id} : un conseil scrapé déclare sa variante et sa page des Séances")
+        return self
 
 
 class FichierSources(Modele):
