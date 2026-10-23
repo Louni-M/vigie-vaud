@@ -18,7 +18,8 @@ enregistrement, on relit l'échantillon. Un bloc ou un identifiant qui manque ar
 déclaration est à revoir. Une page non lue (erreur HTTP, refus, délai) l'arrête aussi, sans nouvel essai.
 
 Chaque variante a son dossier (`<plateforme>/<variante>/`), avec ses pages réduites, encodées comme le site les a
-servies, et `index.json` (URL demandée et finale, statut, en-têtes utiles de chaque page). Les pages entières
+servies, et `index.json` (URL demandée et finale, statut, en-têtes utiles de chaque page ; le corps enregistré est
+décompressé, un faux transport qui sert son `content-encoding` le recompresse). Les pages entières
 restent hors du dépôt, dans le dossier `--brut` : relancé avec `--hors-ligne`, le script refait la réduction sans
 aucune requête et produit les mêmes fichiers.
 
@@ -59,7 +60,8 @@ class PageEchantillon:
     url: str
     blocs: tuple[str, ...]  # sélecteurs des blocs lus (`tag`, `#id`, `.classe`, `tag#id`, `tag.classe`)
     ids: tuple[str, ...] = ()  # identifiants des lignes gardées ; vide : toutes
-    lignes: str | None = None  # sélecteur des lignes d'une liste HTML
+    lignes: str | None = None  # sélecteur des lignes d'une liste HTML (`tr`, `tbody>tr`…)
+    sans: tuple[str, ...] = ()  # sélecteurs des éléments retirés des blocs (bouton d'archive, contact…)
 
 
 @dataclass(frozen=True)
@@ -75,7 +77,80 @@ class Echantillon:
         return f"{self.plateforme}/{self.variante}"
 
 
-ECHANTILLONS: tuple[Echantillon, ...] = ()
+_SEANCES_IWEB = ("table#icmsTableFutureSitzungen", "table#icmsTablePastSitzungen")
+_SEANCE_IWEB = dict(
+    blocs=("h1.contentTitle", "div.icms-content-col-a"),
+    lignes="tbody>tr",
+    # Le bouton de l'archive Zip, la description et le contact sont des textes de la commune, pas des données.
+    sans=("div#zipDownloadDiv", "div.icms-desclist-container", "div.icms-container-callout"),
+)
+
+# Communes choisies d'après la recherche « Publications des conseils » (branche research/publications-conseils).
+ECHANTILLONS: tuple[Echantillon, ...] = (
+    # Module Séances seul : liste en JSON échappé, une page par Séance (lien stable redirigé vers /sitzung/<id>),
+    # documents de Séance ; les membres du bureau dans `personList`.
+    Echantillon("i-web", "seances", "Préverenges", 5643, (
+        PageEchantillon(
+            "seances", "https://www.preverenges.ch/sitzung", _SEANCES_IWEB,
+            # À venir ; 18 juin, 10 septembre (page lue) et 5 février 2026, dans le désordre du site.
+            ("6987214", "6987193", "6987205", "7273262"),
+        ),
+        PageEchantillon(
+            "seance", "https://www.preverenges.ch/_rte/anlass/6987205",
+            ids=("7223149", "7223152", "7223158", "7223161"),  # ordre du jour, préavis, décision, procès-verbal
+            **_SEANCE_IWEB,
+        ),
+        PageEchantillon(
+            "membres", "https://www.preverenges.ch/conseil", ("h1.contentTitle", "table#icmsTable-personList"),
+            ("123379", "123415"),  # le président et la 1re vice-présidente du Conseil
+        ),
+    )),
+    # Modules Séances et Objets : Objets numérotés (`2026-PM-23`) avec catégorie, statut et autorité ; points
+    # d'ordre du jour reliés à leurs Objets.
+    Echantillon("i-web", "objets", "Blonay - Saint-Légier", 5892, (
+        PageEchantillon(
+            "seances", "https://www.blonay-saint-legier.ch/seances", _SEANCES_IWEB,
+            # À venir ; 8 et 29 septembre 2026 (page lue), puis l'installation du 18 juin, dans le désordre du site.
+            ("6895126", "6895117", "6895123", "7693285"),
+        ),
+        PageEchantillon(
+            "seance", "https://www.blonay-saint-legier.ch/_rte/anlass/6895123",
+            ids=(
+                "7246414", "7262080",  # ordre du jour, procès-verbal
+                "traktanden_197017", "traktanden_197032", "traktanden_197035",  # points 1, 5 et 6
+                "2909893", "2981212", "3002125",  # Objets de la Séance : préavis 23-2026, deux communications
+            ),
+            **_SEANCE_IWEB,
+        ),
+        PageEchantillon(
+            "objets", "https://www.blonay-saint-legier.ch/objets-politiques", ("table#icmsTable-geschaefteList",),
+            # Préavis 23-2026 (point 6) et 37-2026 (page lue), un postulat d'élu·e, deux communications.
+            ("2909893", "3002200", "3000802", "2981212", "3002125"),
+        ),
+        PageEchantillon("objet", "https://www.blonay-saint-legier.ch/_rte/information/3002200", ("div.maincontent",)),
+    )),
+    # Préavis rédigés dans une page (tableau saisi à la main sous les Séances), à côté du module Séances.
+    Echantillon("i-web", "pages", "Puidoux", 5607, (
+        PageEchantillon(
+            "seances", "https://www.puidoux.ch/seances", (*_SEANCES_IWEB, "table.Table"),
+            (
+                "7115819", "7115804", "7115816",  # à venir ; séance annulée du 29 janvier ; 1er octobre (page lue)
+                "N° du préavis et date",  # ligne d'en-tête du tableau des préavis
+                "09-2021",  # préavis sans document
+                "5549947", "5550052",  # retiré, refusé
+                "7014520",  # date en toutes lettres
+                "7206067",  # 05-2026 et 07-2026, liés au même document
+                "7206046",  # proposition du bureau, sans numéro
+            ),
+            lignes="tbody>tr",
+        ),
+        PageEchantillon(
+            "seance", "https://www.puidoux.ch/_rte/anlass/7115816",
+            ids=("7206034", "7206037", "7266115", "7266130"),  # ordre du jour, préavis, extrait de décision, PV
+            **_SEANCE_IWEB,
+        ),
+    )),
+)
 
 
 # --- Lecture, par le robot ou depuis les pages brutes -----------------------------------------------------------
@@ -216,6 +291,14 @@ _SELECTEUR = re.compile(r"^(?P<tag>[a-z][a-z0-9]*)?(?:#(?P<id>[\w-]+))?(?:\.(?P<
 
 
 def _correspond(noeud: _Noeud, selecteur: str) -> bool:
+    """`tag`, `#id`, `.classe` et leurs combinaisons, ou `parent>enfant` (enfant direct)."""
+    if ">" in selecteur:
+        parent, enfant = selecteur.rsplit(">", 1)
+        return (
+            _correspond(noeud, enfant.strip())
+            and noeud.parent is not None
+            and _correspond(noeud.parent, parent.strip())
+        )
     m = _SELECTEUR.match(selecteur)
     if not m or not any(m.groups()):
         raise ValueError(f"sélecteur non pris en charge : {selecteur}")
@@ -227,7 +310,13 @@ def _correspond(noeud: _Noeud, selecteur: str) -> bool:
 
 
 def _porte(valeur: object, identifiant: str) -> bool:
-    """Une valeur porte un identifiant si elle l'égale ou si un lien y finit par `/<identifiant>`."""
+    """Une valeur porte un identifiant si elle l'égale ou si un lien y finit par `/<identifiant>`. Une ligne HTML
+    le porte aussi si son texte le contient comme un mot (un numéro de préavis dans une ligne sans lien)."""
+    if isinstance(valeur, _Noeud):
+        texte = " ".join(_texte_de(valeur).split())
+        if re.search(rf"(?<![\w-]){re.escape(identifiant)}(?![\w-])", texte):
+            return True
+        return _porte([v for n in (valeur, *valeur.elements()) for _, v in n.attrs], identifiant)
     if isinstance(valeur, dict):
         return any(_porte(v, identifiant) for v in valeur.values())
     if isinstance(valeur, list):
@@ -271,20 +360,33 @@ def _ancetres(noeud: _Noeud) -> list[_Noeud]:
 def _filtrer(bloc: _Noeud, page: PageEchantillon, vus: set[str]) -> None:
     """Retire du bloc les balises retirées et les lignes qui ne portent aucun identifiant choisi."""
     for noeud in [bloc, *bloc.elements()]:
-        noeud.enfants = [e for e in noeud.enfants if not (isinstance(e, _Noeud) and e.tag in RETIRES)]
+        noeud.enfants = [
+            e for e in noeud.enfants
+            if not (isinstance(e, _Noeud) and (e.tag in RETIRES or any(_correspond(e, x) for x in page.sans)))
+        ]
         noeud.attrs = [(k, v) for k, v in noeud.attrs if k != "style" and not k.startswith("on")]
         entites = noeud.attr("data-entities")
         if entites is not None and page.ids:
             donnees = json.loads(entites)
             donnees["data"] = [r for r in donnees.get("data", []) if _garder(r, page.ids, vus)]
-            valeur = json.dumps(donnees, ensure_ascii=False, separators=(",", ":"))
+            valeur = _json(donnees, entites)
             noeud.attrs = [(k, valeur if k == "data-entities" else v) for k, v in noeud.attrs]
         if page.lignes and page.ids:
             noeud.enfants = [
                 e for e in noeud.enfants
                 if not (isinstance(e, _Noeud) and _correspond(e, page.lignes))
-                or _garder([v for n in (e, *e.elements()) for _, v in n.attrs], page.ids, vus)
+                or _garder(e, page.ids, vus)
             ]
+
+
+def _json(donnees: object, original: str) -> str:
+    """Les données réécrites dans le style de l'original : celui de PHP chez i-web (`\\/`, `\\u00e9`)."""
+    texte = json.dumps(donnees, ensure_ascii="\\u" in original, separators=(",", ":"))
+    return texte.replace("/", "\\/") if "\\/" in original else texte
+
+
+def _texte_de(noeud: _Noeud) -> str:
+    return " ".join(e if isinstance(e, str) else _texte_de(e) for e in noeud.enfants)
 
 
 def _garder(valeur: object, ids: tuple[str, ...], vus: set[str]) -> bool:
@@ -295,7 +397,11 @@ def _garder(valeur: object, ids: tuple[str, ...], vus: set[str]) -> bool:
 
 def _attributs(noeud: _Noeud, tous: bool = True) -> str:
     attrs = noeud.attrs if tous else [(k, v) for k, v in noeud.attrs if k in ("id", "class")]
-    return "".join(f' {k}="{v.replace("&", "&amp;").replace(chr(34), "&quot;")}"' for k, v in attrs)
+    return "".join(f' {k}="{_echapper(v)}"' for k, v in attrs)
+
+
+def _echapper(valeur: str) -> str:
+    return valeur.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _texte(t: str) -> str:
@@ -312,8 +418,8 @@ def _ecrire_chemin(noeud: _Noeud, chemin: set[int], gardes: set[int]) -> str:
 
 
 def _ecrire(noeud: _Noeud) -> str:
-    """Un élément gardé, une ligne par élément (espaces réduites, pour un diff lisible), sauf ceux qui tiennent sur
-    une ligne : texte seul, texte mêlé d'éléments, ou un seul enfant qui tient lui-même sur une ligne."""
+    """Un élément gardé, une ligne par élément (espaces réduites, pour un diff lisible), sauf ceux qui tiennent
+    sur une ligne : texte seul, texte mêlé d'éléments, ou un seul enfant qui tient lui-même sur une ligne."""
     if noeud.tag in VIDES:
         return f"<{noeud.tag}{_attributs(noeud)}>\n"
     if _sur_une_ligne(noeud):

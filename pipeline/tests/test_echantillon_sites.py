@@ -210,6 +210,82 @@ def test_un_bloc_ou_un_identifiant_absent_arrete_le_script_sans_rien_ecrire(tmp_
     assert not (tmp_path / "echantillon").exists()
 
 
+def test_l_echantillon_enregistre_est_declare_et_reduit_au_bloc_lu():
+    from echantillon_sites import DOSSIER, ECHANTILLONS
+
+    for echantillon in ECHANTILLONS:
+        dossier = DOSSIER / echantillon.plateforme / echantillon.variante
+        index = json.loads((dossier / "index.json").read_text(encoding="utf-8"))
+        assert [p["sorte"] for p in index["pages"]] == [p.sorte for p in echantillon.pages]
+        for page in index["pages"]:
+            texte = (dossier / page["fichier"]).read_text(encoding="utf-8")
+            provenance = f"<!--\n  Échantillon {echantillon.plateforme}, variante {echantillon.variante} : "
+            assert texte.startswith(provenance)
+            assert "<script" not in texte and "<nav" not in texte and "<footer" not in texte
+            assert len(texte) < 20_000, page["fichier"]
+        assert "icmsTablePastSitzungen" in (dossier / "seances.html").read_text(encoding="utf-8")  # marqueur de sonde
+
+
+def _une_page(tmp_path, corps, page):
+    horloge = HorlogeFactice(T0)
+    reseau = Reseau(horloge, adresses={"www.exemple.ch": "195.65.10.20"}, pages={page.url: Page(corps)})
+    echantillon = Echantillon("i-web", "x", "Exemple", 9999, (page,))
+    _enregistrer(reseau, horloge, tmp_path / "echantillon", tmp_path / "brut", echantillon)
+    return (tmp_path / f"echantillon/i-web/x/{page.sorte}.html").read_text(encoding="utf-8").split("-->\n", 1)[1]
+
+
+def test_le_json_echappe_d_i_web_garde_son_echappement_dans_les_lignes_gardees(tmp_path):
+    # Comme PHP : barres obliques échappées, lettres accentuées en \uXXXX, guillemets HTML dans l'attribut.
+    ligne = '{&quot;name&quot;:&quot;&lt;a href=\\&quot;\\/_rte\\/anlass\\/%s\\&quot;&gt;S\\u00e9ance&lt;\\/a&gt;&quot;}'
+    corps = (
+        '<table id="icmsTablePastSitzungen" data-entities="{&quot;emptyColumns&quot;:[],&quot;data&quot;:['
+        + ",".join(ligne % i for i in (11, 12, 13))
+        + ']}"></table>'
+    )
+    page = PageEchantillon("seances", "https://www.exemple.ch/seances", ("table#icmsTablePastSitzungen",), ("12",))
+
+    assert _une_page(tmp_path, corps, page) == (
+        '<table id="icmsTablePastSitzungen" data-entities="{&quot;emptyColumns&quot;:[],&quot;data&quot;:['
+        + ligne % 12
+        + ']}"></table>\n'
+    )
+
+
+def test_les_lignes_d_un_tableau_se_choisissent_par_lien_par_id_ou_par_numero_et_l_en_tete_reste(tmp_path):
+    corps = """<div class="col-a">
+<div id="zipDownloadDiv" data-states="[]"></div>
+<table class="docs"><thead><tr><th>Nom</th></tr></thead><tbody>
+<tr><td>N° du préavis</td><td>Titre</td></tr>
+<tr id="traktanden_1"><td>01</td><td>Adoption de l'ordre du jour</td></tr>
+<tr id="traktanden_2"><td>02</td><td>Divers</td></tr>
+<tr><td><a href="/_doc/101">Préavis 01-2026</a></td><td>Budget</td></tr>
+<tr><td>Préavis 02-2026</td><td>Comptes</td></tr>
+<tr><td><a href="/_doc/103">Préavis 03-2026</a></td><td>Opposition de M. Exemple</td></tr>
+</tbody></table></div>"""
+    page = PageEchantillon(
+        "seance",
+        "https://www.exemple.ch/seances/11",
+        ("div.col-a",),
+        ("N° du préavis", "traktanden_1", "101", "02-2026"),
+        lignes="tbody>tr",
+        sans=("div#zipDownloadDiv",),
+    )
+
+    assert _une_page(tmp_path, corps, page) == (
+        '<div class="col-a">\n'
+        '<table class="docs">\n'
+        "<thead><tr><th>Nom</th></tr></thead>\n"
+        "<tbody>\n"
+        "<tr>\n<td>N° du préavis</td>\n<td>Titre</td>\n</tr>\n"
+        '<tr id="traktanden_1">\n<td>01</td>\n<td>Adoption de l\'ordre du jour</td>\n</tr>\n'
+        '<tr>\n<td><a href="/_doc/101">Préavis 01-2026</a></td>\n<td>Budget</td>\n</tr>\n'
+        "<tr>\n<td>Préavis 02-2026</td>\n<td>Comptes</td>\n</tr>\n"
+        "</tbody>\n"
+        "</table>\n"
+        "</div>\n"
+    )
+
+
 def test_une_page_en_iso_8859_1_est_ecrite_dans_son_encodage(tmp_path):
     horloge = HorlogeFactice(T0)
     reseau = Reseau(horloge, adresses={"conseil.exemple.ch": "185.54.6.10"})

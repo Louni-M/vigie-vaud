@@ -31,7 +31,8 @@ A_PROPOS = f"{_CONFIG['site']}/a-propos#robot"
 
 
 def user_agent(role: Role) -> str:
-    """`VigieVaud-sonde` ou `VigieVaud-import` : les règles de `robots.txt` visent `VigieVaud`, le suffixe dit le rôle."""
+    """`VigieVaud-sonde` ou `VigieVaud-import`, avec le lien vers l'À propos et le courriel de contact : les règles
+    de `robots.txt` visent `VigieVaud`, le suffixe dit le rôle."""
     return f"VigieVaud-{role} (+{A_PROPOS}; {_CONFIG['courriel']})"
 
 

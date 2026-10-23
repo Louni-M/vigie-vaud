@@ -1,0 +1,30 @@
+{
+ "plateforme": "i-web",
+ "variante": "pages",
+ "commune": "Puidoux",
+ "ofs": 5607,
+ "pages": [
+  {
+   "sorte": "seances",
+   "url": "https://www.puidoux.ch/seances",
+   "finale": "https://www.puidoux.ch/seances",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seances.html"
+  },
+  {
+   "sorte": "seance",
+   "url": "https://www.puidoux.ch/_rte/anlass/7115816",
+   "finale": "https://www.puidoux.ch/seances/7115816",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seance.html"
+  }
+ ]
+}
