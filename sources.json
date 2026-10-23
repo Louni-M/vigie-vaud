@@ -1,5 +1,25 @@
 {
 	"$schema": "./schema/sources.schema.json",
+	"plateformes": [
+		{
+			"id": "i-web",
+			"nom": "i-web",
+			"editeur": "Innovative Web AG",
+			"variantes": [
+				{ "id": "seances", "marqueur": "icmsTablePastSitzungen", "niveaux": [["seances"]] },
+				{
+					"id": "objets",
+					"marqueur": "icmsTablePastSitzungen",
+					"niveaux": [["objets", "seances"], ["seances"]]
+				},
+				{
+					"id": "pages",
+					"marqueur": "icmsTablePastSitzungen",
+					"niveaux": [["preavis", "seances"], ["seances"]]
+				}
+			]
+		}
+	],
 	"sources": [
 		{
 			"id": "camac-permis",
@@ -210,6 +230,526 @@
 				"champs": ["id", "begin_date"],
 				"enregistrements": "data",
 				"jamais_vide": true
+			}
+		},
+		{
+			"id": "site-5410",
+			"nom": "Conseil communal d'Ormont-Dessous (site de la commune)",
+			"nom_court": "Site d'Ormont-Dessous",
+			"attribution": {
+				"texte": "Commune d'Ormont-Dessous",
+				"lien": "https://www.ormont-dessous.ch/conseil-communal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5410], "mode": "scrape" },
+			"conseil": { "body_key": "5410", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.ormont-dessous.ch/seances"
+			}
+		},
+		{
+			"id": "site-5414",
+			"nom": "Conseil communal de Villeneuve (site de la commune)",
+			"nom_court": "Site de Villeneuve",
+			"attribution": {
+				"texte": "Commune de Villeneuve",
+				"lien": "https://www.villeneuve.ch/conseilcommunal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5414], "mode": "scrape" },
+			"conseil": { "body_key": "5414", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.villeneuve.ch/seances"
+			}
+		},
+		{
+			"id": "site-5458",
+			"nom": "Conseil communal de Faoug (site de la commune)",
+			"nom_court": "Site de Faoug",
+			"attribution": {
+				"texte": "Commune de Faoug",
+				"lien": "https://www.faoug.ch/conseil-communal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5458], "mode": "scrape" },
+			"conseil": { "body_key": "5458", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.faoug.ch/seances"
+			}
+		},
+		{
+			"id": "site-5487",
+			"nom": "Conseil général de Lussery-Villars (site de la commune)",
+			"nom_court": "Site de Lussery-Villars",
+			"attribution": {
+				"texte": "Commune de Lussery-Villars",
+				"lien": "https://www.lussery-villars.ch/conseil-general",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5487], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"site": { "plateforme": "i-web" }
+		},
+		{
+			"id": "site-5493",
+			"nom": "Conseil général d'Orny (site de la commune)",
+			"nom_court": "Site d'Orny",
+			"attribution": {
+				"texte": "Commune d'Orny",
+				"lien": "https://www.orny.ch/conseil-general",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5493], "mode": "scrape" },
+			"conseil": { "body_key": "5493", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.orny.ch/seances"
+			}
+		},
+		{
+			"id": "site-5514",
+			"nom": "Conseil communal de Bottens (site de la commune)",
+			"nom_court": "Site de Bottens",
+			"attribution": {
+				"texte": "Commune de Bottens",
+				"lien": "https://www.bottens.ch/conseilcommunal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5514], "mode": "scrape" },
+			"conseil": { "body_key": "5514", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.bottens.ch/seances"
+			}
+		},
+		{
+			"id": "site-5523",
+			"nom": "Conseil communal de Froideville (site de la commune)",
+			"nom_court": "Site de Froideville",
+			"attribution": {
+				"texte": "Commune de Froideville",
+				"lien": "https://www.froideville.ch/legislatif",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5523], "mode": "scrape" },
+			"conseil": { "body_key": "5523", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.froideville.ch/seances"
+			}
+		},
+		{
+			"id": "site-5529",
+			"nom": "Conseil général d'Oulens-sous-Echallens (site de la commune)",
+			"nom_court": "Site d'Oulens-sous-Echallens",
+			"attribution": {
+				"texte": "Commune d'Oulens-sous-Echallens",
+				"lien": "https://www.oulens.ch/conseilgeneral",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5529], "mode": "scrape" },
+			"conseil": { "body_key": "5529", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.oulens.ch/seances"
+			}
+		},
+		{
+			"id": "site-5568",
+			"nom": "Conseil communal de Sainte-Croix (site de la commune)",
+			"nom_court": "Site de Sainte-Croix",
+			"attribution": {
+				"texte": "Commune de Sainte-Croix",
+				"lien": "https://www.sainte-croix.ch/conseil-communal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5568], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"site": { "plateforme": "i-web" }
+		},
+		{
+			"id": "site-5607",
+			"nom": "Conseil communal de Puidoux (site de la commune)",
+			"nom_court": "Site de Puidoux",
+			"attribution": {
+				"texte": "Commune de Puidoux",
+				"lien": "https://www.puidoux.ch/conseil",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5607], "mode": "scrape" },
+			"conseil": { "body_key": "5607", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "pages",
+				"seances": "https://www.puidoux.ch/seances",
+				"objets": "https://www.puidoux.ch/seances"
+			}
+		},
+		{
+			"id": "site-5634",
+			"nom": "Conseil communal d'Echichens (site de la commune)",
+			"nom_court": "Site d'Echichens",
+			"attribution": {
+				"texte": "Commune d'Echichens",
+				"lien": "https://www.echichens.ch/conseil",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5634], "mode": "scrape" },
+			"conseil": { "body_key": "5634", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.echichens.ch/seances"
+			}
+		},
+		{
+			"id": "site-5643",
+			"nom": "Conseil communal de Préverenges (site de la commune)",
+			"nom_court": "Site de Préverenges",
+			"attribution": {
+				"texte": "Commune de Préverenges",
+				"lien": "https://www.preverenges.ch/conseil",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5643], "mode": "scrape" },
+			"conseil": { "body_key": "5643", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.preverenges.ch/sitzung",
+				"membres": "https://www.preverenges.ch/conseil"
+			}
+		},
+		{
+			"id": "site-5649",
+			"nom": "Conseil communal de Tolochenaz (site de la commune)",
+			"nom_court": "Site de Tolochenaz",
+			"attribution": {
+				"texte": "Commune de Tolochenaz",
+				"lien": "https://www.tolochenaz.ch/conseilcommunal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5649], "mode": "scrape" },
+			"conseil": { "body_key": "5649", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.tolochenaz.ch/seances"
+			}
+		},
+		{
+			"id": "site-5654",
+			"nom": "Conseil général de Vullierens (site de la commune)",
+			"nom_court": "Site de Vullierens",
+			"attribution": {
+				"texte": "Commune de Vullierens",
+				"lien": "https://www.vullierens.ch/conseil-general",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5654], "mode": "scrape" },
+			"conseil": { "body_key": "5654", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.vullierens.ch/seances"
+			}
+		},
+		{
+			"id": "site-5656",
+			"nom": "Conseil communal de Hautemorges (site de la commune)",
+			"nom_court": "Site de Hautemorges",
+			"attribution": {
+				"texte": "Commune de Hautemorges",
+				"lien": "https://www.hautemorges.ch/conseilcommunal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5656], "mode": "scrape" },
+			"conseil": { "body_key": "5656", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.hautemorges.ch/seances"
+			}
+		},
+		{
+			"id": "site-5674",
+			"nom": "Conseil général de Lovatens (site de la commune)",
+			"nom_court": "Site de Lovatens",
+			"attribution": {
+				"texte": "Commune de Lovatens",
+				"lien": "https://www.lovatens.ch/conseil-general",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5674], "mode": "scrape" },
+			"conseil": { "body_key": "5674", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.lovatens.ch/seances"
+			}
+		},
+		{
+			"id": "site-5704",
+			"nom": "Conseil communal de Begnins (site de la commune)",
+			"nom_court": "Site de Begnins",
+			"attribution": {
+				"texte": "Commune de Begnins",
+				"lien": "https://www.begnins.ch/conseil",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5704], "mode": "scrape" },
+			"conseil": { "body_key": "5704", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.begnins.ch/seances"
+			}
+		},
+		{
+			"id": "site-5712",
+			"nom": "Conseil communal de Coppet (site de la commune)",
+			"nom_court": "Site de Coppet",
+			"attribution": {
+				"texte": "Commune de Coppet",
+				"lien": "https://www.coppet.ch/conseil",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5712], "mode": "scrape" },
+			"conseil": { "body_key": "5712", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.coppet.ch/seances"
+			}
+		},
+		{
+			"id": "site-5727",
+			"nom": "Conseil communal de Saint-Cergue (site de la commune)",
+			"nom_court": "Site de Saint-Cergue",
+			"attribution": {
+				"texte": "Commune de Saint-Cergue",
+				"lien": "https://www.st-cergue.ch/conseil",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5727], "mode": "scrape" },
+			"conseil": { "body_key": "5727", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.st-cergue.ch/seances"
+			}
+		},
+		{
+			"id": "site-5747",
+			"nom": "Conseil général de Bofflens (site de la commune)",
+			"nom_court": "Site de Bofflens",
+			"attribution": {
+				"texte": "Commune de Bofflens",
+				"lien": "https://www.bofflens.ch/conseil-general",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5747], "mode": "scrape" },
+			"conseil": { "body_key": "5747", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.bofflens.ch/seances"
+			}
+		},
+		{
+			"id": "site-5749",
+			"nom": "Conseil communal de Chavornay (site de la commune)",
+			"nom_court": "Site de Chavornay",
+			"attribution": {
+				"texte": "Commune de Chavornay",
+				"lien": "https://www.chavornay.ch/conseilcommunal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5749], "mode": "scrape" },
+			"conseil": { "body_key": "5749", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.chavornay.ch/seances"
+			}
+		},
+		{
+			"id": "site-5764",
+			"nom": "Conseil communal de Vallorbe (site de la commune)",
+			"nom_court": "Site de Vallorbe",
+			"attribution": {
+				"texte": "Commune de Vallorbe",
+				"lien": "https://www.vallorbe.ch/conseilcommunal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5764], "mode": "scrape" },
+			"conseil": { "body_key": "5764", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.vallorbe.ch/seances"
+			}
+		},
+		{
+			"id": "site-5785",
+			"nom": "Conseil communal de Corcelles-le-Jorat (site de la commune)",
+			"nom_court": "Site de Corcelles-le-Jorat",
+			"attribution": {
+				"texte": "Commune de Corcelles-le-Jorat",
+				"lien": "https://www.corcelles-le-jorat.ch/conseil-communal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5785], "mode": "scrape" },
+			"conseil": { "body_key": "5785", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.corcelles-le-jorat.ch/seances"
+			}
+		},
+		{
+			"id": "site-5841",
+			"nom": "Conseil communal de Château-d'Oex (site de la commune)",
+			"nom_court": "Site de Château-d'Oex",
+			"attribution": {
+				"texte": "Commune de Château-d'Oex",
+				"lien": "https://www.chateaudoex-admin.ch/legislatif",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5841], "mode": "scrape" },
+			"conseil": { "body_key": "5841", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.chateaudoex-admin.ch/seances"
+			}
+		},
+		{
+			"id": "site-5851",
+			"nom": "Conseil général d'Allaman (site de la commune)",
+			"nom_court": "Site d'Allaman",
+			"attribution": {
+				"texte": "Commune d'Allaman",
+				"lien": "https://www.allaman.ch/conseil",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5851], "mode": "scrape" },
+			"conseil": { "body_key": "5851", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.allaman.ch/seances"
+			}
+		},
+		{
+			"id": "site-5855",
+			"nom": "Conseil général de Dully (site de la commune)",
+			"nom_court": "Site de Dully",
+			"attribution": {
+				"texte": "Commune de Dully",
+				"lien": "https://www.dully.ch/conseilgeneral",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5855], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"site": { "plateforme": "i-web" }
+		},
+		{
+			"id": "site-5883",
+			"nom": "Conseil communal de Corseaux (site de la commune)",
+			"nom_court": "Site de Corseaux",
+			"attribution": {
+				"texte": "Commune de Corseaux",
+				"lien": "https://www.corseaux.ch/conseil-communal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5883], "mode": "scrape" },
+			"conseil": { "body_key": "5883", "donne": ["seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "seances",
+				"seances": "https://www.corseaux.ch/seances"
+			}
+		},
+		{
+			"id": "site-5892",
+			"nom": "Conseil communal de Blonay - Saint-Légier (site de la commune)",
+			"nom_court": "Site de Blonay - Saint-Légier",
+			"attribution": {
+				"texte": "Commune de Blonay - Saint-Légier",
+				"lien": "https://www.blonay-saint-legier.ch/conseil-communal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5892], "mode": "scrape" },
+			"conseil": { "body_key": "5892", "donne": ["objets", "seances"] },
+			"site": {
+				"plateforme": "i-web",
+				"variante": "objets",
+				"seances": "https://www.blonay-saint-legier.ch/seances",
+				"objets": "https://www.blonay-saint-legier.ch/objets-politiques"
 			}
 		}
 	]

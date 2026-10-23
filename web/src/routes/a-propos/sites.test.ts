@@ -1,5 +1,5 @@
 // L'À propos avec des communes lues sur leur site : la page rendue sur un `sources.json` de test, qui déclare
-// deux plateformes, trois communes couvertes et une non couverte, en plus des sources réelles.
+// deux plateformes, trois communes couvertes et une non couverte, à la place des communes réelles.
 import { render } from 'svelte/server';
 import { describe, expect, it, vi } from 'vitest';
 import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
@@ -34,7 +34,7 @@ vi.mock('../../../../sources.json', async (importOriginal) => {
 	const nonCouverte = sourceNonCouverte('preavis_seuls', { bfs: 5790, nom: '5790', site: 'https://5790.ch' });
 	const fichier: FichierSources = {
 		plateformes: [plateforme('i-web', 'i-web'), plateforme('quicksite', 'Quicksite')],
-		sources: [...reel.sources, commune(5643, 'i-web'), commune(5891, 'quicksite'), nonCouverte, commune(5642, 'i-web')]
+		sources: [...reel.sources.filter((s) => !s.site), commune(5643, 'i-web'), commune(5891, 'quicksite'), nonCouverte, commune(5642, 'i-web')]
 	};
 	return { default: fichier };
 });

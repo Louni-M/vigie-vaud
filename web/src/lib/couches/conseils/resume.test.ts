@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resumeConseils } from './resume.js';
 import { SOURCES } from '#lib/sources.js';
 import { commune } from '#tests/faux-canton.js';
-import { sourceSite } from '#tests/faux-conseils.js';
+import { avecSources, sourceSite } from '#tests/faux-conseils.js';
 
 // Les sources réelles de `sources.json` : la description pré-générée d'une commune en dépend.
 const resume = resumeConseils(SOURCES);
@@ -25,7 +25,7 @@ describe('résumé de la couche Conseils pour la description d’une commune', (
 		[['preavis', 'seances'], 'les préavis et les séances'],
 		[['seances'], 'les séances']
 	] as const)('suit le niveau d’une commune scrapée (%j)', (donne, dit) => {
-		const sources = [...SOURCES, sourceSite({ conseil: { body_key: '5643', donne: [...donne] } })];
+		const sources = avecSources(SOURCES, sourceSite({ conseil: { body_key: '5643', donne: [...donne] } }));
 		expect(resumeConseils(sources)(commune(5643, 'Préverenges', [6.51, 46.5, 6.54, 46.52]))).toBe(
 			`${dit} de son Conseil communal, et les objets du Grand Conseil qui la nomment`
 		);

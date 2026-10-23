@@ -6,7 +6,7 @@ import type { Source } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
 import type { CoucheInscrite } from './types.js';
 import { commune } from '#tests/faux-canton.js';
-import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
+import { avecSources, sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 import { libelleBadge } from '#lib/fraicheur.js';
 import { dernierImport } from '#lib/imports-conseils.js';
 
@@ -46,8 +46,8 @@ describe('badges sous le nom d’un onglet', () => {
 
 	it('dans une commune scrapée, le site de la commune, importé comme un conseil d’OpenParlData', () => {
 		const site = sourceSite();
-		const sources = [...SOURCES, site];
-		const couche = { ...coucheConseils, sources: [...coucheConseils.sources, site.id] };
+		const sources = avecSources(SOURCES, site);
+		const couche = { ...coucheConseils, sources: [...new Set([...coucheConseils.sources, site.id])] };
 		const imports = { version: 1 as const, genere: '2026-10-23T05:17:00Z', conseils: { '5643': '2026-10-23T05:17:00Z' } };
 		const maintenant = new Date('2026-10-23T11:30:00Z');
 
@@ -60,9 +60,9 @@ describe('badges sous le nom d’un onglet', () => {
 
 	it('dans une commune non couverte, pas de badge pour la source qui la déclare non couverte', () => {
 		const nonCouverte = sourceNonCouverte();
-		const couche = { ...coucheConseils, sources: [...coucheConseils.sources, nonCouverte.id] };
+		const couche = { ...coucheConseils, sources: [...new Set([...coucheConseils.sources, nonCouverte.id])] };
 
-		expect(noms(couche, 5568, [...SOURCES, nonCouverte])).toEqual(['Grand Conseil']);
+		expect(noms(couche, 5568, avecSources(SOURCES, nonCouverte))).toEqual(['Grand Conseil']);
 	});
 
 	it('dans une fiche propre, seulement les sources qui portent sur tout le canton', () => {

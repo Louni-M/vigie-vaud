@@ -35,6 +35,16 @@ export function sourceSite(champs: Partial<Source> = {}): Source {
 }
 
 /**
+ * Les `sources` (en général les sources réelles, qui déclarent déjà Préverenges et Sainte-Croix) où chaque source
+ * fabriquée remplace celle de même identifiant, à sa place, ou s'ajoute à la fin.
+ */
+export function avecSources(sources: readonly Source[], ...fabriquees: Source[]): Source[] {
+	const parId = new Map(fabriquees.map((s) => [s.id, s]));
+	const ids = new Set(sources.map((s) => s.id));
+	return [...sources.map((s) => parId.get(s.id) ?? s), ...fabriquees.filter((s) => !ids.has(s.id))];
+}
+
+/**
  * Une commune i-web non couverte, déclarée dans `sources.json` avec sa raison : sa plateforme et son attribution
  * (le lien vers la page du conseil), mais ni conseil ni sonde. Par défaut Sainte-Croix, qui ne publie que des préavis.
  */
