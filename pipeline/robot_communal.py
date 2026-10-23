@@ -212,6 +212,8 @@ class Robot:
     def a_tester(self, url: str) -> bool:
         """Le réseau de `url` a été bloqué à un passage précédent, son blocage a pris fin, et aucune sonde ne l'a
         encore testé."""
+        if not self._bloques:
+            return False
         try:
             reseau = self._reseau(httpx.URL(url).host)
         except Injoignable:

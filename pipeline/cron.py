@@ -341,7 +341,9 @@ def passage(
     l'import des conseils dus (`importer_les_conseils`), sauf ceux dont la sonde du site a échoué ; l'import ne
     touche pas à l'état des sources. Les sites des communes sont sondés et lus par un robot communal, un seul pour
     tout le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de
-    chaque hôte. Le commit et le push sont l'affaire de l'appelant."""
+    chaque hôte ; il ralentit les réseaux de la section `reseaux` de `sources.json`, plafonne chaque commune à
+    `PLAFOND` requêtes hors rattrapage, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
+    (`reseaux`) pour que le passage suivant les teste d'abord. Le commit et le push sont l'affaire de l'appelant."""
     genere = _a_la_seconde(horloge())
     precedent = _lire_etat(depot / FICHIER_ETAT)
     etats: dict[str, EtatSource] = {}
