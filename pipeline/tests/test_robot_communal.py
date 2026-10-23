@@ -3,9 +3,9 @@ un rôle. Le réseau est un faux (`faux_sites.Reseau`) qui note chaque requête 
 l'attente du robot fait avancer cette horloge.
 
 Ce que le passage du cron observe déjà sur l'échantillon (5 s par /24 et réseaux qui ne s'attendent pas,
-redirections, User-Agent de l'import, encodage, `content-encoding` en minuscules) est testé par lui
-(`test_sites_communaux.py`). Restent ici ce que le passage ne montre pas encore : requêtes de plusieurs fils, erreurs
-typées et `Retry-After` (blocage, #151), User-Agent de la sonde (#150).
+redirections, User-Agents de la sonde et de l'import, encodage, `content-encoding` en minuscules, erreurs vues par la
+sonde) est testé par lui (`test_sites_communaux.py`, `test_sondes_sites.py`). Restent ici ce que le passage ne montre
+pas encore : requêtes de plusieurs fils, erreurs typées et `Retry-After` (blocage, #151).
 """
 
 from datetime import UTC, datetime, timedelta
@@ -102,12 +102,3 @@ def test_un_nom_d_hote_inconnu_rend_la_page_injoignable_sans_requete(horloge):
 
     assert reseau.journal == []
 
-
-def test_le_user_agent_de_la_sonde_porte_son_role_le_courriel_et_le_lien_vers_l_a_propos(horloge):
-    reseau = Reseau(horloge, adresses={"www.commune.ch": IWEB}, pages={"https://www.commune.ch/": Page("")})
-
-    _robot(reseau, horloge).lire("https://www.commune.ch/", "sonde")
-
-    assert reseau.journal[0].user_agent == (
-        "VigieVaud-sonde (+https://louni-m.github.io/vigie-vaud/a-propos#robot; vigievaud.gentile263@passinbox.com)"
-    )

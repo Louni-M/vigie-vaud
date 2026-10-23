@@ -22,7 +22,7 @@ export interface EntreeCouverture {
 /**
  * État d'une source, qui vaut pour toutes les communes qu'elle couvre :
  * - `surveillance_interrompue` : le cron n'est pas passé depuis plus de 2 h, l'état lu est périmé ;
- * - `non_surveillee` : la source n'a pas de bloc `sonde` ;
+ * - `non_surveillee` : la source n'est pas sondée (ni bloc `sonde`, ni site de commune avec son conseil) ;
  * - `inconnu` : l'état des sources est inaccessible, d'une version inconnue, ou ne cite pas la source.
  */
 export type EtatCouverture =
@@ -88,6 +88,13 @@ export interface Couverture {
 	grisees(volet: string | null): number[];
 }
 
+/**
+ * Une source est sondée par le cron si elle a un bloc `sonde`, ou si c'est le site d'une commune qui a un conseil :
+ * sa sonde se déduit de sa page de liste et du marqueur de sa variante (une commune non couverte n'en a pas).
+ */
+export const estSondee = (source: Pick<Source, 'sonde' | 'site' | 'conseil'>): boolean =>
+	Boolean(source.sonde || (source.site && source.conseil));
+
 export function deduireCouverture({ sources, etat, couches, communes, maintenant }: EntreeCouverture): Couverture {
 	const parId = new Map(sources.map((s) => [s.id, s]));
 	const mode = (id: string, bfs: number): Mode => {
@@ -99,7 +106,8 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 	};
 	const interrompue = etat !== null && maintenant.getTime() - Date.parse(etat.genere) > INTERRUPTION;
 	const etatCouverture = (id: string): EtatCouverture => {
-		if (!parId.get(id)?.sonde) return { etat: 'non_surveillee' };
+		const source = parId.get(id);
+		if (!source || !estSondee(source)) return { etat: 'non_surveillee' };
 		if (!etat) return { etat: 'inconnu' };
 		if (interrompue) return { etat: 'surveillance_interrompue' };
 		const lu = etat.sources[id];
@@ -130,7 +138,7 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 		sources: ids.map((id) => {
 			const source = parId.get(id)!;
 			const e = etatCouverture(id);
-			const lu = source.sonde && etat ? (etat.sources[id] ?? null) : null;
+			const lu = estSondee(source) && etat ? (etat.sources[id] ?? null) : null;
 			return {
 				source,
 				communes: communes.filter((c) => mode(id, c.bfs) !== 'non_couvert').length,

@@ -379,16 +379,17 @@ def test_le_robot_lit_le_site_une_page_toutes_les_5_s_sous_le_nom_vigievaud_impo
     _passer(tmp_path, horloge, reseau, _monde(horloge))
 
     s = timedelta(seconds=1)
-    assert [(r.url.removeprefix(PREVERENGES), r.heure - T0) for r in reseau.journal] == [
-        ("/sitzung", 0 * s),
-        ("/_rte/anlass/6987214", 5 * s),  # à venir, puis les passées dans l'ordre du site
-        ("/_rte/anlass/6987193", 10 * s),
-        ("/_rte/anlass/6987205", 15 * s),
-        ("/sitzung/6987205", 20 * s),  # la redirection du lien stable, au même débit
+    assert [(r.url.removeprefix(PREVERENGES), r.heure - T0, r.user_agent.split(" ")[0]) for r in reseau.journal] == [
+        ("/sitzung", 0 * s, "VigieVaud-sonde"),  # la sonde, juste avant l'import (test_sondes_sites.py)
+        ("/sitzung", 5 * s, "VigieVaud-import"),
+        ("/_rte/anlass/6987214", 10 * s, "VigieVaud-import"),  # à venir, puis les passées dans l'ordre du site
+        ("/_rte/anlass/6987193", 15 * s, "VigieVaud-import"),
+        ("/_rte/anlass/6987205", 20 * s, "VigieVaud-import"),
+        ("/sitzung/6987205", 25 * s, "VigieVaud-import"),  # la redirection du lien stable, au même débit
     ]
-    assert {r.user_agent for r in reseau.journal} == {
+    assert reseau.journal[-1].user_agent == (
         "VigieVaud-import (+https://louni-m.github.io/vigie-vaud/a-propos#robot; vigievaud.gentile263@passinbox.com)"
-    }
+    )
 
 
 BLONAY = "https://www.blonay-saint-legier.ch"

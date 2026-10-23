@@ -81,7 +81,7 @@ export interface EtatSources {
 	 */
 	genere: string;
 	/**
-	 * Seules les sources qui ont un bloc `sonde` y figurent.
+	 * Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import.
 	 */
 	sources: {
 		[k: string]: EtatSource;
@@ -108,7 +108,7 @@ export interface EtatSource {
 	 */
 	echecs_consecutifs: number;
 	/**
-	 * Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…).
+	 * Cause courte du dernier échec (« HTTP 503 », « délai dépassé », « marqueur absent »…).
 	 */
 	motif: string | null;
 }
