@@ -6,7 +6,7 @@ import { deduireCouverture, type Couverture } from './couverture.js';
 import { chargerEtatSources } from './etat-sources.js';
 import { COUCHES } from './registre/couches.js';
 import type { EtatSources } from './schema.js';
-import { SOURCES } from './sources.js';
+import { PLATEFORMES, SOURCES } from './sources.js';
 
 let etat = $state.raw<EtatSources | null>(null);
 /** Vrai une fois l'état chargé, même illisible : `etat` vaut alors `null` (« inconnu »). */
@@ -28,7 +28,14 @@ export function couvertureCourante(communes: readonly { bfs: number }[] = []): C
 			charge = true;
 		});
 	}
-	return deduireCouverture({ sources: SOURCES, etat, couches: COUCHES, communes, maintenant: lu });
+	return deduireCouverture({
+		sources: SOURCES,
+		etat,
+		couches: COUCHES,
+		communes,
+		plateformes: PLATEFORMES,
+		maintenant: lu
+	});
 }
 
 /** Vrai une fois l'état des sources chargé : avant, la Couverture le croit « inconnu » faute de mieux. */

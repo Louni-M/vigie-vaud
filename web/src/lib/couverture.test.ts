@@ -5,12 +5,13 @@ import {
 	libelleCommunes,
 	libelleEtat,
 	libelleLimites,
-	libellePaire
+	libellePaire,
+	libellePlateforme
 } from './couverture.js';
-import { chargerEtatSources, lienPannes, lireEtatSources } from './etat-sources.js';
+import { chargerEtatSources, lienIssuePlateforme, lienPannes, lireEtatSources } from './etat-sources.js';
 import type { CoucheInscrite } from './registre/types.js';
 import { COUCHES } from './registre/couches.js';
-import type { EtatSource, EtatSources, RaisonNonCouvert, Source } from './schema.js';
+import type { EtatSource, EtatSources, Plateforme, RaisonNonCouvert, Source } from './schema.js';
 import { SOURCES } from './sources.js';
 import communesJ0 from '../../static/communes.json';
 import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
@@ -339,7 +340,8 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([
 				'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'
 			]);
-			expect(d.sources.find((s) => s.source.id === 'site-5643')?.sonde).toEqual(panne);
+			// La fiche de sa plateforme, faute d'encart, dit ce que la sonde a mesuré.
+			expect(d.plateformes[0].communes[0].sonde).toEqual(panne);
 			// Une panne ne grise rien.
 			expect(d.couvre('conseils', 5643)).toBe(true);
 		});
@@ -502,6 +504,96 @@ describe('source DGMR déclarée dans sources.json', () => {
 		expect(c.paire('dgmr-restrictions', 5586)).toEqual(sans.paire('dgmr-restrictions', 5586));
 		expect(c.sources).toHaveLength(1);
 		expect(c.sources[0].communes).toBe(300);
+	});
+});
+
+describe('fiche par plateforme de la page Couverture', () => {
+	const IWEB: Plateforme = {
+		id: 'i-web',
+		nom: 'i-web',
+		editeur: 'Innovative Web AG',
+		variantes: [{ id: 'seances', marqueur: 'icmsTablePastSitzungen', niveaux: [['seances']] }]
+	};
+	const QUICKSITE: Plateforme = { ...IWEB, id: 'quicksite', nom: 'Quicksite', editeur: 'Quicksite AG' };
+	const preverenges = sourceSite();
+	const blonay = sourceSite({
+		id: 'site-5892',
+		nom: 'Conseil communal de Blonay - Saint-Légier (site de la commune)',
+		nom_court: 'Site de Blonay - Saint-Légier',
+		attribution: { ...preverenges.attribution, lien: 'https://www.blonay-saint-legier.ch/conseil-communal' },
+		couverture: { communes: [5892], mode: 'scrape' },
+		conseil: { body_key: '5892', donne: ['preavis', 'seances'] }
+	});
+	const sainteCroix = sourceNonCouverte('preavis_seuls');
+	const aigle = sourceSite({
+		id: 'site-5401',
+		nom_court: 'Site d’Aigle',
+		couverture: { communes: [5401], mode: 'scrape' },
+		conseil: { body_key: '5401', donne: ['seances'] },
+		site: { plateforme: 'quicksite', variante: 'seances', seances: 'https://www.aigle.ch/conseil' }
+	});
+	const panne: EtatSource = {
+		etat: 'en_panne',
+		depuis: '2026-10-12T05:17:00Z',
+		derniere_sonde: '2026-10-12T05:47:00Z',
+		dernier_succes: '2026-10-11T05:17:00Z',
+		echecs_consecutifs: 2,
+		motif: 'marqueur absent'
+	};
+	const communes = (...s: Source[]) =>
+		deduireCouverture({
+			sources: [...SOURCES, ...s],
+			etat: etat(Object.fromEntries([...SOURCES.map((x) => [x.id, disponible]), ['site-5643', panne], ['site-5892', disponible]])),
+			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, ...s.map((y) => y.id)] } : x)),
+			communes: communesJ0,
+			plateformes: [IWEB, QUICKSITE],
+			maintenant: MAINTENANT
+		});
+	const c = communes(preverenges, blonay, sainteCroix, aigle);
+	const iweb = c.plateformes.find((p) => p.id === 'i-web')!;
+
+	it('a une fiche par plateforme, dans l’ordre de la section plateformes', () => {
+		expect(c.plateformes.map((p) => p.nom)).toEqual(['i-web', 'Quicksite']);
+	});
+
+	it('compte les communes couvertes, en panne et non couvertes : « i-web : 2 communes couvertes, 1 en panne »', () => {
+		expect(libellePlateforme(iweb)).toBe('i-web : 2 communes couvertes, 1 en panne, 1 non couverte');
+		expect(libellePlateforme(c.plateformes[1])).toBe('Quicksite : 1 commune couverte, aucune en panne');
+		// Tant que l'état des sources n'est pas chargé, la fiche ne compte pas les pannes.
+		expect(libellePlateforme(iweb, false)).toBe('i-web : 2 communes couvertes, 1 non couverte');
+	});
+
+	it('liste ses communes avec leur paire, leur dernière sonde et le lien vers leur site', () => {
+		expect(iweb.communes.map((x) => [x.source.id, x.bfs, libelleCellule([x])[0]])).toEqual([
+			['site-5643', 5643, 'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'],
+			['site-5892', 5892, 'Scrapé · séances et préavis · disponible'],
+			['site-5568', 5568, 'Non couvert · préavis seuls']
+		]);
+		expect(iweb.communes[0].sonde).toEqual(panne);
+		expect(iweb.communes[2].sonde).toBeNull();
+		expect(iweb.communes[1].source.attribution.lien).toBe('https://www.blonay-saint-legier.ch/conseil-communal');
+	});
+
+	it('mène à l’issue panne-source de la plateforme, par son nom, quand une commune est en panne', () => {
+		const url = new URL(lienIssuePlateforme(iweb)!);
+		expect(url.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : i-web"');
+		expect(lienIssuePlateforme(c.plateformes[1])).toBeNull();
+		const quicksite = new URL(lienPannes(aigle, [IWEB, QUICKSITE]));
+		expect(quicksite.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : Quicksite"');
+	});
+
+	it('remplace l’encart de chaque commune scrapée ; les sources OpenParlData gardent le leur', () => {
+		expect(c.sources.map((s) => s.source.id)).toEqual([
+			'camac-permis',
+			'openparldata-vd',
+			'openparldata-5586',
+			'openparldata-5938',
+			'dgmr-restrictions'
+		]);
+	});
+
+	it('n’a aucune fiche sans commune déclarée sur une plateforme', () => {
+		expect(communes().plateformes).toEqual([]);
 	});
 });
 
