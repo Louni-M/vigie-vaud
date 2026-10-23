@@ -106,16 +106,7 @@ class Affaire:
                 }
                 for i, e in enumerate(self.etapes, start=1)
             ),
-            "docs": _relation(
-                {
-                    "name": d.nom,
-                    "url": d.url,
-                    "date": f"{d.date}T00:00:00" if d.date else None,
-                    "category": {"fr": d.categorie} if d.categorie else {},
-                    "text": d.texte,
-                }
-                for d in self.documents
-            ),
+            "docs": _relation(_doc(d) for d in self.documents),
         }
 
     def docs(self) -> list[Doc]:
@@ -158,6 +149,9 @@ class Reunion:
     updated_at: str = "2026-10-07"
     url: str | None = None
     points: list[Point] = field(default_factory=list)
+    # Les `docs` d'une Séance, qu'OpenParlData ne donne pas pour Lausanne et Yverdon : le faux, qui ne filtre pas
+    # les champs demandés, les sert comme le fera un site scrapé (#149).
+    documents: list[Document] = field(default_factory=list)
 
     def brut(self) -> dict:
         return {
@@ -181,7 +175,17 @@ class Reunion:
                 }
                 for p in self.points
             ),
-        }
+        } | ({"docs": _relation(_doc(d) for d in self.documents)} if self.documents else {})
+
+
+def _doc(d: Document) -> dict:
+    return {
+        "name": d.nom,
+        "url": d.url,
+        "date": f"{d.date}T00:00:00" if d.date else None,
+        "category": {"fr": d.categorie} if d.categorie else {},
+        "text": d.texte,
+    }
 
 
 def _relation(elements) -> dict:

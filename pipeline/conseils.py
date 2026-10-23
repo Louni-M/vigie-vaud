@@ -427,6 +427,10 @@ def _seance(
         nom=_fr(brut.get("name")) or "",
         lien=_lien(_fr(brut.get("url_external"))),
         ordre_du_jour=[_point(p, objet_du_point(p), elus, petitionnaires) for _, p in points],
+        documents=[
+            d.model_copy(update={"titre": masquer(d.titre, elus)}) if d.titre else d
+            for d in _documents(_relation(brut, "docs"))
+        ],
     )
 
 

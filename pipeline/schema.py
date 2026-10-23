@@ -328,6 +328,12 @@ class Seance(Enveloppe):
     nom: str = Field(description="Nom brut de la source ; le site affiche un nom composé à partir de la date.")
     lien: Lien | None
     ordre_du_jour: list[PointOrdreDuJour]
+    documents: list[DocumentObjet] = Field(
+        default=[],
+        exclude_if=lambda documents: not documents,
+        description="Documents de la Séance (ordre du jour, procès-verbal…), titres masqués. Absent quand il n'y en "
+        "a pas : Lausanne et Yverdon n'en ont pas.",
+    )
 
 
 class Correction(Modele):

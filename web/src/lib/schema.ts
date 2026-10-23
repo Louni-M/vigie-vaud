@@ -467,6 +467,10 @@ export interface Seance {
 	nom: string;
 	lien: Lien | null;
 	ordre_du_jour: PointOrdreDuJour[];
+	/**
+	 * Documents de la Séance (ordre du jour, procès-verbal…), titres masqués. Absent quand il n'y en a pas : Lausanne et Yverdon n'en ont pas.
+	 */
+	documents?: DocumentObjet[];
 }
 export interface PointOrdreDuJour {
 	/**
