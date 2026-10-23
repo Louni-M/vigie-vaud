@@ -585,6 +585,31 @@ class Corrections(RootModel[list[Correction]]):
     appliquées à chaque import comme au rattrapage. Sans enveloppe : le cron ne l'écrit jamais."""
 
 
+CibleRetrait = TypeAliasType(
+    "CibleRetrait", Annotated[str, StringConstraints(pattern=r"^(titre|nom|point:[1-9][0-9]*|document:https?://\S+)$")]
+)
+
+
+class Retrait(Modele):
+    """Une correction par élément (ADR 0007), écrite à la main dans `retraits.json` pour un retrait : le texte
+    corrigé d'un champ d'un élément de l'archive, que le cron réapplique à chaque import et à chaque rattrapage. Le
+    nom retiré n'y figure jamais."""
+
+    element: CleElement = Field(description="Clé de l'Objet (`5586/POS25-115`) ou de la Séance (`5586/2026-10-20`).")
+    cible: CibleRetrait = Field(
+        description="Le champ corrigé : `titre` (d'un Objet), `nom` (d'une Séance), `point:<n>` (titre du n-ième "
+        "point de l'ordre du jour d'une Séance, à partir de 1) ou `document:<lien>` (titre du document qui a ce lien)."
+    )
+    texte: str = Field(min_length=1, description="Le texte qui remplace celui de la source, sans le nom retiré.")
+    date: dt.date = Field(description="Jour du retrait.")
+
+
+class Retraits(RootModel[list[Retrait]]):
+    """`retraits.json`, à la racine du dépôt de données : les corrections par élément des retraits, écrites à la
+    main et appliquées après le masquage, à chaque import comme au rattrapage, pour tous les conseils. Sans
+    enveloppe : le cron ne l'écrit jamais."""
+
+
 # --- Fichiers de lecture des conseils (conseils/*.json, dépôt de données ; ADR 0017) ---------------------------
 # Reconstruits en entier depuis l'archive à chaque import : c'est ce que le site lit pour lister.
 
@@ -738,6 +763,7 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "index-conseils": IndexConseils,
     "rattachements-commune": RattachementsCommune,
     "corrections": Corrections,
+    "retraits": Retraits,
 }
 
 
