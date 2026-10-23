@@ -45,7 +45,7 @@ import time
 import traceback
 from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from datetime import time as time_du_jour
 from pathlib import Path
 from typing import Protocol
@@ -54,7 +54,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from pydantic import ValidationError
 
-from conseils import OpenParlData, importer_conseils, lire_imports
+from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
 from robot_communal import Robot
 from schema import (
     DOSSIER_SCHEMA,
@@ -67,6 +67,7 @@ from schema import (
     Source,
     lire_sources,
 )
+from sites_communaux import mois_plus_tot
 from sonde_sites import sonder_site
 
 FICHIER_ETAT = "etat-sources.json"
@@ -695,6 +696,35 @@ def importer_les_conseils(
         _accorder_issues_import(issues, sources, avant, apres, heure)
     except httpx.HTTPError as e:
         print(f"Issues import-conseils non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
+    try:
+        _accorder_issues_a_verifier(issues, depot, sources, heure)
+    except httpx.HTTPError as e:
+        print(f"Issues a-verifier non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
+
+
+MOIS_AVANT_A_VERIFIER = 9
+
+
+def _accorder_issues_a_verifier(issues: ClientIssues, depot: Path, sources: FichierSources, heure: datetime) -> None:
+    """L'issue `a-verifier` de chaque plateforme, pour ses conseils sans aucune nouvelle Séance, tenue ou annoncée,
+    depuis 9 mois : la date de la dernière Séance de l'archive, sinon celle du premier import (jour à Lausanne). Un
+    conseil jamais importé n'en a pas : c'est l'affaire de l'issue `import-conseils`. Un client qui ne voit pas les
+    issues se voit signaler la liste à chaque passage, sans retour."""
+    seuil = mois_plus_tot(heure.astimezone(FUSEAU).date(), MOIS_AVANT_A_VERIFIER)
+    premiers = lire_premiers_imports(depot)
+    touchees = {}
+    for site in _sites_sondes(sources):
+        cle = site.conseil.cle
+        jours = [f.stem for f in (depot / "conseils" / cle / "seances").glob("*.json")]
+        if jours:
+            derniere = date.fromisoformat(max(jours))
+            if derniere <= seuil:
+                touchees[site.id] = f"dernière Séance le {derniere:%Y-%m-%d}"
+        elif cle in premiers:
+            premier = premiers[cle].astimezone(FUSEAU).date()
+            if premier <= seuil:
+                touchees[site.id] = f"aucune Séance depuis le premier import, le {premier:%Y-%m-%d}"
+    _accorder_issues_plateformes(issues, A_VERIFIER, sources, touchees, ())
 
 
 DELAI_AVANT_ISSUE_IMPORT = timedelta(hours=24)

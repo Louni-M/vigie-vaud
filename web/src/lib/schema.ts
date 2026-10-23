@@ -176,6 +176,12 @@ export interface ImportConseils {
 	conseils: {
 		[k: string]: Horodatage;
 	};
+	/**
+	 * Par clé de conseil scrapé, l'heure de son premier import réussi : l'issue `a-verifier` compte 9 mois depuis ce jour tant que l'archive du conseil n'a aucune Séance. Absent quand il n'y en a pas : les conseils d'OpenParlData n'y figurent pas.
+	 */
+	premiers?: {
+		[k: string]: Horodatage;
+	};
 }
 /**
  * `conseils/index.json` : chaque conseil importé, dans l'ordre de `sources.json`, et le nombre d'Objets du
