@@ -36,6 +36,11 @@ describe('carte d’un conseil couvert, dans le volet Conseils', () => {
 		});
 	});
 
+	it('compte les préavis récents d’une commune scrapée en séances et préavis', () => {
+		const conseil = conseilLausanne({ donne: ['preavis', 'seances'], recents: [ligneObjet()] });
+		expect(carteConseil(conseil, COMMUNES)).toMatchObject({ donne: 'séances et préavis', recents: '1 objet récent' });
+	});
+
 	it('dit l’absence d’Objet récent et de Séance connue', () => {
 		const conseil = conseilLausanne({ recents: [], prochaine_seance: null, derniere_seance: null });
 		expect(carteConseil(conseil, COMMUNES)).toMatchObject({ recents: 'aucun objet récent', seance: null });

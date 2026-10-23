@@ -15,9 +15,9 @@ export function resumeConseils(sources: readonly Source[]): (commune: Commune) =
 			return s.conseil && Array.isArray(communes) && communes.includes(commune.bfs);
 		})?.conseil;
 		if (!conseil) return GRAND_CONSEIL;
-		const objets = conseil.donne.includes('objets');
+		const objets = conseil.donne.includes('objets') ? 'les objets' : conseil.donne.includes('preavis') ? 'les préavis' : null;
 		const seances = conseil.donne.includes('seances');
-		const donne = objets && seances ? 'les objets et les séances' : seances ? 'les séances' : 'les objets';
+		const donne = objets && seances ? `${objets} et les séances` : seances ? 'les séances' : (objets ?? 'les objets');
 		return `${donne} de son Conseil communal, et ${GRAND_CONSEIL}`;
 	};
 }

@@ -26,7 +26,7 @@ export type Horodatage = string;
 export type CleElement = string;
 export type CleConseil = string;
 export type SorteElement = 'objet' | 'seance';
-export type DonneeConseil = 'objets' | 'seances';
+export type DonneeConseil = 'objets' | 'preavis' | 'seances';
 export type DateSeance = string;
 export type SorteContributeur = 'personne' | 'groupe';
 export type Lien = string;
@@ -560,7 +560,7 @@ export interface Variante {
 	 */
 	marqueur: string;
 	/**
-	 * Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`["seances"]` : séances seulement).
+	 * Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`["seances"]` : séances seulement ; `["preavis", "seances"]` : séances et préavis).
 	 *
 	 * @minItems 1
 	 */
@@ -654,7 +654,7 @@ export interface Conseil {
 	 */
 	body_key: string;
 	/**
-	 * Ce que le conseil donne : ses Objets, ses Séances, ou les deux. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import.
+	 * Ce que le conseil donne : ses Objets, ses Séances, ou les deux ; `preavis` : ses préavis seulement, parmi ses Objets. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import : `objets` + `seances` (« objets et séances »), `preavis` + `seances` (« séances et préavis ») ou `seances` (« séances seulement »).
 	 *
 	 * @minItems 1
 	 */

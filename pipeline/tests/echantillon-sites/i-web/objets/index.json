@@ -47,6 +47,17 @@
     "content-encoding": "gzip"
    },
    "fichier": "objet.html"
+  },
+  {
+   "sorte": "postulat",
+   "url": "https://www.blonay-saint-legier.ch/_rte/information/3000802",
+   "finale": "https://www.blonay-saint-legier.ch/objetspolitiques/3000802",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "postulat.html"
   }
  ]
 }

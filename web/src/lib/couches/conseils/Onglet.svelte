@@ -22,7 +22,7 @@
 	import { conseils } from './donnees.js';
 	import { coucheConseils } from './index.js';
 	import ObjetsRecents from './ObjetsRecents.svelte';
-	import { SOURCES } from '#lib/sources.js';
+	import { donneDesObjets, SOURCES } from '#lib/sources.js';
 	import SeancesPassees from './SeancesPassees.svelte';
 	import { noteDeNiveau } from './source.js';
 	import TeteSeance from './TeteSeance.svelte';
@@ -66,7 +66,7 @@
 				</p>
 			{/if}
 			<TeteSeance {conseil} {ouvrir} />
-			{#if conseil.donne.includes('objets')}<ObjetsRecents {conseil} {ouvrir} />{/if}
+			{#if donneDesObjets(conseil)}<ObjetsRecents {conseil} {ouvrir} />{/if}
 			{#if conseil.donne.includes('seances')}<SeancesPassees {conseil} {ouvrir} />{/if}
 			<hr />
 		{/if}

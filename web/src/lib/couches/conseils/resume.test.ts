@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { resumeConseils } from './resume.js';
 import { SOURCES } from '#lib/sources.js';
 import { commune } from '#tests/faux-canton.js';
+import { sourceSite } from '#tests/faux-conseils.js';
 
 // Les sources réelles de `sources.json` : la description pré-générée d'une commune en dépend.
 const resume = resumeConseils(SOURCES);
@@ -16,6 +17,17 @@ describe('résumé de la couche Conseils pour la description d’une commune', (
 	it('ne dit que les séances quand le conseil communal ne donne qu’elles (Yverdon-les-Bains)', () => {
 		expect(resume(commune(5938, 'Yverdon-les-Bains', [6.6, 46.76, 6.68, 46.8]))).toBe(
 			'les séances de son Conseil communal, et les objets du Grand Conseil qui la nomment'
+		);
+	});
+
+	it.each([
+		[['objets', 'seances'], 'les objets et les séances'],
+		[['preavis', 'seances'], 'les préavis et les séances'],
+		[['seances'], 'les séances']
+	] as const)('suit le niveau d’une commune scrapée (%j)', (donne, dit) => {
+		const sources = [...SOURCES, sourceSite({ conseil: { body_key: '5643', donne: [...donne] } })];
+		expect(resumeConseils(sources)(commune(5643, 'Préverenges', [6.51, 46.5, 6.54, 46.52]))).toBe(
+			`${dit} de son Conseil communal, et les objets du Grand Conseil qui la nomment`
 		);
 	});
 

@@ -1,5 +1,5 @@
 import type { ConseilIndexe } from '#lib/schema.js';
-import { libelleDonne } from '#lib/sources.js';
+import { donneDesObjets, libelleDonne } from '#lib/sources.js';
 import type { Commune } from '#lib/types.js';
 
 /** Ce que montre la carte d'un conseil couvert, dans le volet Conseils. */
@@ -31,7 +31,7 @@ export function carteConseil(conseil: ConseilIndexe, communes: readonly Commune[
 	return {
 		nom: conseil.nom,
 		donne: libelleDonne(conseil),
-		recents: conseil.donne.includes('objets') ? recents(conseil.recents.length) : null,
+		recents: donneDesObjets(conseil) ? recents(conseil.recents.length) : null,
 		seance: prochaine
 			? `Prochaine séance : ${jourDe(prochaine)}`
 			: derniere
