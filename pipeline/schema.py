@@ -115,7 +115,7 @@ class Sonde(Modele):
     jamais_vide: bool = Field(default=False, description="Une réponse sans enregistrement compte comme un échec.")
 
 
-DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "seances"])
+DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "preavis", "seances"])
 
 
 class Conseil(Modele):
@@ -128,8 +128,10 @@ class Conseil(Modele):
         "En minuscules, c'est la clé du conseil dans le dépôt de données.",
     )
     donne: Annotated[list[DonneeConseil], Field(min_length=1)] = Field(
-        description="Ce que le conseil donne : ses Objets, ses Séances, ou les deux. Pour une commune scrapée, c'est "
-        "son niveau, déclaré d'après sa variante, jamais déduit de l'import."
+        description="Ce que le conseil donne : ses Objets, ses Séances, ou les deux ; `preavis` : ses préavis seulement, "
+        "parmi ses Objets. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de "
+        "l'import : `objets` + `seances` (« objets et séances »), `preavis` + `seances` (« séances et préavis ») ou "
+        "`seances` (« séances seulement »)."
     )
     page: Lien | None = Field(
         default=None,
@@ -183,7 +185,8 @@ class Variante(Modele):
     )
     niveaux: Annotated[list[Annotated[list[DonneeConseil], Field(min_length=1)]], Field(min_length=1)] = Field(
         description="Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette "
-        "variante peut déclarer (`[\"seances\"]` : séances seulement)."
+        "variante peut déclarer (`[\"seances\"]` : séances seulement ; `[\"preavis\", \"seances\"]` : séances et "
+        "préavis)."
     )
 
 
