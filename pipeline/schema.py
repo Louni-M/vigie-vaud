@@ -119,7 +119,8 @@ DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "seances"])
 
 
 class Conseil(Modele):
-    """Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc."""
+    """Un conseil importé par le cron : exposé par OpenParlData, ou lu sur le site de sa commune quand la source a un
+    bloc `site`. Le cron importe chaque source qui a ce bloc."""
 
     body_key: str = Field(
         pattern=r"^[A-Z0-9]+$",
@@ -127,7 +128,13 @@ class Conseil(Modele):
         "En minuscules, c'est la clé du conseil dans le dépôt de données.",
     )
     donne: Annotated[list[DonneeConseil], Field(min_length=1)] = Field(
-        description="Ce que le conseil donne : ses Objets, ses Séances, ou les deux."
+        description="Ce que le conseil donne : ses Objets, ses Séances, ou les deux. Pour une commune scrapée, c'est "
+        "son niveau, déclaré d'après sa variante, jamais déduit de l'import."
+    )
+    page: Lien | None = Field(
+        default=None,
+        description="Page du conseil sur le site de sa commune, vers laquelle renvoie la note de niveau d'un conseil "
+        "qui ne donne pas tout et n'a pas de bloc `site` (Yverdon) ; une commune scrapée renvoie à `site.seances`.",
     )
     groupe: int | None = Field(
         default=None,
@@ -152,6 +159,43 @@ def nom_du_conseil(nom_source: str) -> str:
     return re.sub(r"\s*\([^()]*\)$", "", nom_source).replace("'", "’")
 
 
+IdPlateforme = TypeAliasType("IdPlateforme", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")])
+
+
+class Site(Modele):
+    """Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal."""
+
+    plateforme: IdPlateforme = Field(description="Identifiant de la plateforme, déclarée dans `plateformes`.")
+    variante: str = Field(min_length=1, description="Identifiant de la variante, déclarée dans sa plateforme.")
+    seances: Lien = Field(
+        description="Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée."
+    )
+    objets: Lien | None = Field(default=None, description="Page de liste des Objets ou des préavis, selon la variante.")
+    membres: Lien | None = Field(
+        default=None, description="Page des membres du conseil, en HTML ; absente si le site n'en a pas."
+    )
+
+
+class Variante(Modele):
+    id: str = Field(min_length=1, description="Identifiant de la variante dans sa plateforme (`seances`).")
+    marqueur: str = Field(
+        min_length=1, description="Marqueur que la sonde cherche sur la page de liste des Séances d'une commune."
+    )
+    niveaux: Annotated[list[Annotated[list[DonneeConseil], Field(min_length=1)]], Field(min_length=1)] = Field(
+        description="Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette "
+        "variante peut déclarer (`[\"seances\"]` : séances seulement)."
+    )
+
+
+class Plateforme(Modele):
+    """Une plateforme retenue : le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes."""
+
+    id: IdPlateforme = Field(description="Identifiant cité par le bloc `site` des sources (`i-web`).")
+    nom: str = Field(min_length=1, description="Nom affiché par la page Couverture et l'À propos.")
+    editeur: str = Field(min_length=1)
+    variantes: Annotated[list[Variante], Field(min_length=1)]
+
+
 class Source(Modele):
     id: IdSource = Field(description="Identifiant stable, clé de la source dans l'état des sources.")
     nom: str = Field(min_length=1)
@@ -173,12 +217,20 @@ class Source(Modele):
     )
     sonde: Sonde | None = Field(default=None, description="Sans sonde, la source n'est pas surveillée.")
     conseil: Conseil | None = Field(default=None, description="Le conseil que donne la source, importé par le cron.")
+    site: Site | None = Field(
+        default=None,
+        description="Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu "
+        "d'OpenParlData.",
+    )
 
 
 class FichierSources(Modele):
     """`sources.json` : chaque source y est déclarée une seule fois, pour le site et pour le cron."""
 
     schema_: str | None = Field(default=None, alias="$schema")
+    plateformes: list[Plateforme] = Field(
+        default=[], description="Les plateformes retenues, que citent les blocs `site` des sources communales."
+    )
     sources: list[Source]
 
     @model_validator(mode="after")

@@ -27,7 +27,7 @@
     },
     "Conseil": {
       "additionalProperties": false,
-      "description": "Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc.",
+      "description": "Un conseil importé par le cron : exposé par OpenParlData, ou lu sur le site de sa commune quand la source a un\nbloc `site`. Le cron importe chaque source qui a ce bloc.",
       "properties": {
         "body_key": {
           "description": "Clé du conseil dans OpenParlData : `VD` (Grand Conseil) ou le n° OFS de la commune. En minuscules, c'est la clé du conseil dans le dépôt de données.",
@@ -35,12 +35,24 @@
           "type": "string"
         },
         "donne": {
-          "description": "Ce que le conseil donne : ses Objets, ses Séances, ou les deux.",
+          "description": "Ce que le conseil donne : ses Objets, ses Séances, ou les deux. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import.",
           "items": {
             "$ref": "#/$defs/DonneeConseil"
           },
           "minItems": 1,
           "type": "array"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page du conseil sur le site de sa commune, vers laquelle renvoie la note de niveau d'un conseil qui ne donne pas tout et n'a pas de bloc `site` (Yverdon) ; une commune scrapée renvoie à `site.seances`."
         },
         "groupe": {
           "anyOf": [
@@ -99,6 +111,10 @@
       ],
       "type": "string"
     },
+    "IdPlateforme": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
     "IdSource": {
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "type": "string"
@@ -118,6 +134,90 @@
       "maximum": 9999,
       "minimum": 1,
       "type": "integer"
+    },
+    "Plateforme": {
+      "additionalProperties": false,
+      "description": "Une plateforme retenue : le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/IdPlateforme",
+          "description": "Identifiant cité par le bloc `site` des sources (`i-web`)."
+        },
+        "nom": {
+          "description": "Nom affiché par la page Couverture et l'À propos.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "editeur": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "variantes": {
+          "items": {
+            "$ref": "#/$defs/Variante"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "nom",
+        "editeur",
+        "variantes"
+      ],
+      "title": "Plateforme",
+      "type": "object"
+    },
+    "Site": {
+      "additionalProperties": false,
+      "description": "Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.",
+      "properties": {
+        "plateforme": {
+          "$ref": "#/$defs/IdPlateforme",
+          "description": "Identifiant de la plateforme, déclarée dans `plateformes`."
+        },
+        "variante": {
+          "description": "Identifiant de la variante, déclarée dans sa plateforme.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "seances": {
+          "$ref": "#/$defs/Lien",
+          "description": "Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée."
+        },
+        "objets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page de liste des Objets ou des préavis, selon la variante."
+        },
+        "membres": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page des membres du conseil, en HTML ; absente si le site n'en a pas."
+        }
+      },
+      "required": [
+        "plateforme",
+        "variante",
+        "seances"
+      ],
+      "title": "Site",
+      "type": "object"
     },
     "Sonde": {
       "additionalProperties": false,
@@ -241,6 +341,18 @@
           ],
           "default": null,
           "description": "Le conseil que donne la source, importé par le cron."
+        },
+        "site": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Site"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData."
         }
       },
       "required": [
@@ -252,6 +364,40 @@
         "fraicheur"
       ],
       "title": "Source",
+      "type": "object"
+    },
+    "Variante": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Identifiant de la variante dans sa plateforme (`seances`).",
+          "minLength": 1,
+          "type": "string"
+        },
+        "marqueur": {
+          "description": "Marqueur que la sonde cherche sur la page de liste des Séances d'une commune.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "niveaux": {
+          "description": "Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`[\"seances\"]` : séances seulement).",
+          "items": {
+            "items": {
+              "$ref": "#/$defs/DonneeConseil"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "marqueur",
+        "niveaux"
+      ],
+      "title": "Variante",
       "type": "object"
     },
     "VoieAcces": {
@@ -277,6 +423,14 @@
         }
       ],
       "default": null
+    },
+    "plateformes": {
+      "default": [],
+      "description": "Les plateformes retenues, que citent les blocs `site` des sources communales.",
+      "items": {
+        "$ref": "#/$defs/Plateforme"
+      },
+      "type": "array"
     },
     "sources": {
       "items": {

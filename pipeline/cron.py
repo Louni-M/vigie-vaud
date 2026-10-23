@@ -32,6 +32,7 @@ import argparse
 import json
 import os
 import shutil
+import socket
 import ssl
 import subprocess
 import sys
@@ -48,6 +49,7 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports
+from robot_communal import Robot
 from schema import DOSSIER_SCHEMA, RACINE, EtatSource, EtatSources, FichierSources, Sonde, Source, lire_sources
 
 FICHIER_ETAT = "etat-sources.json"
@@ -219,12 +221,15 @@ def passage(
     issues: ClientIssues,
     attendre: Callable[[float], None] = time.sleep,
     rattrapage: bool = False,
+    resoudre: Callable[[str], str] = socket.gethostbyname,
 ) -> EtatSources:
     """Sonde chaque source qui a un bloc `sonde`, puis écrit `etat-sources.json` et copie `schema/` dans `depot`,
     un clone du dépôt de données. L'état précédent est relu dans ce clone ; absent, illisible ou d'une autre
     version, le passage repart de zéro. Les issues sont ensuite accordées à l'état écrit ; une erreur de leur API
     est affichée sans faire échouer le passage. Vient ensuite l'import des conseils dus (`importer_les_conseils`),
-    qui ne touche pas à l'état des sources. Le commit et le push sont l'affaire de l'appelant."""
+    qui ne touche pas à l'état des sources. Les sites des communes sont lus par un robot communal, un seul pour tout
+    le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de chaque
+    hôte. Le commit et le push sont l'affaire de l'appelant."""
     genere = _a_la_seconde(horloge())
     precedent = _lire_etat(depot / FICHIER_ETAT)
     etats: dict[str, EtatSource] = {}
@@ -243,7 +248,9 @@ def passage(
     except httpx.HTTPError as e:
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
 
-    importer_les_conseils(depot, sources, OpenParlData(client, horloge, attendre), horloge, issues, rattrapage)
+    opd = OpenParlData(client, horloge, attendre)
+    robot = Robot(client, horloge, attendre, resoudre)
+    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapage)
     return etat
 
 
@@ -393,6 +400,7 @@ def importer_les_conseils(
     depot: Path,
     sources: FichierSources,
     opd: OpenParlData,
+    robot: Robot,
     horloge: Callable[[], datetime],
     issues: ClientIssues,
     rattrapage: bool,
@@ -409,7 +417,9 @@ def importer_les_conseils(
     apres = avant
     if dus:
         try:
-            apres = importer_conseils(depot, sources, opd, horloge, dus=dus, rattrapage=rattrapage).conseils
+            apres = importer_conseils(
+                depot, sources, opd, horloge, dus=dus, rattrapage=rattrapage, robot=robot
+            ).conseils
         except Exception:
             # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus : l'état des
             # sources est tout de même publié, et l'issue `import-conseils` s'ouvrira au-delà de 24 h.
