@@ -50,6 +50,7 @@ from pydantic import ValidationError
 
 from lecture_conseils import MOTIFS_LECTURE, lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
+from retraits import appliquer_retraits, lire_retraits
 from rattachement import (
     COMMUNES_JSON,
     Repertoire,
@@ -565,11 +566,13 @@ def importer_conseils(
     `rattrapage`. Un conseil en échec est signalé, garde sa date, et les autres continuent. Le commit et le push
     sont l'affaire de l'appelant.
 
-    Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; un
-    `corrections.json` invalide lève `pydantic.ValidationError` avant tout import."""
+    Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; les
+    retraits de `retraits.json` (ADR 0007) sont réappliqués à toute l'archive après les imports. Un
+    `corrections.json` ou un `retraits.json` invalide lève `pydantic.ValidationError` avant tout import."""
     genere = horloge().astimezone(UTC).replace(microsecond=0)
     repertoire = Repertoire.lire(communes)
     corrections = lire_corrections(depot)
+    retraits = lire_retraits(depot)
     imports = lire_imports(depot)
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
@@ -593,6 +596,12 @@ def importer_conseils(
         archive = {**archive, **elements}
         imports[cle] = genere
         print(f"{source.nom} : {len(bruts.objets)} Objet(s), {len(bruts.seances)} Séance(s) lus")
+
+    # Les retraits passent après le masquage, sur toute l'archive : un élément relu avec son texte d'origine
+    # reprend le texte corrigé, et un retrait nouveau vaut dès ce passage.
+    retires = appliquer_retraits(archive, retraits)
+    nouveaux |= retires
+    archive = {**archive, **retires}
 
     etat = ImportConseils(version=1, genere=genere, conseils=imports)
     documents: dict[str, Enveloppe] = {chemin_element(cle, e): e for cle, e in nouveaux.items()}

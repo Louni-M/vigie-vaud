@@ -402,6 +402,7 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
         "schema/liste-seances.schema.json",
         "schema/objet.schema.json",
         "schema/rattachements-commune.schema.json",
+        "schema/retraits.schema.json",
         "schema/seance.schema.json",
         "schema/sources.schema.json",
     ]
