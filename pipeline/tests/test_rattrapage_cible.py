@@ -7,15 +7,11 @@ plus aucun site.
 
 from datetime import timedelta
 
-import httpx
 import pytest
 
-from cron import passage
 from faux_openparldata import HorlogeFactice
-from faux_sites import Page
 from schema import FichierSources
-from test_cron import IssuesFactices
-from test_sites_communaux import (
+from passage_sites import (
     BLONAY,
     PLATEFORMES,
     PREVERENGES,
@@ -24,6 +20,7 @@ from test_sites_communaux import (
     _lire,
     _monde,
     _opendata,
+    _passer,
     _seance_fabriquee,
     _site,
 )
@@ -69,20 +66,10 @@ def _sources():
     )
 
 
-def _passer(depot, horloge, reseau, heure, **options):
-    horloge.heure = heure
+def _rattraper(depot, horloge, reseau, heure, **options):
+    """Un passage sur les sources de ces tests, à `heure` ; rend le faux OpenParlData, qui note ses requêtes."""
     monde = _monde(horloge)
-    with httpx.Client(transport=reseau.transport(repli=monde.transport())) as client:
-        passage(
-            depot,
-            _sources(),
-            client,
-            horloge=horloge,
-            issues=IssuesFactices(),
-            attendre=horloge.attendre,
-            resoudre=reseau.resoudre,
-            **options,
-        )
+    _passer(depot, horloge, reseau, _sources(), monde=monde, heure=heure, **options)
     return monde
 
 
@@ -95,12 +82,12 @@ def test_le_rattrapage_d_une_commune_rouvre_tout_son_site_et_ne_touche_ni_openpa
     tmp_path, horloge
 ):
     reseau = _reseau(horloge)
-    _passer(tmp_path, horloge, reseau, T0)  # passage ordinaire : la fenêtre de 6 mois seulement
+    _rattraper(tmp_path, horloge, reseau, T0)  # passage ordinaire : la fenêtre de 6 mois seulement
     avant = _lire(tmp_path, "conseils/import.json")
     assert not (tmp_path / "conseils/5643/seances/2026-02-05.json").exists()
 
     reseau.journal.clear()
-    monde = _passer(tmp_path, horloge, reseau, T0 + timedelta(hours=3), rattrapage_cible="5643")
+    monde = _rattraper(tmp_path, horloge, reseau, T0 + timedelta(hours=3), rattrapage_cible="5643")
 
     assert _hotes(reseau, monde) == {"www.preverenges.ch"}
     assert FEVRIER in [r.url for r in reseau.journal]
@@ -114,7 +101,7 @@ def test_le_rattrapage_d_une_commune_rouvre_tout_son_site_et_ne_touche_ni_openpa
 def test_le_rattrapage_d_une_plateforme_lit_toutes_ses_communes_et_seulement_elles(tmp_path, horloge):
     reseau = _reseau(horloge)
 
-    monde = _passer(tmp_path, horloge, reseau, T0, rattrapage_cible="i-web")
+    monde = _rattraper(tmp_path, horloge, reseau, T0, rattrapage_cible="i-web")
 
     assert _hotes(reseau, monde) == {"www.preverenges.ch", "www.blonay-saint-legier.ch"}
     assert (tmp_path / "conseils/5643/seances/2026-02-05.json").exists()
@@ -127,7 +114,7 @@ def test_le_rattrapage_d_une_plateforme_lit_toutes_ses_communes_et_seulement_ell
 def test_le_rattrapage_d_openparldata_ne_touche_aucun_site(tmp_path, horloge):
     reseau = _reseau(horloge)
 
-    monde = _passer(tmp_path, horloge, reseau, T0, rattrapage=True)
+    monde = _rattraper(tmp_path, horloge, reseau, T0, rattrapage=True)
 
     assert reseau.journal == []
     assert monde.requetes
@@ -142,7 +129,7 @@ def test_une_cible_qui_n_est_ni_une_plateforme_ni_une_commune_scrapee_arrete_le_
     reseau = _reseau(horloge)
 
     with pytest.raises(ValueError, match="« 9999 »"):
-        _passer(tmp_path, horloge, reseau, T0, rattrapage_cible="9999")
+        _rattraper(tmp_path, horloge, reseau, T0, rattrapage_cible="9999")
 
     assert reseau.journal == []
     assert list(tmp_path.iterdir()) == []

@@ -46,7 +46,6 @@ from collections.abc import Callable, Collection, Iterable, Mapping
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
-from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
@@ -63,8 +62,9 @@ from rattachement import (
     porte_sur_le_canton,
     rattacher_objet,
 )
-from robot_communal import Robot
+from robot_communal import Robot, robot_des_sources
 from schema import (
+    FUSEAU,
     RACINE,
     Conseil,
     Contributeur,
@@ -83,7 +83,7 @@ from schema import (
 )
 from sites_communaux import lire_site
 
-API ="https://api.openparldata.ch/v1"
+API = "https://api.openparldata.ch/v1"
 _CONFIG = json.loads((RACINE / "config.json").read_text())
 USER_AGENT = f"VigieVaud-import (+{_CONFIG['depot']}; {_CONFIG['courriel']})"
 INTERVALLE = 1.0  # secondes, au moins, entre deux requêtes
@@ -93,7 +93,6 @@ TAILLE_RELATION = 1000
 RECOUVREMENT = timedelta(days=1)
 PAR_IDENTIFIANTS = 50  # Objets relus par requête (`id=1,2,…`) pour leurs documents tardifs
 FICHIER_IMPORT = "conseils/import.json"
-FUSEAU = ZoneInfo("Europe/Zurich")  # le jour du passage, d'où part la fenêtre d'un site, est celui de Lausanne
 
 # Les demandes de grâce ne sont pas des Objets : elles nomment un particulier. L'exclusion est une liste de types.
 TYPES_ECARTES = frozenset({"Grâce"})
@@ -664,7 +663,7 @@ def importer_conseils(
             if source.site is not None:
                 if robot is None:
                     raise ValueError("aucun robot communal pour lire le site de la commune")
-                bruts = lire_site(robot, source, sources.plateformes, jour, rattrapage)
+                bruts = lire_site(robot, source, sources, jour, rattrapage)
             else:
                 bruts = importer(opd, source.conseil, debut)
             connus = lire_membres(depot, cle) if source.site is not None else []
@@ -722,10 +721,12 @@ def main(argv: list[str] | None = None) -> None:
         changes = reconstruire(args.depot.resolve(), lire_sources(args.sources), horloge)
         print(f"Fichiers de lecture reconstruits : {len(changes)} écrit(s) ou supprimé(s)")
         return
+    sources = lire_sources(args.sources)
     with httpx.Client() as http:
         opd = OpenParlData(http, horloge)
-        robot = Robot(http, horloge)
-        importer_conseils(args.depot.resolve(), lire_sources(args.sources), opd, horloge, args.depuis, robot=robot)
+        # Un import lancé à la main est un passage ordinaire : réseaux ralentis et plafond de 60 requêtes par commune.
+        robot = robot_des_sources(http, sources, horloge)
+        importer_conseils(args.depot.resolve(), sources, opd, horloge, args.depuis, robot=robot)
 
 
 if __name__ == "__main__":

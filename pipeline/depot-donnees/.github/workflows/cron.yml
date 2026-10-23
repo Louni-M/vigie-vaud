@@ -24,7 +24,9 @@ on:
         default: ''
 
 # Un passage attend la fin du précédent, sans l'annuler : rattrapages et passages ordinaires, dans le même groupe, ne
-# tournent jamais en même temps (un rattrapage retient donc les passages planifiés).
+# tournent jamais en même temps (un rattrapage retient donc les passages planifiés). Le groupe ne garde qu'une
+# exécution en attente : un rattrapage lancé pendant un passage peut être remplacé par le passage planifié suivant
+# (voir « Cron et dépôt de données » dans la README du dépôt principal, pour savoir quand le lancer).
 concurrency:
   group: cron
   cancel-in-progress: false

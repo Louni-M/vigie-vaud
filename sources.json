@@ -243,13 +243,8 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5410], "mode": "scrape" },
-			"conseil": { "body_key": "5410", "donne": ["seances"] },
-			"site": {
-				"plateforme": "i-web",
-				"variante": "seances",
-				"seances": "https://www.ormont-dessous.ch/seances"
-			}
+			"couverture": { "communes": [5410], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "i-web" }
 		},
 		{
 			"id": "site-5414",
@@ -267,7 +262,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.villeneuve.ch/seances"
+				"seances": "https://www.villeneuve.ch/seance-ordre-du-jour-pv",
+				"membres": "https://www.villeneuve.ch/conseilcommunal"
 			}
 		},
 		{
@@ -286,7 +282,7 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.faoug.ch/seances"
+				"seances": "https://www.faoug.ch/seances-a-venir"
 			}
 		},
 		{
@@ -314,13 +310,8 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5493], "mode": "scrape" },
-			"conseil": { "body_key": "5493", "donne": ["seances"] },
-			"site": {
-				"plateforme": "i-web",
-				"variante": "seances",
-				"seances": "https://www.orny.ch/seances"
-			}
+			"couverture": { "communes": [5493], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "i-web" }
 		},
 		{
 			"id": "site-5514",
@@ -338,7 +329,7 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.bottens.ch/seances"
+				"seances": "https://www.bottens.ch/conseilgeneral"
 			}
 		},
 		{
@@ -371,13 +362,8 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5529], "mode": "scrape" },
-			"conseil": { "body_key": "5529", "donne": ["seances"] },
-			"site": {
-				"plateforme": "i-web",
-				"variante": "seances",
-				"seances": "https://www.oulens.ch/seances"
-			}
+			"couverture": { "communes": [5529], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "i-web" }
 		},
 		{
 			"id": "site-5568",
@@ -410,7 +396,8 @@
 				"plateforme": "i-web",
 				"variante": "pages",
 				"seances": "https://www.puidoux.ch/seances",
-				"objets": "https://www.puidoux.ch/seances"
+				"objets": "https://www.puidoux.ch/seances",
+				"membres": "https://www.puidoux.ch/conseil"
 			}
 		},
 		{
@@ -468,7 +455,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.tolochenaz.ch/seances"
+				"seances": "https://www.tolochenaz.ch/sitzung",
+				"membres": "https://www.tolochenaz.ch/membreconseil"
 			}
 		},
 		{
@@ -487,7 +475,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.vullierens.ch/seances"
+				"seances": "https://www.vullierens.ch/seances",
+				"membres": "https://www.vullierens.ch/conseil-general"
 			}
 		},
 		{
@@ -506,7 +495,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.hautemorges.ch/seances"
+				"seances": "https://www.hautemorges.ch/seances",
+				"membres": "https://www.hautemorges.ch/conseilcommunal"
 			}
 		},
 		{
@@ -544,7 +534,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.begnins.ch/seances"
+				"seances": "https://www.begnins.ch/sitzung",
+				"membres": "https://www.begnins.ch/conseil"
 			}
 		},
 		{
@@ -563,7 +554,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.coppet.ch/seances"
+				"seances": "https://www.coppet.ch/seances",
+				"membres": "https://www.coppet.ch/conseil"
 			}
 		},
 		{
@@ -577,13 +569,8 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5727], "mode": "scrape" },
-			"conseil": { "body_key": "5727", "donne": ["seances"] },
-			"site": {
-				"plateforme": "i-web",
-				"variante": "seances",
-				"seances": "https://www.st-cergue.ch/seances"
-			}
+			"couverture": { "communes": [5727], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "i-web" }
 		},
 		{
 			"id": "site-5747",
@@ -596,13 +583,8 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5747], "mode": "scrape" },
-			"conseil": { "body_key": "5747", "donne": ["seances"] },
-			"site": {
-				"plateforme": "i-web",
-				"variante": "seances",
-				"seances": "https://www.bofflens.ch/seances"
-			}
+			"couverture": { "communes": [5747], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "i-web" }
 		},
 		{
 			"id": "site-5749",
@@ -620,7 +602,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.chavornay.ch/seances"
+				"seances": "https://www.chavornay.ch/sitzung",
+				"membres": "https://www.chavornay.ch/conseilcommunal"
 			}
 		},
 		{
@@ -639,7 +622,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.vallorbe.ch/seances"
+				"seances": "https://www.vallorbe.ch/seances",
+				"membres": "https://www.vallorbe.ch/conseilcommunal"
 			}
 		},
 		{
@@ -653,13 +637,8 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5785], "mode": "scrape" },
-			"conseil": { "body_key": "5785", "donne": ["seances"] },
-			"site": {
-				"plateforme": "i-web",
-				"variante": "seances",
-				"seances": "https://www.corcelles-le-jorat.ch/seances"
-			}
+			"couverture": { "communes": [5785], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "i-web" }
 		},
 		{
 			"id": "site-5841",
@@ -677,7 +656,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.chateaudoex-admin.ch/seances"
+				"seances": "https://www.chateaudoex-admin.ch/assemblees",
+				"membres": "https://www.chateaudoex-admin.ch/legislatif"
 			}
 		},
 		{
@@ -696,7 +676,7 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.allaman.ch/seances"
+				"seances": "https://www.allaman.ch/sitzung"
 			}
 		},
 		{
@@ -729,7 +709,8 @@
 			"site": {
 				"plateforme": "i-web",
 				"variante": "seances",
-				"seances": "https://www.corseaux.ch/seances"
+				"seances": "https://www.corseaux.ch/calendriers-des-seances",
+				"membres": "https://www.corseaux.ch/conseil-communal"
 			}
 		},
 		{
@@ -744,12 +725,13 @@
 			"voie_acces": "cron",
 			"fraicheur": "import",
 			"couverture": { "communes": [5892], "mode": "scrape" },
-			"conseil": { "body_key": "5892", "donne": ["objets", "seances"] },
+			"conseil": { "body_key": "5892", "donne": ["seances"] },
 			"site": {
 				"plateforme": "i-web",
 				"variante": "objets",
 				"seances": "https://www.blonay-saint-legier.ch/seances",
-				"objets": "https://www.blonay-saint-legier.ch/objets-politiques"
+				"objets": "https://www.blonay-saint-legier.ch/objets-politiques",
+				"membres": "https://www.blonay-saint-legier.ch/conseil-communal"
 			}
 		}
 	]

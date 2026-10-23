@@ -166,7 +166,12 @@ cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-pus
 
 ou dans le dépôt de données, par un lancement manuel du workflow « Cron » avec la case `rattrapage` cochée ou le
 champ `rattrapage_cible` rempli. Rattrapages et passages ordinaires partagent le même groupe `concurrency` : ils ne
-tournent jamais en même temps.
+tournent jamais en même temps. Mais ce groupe ne garde qu'**une seule exécution en attente** : un rattrapage lancé
+pendant un passage attend sa fin, et si le passage planifié suivant (à :17 ou :47) arrive avant, il prend sa place
+dans la file et le rattrapage est annulé, sans autre trace que dans l'onglet Actions. On lance donc un rattrapage
+quand aucun passage ne tourne : quelques minutes après :17 ou :47, une fois le passage fini (hors du premier passage
+après 7 h à Lausanne, qui importe les sites et dure jusqu'à 45 minutes), puis on vérifie dans Actions qu'il a démarré
+et on le relance s'il a été annulé. Une fois lancé, c'est lui qui retient les passages planifiés jusqu'à sa fin.
 
 Les fichiers de lecture (`conseils/index.json`, `fil.json`, les listes par conseil et par commune) se reconstruisent
 seuls depuis l'archive, sans aucune requête à OpenParlData, après un changement de leur forme ou une réécriture à la

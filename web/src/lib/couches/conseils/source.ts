@@ -1,11 +1,11 @@
 // Ce que l'onglet Conseil et les fiches disent de la source d'un conseil, lu dans `sources.json` : le pied de la
 // fiche d'un Objet ou d'une Séance, et la note de niveau sous le nom du conseil (spec de J3, « Couche Conseils et
 // onglet Conseil », « Fiches »). Rien n'y est écrit en dur pour OpenParlData.
-import { RAISONS } from '#lib/couverture.js';
+import { RAISONS, declareNonCouverte } from '#lib/couverture.js';
 import { deCommune } from '#lib/labels.js';
 import type { MessageNonCouvert } from '#lib/registre/types.js';
-import type { DonneeConseil, Objet, Source } from '#lib/schema.js';
-import { SOURCES } from '#lib/sources.js';
+import type { Objet, Source } from '#lib/schema.js';
+import { SOURCES, niveauDe } from '#lib/sources.js';
 import type { Commune } from '#lib/types.js';
 import { sourceDuConseil } from './cles.js';
 
@@ -18,16 +18,21 @@ export interface TexteLie {
 /** « Commune de Préverenges » → « commune de Préverenges » : l'attribution reprise au milieu d'une phrase. */
 const enMinuscule = (texte: string) => texte.charAt(0).toLowerCase() + texte.slice(1);
 
+/** « Source : », avec l'espace insécable de la typographie française avant les deux-points. */
+const SOURCE = 'Source\u00a0: ';
+
 /**
- * Le pied de la fiche d'un élément du conseil (`vd`, `5643`), tiré de l'attribution de sa source : « Source : site de
- * la commune de Préverenges » pour une commune scrapée, l'attribution telle quelle sinon (« Source: OpenParlData.ch »),
- * avec son lien. `null` pour un conseil que `sources` ne déclare pas.
+ * Le pied de la fiche d'un élément du conseil (`vd`, `5643`), tiré de l'attribution de sa source, pour tous les
+ * conseils : « Source : site de la commune de Préverenges » pour une commune scrapée, « Source : OpenParlData.ch »
+ * pour OpenParlData (dont l'attribution s'écrit « Source: OpenParlData.ch »), avec son lien. `null` pour un conseil
+ * que `sources` ne déclare pas.
  */
 export function piedDeFiche(conseil: string, sources: readonly Source[] = SOURCES): TexteLie | null {
 	const source = sourceDuConseil(conseil, sources);
 	if (!source) return null;
 	const { texte, lien } = source.attribution;
-	return { texte: source.site ? `Source : site de la ${enMinuscule(texte)}` : texte, lien };
+	const nom = source.site ? `site de la ${enMinuscule(texte)}` : texte.replace(/^Source\s*:\s*/, '');
+	return { texte: SOURCE + nom, lien };
 }
 
 /** La note de niveau : « Séances seulement : les objets sont sur le site de la commune › », la suite en lien. */
@@ -44,25 +49,25 @@ export interface NoteDeNiveau {
  * autres objets. `null` pour un conseil qui donne ses objets.
  */
 export function noteDeNiveau(source: Source): NoteDeNiveau | null {
-	const donne: readonly DonneeConseil[] = source.conseil?.donne ?? [];
-	if (donne.includes('objets') || !donne.includes('seances')) return null;
-	const lien = source.site?.seances ?? source.conseil?.page ?? null;
-	if (donne.includes('preavis'))
-		return { niveau: 'Séances et préavis', suite: 'les autres objets sont sur le site de la commune ›', lien };
-	return { niveau: 'Séances seulement', suite: 'les objets sont sur le site de la commune ›', lien };
+	const note = source.conseil && niveauDe(source.conseil)?.note;
+	if (!note) return null;
+	return { ...note, lien: source.site?.seances ?? source.conseil?.page ?? null };
 }
 
 /**
- * La mention de la fiche d'un Objet d'une commune scrapée qui n'a ni statut ni auteur·e : le site de la commune ne
- * les publie pas (un préavis n'est pas d'office de la Municipalité, ni en attente). `null` pour un Objet qui a l'un
- * ou l'autre, ou d'un conseil sans site (OpenParlData).
+ * La mention de la fiche d'un Objet sans statut ni auteur·e, quand le conseil scrapé ne les publie pas : son niveau
+ * n'est pas « objets et séances » (un préavis n'est pas d'office de la Municipalité, ni en attente). `null` pour un
+ * Objet qui a l'un ou l'autre, pour un conseil scrapé qui publie statuts et auteur·e·s (un Objet sans statut du
+ * module Objets d'i-web n'a simplement pas de statut), ou pour un conseil sans site (OpenParlData).
  */
 export function mentionNonPublies(
 	conseil: string,
 	objet: Pick<Objet, 'statut' | 'contributeurs'>,
 	sources: readonly Source[] = SOURCES
 ): string | null {
-	if (!sourceDuConseil(conseil, sources)?.site || objet.statut || objet.contributeurs.length) return null;
+	const source = sourceDuConseil(conseil, sources);
+	if (!source?.site || (source.conseil && niveauDe(source.conseil)?.complet)) return null;
+	if (objet.statut || objet.contributeurs.length) return null;
 	return 'Statut et auteur·e·s : non publiés par le site de la commune';
 }
 
@@ -83,10 +88,7 @@ export function nonCouvertConseils(
 	commune: Pick<Commune, 'bfs' | 'nom'>,
 	sources: readonly Source[] = SOURCES
 ): MessageNonCouvert {
-	const declaree = sources.find(
-		({ site, couverture: c }) =>
-			site && c?.mode === 'non_couvert' && Array.isArray(c.communes) && c.communes.includes(commune.bfs)
-	);
+	const declaree = sources.find((s) => s.site && declareNonCouverte(s, commune.bfs));
 	const raison = declaree?.couverture?.raison;
 	if (!declaree || !raison) return { texte: 'Vigie Vaud ne lit pas encore le site de cette commune.' };
 	return {

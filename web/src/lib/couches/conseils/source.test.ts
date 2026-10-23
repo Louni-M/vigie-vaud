@@ -13,17 +13,28 @@ const AVEC_SITE = avecSources(SOURCES, sourceSite());
 describe('pied de la fiche d’un Objet ou d’une Séance', () => {
 	it('nomme le site de la commune d’un conseil scrapé, avec le lien de son attribution', () => {
 		expect(piedDeFiche('5643', AVEC_SITE)).toEqual({
-			texte: 'Source : site de la commune de Préverenges',
+			texte: 'Source\u00a0: site de la commune de Préverenges',
 			lien: 'https://www.preverenges.ch/conseil'
 		});
 	});
 
-	it.each(['vd', '5586', '5938'])('reprend l’attribution d’OpenParlData déclarée pour le conseil %s', (conseil) => {
-		expect(piedDeFiche(conseil, AVEC_SITE)).toEqual({ texte: 'Source: OpenParlData.ch', lien: 'https://openparldata.ch' });
+	it.each(['vd', '5586', '5938'])('nomme OpenParlData, « Source : » à l’espace insécable, pour le conseil %s', (conseil) => {
+		expect(piedDeFiche(conseil, AVEC_SITE)).toEqual({
+			texte: 'Source\u00a0: OpenParlData.ch',
+			lien: 'https://openparldata.ch'
+		});
 	});
 
 	it('ne dit rien d’un conseil que sources.json ne déclare pas', () => {
 		expect(piedDeFiche('9999', AVEC_SITE)).toBeNull();
+	});
+
+	it('nomme encore le site d’une commune passée non couverte, dont l’archive reste en ligne', () => {
+		const sources = avecSources(SOURCES, sourceNonCouverte('demande_commune'));
+		expect(piedDeFiche('5568', sources)).toEqual({
+			texte: 'Source : site de la commune de Sainte-Croix',
+			lien: 'https://www.sainte-croix.ch/conseil-communal'
+		});
 	});
 });
 
@@ -74,11 +85,24 @@ describe('mention du statut et des auteur·e·s dans la fiche d’un Objet', () 
 	});
 
 	it('ne dit rien d’un Objet scrapé dont le site publie le statut ou les auteur·e·s', () => {
-		const sources = preverenges(['objets', 'seances']);
+		// Puidoux publie un statut dans son tableau de préavis rédigé : il est montré, sans mention.
+		const sources = preverenges(['preavis', 'seances']);
 		expect(mentionNonPublies('5643', { ...preavis, statut: { libelle: 'Déposé', date: null } }, sources)).toBeNull();
 		const auteur = { nom: 'Yann Exemple', parti: null, role: null, sorte: 'personne' as const };
 		expect(mentionNonPublies('5643', { ...preavis, contributeurs: [auteur] }, sources)).toBeNull();
 	});
+
+	it('ne dit rien d’un Objet sans statut ni auteur·e d’un conseil scrapé qui publie statuts et auteur·e·s', () => {
+		// Le module Objets d'i-web (Blonay - Saint-Légier) : un Objet sans statut n'en a pas, le site ne le cache pas.
+		expect(mentionNonPublies('5643', preavis, preverenges(['objets', 'seances']))).toBeNull();
+	});
+
+	it.each([['seances'], ['preavis', 'seances']] as [DonneeConseil, ...DonneeConseil[]][])(
+		'le dit pour un conseil scrapé en %s',
+		(...donne) => {
+			expect(mentionNonPublies('5643', preavis, preverenges(donne))).not.toBeNull();
+		}
+	);
 
 	it('ne dit rien d’un Objet d’OpenParlData, même sans statut', () => {
 		expect(mentionNonPublies('5586', preavis, preverenges(['seances']))).toBeNull();

@@ -46,7 +46,6 @@ import os
 import re
 import shutil
 import socket
-import ssl
 import subprocess
 import sys
 import time
@@ -57,17 +56,16 @@ from datetime import UTC, date, datetime, timedelta
 from datetime import time as time_du_jour
 from pathlib import Path
 from typing import Protocol
-from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
-from robot_communal import PLAFOND, Robot
+from robot_communal import CrawlDelayTropLong, Robot, erreur_tls, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
+    FUSEAU,
     RACINE,
-    EtatReseau,
     EtatSource,
     EtatSources,
     FichierSources,
@@ -404,8 +402,8 @@ def passage(
     `etat-sources.json` et copie `schema/` dans `depot`, un clone du dépôt de données. L'état précédent est relu
     dans ce clone ; absent, illisible ou d'une autre version, le passage repart de zéro. Les issues sont ensuite
     accordées à l'état écrit ; une erreur de leur API est affichée sans faire échouer le passage. Vient ensuite
-    l'import des conseils dus (`importer_les_conseils`), sauf ceux dont la sonde du site a échoué ; l'import ne
-    touche pas à l'état des sources. Les sites des communes sont sondés et lus par un robot communal, un seul pour
+    l'import des conseils dus (`importer_les_conseils`), sauf ceux dont la sonde du site a échoué ou dont le
+    `Crawl-delay` dépasse 30 s ; l'import ne touche pas à l'état des sources. Les sites des communes sont sondés et lus par un robot communal, un seul pour
     tout le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de
     chaque hôte ; il ralentit les réseaux de la section `reseaux` de `sources.json`, plafonne chaque commune à
     `PLAFOND` requêtes hors rattrapage ciblé, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
@@ -418,7 +416,8 @@ def passage(
     communes ; une cible qui ne désigne aucune commune scrapée lève `ValueError` avant toute écriture."""
     rattrapes = _rattrapes(sources, rattrapage, rattrapage_cible)
     genere = _a_la_seconde(horloge())
-    precedent = _lire_etat(depot / FICHIER_ETAT)
+    lu = _lire_etat(depot / FICHIER_ETAT)
+    precedent = lu.sources if lu else {}
     etats: dict[str, EtatSource] = {}
     for source in sources.sources:
         if source.sonde is None:
@@ -430,16 +429,17 @@ def passage(
             continue
         heure = _a_la_seconde(horloge())
         etats[source.id] = _suivant(precedent.get(source.id), heure, sonder(client, source.sonde))
-    robot = Robot(
+    robot = robot_des_sources(
         client,
+        sources,
         horloge,
         attendre,
         resoudre,
-        intervalles={r.reseau: r.intervalle for r in sources.reseaux},
-        bloques=_lire_reseaux_bloques(depot / FICHIER_ETAT),
-        plafond=None if rattrapage_cible is not None else PLAFOND,
+        rattrapage=rattrapage_cible is not None,
+        bloques=lu.reseaux if lu else {},
     )
-    etats |= sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapes)
+    sondes, sautes = sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapes)
+    etats |= sondes
     etat = EtatSources(version=1, genere=genere, sources=etats, reseaux=robot.reseaux_bloques())
     (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
     shutil.rmtree(depot / "schema", ignore_errors=True)
@@ -453,11 +453,6 @@ def passage(
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
 
     opd = OpenParlData(client, horloge, attendre)
-    sautes = {
-        s.conseil.cle: etats[s.id].motif
-        for s in _sites_sondes(sources)
-        if s.id in etats and etats[s.id].echecs_consecutifs
-    }
     importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes)
     if robot.reseaux_bloques() != etat.reseaux:
         # Un réseau bloqué pendant l'import : le passage suivant doit le savoir pour le tester d'abord.
@@ -558,18 +553,12 @@ def _a_la_seconde(heure: datetime) -> datetime:
     return heure.astimezone(UTC).replace(microsecond=0)
 
 
-def _lire_etat(chemin: Path) -> dict[str, EtatSource]:
+def _lire_etat(chemin: Path) -> EtatSources | None:
+    """L'état du passage précédent ; `None` s'il est absent, illisible ou d'une autre version."""
     try:
-        return EtatSources.model_validate_json(chemin.read_bytes()).sources
+        return EtatSources.model_validate_json(chemin.read_bytes())
     except (FileNotFoundError, ValidationError):
-        return {}
-
-
-def _lire_reseaux_bloques(chemin: Path) -> dict[str, EtatReseau]:
-    try:
-        return EtatSources.model_validate_json(chemin.read_bytes()).reseaux
-    except (FileNotFoundError, ValidationError):
-        return {}
+        return None
 
 
 def sonder(client: httpx.Client, sonde: Sonde) -> str | None:
@@ -580,7 +569,7 @@ def sonder(client: httpx.Client, sonde: Sonde) -> str | None:
     except httpx.TimeoutException:
         return "délai dépassé"
     except httpx.RequestError as e:
-        return "erreur TLS" if _cause_tls(e) else "erreur réseau"
+        return "erreur TLS" if erreur_tls(e) else "erreur réseau"
     if not reponse.is_success:
         return f"HTTP {reponse.status_code}"
     try:
@@ -613,14 +602,6 @@ def _champs(enregistrement: object) -> dict:
         if isinstance(enregistrement.get(cle), dict):
             return enregistrement[cle]
     return enregistrement
-
-
-def _cause_tls(erreur: BaseException) -> bool:
-    while erreur is not None:
-        if isinstance(erreur, ssl.SSLError):
-            return True
-        erreur = erreur.__cause__ or erreur.__context__
-    return False
 
 
 def _suivant(avant: EtatSource | None, heure: datetime, motif: str | None) -> EtatSource:
@@ -664,7 +645,6 @@ def _suivant(avant: EtatSource | None, heure: datetime, motif: str | None) -> Et
 
 # --- Import quotidien des conseils (ADR 0015) ------------------------------------------------------------------
 
-FUSEAU = ZoneInfo("Europe/Zurich")
 HEURE_IMPORT = time_du_jour(7)  # à Lausanne
 
 
@@ -686,6 +666,16 @@ def conseils_dus(conseils: list[Source], imports: Mapping[str, datetime], heure:
     return {c for c in cles if c not in imports or imports[c] < seuil}
 
 
+def _dus(
+    conseils: list[Source], imports: Mapping[str, datetime], heure: datetime, rattrapes: Collection[str] | None
+) -> set[str]:
+    """Les clés des conseils que ce passage importe (et dont il sonde le site) : ceux qui sont dus, ou, pour un
+    rattrapage, ceux de `rattrapes`."""
+    if rattrapes is None:
+        return conseils_dus(conseils, imports, heure)
+    return {s.conseil.cle for s in conseils if s.conseil is not None} & set(rattrapes)
+
+
 def _sites_sondes(sources: FichierSources) -> list[Source]:
     """Les sources communales sondées : un bloc `site` et un conseil (une commune non couverte n'en a pas)."""
     return [s for s in sources.sources if s.site is not None and s.conseil is not None]
@@ -698,23 +688,29 @@ def sonder_les_sites(
     imports: Mapping[str, datetime],
     horloge: Callable[[], datetime],
     rattrapes: Collection[str] | None = None,
-) -> dict[str, EtatSource]:
-    """L'état de chaque source communale sondée. Une commune est sondée une fois par jour, juste avant son import :
-    au passage où son conseil est dû (pour un rattrapage, quand sa clé est dans `rattrapes`), sauf si une sonde a
-    déjà réussi depuis le dernier 7 h à Lausanne. Une sonde en échec est donc refaite au passage suivant, et la
-    commune passe en panne à deux échecs, comme toute source. Une commune qui n'est pas sondée à ce passage garde
-    son état précédent."""
+) -> tuple[dict[str, EtatSource], dict[str, str]]:
+    """L'état de chaque source communale sondée, et les conseils dont l'import est sauté à ce passage, avec la
+    raison. Une commune est sondée une fois par jour, juste avant son import : au passage où son conseil est dû (pour
+    un rattrapage, quand sa clé est dans `rattrapes`), sauf si une sonde a déjà réussi depuis le dernier 7 h à
+    Lausanne. Une sonde en échec est donc refaite au passage suivant, et la commune passe en panne à deux échecs,
+    comme toute source ; tant qu'elle échoue, l'import est sauté. Une commune qui n'est pas sondée à ce passage garde
+    son état précédent, comme celle dont le `Crawl-delay` est trop long : ni succès ni panne, mais son import est
+    sauté (« Crawl-delay trop long (600 s) »)."""
     sites = _sites_sondes(sources)
     heure = _a_la_seconde(horloge())
-    if rattrapes is None:
-        dus = conseils_dus(sites, imports, heure)
-    else:
-        dus = {s.conseil.cle for s in sites} & set(rattrapes)
+    dus = _dus(sites, imports, heure, rattrapes)
     seuil = dernier_seuil(heure)
     etats: dict[str, EtatSource] = {}
+    lents: dict[str, str] = {}  # les conseils des sites au `Crawl-delay` trop long, et ce motif
 
     def sonder(source: Source) -> None:
-        motif = sonder_site(robot, source, sources.plateformes)
+        try:
+            motif = sonder_site(robot, source, sources)
+        except CrawlDelayTropLong as e:
+            lents[source.conseil.cle] = e.motif
+            if source.id in precedent:
+                etats[source.id] = precedent[source.id]
+            return
         etats[source.id] = _suivant(precedent.get(source.id), _a_la_seconde(horloge()), motif)
 
     # Un réseau bloqué à un passage précédent est d'abord testé par une seule sonde, celle de sa première commune
@@ -732,7 +728,12 @@ def sonder_les_sites(
                 etats[source.id] = avant
             continue
         sonder(source)
-    return etats
+    sautes = {
+        s.conseil.cle: f"sonde en échec : {etats[s.id].motif}"
+        for s in sites
+        if s.id in etats and etats[s.id].echecs_consecutifs
+    }
+    return etats, sautes | lents
 
 
 def importer_les_conseils(
@@ -743,11 +744,12 @@ def importer_les_conseils(
     horloge: Callable[[], datetime],
     issues: ClientIssues,
     rattrapes: Collection[str] | None = None,
-    sautes: Mapping[str, str | None] | None = None,
+    sautes: Mapping[str, str] | None = None,
 ) -> None:
     """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique), puis accorde
-    les issues `import-conseils` aux dates d'import. `sautes` donne, par clé, les conseils dont la sonde du site a
-    échoué et le motif : leur import du jour est sauté, ce qui vaut un import en échec ordinaire. Seules les sondes
+    les issues `import-conseils` aux dates d'import. `sautes` donne, par clé, les conseils dont le site n'est pas lu
+    à ce passage et pourquoi (sonde en échec, `Crawl-delay` trop long) : leur import du jour est sauté, ce qui vaut un
+    import en échec ordinaire. Seules les sondes
     décident d'une panne : l'import ne touche pas à l'état des sources, et une erreur de l'API des issues est
     affichée sans faire échouer le passage."""
     conseils = [s for s in sources.sources if s.conseil is not None]
@@ -756,13 +758,10 @@ def importer_les_conseils(
     sautes = sautes or {}
     heure = _a_la_seconde(horloge())
     avant = lire_imports(depot)
-    if rattrapes is None:
-        dus = conseils_dus(conseils, avant, heure)
-    else:
-        dus = {s.conseil.cle for s in conseils} & set(rattrapes)
+    dus = _dus(conseils, avant, heure, rattrapes)
     for conseil in conseils:
         if conseil.conseil.cle in dus and conseil.conseil.cle in sautes:
-            print(f"Import sauté : {conseil.nom} (sonde en échec : {sautes[conseil.conseil.cle]})", file=sys.stderr)
+            print(f"Import sauté : {conseil.nom} ({sautes[conseil.conseil.cle]})", file=sys.stderr)
     dus -= sautes.keys()
     apres = avant
     if dus:

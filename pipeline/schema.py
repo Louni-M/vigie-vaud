@@ -24,7 +24,8 @@ import json
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NamedTuple
+from zoneinfo import ZoneInfo
 
 from pydantic import (
     AfterValidator,
@@ -41,6 +42,8 @@ from typing_extensions import TypeAliasType
 
 RACINE = Path(__file__).resolve().parent.parent
 DOSSIER_SCHEMA = RACINE / "schema"
+# L'heure de Lausanne : le jour d'un passage, sa fenêtre, le 7 h des imports, les jours des fichiers de lecture.
+FUSEAU = ZoneInfo("Europe/Zurich")
 
 
 class Modele(BaseModel):
@@ -144,6 +147,27 @@ class Sonde(Modele):
 DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "preavis", "seances"])
 
 
+class Niveau(NamedTuple):
+    """Un niveau (CONTEXT.md) : ce que donne un conseil scrapé, tel que `conseil.donne` l'écrit (ADR-0010)."""
+
+    donne: frozenset[str]
+    libelle: str  # « objets et séances »
+    objets: bool  # le conseil donne-t-il des Objets, tous ou ses préavis seulement ?
+
+
+# Les trois niveaux, du plus complet au moins complet : le seul endroit où un niveau s'interprète, côté pipeline.
+NIVEAUX = (
+    Niveau(frozenset({"objets", "seances"}), "objets et séances", True),
+    Niveau(frozenset({"preavis", "seances"}), "séances et préavis", True),
+    Niveau(frozenset({"seances"}), "séances seulement", False),
+)
+
+
+def niveau_de(donne: list[str] | tuple[str, ...]) -> Niveau | None:
+    """Le niveau de ce que donne un conseil, dans n'importe quel ordre ; `None` hors des trois."""
+    return next((n for n in NIVEAUX if n.donne == frozenset(donne)), None)
+
+
 class Conseil(Modele):
     """Un conseil importé par le cron : exposé par OpenParlData, ou lu sur le site de sa commune quand la source a un
     bloc `site`. Le cron importe chaque source qui a ce bloc."""
@@ -230,6 +254,10 @@ class Plateforme(Modele):
     nom: str = Field(min_length=1, description="Nom affiché par la page Couverture et l'À propos.")
     editeur: str = Field(min_length=1)
     variantes: Annotated[list[Variante], Field(min_length=1)]
+
+    def variante(self, id_variante: str | None) -> Variante | None:
+        """La variante déclarée sous cet identifiant, ou `None`."""
+        return next((v for v in self.variantes if v.id == id_variante), None)
 
 
 # La règle du validateur de `Source` pour une commune non couverte, ni conseil ni sonde, reprise pour le contrôle de
@@ -324,6 +352,15 @@ class FichierSources(Modele):
         default=[], description="Les réseaux ralentis à la main pour le robot communal."
     )
     sources: list[Source]
+
+    def plateforme(self, id_plateforme: str) -> Plateforme | None:
+        """La plateforme déclarée sous cet identifiant, ou `None`."""
+        return next((p for p in self.plateformes if p.id == id_plateforme), None)
+
+    def variante_de(self, site: Site) -> Variante | None:
+        """La variante du site d'une commune, ou `None` si sa plateforme ou sa variante n'est pas déclarée."""
+        plateforme = self.plateforme(site.plateforme)
+        return plateforme.variante(site.variante) if plateforme else None
 
     @model_validator(mode="after")
     def _ids_uniques(self) -> FichierSources:

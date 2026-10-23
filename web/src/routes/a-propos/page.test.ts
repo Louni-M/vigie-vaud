@@ -137,6 +137,7 @@ describe('À propos, section du robot communal', () => {
 		expect(t).toContain('dans les 7 jours');
 		expect(t.indexOf('Disallow: /')).toBeLessThan(t.indexOf('dans les 7 jours'));
 		expect(t).toContain('Crawl-delay: 30');
+		expect(t).toContain('jusqu’à 30 secondes et ne le raccourcit jamais : au-delà, il ne lit plus le site');
 	});
 
 	it('dit que ce qui est déjà importé reste, et renvoie à Protection des données pour une personne', () => {

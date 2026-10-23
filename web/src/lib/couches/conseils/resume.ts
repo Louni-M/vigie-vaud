@@ -1,4 +1,5 @@
 import type { Source } from '#lib/schema.js';
+import { niveauDe } from '#lib/sources.js';
 import type { Commune } from '#lib/types.js';
 
 const GRAND_CONSEIL = 'les objets du Grand Conseil qui la nomment';
@@ -15,9 +16,7 @@ export function resumeConseils(sources: readonly Source[]): (commune: Commune) =
 			return s.conseil && Array.isArray(communes) && communes.includes(commune.bfs);
 		})?.conseil;
 		if (!conseil) return GRAND_CONSEIL;
-		const objets = conseil.donne.includes('objets') ? 'les objets' : conseil.donne.includes('preavis') ? 'les préavis' : null;
-		const seances = conseil.donne.includes('seances');
-		const donne = objets && seances ? `${objets} et les séances` : seances ? 'les séances' : (objets ?? 'les objets');
+		const donne = niveauDe(conseil)?.resume ?? (conseil.donne.includes('preavis') ? 'les préavis' : 'les objets');
 		return `${donne} de son Conseil communal, et ${GRAND_CONSEIL}`;
 	};
 }

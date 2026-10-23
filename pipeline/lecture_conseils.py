@@ -18,9 +18,9 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from schema import (
+    FUSEAU,
     Auteur,
     ConseilIndexe,
     EntreeFil,
@@ -41,7 +41,6 @@ from schema import (
 
 Archive = Mapping[str, Objet | Seance]
 
-SUISSE = ZoneInfo("Europe/Zurich")
 FENETRE_FIL = timedelta(days=21)  # le fil du site en montre 14 : la marge couvre des imports manqués
 FENETRE_RECENTS = timedelta(days=14)
 # Où sont les fichiers de lecture dans le dépôt (motifs de `Path.glob`) : `lecture` produit tout ce qui doit y être,
@@ -56,17 +55,15 @@ MOTIFS_LECTURE = (
 
 
 def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict[str, Enveloppe]:
-    """Les fichiers de lecture des conseils déclarés dans `sources`, par chemin, au passage de l'heure `genere`."""
-    aujourdhui = genere.astimezone(SUISSE).date()
+    """Les fichiers de lecture des conseils déclarés dans `sources`, par chemin, au passage de l'heure `genere`, et ceux
+    de l'archive d'une commune scrapée passée non couverte (`_conseils_lus`)."""
+    aujourdhui = genere.astimezone(FUSEAU).date()
     depuis = aujourdhui - FENETRE_FIL
     documents: dict[str, Enveloppe] = {}
     fil: list[EntreeFil] = []
     index: list[ConseilIndexe] = []
     dates: list[tuple[str, Objet]] = []  # les Objets datés de tous les conseils
-    for source in sources.sources:
-        if source.conseil is None:
-            continue
-        conseil, commune = source.conseil.cle, source.conseil.commune
+    for source, conseil, commune in _conseils_lus(sources, archive):
         objets = _par_date([(c, e) for c, e in archive.items() if isinstance(e, Objet) and _de(c, conseil)])
         seances = sorted(
             ((c, e) for c, e in archive.items() if isinstance(e, Seance) and _de(c, conseil)),
@@ -91,7 +88,7 @@ def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict
 
         fil += [_entree_objet(conseil, c, o, commune) for c, o in objets if date_de_reference(o) >= depuis]
         fil += [_entree_seance(conseil, c, s, commune) for c, s in seances if _jour(s) >= depuis]
-        index.append(_conseil_indexe(source, par_annee, seances, aujourdhui))
+        index.append(_conseil_indexe(source, conseil, commune, par_annee, seances, aujourdhui))
 
     fil.sort(key=lambda e: e.cle)
     fil.sort(key=lambda e: e.date, reverse=True)
@@ -109,6 +106,25 @@ def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict
         communes={str(ofs): len(liste) for ofs, liste in sorted(rattaches.items())},
     )
     return documents
+
+
+def _conseils_lus(sources: FichierSources, archive: Archive) -> list[tuple[Source, str, int | None]]:
+    """Les conseils dont les fichiers de lecture sont reconstruits, dans l'ordre de `sources.json`, chacun avec sa clé
+    et sa commune : celui de chaque source à bloc `conseil`, et l'archive d'une commune scrapée passée non couverte
+    (une commune qui a demandé l'arrêt du robot, un nouveau site pas encore lu…), sous son n° OFS : ce qui a déjà été
+    importé reste en ligne, sans import ni sonde (récit 33 de la spec de J3)."""
+    lus = []
+    for source in sources.sources:
+        if source.conseil is not None:
+            lus.append((source, source.conseil.cle, source.conseil.commune))
+            continue
+        couverture = source.couverture
+        if source.site is None or couverture is None or couverture.mode != "non_couvert":
+            continue
+        for ofs in couverture.communes if couverture.communes != "canton" else []:
+            if any(_de(cle, str(ofs)) for cle in archive):
+                lus.append((source, str(ofs), ofs))
+    return lus
 
 
 def date_de_reference(objet: Objet) -> date | None:
@@ -172,21 +188,28 @@ def _rattaches(objets: list[tuple[str, Objet]]) -> dict[int, list[tuple[str, Obj
 
 def _conseil_indexe(
     source: Source,
+    cle: str,
+    commune: int | None,
     par_annee: Mapping[int, list[tuple[str, Objet]]],
     seances: list[tuple[str, Seance]],
     aujourdhui: date,
 ) -> ConseilIndexe:
-    assert source.conseil is not None
+    """Le conseil dans l'index. Une commune non couverte n'a plus de niveau déclaré : elle donne ce que son archive
+    a, ses Objets s'il y en a, ses Séances."""
+    if source.conseil is not None:
+        donne = source.conseil.donne
+    else:
+        donne = (["objets"] if par_annee else []) + ["seances"]
     recents = [(c, o) for liste in par_annee.values() for c, o in liste]
     recents = _par_date([(c, o) for c, o in recents if date_de_reference(o) >= aujourdhui - FENETRE_RECENTS])
     a_venir = [c for c, s in seances if _jour(s) >= aujourdhui]
     passees = [c for c, s in seances if _jour(s) < aujourdhui]
     return ConseilIndexe(
-        cle=source.conseil.cle,
+        cle=cle,
         source=source.id,
         nom=nom_du_conseil(source.nom),
-        commune=source.conseil.commune,
-        donne=source.conseil.donne,
+        commune=commune,
+        donne=donne,
         objets=sum(len(liste) for liste in par_annee.values()),
         objets_par_annee={str(annee): len(liste) for annee, liste in sorted(par_annee.items())},
         recents=[ligne_objet(c, o) for c, o in recents],

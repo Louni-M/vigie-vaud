@@ -12,6 +12,7 @@ import ipaddress
 import json
 import re
 import socket
+import ssl
 import threading
 import time
 from collections.abc import Callable, Mapping
@@ -22,13 +23,16 @@ from typing import Literal
 
 import httpx
 
-from schema import RACINE, EtatReseau
+from schema import RACINE, EtatReseau, FichierSources
 
 Role = Literal["sonde", "import"]
 INTERVALLE = 5.0  # secondes, au moins, entre deux requêtes vers un même /24
 DELAI = 30.0  # secondes, au plus, pour une requête
 REDIRECTIONS = 5  # redirections suivies, au plus, pour une page
 PLAFOND = 60  # requêtes, au plus, par commune et par passage ordinaire
+# secondes : un `Crawl-delay` plus long n'est jamais raccourci, mais le site n'est alors pas lu (le passage tiendrait
+# plus que son délai de job pour une seule commune)
+CRAWL_DELAY_MAX = 30.0
 
 _CONFIG = json.loads((RACINE / "config.json").read_text())
 A_PROPOS = f"{_CONFIG['site']}/a-propos#robot"
@@ -76,6 +80,11 @@ class ConnexionRefusee(Injoignable):
     """Le serveur a refusé la connexion : le réseau est bloqué."""
 
 
+class ErreurTls(Injoignable):
+    """La connexion chiffrée a échoué (certificat expiré ou invalide, poignée de main TLS) : une erreur de ce site,
+    qui ne bloque pas son réseau, partagé avec d'autres communes."""
+
+
 class PageIllisible(PageNonLue):
     """La réponse est arrivée mais son corps ne se décode pas (compression annoncée et corps qui n'en est pas une)."""
 
@@ -93,6 +102,15 @@ class RobotsIndisponible(PageInterdite):
         self.raison = raison
 
 
+class CrawlDelayTropLong(PageNonLue):
+    """Le `Crawl-delay` de l'hôte dépasse `CRAWL_DELAY_MAX` : le robot ne le raccourcit pas, il ne lit pas le site
+    (aucune requête après `robots.txt`). `motif` le dit en court (« Crawl-delay trop long (600 s) »)."""
+
+    def __init__(self, url: str, delai: float) -> None:
+        self.motif = f"Crawl-delay trop long ({delai:g} s)"
+        super().__init__(f"{url} : {self.motif}")
+
+
 class ReseauBloque(PageNonLue):
     """Le réseau de la page est bloqué : aucune requête ne lui est envoyée jusqu'à la fin du passage (ou de son
     `Retry-After`), ni, au passage suivant, avant qu'une sonde l'ait testé."""
@@ -105,8 +123,18 @@ class PlafondAtteint(PageNonLue):
 STATUTS_BLOQUANTS = (429, 503)
 
 
+def erreur_tls(erreur: BaseException | None) -> bool:
+    """L'erreur vient-elle de TLS (certificat, poignée de main) ? httpx la range parmi les erreurs de connexion."""
+    while erreur is not None:
+        if isinstance(erreur, ssl.SSLError):
+            return True
+        erreur = erreur.__cause__ or erreur.__context__
+    return False
+
+
 def _bloquante(erreur: PageNonLue) -> bool:
-    """Une 429, une 503, une connexion refusée ou un délai dépassé : le réseau de la page est bloqué."""
+    """Une 429, une 503, une connexion refusée ou un délai dépassé : le réseau de la page est bloqué. Une erreur TLS
+    ne l'est pas : elle ne dit rien que du site qui l'a."""
     if isinstance(erreur, ErreurHttp):
         return erreur.statut in STATUTS_BLOQUANTS
     return isinstance(erreur, (DelaiDepasse, ConnexionRefusee))
@@ -137,9 +165,11 @@ class Robot:
     requête et gardé pour la vie du robot (un passage).
 
     **`robots.txt`** est lu avant la première page de chaque hôte, une fois pour la vie du robot, sous le nom
-    `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`).
+    `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`). Un `Crawl-delay` est suivi
+    jusqu'à `CRAWL_DELAY_MAX` ; au-delà, aucune page de l'hôte n'est demandée (`CrawlDelayTropLong`).
 
-    **Blocage** : une 429, une 503, une connexion refusée ou un délai dépassé arrête toute requête vers ce réseau
+    **Blocage** : une 429, une 503, une connexion refusée ou un délai dépassé (pas une erreur TLS) arrête toute
+    requête vers ce réseau
     (`ReseauBloque`) pour la vie du robot, et au-delà si `Retry-After` le demande. Le robot reçoit les réseaux
     bloqués aux passages précédents (`bloques`) et rend ceux qui le restent (`reseaux_bloques`) : un réseau dont le
     blocage a pris fin est à tester, seule une requête de sonde peut le faire, et la première qui ne le bloque pas de
@@ -188,7 +218,7 @@ class Robot:
                 raise self._echecs[url]
             try:
                 return self._lire(url, role)
-            except (ReseauBloque, PlafondAtteint) as e:
+            except (ReseauBloque, PlafondAtteint, CrawlDelayTropLong) as e:
                 self._interrompre(e)
                 raise
             except (ErreurHttp, DelaiDepasse, Injoignable, PageIllisible) as e:
@@ -206,7 +236,8 @@ class Robot:
 
     def interruption(self) -> PageNonLue | None:
         """Ce qui a interrompu la lecture de cette vue, même si l'appelant a sauté la page : la première page qui
-        a bloqué son réseau, ou qui n'a pas été demandée parce qu'il l'était ou que le plafond était atteint."""
+        a bloqué son réseau, ou qui n'a pas été demandée parce qu'il l'était, que le plafond était atteint ou que le
+        `Crawl-delay` de son hôte était trop long."""
         return self._interruption
 
     def a_tester(self, url: str) -> bool:
@@ -266,6 +297,8 @@ class Robot:
             self._bloquer(reseau, "délai dépassé")
             raise DelaiDepasse(f"{url} : délai de {DELAI:.0f} s dépassé") from e
         except httpx.ConnectError as e:
+            if erreur_tls(e):
+                raise ErreurTls(f"{url} : erreur TLS ({e})") from e
             self._bloquer(reseau, "connexion refusée")
             raise ConnexionRefusee(f"{url} : {e}") from e
         except httpx.TransportError as e:
@@ -293,6 +326,8 @@ class Robot:
         regles = self._regles(adresse, role)
         if isinstance(regles, PageInterdite):
             raise regles
+        if regles.crawl_delay is not None and regles.crawl_delay > CRAWL_DELAY_MAX:
+            raise CrawlDelayTropLong(url, regles.crawl_delay)
         chemin = adresse.raw_path.decode("ascii", "replace")
         if not regles.permis(chemin):
             raise PageInterdite(f"{url} : interdite par robots.txt")
@@ -339,6 +374,30 @@ class Robot:
         ecart = (self._horloge() - derniere).total_seconds()
         if ecart < intervalle:
             self._attendre(intervalle - ecart)
+
+
+def robot_des_sources(
+    http: httpx.Client,
+    sources: FichierSources,
+    horloge: Callable[[], datetime],
+    attendre: Callable[[float], None] = time.sleep,
+    resoudre: Callable[[str], str] = socket.gethostbyname,
+    *,
+    rattrapage: bool = False,
+    bloques: Mapping[str, EtatReseau] | None = None,
+) -> Robot:
+    """Le robot communal réglé par `sources.json`, le seul qu'utilisent le cron, l'import seul et les scripts de
+    préparation : les réseaux ralentis à la main (section `reseaux`), et `PLAFOND` requêtes par commune au passage
+    ordinaire, aucun au `rattrapage`. `bloques` : les réseaux bloqués aux passages précédents (`etat-sources.json`)."""
+    return Robot(
+        http,
+        horloge,
+        attendre,
+        resoudre,
+        intervalles={r.reseau: r.intervalle for r in sources.reseaux},
+        bloques=bloques,
+        plafond=None if rattrapage else PLAFOND,
+    )
 
 
 # --- robots.txt (RFC 9309) ----------------------------------------------------------------------------------------

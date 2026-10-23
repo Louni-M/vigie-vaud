@@ -14,8 +14,10 @@ from datetime import UTC, date, datetime
 
 import httpx
 
+import sites_communaux
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
+from mesure_sites import Mesure
 from preparation_sources import Candidat, brouillon, candidats_du_recensement, verifier
 from robot_communal import Robot
 from schema import FichierSources
@@ -229,6 +231,54 @@ def test_une_commune_au_dela_du_plafond_de_60_requetes_est_un_ecart():
     ]
 
 
+def _objets_dans_la_fenetre(reseau, nombre):
+    """La liste des Objets de Blonay - Saint-Légier, avec `nombre` Communications de plus, toutes dans la fenêtre :
+    comme le vrai site, qui en numérote plus de 40 par an, avec ses préavis."""
+    url = f"{BLONAY}/objets-politiques"
+    page = reseau.pages[url]
+    texte = page.corps.decode("utf-8")
+
+    def remplacer(m):
+        donnees = json.loads(html.unescape(m[2]))
+        donnees["data"] += [
+            {
+                "title": f'<a href="/_rte/information/{9000000 + i}">Communication municipale {50 + i}-2026</a>',
+                "_nummer": f"2026-CM-{50 + i}",
+                "_geschaeftsdatum": f"{1 + i % 28:02d}.09.2026",
+                "_kategorieId": "Communication",
+            }
+            for i in range(nombre)
+        ]
+        return m[1] + html.escape(json.dumps(donnees), quote=True) + m[3]
+
+    texte = re.sub(r'(<table[^>]*id="icmsTable-geschaefteList"[^>]*data-entities=")([^"]*)(")', remplacer, texte)
+    reseau.pages[url] = Page(texte, entetes=page.entetes, gzip=page.gzip)
+
+
+def test_au_dela_du_plafond_au_niveau_objets_et_seances_blonay_tient_en_seances_seulement():
+    # Chaque Objet de la fenêtre coûte deux requêtes (son lien stable, redirigé) : au vrai, Blonay - Saint-Légier en
+    # demandait 162 le 23 octobre 2026. Ses seules Séances tiennent sous le plafond.
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _objets_dans_la_fenetre(reseau, 25)
+    seances_seules = copy.deepcopy(SITE_BLONAY)
+    seances_seules["conseil"]["donne"] = ["seances"]
+
+    assert _verifier(reseau, horloge, SITE_BLONAY) == [
+        "site-5892 (Blonay - Saint-Légier) : niveau déclaré objets et séances, mesuré séances seulement (72 requêtes "
+        "au passage ordinaire, au-delà du plafond de 60)"
+    ]
+    assert _verifier(reseau, horloge, seances_seules) == []
+    sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[1:2], _fichier().plateformes[0], JOUR)
+    assert sources == [seances_seules]
+    assert remarques == {
+        "site-5892": [
+            "Blonay - Saint-Légier : 72 requêtes au niveau objets et séances, au-delà du plafond de 60 ; déclarée au "
+            "niveau séances seulement"
+        ]
+    }
+
+
 def test_une_commune_non_couverte_dont_le_site_a_maintenant_ses_seances_est_un_ecart():
     horloge = HorlogeFactice(T0)
     non_couverte = _source(5607, "Puidoux", f"{PUIDOUX}/conseil", {})
@@ -317,3 +367,62 @@ def test_les_candidats_du_recensement_sont_les_communes_de_la_plateforme_sauf_ce
         Candidat(5643, "Préverenges", "Conseil communal", f"{PREVERENGES}/conseil"),
         Candidat(5843, "Rougemont", "Conseil communal", "https://rougemont.ch/"),  # sans page du conseil : l'accueil
     ]
+
+
+# --- Une autre plateforme : son seul module de lecture ----------------------------------------------------------
+
+
+class _ModuleExemple:
+    """Le module de lecture d'une plateforme fictive, « exemple » : ce que Quicksite ajoutera, et rien d'autre. Sa
+    page du conseil porte la trace `exemple-cms`, sa liste des Séances le marqueur `exemple-seances` ; une lecture
+    coûte 3 requêtes au niveau « séances et préavis », 70 au niveau « objets et séances »."""
+
+    @staticmethod
+    def lire(robot, source, depuis):
+        raise AssertionError("le script ne lit pas le conseil, il le mesure")
+
+    @staticmethod
+    def mesurer(pages, page_du_conseil, declare, plateforme):
+        if "exemple-cms" not in (pages.texte(page_du_conseil) or ""):
+            return Mesure("autre", remarques=["aucune trace d'exemple"])
+        seances = page_du_conseil.rsplit("/", 1)[0] + "/seances"
+        return Mesure(plateforme.id, variante="liste", seances=seances if pages.texte(seances) else None)
+
+    @staticmethod
+    def requetes(pages, source, depuis):
+        return 70 if "objets" in source.conseil.donne else 3
+
+
+def test_une_autre_plateforme_n_ajoute_que_son_module_de_lecture(monkeypatch):
+    monkeypatch.setitem(sites_communaux.LECTEURS, "exemple", _ModuleExemple)
+    horloge = HorlogeFactice(T0)
+    reseau = Reseau(horloge, adresses={"www.exemple.ch": "203.0.113.5"})
+    reseau.pages["https://www.exemple.ch/conseil"] = Page("<p class='exemple-cms'>Conseil</p>")
+    reseau.pages["https://www.exemple.ch/seances"] = Page("<table class='exemple-seances'></table>")
+    niveaux = [["objets", "seances"], ["preavis", "seances"], ["seances"]]
+    (exemple,) = FichierSources.model_validate(
+        {
+            "plateformes": [
+                {
+                    "id": "exemple",
+                    "nom": "Exemple",
+                    "editeur": "Exemple SA",
+                    "variantes": [{"id": "liste", "marqueur": "exemple-seances", "niveaux": niveaux}],
+                }
+            ],
+            "sources": [],
+        }
+    ).plateformes
+    candidat = Candidat(5999, "Exemple", "Conseil général", "https://www.exemple.ch/conseil")
+
+    sources, remarques = brouillon(_robot(reseau, horloge), [candidat], exemple, JOUR)
+
+    assert sources[0]["site"] == {"plateforme": "exemple", "variante": "liste", "seances": "https://www.exemple.ch/seances"}
+    # Le niveau le plus complet dépasserait le plafond : la commune est déclarée au suivant, et le brouillon le dit.
+    assert sources[0]["conseil"] == {"body_key": "5999", "donne": ["preavis", "seances"]}
+    assert remarques == {
+        "site-5999": [
+            "Exemple : 72 requêtes au niveau objets et séances, au-delà du plafond de 60 ; déclarée au niveau "
+            "séances et préavis"
+        ]
+    }

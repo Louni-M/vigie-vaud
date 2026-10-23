@@ -17,10 +17,9 @@ import pytest
 
 from cron import passage
 from faux_openparldata import HorlogeFactice
-from faux_sites import DELAI, REFUS, Page, echantillon
+from faux_sites import DELAI, REFUS, TLS, Page, echantillon
 from schema import FichierSources
-from test_cron import IssuesFactices
-from test_sites_communaux import (
+from passage_sites import (
     BLONAY,
     PLATEFORMES,
     PREVERENGES,
@@ -30,11 +29,13 @@ from test_sites_communaux import (
     _liste_retouchee,
     _monde,
     _opendata,
+    _passer,
     _preverenges,
     _site,
     _sources,
 )
-from test_sondes_sites import LISTE, UA_SONDE, _etat, _importe, _lire, _passer
+from test_cron import IssuesFactices
+from test_sondes_sites import LISTE, UA_SONDE, _etat, _importe, _lire
 
 ROBOTS = f"{PREVERENGES}/robots.txt"
 S = timedelta(seconds=1)
@@ -183,6 +184,31 @@ def test_un_crawl_delay_plus_grand_que_5_s_espace_les_requetes(tmp_path, horloge
     assert len(heures) == 7  # robots.txt, la sonde, la liste, trois Séances et une redirection
 
 
+@pytest.mark.parametrize("delai", ["31", "600"])
+def test_un_crawl_delay_de_plus_de_30_s_n_est_pas_raccourci_et_la_commune_n_est_pas_lue(tmp_path, horloge, capsys, delai):
+    reseau = _meme_24(horloge)
+    _robots(reseau, f"User-agent: VigieVaud\nCrawl-delay: {delai}\n")
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    # robots.txt seul, rien de plus : ni sonde ni import, et ce n'est pas une panne.
+    assert _lues(reseau) == [("/robots.txt", 0, "sonde")]
+    assert _etat(tmp_path) is None
+    assert _importe(tmp_path) is None
+    assert f"Import sauté : Conseil communal de Préverenges (site de la commune) (Crawl-delay trop long ({delai} s))" in (
+        capsys.readouterr().err
+    )
+    # Blonay, sur le même /24, n'en souffre pas.
+    assert _importe(tmp_path, "5892") is not None
+    assert _reseaux_bloques(tmp_path) == {}
+
+    # Le lendemain, rien ne change : l'état reste celui d'avant, sans panne.
+    reseau.journal.clear()
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, heure=T0 + timedelta(days=1))
+    assert _lues(reseau) == [("/robots.txt", 86400, "sonde")]
+    assert _etat(tmp_path) is None
+
+
 @pytest.mark.parametrize(
     ("robots", "reseau_lent", "intervalle"),
     [
@@ -257,14 +283,19 @@ def test_une_429_une_503_un_refus_ou_un_delai_bloque_le_24_et_les_communes_non_s
     }
 
 
-@pytest.mark.parametrize("page", [Page("", statut=404), Page("", statut=403)], ids=["404", "403"])
-def test_une_404_ou_une_403_reste_une_erreur_de_la_commune(tmp_path, horloge, page):
+@pytest.mark.parametrize(
+    ("page", "motif"),
+    [(Page("", statut=404), "HTTP 404"), (Page("", statut=403), "HTTP 403"), (TLS, "erreur TLS")],
+    ids=["404", "403", "tls"],
+)
+def test_une_404_une_403_ou_une_erreur_tls_reste_une_erreur_de_la_commune(tmp_path, horloge, page, motif):
+    # Un certificat expiré chez Préverenges ne met pas les autres communes du /24 d'i-web en « accès refusé ».
     reseau = _meme_24(horloge)
     reseau.pages[LISTE] = page
 
     _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
 
-    assert _etat(tmp_path)["echecs_consecutifs"] == 1
+    assert (_etat(tmp_path)["echecs_consecutifs"], _etat(tmp_path)["motif"]) == (1, motif)
     assert _etat(tmp_path, "site-5892")["echecs_consecutifs"] == 0
     assert _importe(tmp_path, "5892") is not None
     assert _reseaux_bloques(tmp_path) == {}
