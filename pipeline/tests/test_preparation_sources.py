@@ -231,6 +231,54 @@ def test_une_commune_au_dela_du_plafond_de_60_requetes_est_un_ecart():
     ]
 
 
+def _objets_dans_la_fenetre(reseau, nombre):
+    """La liste des Objets de Blonay - Saint-Légier, avec `nombre` Communications de plus, toutes dans la fenêtre :
+    comme le vrai site, qui en numérote plus de 40 par an, avec ses préavis."""
+    url = f"{BLONAY}/objets-politiques"
+    page = reseau.pages[url]
+    texte = page.corps.decode("utf-8")
+
+    def remplacer(m):
+        donnees = json.loads(html.unescape(m[2]))
+        donnees["data"] += [
+            {
+                "title": f'<a href="/_rte/information/{9000000 + i}">Communication municipale {50 + i}-2026</a>',
+                "_nummer": f"2026-CM-{50 + i}",
+                "_geschaeftsdatum": f"{1 + i % 28:02d}.09.2026",
+                "_kategorieId": "Communication",
+            }
+            for i in range(nombre)
+        ]
+        return m[1] + html.escape(json.dumps(donnees), quote=True) + m[3]
+
+    texte = re.sub(r'(<table[^>]*id="icmsTable-geschaefteList"[^>]*data-entities=")([^"]*)(")', remplacer, texte)
+    reseau.pages[url] = Page(texte, entetes=page.entetes, gzip=page.gzip)
+
+
+def test_au_dela_du_plafond_au_niveau_objets_et_seances_blonay_tient_en_seances_seulement():
+    # Chaque Objet de la fenêtre coûte deux requêtes (son lien stable, redirigé) : au vrai, Blonay - Saint-Légier en
+    # demandait 162 le 23 octobre 2026. Ses seules Séances tiennent sous le plafond.
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _objets_dans_la_fenetre(reseau, 25)
+    seances_seules = copy.deepcopy(SITE_BLONAY)
+    seances_seules["conseil"]["donne"] = ["seances"]
+
+    assert _verifier(reseau, horloge, SITE_BLONAY) == [
+        "site-5892 (Blonay - Saint-Légier) : niveau déclaré objets + seances, mesuré seances (72 requêtes au passage "
+        "ordinaire, au-delà du plafond de 60)"
+    ]
+    assert _verifier(reseau, horloge, seances_seules) == []
+    sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[1:2], _fichier().plateformes[0], JOUR)
+    assert sources == [seances_seules]
+    assert remarques == {
+        "site-5892": [
+            "Blonay - Saint-Légier : 72 requêtes au niveau objets + seances, au-delà du plafond de 60 ; déclarée au "
+            "niveau seances"
+        ]
+    }
+
+
 def test_une_commune_non_couverte_dont_le_site_a_maintenant_ses_seances_est_un_ecart():
     horloge = HorlogeFactice(T0)
     non_couverte = _source(5607, "Puidoux", f"{PUIDOUX}/conseil", {})

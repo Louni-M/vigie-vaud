@@ -725,7 +725,7 @@
 			"voie_acces": "cron",
 			"fraicheur": "import",
 			"couverture": { "communes": [5892], "mode": "scrape" },
-			"conseil": { "body_key": "5892", "donne": ["objets", "seances"] },
+			"conseil": { "body_key": "5892", "donne": ["seances"] },
 			"site": {
 				"plateforme": "i-web",
 				"variante": "objets",
