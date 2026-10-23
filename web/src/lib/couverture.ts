@@ -1,7 +1,7 @@
 // Couverture déduite (décisions de #10) : il n'existe pas de fichier Couverture. Le site la déduit de la
 // Couverture déclarée dans `sources.json`, de l'état des sources écrit par le cron et de l'heure courante.
 import type { CoucheInscrite } from './registre/types.js';
-import type { EtatSource, EtatSources, Source } from './schema.js';
+import type { EtatSource, EtatSources, RaisonNonCouvert, Source } from './schema.js';
 import { libelleDonne } from './sources.js';
 
 /** Mode d'une paire (source, commune), connu à la construction. */
@@ -147,6 +147,25 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 }
 
 const MODES: Record<Mode, string> = { api: 'API', scrape: 'Scrapé', non_couvert: 'Non couvert' };
+
+/**
+ * Les raisons d'une commune non couverte d'une plateforme retenue (`couverture.raison`), le seul endroit où leurs
+ * phrases s'écrivent : celle de la cellule de la Couverture (« Non couvert · préavis seuls ») et celle de l'onglet,
+ * qui suit « Non couvert : » (`de` : « de Sainte-Croix », « d’Aigle »).
+ */
+export const RAISONS: Record<RaisonNonCouvert, { cellule: string; onglet: (de: string) => string }> = {
+	preavis_seuls: { cellule: 'préavis seuls', onglet: (de) => `le site ${de} ne publie que des préavis.` },
+	rien_en_ligne: {
+		cellule: 'rien en ligne',
+		onglet: (de) => `le site ${de} ne publie pas les séances de son conseil.`
+	},
+	demande_commune: {
+		cellule: 'à la demande de la commune',
+		onglet: (de) => `la commune ${de} a demandé que son site ne soit plus lu.`
+	},
+	refus_robots: { cellule: 'le site refuse les robots', onglet: (de) => `le site ${de} refuse les robots.` },
+	nouveau_site: { cellule: 'nouveau site pas encore lu', onglet: (de) => `le nouveau site ${de} n’est pas encore lu.` }
+};
 
 const jour = new Intl.DateTimeFormat('fr-CH', { day: 'numeric', month: 'short', timeZone: 'Europe/Zurich' });
 const heure = new Intl.DateTimeFormat('fr-CH', { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Zurich' });

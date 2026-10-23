@@ -5,6 +5,7 @@ import type {
 	IndexConseils,
 	LigneObjet,
 	Objet,
+	RaisonNonCouvert,
 	RattachementsCommune,
 	Seance,
 	Source
@@ -30,6 +31,34 @@ export function sourceSite(champs: Partial<Source> = {}): Source {
 		conseil: { body_key: '5643', donne: ['seances'] },
 		site: { plateforme: 'i-web', variante: 'seances', seances: 'https://www.preverenges.ch/sitzung' },
 		...champs
+	};
+}
+
+/**
+ * Une commune i-web non couverte, déclarée dans `sources.json` avec sa raison : sa plateforme et son attribution
+ * (le lien vers la page du conseil), mais ni conseil ni sonde. Par défaut Sainte-Croix, qui ne publie que des préavis.
+ */
+export function sourceNonCouverte(
+	raison: RaisonNonCouvert = 'preavis_seuls',
+	{ bfs, nom, site }: { bfs: number; nom: string; site: string } = {
+		bfs: 5568,
+		nom: 'Sainte-Croix',
+		site: 'https://www.sainte-croix.ch'
+	}
+): Source {
+	return {
+		id: `site-${bfs}`,
+		nom: `Conseil communal de ${nom} (site de la commune)`,
+		nom_court: `Site de ${nom}`,
+		attribution: {
+			texte: `Commune de ${nom}`,
+			lien: `${site}/conseil-communal`,
+			licence: 'Actes officiels (art. 5 LDA) : métadonnées et liens seulement'
+		},
+		voie_acces: 'cron',
+		fraicheur: 'import',
+		couverture: { communes: [bfs], mode: 'non_couvert', raison },
+		site: { plateforme: 'i-web' }
 	};
 }
 

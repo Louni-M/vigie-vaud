@@ -10,6 +10,7 @@ import {
 } from './cles.js';
 import { reconnaitreNumero } from './numeros.js';
 import { resumeConseils } from './resume.js';
+import { nonCouvertConseils } from './source.js';
 
 /** Sarcelle : la couleur de la couche, de son marqueur et des pastilles de ses Objets et Séances. */
 export const COULEUR_CONSEILS = '#0b7285';
@@ -61,7 +62,7 @@ export const coucheConseils: Couche<undefined> = {
 	titre: titreElement,
 	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
-	nonCouvert: (commune) => `OpenParlData ne donne pas le conseil communal de ${commune.nom}.`,
+	nonCouvert: (commune) => nonCouvertConseils(commune),
 	// Les Objets déposés et les Séances, lus dans le seul `conseils/fil.json` ; sans position, une entrée est dans
 	// la zone par les hôtels de ville de ses communes, et sans commune elle s'ouvre dans la fiche du Grand Conseil.
 	fil: {
