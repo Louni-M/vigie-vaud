@@ -1,6 +1,6 @@
 import type { ConseilIndexe } from '#lib/schema.js';
 import { donneDesObjets, libelleDonne } from '#lib/sources.js';
-import type { Commune } from '#lib/types.js';
+import type { Commune, Zone } from '#lib/types.js';
 
 /** Ce que montre la carte d'un conseil couvert, dans le volet Conseils. */
 export interface CarteConseil {
@@ -41,8 +41,43 @@ export function carteConseil(conseil: ConseilIndexe, communes: readonly Commune[
 	};
 }
 
+/** Une ligne de la liste des conseils communaux du volet : la commune, puis ce que donne son conseil. */
+export interface LigneConseil {
+	cle: string;
+	/** Nom de la commune (« Villeneuve »), qui suffit dans la liste des conseils communaux. */
+	commune: string;
+	slug: string;
+	/** « séances seulement · prochaine séance jeu. 10 déc. ». */
+	detail: string;
+}
+
 /**
- * La phrase sous les cartes des conseils couverts, sur les communes grisées : sur bureau, le grisage suit le volet
+ * Les conseils communaux du volet dont l'hôtel de ville est dans la zone affichée (tous tant que la carte n'a rien
+ * affiché), une ligne chacun, par nom de commune. Le Grand Conseil n'y est pas : il garde sa carte.
+ */
+export function lignesConseils(
+	conseils: readonly ConseilIndexe[],
+	communes: readonly Commune[],
+	zone: Zone | null
+): LigneConseil[] {
+	const parNumero = new Map(communes.map((c) => [c.bfs, c]));
+	const dans = ([lon, lat]: [number, number]) =>
+		!zone || (lon >= zone[0] && lon <= zone[2] && lat >= zone[1] && lat <= zone[3]);
+	return conseils
+		.flatMap((conseil) => {
+			const commune = conseil.commune === null ? undefined : parNumero.get(conseil.commune);
+			if (!commune || !dans(commune.hotel)) return [];
+			const { seance } = carteConseil(conseil, communes);
+			const detail = [libelleDonne(conseil), seance && seance.charAt(0).toLowerCase() + seance.slice(1).replace(' :', '')]
+				.filter(Boolean)
+				.join(' · ');
+			return [{ cle: conseil.cle, commune: commune.nom, slug: commune.slug, detail }];
+		})
+		.sort((a, b) => a.commune.localeCompare(b.commune, 'fr'));
+}
+
+/**
+ * La phrase sous les conseils couverts, sur les communes grisées : sur bureau, le grisage suit le volet
  * ouvert ; sur téléphone, il suit « Voir sur la carte » (`grisage-mobile`).
  */
 export function noteAutresCommunes(autres: number, telephone: boolean): string {
