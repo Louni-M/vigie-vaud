@@ -24,6 +24,7 @@
 	// puis le compte des communes lues sur leur site, par plateforme (sans les communes non couvertes).
 	const conseils = conseilsCouverts(SOURCES, PLATEFORMES);
 	const sitesLus = phraseSitesLus(conseils.sites);
+	const communesLues = `${conseils.sites.communes} commune${conseils.sites.communes > 1 ? 's' : ''}`;
 	/** « i-web et Quicksite » : les plateformes de l'entrée « Sites des communes ». */
 	const ET = new Intl.ListFormat('fr', { type: 'conjunction' });
 	// Le lien vers la page vd.ch des Routes est celui de l'attribution, déclaré une fois dans sources.json.
@@ -110,8 +111,8 @@
 		une Séance reste consultable même s’il disparaît de la source.
 	</p>
 	<p>
-		Les conseils de {conseils.sites.communes} commune{conseils.sites.communes > 1 ? 's' : ''} sont lus sur le site de leur commune, une fois par jour, par le <a href="#robot">robot de Vigie Vaud</a>. Ce
-		qu’on en tire dépend de ce que chaque site publie :
+		Les conseils de {communesLues} sont lus sur le site de leur commune, une fois par jour, par le
+		<a href="#robot">robot de Vigie Vaud</a>. Ce qu’on en tire dépend de ce que chaque site publie :
 	</p>
 	<ul>
 		<li>
