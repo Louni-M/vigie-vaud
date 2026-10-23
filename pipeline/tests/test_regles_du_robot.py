@@ -12,8 +12,10 @@ les issues signalées au faux client d'issues.
 
 from datetime import timedelta
 
+import httpx
 import pytest
 
+from cron import passage
 from faux_openparldata import HorlogeFactice
 from faux_sites import DELAI, REFUS, Page, echantillon
 from schema import FichierSources
@@ -24,6 +26,9 @@ from test_sites_communaux import (
     PREVERENGES,
     SITE_PREVERENGES,
     T0,
+    _ligne,
+    _liste_retouchee,
+    _monde,
     _opendata,
     _preverenges,
     _site,
@@ -343,3 +348,68 @@ def test_un_blocage_pendant_l_import_met_les_imports_du_reseau_en_echec_et_une_s
     assert roles[:3] == [(ROBOTS, "VigieVaud-sonde"), (LISTE, "VigieVaud-sonde"), (LISTE, "VigieVaud-import")]
     assert [u for u, role in roles if role == "VigieVaud-sonde"] == [ROBOTS, LISTE]
     assert _importe(tmp_path) is not None and _importe(tmp_path, "5892") is not None
+
+
+# --- Plafond de 60 requêtes par commune -----------------------------------------------------------------------------
+
+
+def _soixante_seances_de_plus(reseau):
+    """60 Séances à venir de plus dans la liste de Préverenges, dont les pages ne répondent pas (404) : le passage
+    ordinaire ouvre chacune d'elles, au-delà des 7 requêtes habituelles."""
+    _liste_retouchee(
+        reseau,
+        lambda tableau, lignes: lignes + [_ligne(7400000 + i, "26.11.2026") for i in range(60)]
+        if "Future" in tableau
+        else lignes,
+    )
+
+
+def test_une_commune_qui_depasse_60_requetes_a_son_import_en_echec_note_dans_le_journal(tmp_path, horloge, capsys):
+    reseau = _preverenges(horloge)
+    _soixante_seances_de_plus(reseau)
+
+    _passer(tmp_path, horloge, reseau)
+
+    assert len(_lues(reseau)) == 60  # robots.txt et la sonde compris
+    assert _importe(tmp_path) is None
+    assert _importe(tmp_path, "5586") is not None
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune)" in journal
+    assert "plafond de 60 requêtes atteint" in journal
+    assert _etat(tmp_path)["echecs_consecutifs"] == 0  # pas une panne
+    assert not (tmp_path / "conseils/5643/seances").exists()
+
+
+def test_le_rattrapage_n_a_pas_de_plafond(tmp_path, horloge):
+    reseau = _preverenges(horloge)
+    _soixante_seances_de_plus(reseau)
+
+    with httpx.Client(transport=reseau.transport(repli=_monde(horloge).transport())) as client:
+        passage(
+            tmp_path,
+            _sources(_opendata("5586"), SITE_PREVERENGES),
+            client,
+            horloge=horloge,
+            issues=IssuesFactices(),
+            attendre=horloge.attendre,
+            rattrapage=True,
+            resoudre=reseau.resoudre,
+        )
+
+    assert len(_lues(reseau)) == 68  # les 7 habituelles, la Séance de février hors de la fenêtre, et les 60
+    assert _importe(tmp_path) is not None
+
+
+def test_une_requete_en_echec_n_est_pas_refaite_pendant_le_passage(tmp_path, horloge):
+    # La même Séance listée deux fois (à venir et passée), dont la page ne répond pas.
+    reseau = _preverenges(horloge)
+    _liste_retouchee(
+        reseau,
+        lambda tableau, lignes: lignes + [_ligne(7400001, "26.11.2026" if "Future" in tableau else "01.10.2026")],
+    )
+    reseau.pages[f"{PREVERENGES}/_rte/anlass/7400001"] = Page("", statut=500)
+
+    _passer(tmp_path, horloge, reseau)
+
+    assert [r.url for r in reseau.journal].count(f"{PREVERENGES}/_rte/anlass/7400001") == 1
+    assert _importe(tmp_path) is not None
