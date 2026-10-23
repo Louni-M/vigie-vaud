@@ -269,14 +269,19 @@ class EtatSource(Modele):
     derniere_sonde: Horodatage
     dernier_succes: Horodatage | None = Field(description="`null` tant qu'aucune sonde n'a réussi.")
     echecs_consecutifs: Annotated[int, Field(ge=0)] = Field(description="La source passe en panne à 2.")
-    motif: str | None = Field(description="Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…).")
+    motif: str | None = Field(
+        description="Cause courte du dernier échec (« HTTP 503 », « délai dépassé », « marqueur absent »…)."
+    )
 
 
 class EtatSources(Enveloppe):
     """`etat-sources.json` : l'état de chaque source sondée, indexé par identifiant de source."""
 
     version: Literal[1] = Field(description="Version 1. Le cron repart de zéro devant une autre version.")
-    sources: dict[IdSource, EtatSource] = Field(description="Seules les sources qui ont un bloc `sonde` y figurent.")
+    sources: dict[IdSource, EtatSource] = Field(
+        description="Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), "
+        "qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import."
+    )
 
 
 # --- Import des conseils (conseils/import.json, dépôt de données) ----------------------------------------------
@@ -292,6 +297,19 @@ class ImportConseils(Enveloppe):
     conseils: dict[CleConseil, Horodatage] = Field(
         description="Par clé de conseil (`body_key` en minuscules : `vd`, `5586`…), l'heure du dernier import "
         "réussi. Un conseil jamais importé n'y figure pas."
+    )
+
+
+class MembresConseil(Enveloppe):
+    """`conseils/<conseil>/membres.json` : les élu·e·s connu·e·s d'un conseil scrapé, que le masquage épargne
+    (ADR 0007) : vu·e·s sur la page des membres du conseil ou comme contributeur·rice·s d'un Objet autre qu'une
+    pétition. La liste ne fait que s'allonger : un nom qui disparaît de la page y reste. Publique, en clair, sans
+    limite de durée. Les conseils d'OpenParlData n'en ont pas : leurs élu·e·s connu·e·s sont tiré·e·s de l'archive."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    conseil: CleConseil = Field(description="Le conseil (`body_key` en minuscules : le n° OFS de la commune).")
+    membres: list[str] = Field(
+        description="Noms complets, « Prénom Nom », triés sans tenir compte des accents ni de la casse."
     )
 
 
@@ -551,6 +569,7 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "enveloppe": Enveloppe,
     "etat-sources": EtatSources,
     "import-conseils": ImportConseils,
+    "membres-conseil": MembresConseil,
     "objet": Objet,
     "seance": Seance,
     "liste-objets": ListeObjets,

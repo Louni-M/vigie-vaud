@@ -255,5 +255,6 @@ def test_les_preavis_rediges_dans_une_page_sont_archives_avec_leur_numero_brut_l
     assert (sans_document["depose"], sans_document["titre"], sans_document["documents"]) == ("2021-11-09", "Budget 2022", [])
     assert _lire(tmp_path, "conseils/5607/objets/03-2026.json")["depose"] == "2026-05-19"  # « du 19 mai 2026 »
     assert "élément sauté, Objet sans numéro, non importé : Proposition du bureau du CC" in capsys.readouterr().err
-    # La page des préavis est celle des Séances : elle n'est lue qu'une fois.
-    assert [r.url for r in reseau.journal].count(f"{PUIDOUX}/seances") == 1
+    # La page des préavis est celle des Séances : l'import ne la lit qu'une fois (la sonde la lit avant lui).
+    imports = [r.url for r in reseau.journal if r.user_agent.startswith("VigieVaud-import")]
+    assert imports.count(f"{PUIDOUX}/seances") == 1

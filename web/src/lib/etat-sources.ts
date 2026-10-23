@@ -27,9 +27,12 @@ export async function chargerEtatSources(f: typeof fetch, donnees: string = DONN
 
 /**
  * Issues `panne-source` ouvertes pour cette source dans le dépôt de données. Le cron les titre
- * « Panne : <nom de la source> » (`titre_panne` dans `pipeline/cron.py`).
+ * « Panne : <nom de la source> » (`titre_panne` dans `pipeline/cron.py`), et pour une commune scrapée, d'après sa
+ * plateforme, « Panne : i-web » (`titre_panne_plateforme`) : la recherche de GitHub ignore la casse, l'identifiant
+ * de la plateforme y vaut son nom.
  */
 export function lienPannes(source: Source): string {
-	const q = `is:issue is:open label:panne-source in:title "Panne : ${source.nom}"`;
+	const titre = source.site ? source.site.plateforme : source.nom;
+	const q = `is:issue is:open label:panne-source in:title "Panne : ${titre}"`;
 	return `${DEPOT_DONNEES}/issues?${new URLSearchParams({ q })}`;
 }

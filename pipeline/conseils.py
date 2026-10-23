@@ -15,9 +15,10 @@ Le passage suit quatre étapes, chacune à sa place :
    `supprimer_perimes(depot, documents)` retire les fichiers de lecture que `lecture` ne produit plus.
 
 `importer_conseils` enchaîne les quatre pour chaque source qui a un bloc `conseil`, et tient à jour
-`conseils/import.json` (dernier import réussi de chaque conseil). Un conseil en échec garde sa date et n'empêche
-pas les autres. L'import ne supprime rien de l'archive : un élément absent d'OpenParlData y reste. Les fichiers de
-lecture, eux, sont reconstruits en entier et ne divergent jamais de l'archive.
+`conseils/import.json` (dernier import réussi de chaque conseil) et, pour un conseil scrapé,
+`conseils/<ofs>/membres.json` (ses élu·e·s connu·e·s, une liste qui ne fait que s'allonger). Un conseil en échec
+garde sa date et n'empêche pas les autres. L'import ne supprime rien de l'archive : un élément absent d'OpenParlData
+y reste. Les fichiers de lecture, eux, sont reconstruits en entier et ne divergent jamais de l'archive.
 
 Usage loyal d'OpenParlData : au plus une requête par seconde, un User-Agent avec un contact, la pagination suivie
 jusqu'au bout, et jamais un paramètre répété dans une requête (le cache du serveur ne garde que sa dernière valeur).
@@ -40,6 +41,7 @@ import json
 import re
 import sys
 import time
+import unicodedata
 from collections.abc import Callable, Collection, Iterable, Mapping
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -72,6 +74,7 @@ from schema import (
     Etape,
     FichierSources,
     ImportConseils,
+    MembresConseil,
     Objet,
     PointOrdreDuJour,
     Seance,
@@ -254,6 +257,7 @@ def vers_archive(
     genere: datetime,
     communes: Repertoire | None = None,
     corrections: Mapping[str, Correction] | None = None,
+    membres: Iterable[str] = (),
 ) -> dict[str, Element]:
     """Les éléments de l'archive tirés de `bruts`, par clé. `archive` (les éléments déjà archivés) sert à résoudre
     l'Objet de chaque point d'ordre du jour et à départager deux Objets de même numéro (il y en a à Lausanne) : le
@@ -261,9 +265,10 @@ def vers_archive(
     pas, et son `id` est nul). Deux Séances d'un même jour n'en font qu'une (`_fusionner`). Les demandes de grâce
     sont écartées, et leurs points d'ordre du jour retirés. Les titres des Objets, de leurs documents, des points et
     des documents des Séances sont masqués (ADR 0007), en
-    épargnant les élu·e·s connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`. Les pétitionnaires que la
-    source connaît le sont dans les textes de leur pétition : son titre, ceux de ses documents (et du même document
-    joint à un autre Objet) et ceux de ses points.
+    épargnant les élu·e·s connu·e·s du conseil : les contributeur·rice·s de ses Objets (`archive` et `bruts`), les
+    `membres` déjà connus d'un conseil scrapé (`membres.json`) et ceux de sa page des membres (`bruts.membres`). Les
+    pétitionnaires que la source connaît le sont dans les textes de leur pétition : son titre, ceux de ses documents
+    (et du même document joint à un autre Objet) et ceux de ses points.
 
     Pour un conseil qui porte sur le canton, chaque Objet est rattaché par le nom (ADR 0016) d'après `communes`
     (`communes.json` par défaut) : son titre masqué, puis le texte de ses documents, qui n'est pas conservé ;
@@ -297,7 +302,7 @@ def vers_archive(
 
     connus = {**archive, **elements}
     du_conseil = {cle: e for cle, e in connus.items() if isinstance(e, Objet) and cle.startswith(conseil + "/")}
-    elus = elus_connus(du_conseil.values())
+    elus = elus_connus(du_conseil.values()) | frozenset(membres) | frozenset(bruts.membres)
     # Un document qui répond à la fois à une pétition et à un autre Objet est joint aux deux, sous le même titre.
     petitionnaires_du_document: dict[str, list[tuple[str, str]]] = {}
     for cle, objet in elements.items():
@@ -565,6 +570,30 @@ def lire_archive(depot: Path) -> dict[str, Element]:
     return archive
 
 
+def chemin_membres(conseil: str) -> str:
+    return f"conseils/{conseil}/membres.json"
+
+
+def lire_membres(depot: Path, conseil: str) -> list[str]:
+    """Les élu·e·s connu·e·s d'un conseil scrapé, lu·e·s dans son `membres.json` (aucun s'il manque)."""
+    try:
+        return MembresConseil.model_validate_json((depot / chemin_membres(conseil)).read_bytes()).membres
+    except FileNotFoundError:
+        return []
+
+
+def reunir_membres(*listes: Iterable[str]) -> list[str]:
+    """Les noms de toutes les `listes`, chacun une fois (espaces resserrés), triés sans tenir compte des accents ni
+    de la casse."""
+    noms = {" ".join(nom.split()) for liste in listes for nom in liste} - {""}
+
+    def plier(nom: str) -> str:
+        decompose = unicodedata.normalize("NFKD", nom)
+        return "".join(c for c in decompose if not unicodedata.combining(c)).casefold()
+
+    return sorted(noms, key=lambda nom: (plier(nom), nom))
+
+
 def lire_imports(depot: Path) -> dict[str, datetime]:
     """Le dernier import réussi de chaque conseil, par clé, lu dans `conseils/import.json` (vide s'il manque)."""
     try:
@@ -601,6 +630,7 @@ def importer_conseils(
     imports = lire_imports(depot)
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
+    membres: dict[str, MembresConseil] = {}
     for source in sources.sources:
         if source.conseil is None or (dus is not None and source.conseil.cle not in dus):
             continue
@@ -616,7 +646,8 @@ def importer_conseils(
                 bruts = lire_site(robot, source, sources.plateformes, jour, rattrapage)
             else:
                 bruts = importer(opd, source.conseil, debut)
-            elements = vers_archive(bruts, archive, genere, repertoire, corrections)
+            connus = lire_membres(depot, cle) if source.site is not None else []
+            elements = vers_archive(bruts, archive, genere, repertoire, corrections, connus)
         except Exception as e:
             # Toute erreur, prévue (HTTP, relation tronquée) ou non (réponse d'une forme inattendue), ne vaut
             # qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
@@ -625,10 +656,16 @@ def importer_conseils(
         nouveaux |= elements
         archive = {**archive, **elements}
         imports[cle] = genere
+        if source.site is not None:
+            # La liste ne fait que s'allonger : les noms déjà connus, ceux de la page, les auteur·e·s des Objets.
+            objets = [e for k, e in archive.items() if isinstance(e, Objet) and k.startswith(cle + "/")]
+            noms = reunir_membres(connus, bruts.membres, elus_connus(objets))
+            membres[cle] = MembresConseil(version=1, genere=genere, conseil=cle, membres=noms)
         print(f"{source.nom} : {len(bruts.objets)} Objet(s), {len(bruts.seances)} Séance(s) lus")
 
     etat = ImportConseils(version=1, genere=genere, conseils=imports)
     documents: dict[str, Enveloppe] = {chemin_element(cle, e): e for cle, e in nouveaux.items()}
+    documents |= {chemin_membres(cle): liste for cle, liste in membres.items()}
     documents |= lecture(archive, sources, genere)
     documents[FICHIER_IMPORT] = etat
     ecrire(depot, documents, genere)

@@ -25,6 +25,11 @@ Variante **pages** (module Séances et préavis rédigés, niveau « séances et
 (`div.icms-wysiwyg`). Chaque ligne est un Objet de type « Préavis », sans page propre : numéro brut et date dans la
 première colonne, titre et statut dans les colonnes « Titre » et « Statut » de l'en-tête, documents par ses liens.
 La liste est relue en entier à chaque passage, sans fenêtre. Mêmes règles pour un préavis sans numéro ou en double.
+
+**Membres** : la page des membres (`site.membres`, facultative) porte le tableau `icmsTable-personList`, en JSON
+échappé dans `data-entities` comme les Séances ; la colonne `_nameVorname` donne « Nom Prénom », remis en « Prénom
+Nom » (ordre des contributeurs d'OpenParlData, que le masquage attend). Une page des membres illisible est notée dans
+le journal et ne donne personne : l'import continue.
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ from schema import Source
 
 TABLEAUX_SEANCES = ("icmsTableFutureSitzungen", "icmsTablePastSitzungen")
 TABLEAU_OBJETS = "icmsTable-geschaefteList"
+TABLEAU_MEMBRES = "icmsTable-personList"
 VARIANTES = ("seances", "objets", "pages")
 TYPE_PREAVIS = "Préavis"  # le type des Objets d'une page qui ne liste que des préavis
 
@@ -93,7 +99,7 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
             _journal(source, f"Objet {objet.lien} non lu ({e})")
             continue
         objets.append(_affair(objet, page.texte, page.url))
-    return Bruts(conseil, objets=objets, seances=seances)
+    return Bruts(conseil, objets=objets, seances=seances, membres=_membres(robot, source))
 
 
 def _journal(source: Source, message: str) -> None:
@@ -401,6 +407,48 @@ def _jour_ecrit(texte: str) -> str | None:
     else:
         jour = None
     return jour.isoformat() if jour else None
+
+
+# --- Page des membres ---------------------------------------------------------------------------------------------
+
+
+def _membres(robot: Robot, source: Source) -> list[str]:
+    """Les élu·e·s de la page des membres (`site.membres`), dans l'ordre du site, chacun·e « Prénom Nom ». Sans page
+    des membres, aucun·e ; une page qui ne se lit pas, ou sans son tableau, n'empêche pas l'import : notée dans le
+    journal, elle ne donne personne (en cas de doute, on masque)."""
+    url = source.site.membres if source.site else None
+    if url is None:
+        return []
+    try:
+        page = robot.lire(url, "import")
+    except PageNonLue as e:
+        _journal(source, f"page des membres {url} non lue ({e})")
+        return []
+    tableau = next(
+        (n for n in _arbre(page.texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES), None
+    )
+    try:
+        lignes = json.loads(tableau.attr("data-entities") or "")["data"] if tableau else None
+    except (ValueError, KeyError, TypeError):
+        lignes = None
+    if not isinstance(lignes, list):
+        _journal(source, f"page des membres {page.url} sans tableau `{TABLEAU_MEMBRES}` lisible")
+        return []
+    membres = []
+    for ligne in lignes:
+        nom = _nom_de_membre(ligne) if isinstance(ligne, dict) else None
+        if nom:
+            membres.append(nom)
+    return membres
+
+
+def _nom_de_membre(ligne: dict) -> str | None:
+    """« Prénom Nom », depuis la colonne `_nameVorname` (« Nom Prénom » : le dernier mot est pris pour le prénom,
+    un prénom composé s'écrivant avec un trait d'union) ou `_vornameName` (déjà dans l'ordre)."""
+    if ligne.get("_vornameName"):
+        return _texte(str(ligne["_vornameName"])) or None
+    nom = _texte(str(ligne.get("_nameVorname") or ""))
+    return _prenom_nom(nom) if nom else None
 
 
 # --- Analyse du HTML ----------------------------------------------------------------------------------------------

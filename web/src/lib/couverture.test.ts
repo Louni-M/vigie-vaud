@@ -310,32 +310,71 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 		expect(cellule('conseils', 5624)).toEqual(['Non couvert']);
 	});
 
-	it('donne pour Conseils « Scrapé · séances seulement » à une commune scrapée en séances seules', () => {
-		// Sans sonde avant #150, l'état de la source est « non surveillée ».
+	describe('commune scrapée : son site est sondé par le cron, sans bloc sonde', () => {
 		const site = sourceSite();
-		const d = deduireCouverture({
-			sources: [...SOURCES, site],
-			etat: etat(tous),
-			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, site.id] } : x)),
-			communes: communesJ0,
-			maintenant: MAINTENANT
-		});
-		expect(libelleCellule(d.cellule('conseils', 5643))).toEqual(['Scrapé · séances seulement · non surveillée']);
-	});
+		const avecSite = (sources: Record<string, EtatSource>) =>
+			deduireCouverture({
+				sources: [...SOURCES, site],
+				etat: etat(sources),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, site.id] } : x)),
+				communes: communesJ0,
+				maintenant: MAINTENANT
+			});
 
-	it.each([
-		[['objets', 'seances'], 'Scrapé · non surveillée'],
-		[['preavis', 'seances'], 'Scrapé · séances et préavis · non surveillée']
-	] as const)('donne pour Conseils le niveau d’une commune scrapée quand il manque quelque chose (%j)', (donne, cellule) => {
-		const site = sourceSite({ conseil: { body_key: '5643', donne: [...donne] } });
-		const d = deduireCouverture({
-			sources: [...SOURCES, site],
-			etat: etat(tous),
-			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, site.id] } : x)),
-			communes: communesJ0,
-			maintenant: MAINTENANT
+		it('donne « Scrapé · séances seulement · disponible » à une commune sondée avec succès', () => {
+			const d = avecSite({ ...tous, 'site-5643': disponible });
+			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual(['Scrapé · séances seulement · disponible']);
 		});
-		expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([cellule]);
+
+		it('dit depuis quand une commune dont la sonde échoue est en panne', () => {
+			const panne: EtatSource = {
+				etat: 'en_panne',
+				depuis: '2026-10-12T05:17:00Z',
+				derniere_sonde: '2026-10-12T05:47:00Z',
+				dernier_succes: '2026-10-11T05:17:00Z',
+				echecs_consecutifs: 2,
+				motif: 'marqueur absent'
+			};
+			const d = avecSite({ ...tous, 'site-5643': panne });
+			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([
+				'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'
+			]);
+			expect(d.sources.find((s) => s.source.id === 'site-5643')?.sonde).toEqual(panne);
+			// Une panne ne grise rien.
+			expect(d.couvre('conseils', 5643)).toBe(true);
+		});
+
+		it("dit l'état inconnu d'une commune pas encore sondée", () => {
+			expect(libelleCellule(avecSite(tous).cellule('conseils', 5643))).toEqual([
+				'Scrapé · séances seulement · inconnu'
+			]);
+		});
+
+		it("ne surveille pas une source communale sans conseil (commune non couverte d'une plateforme retenue)", () => {
+			const d = deduireCouverture({
+				sources: [sourceSite({ conseil: null })],
+				etat: etat({}),
+				couches: [couche('conseils', ['site-5643'])],
+				communes: COMMUNES,
+				maintenant: MAINTENANT
+			});
+			expect(d.etat('site-5643')).toEqual({ etat: 'non_surveillee' });
+		});
+
+		it.each([
+			[['objets', 'seances'], 'Scrapé · disponible'],
+			[['preavis', 'seances'], 'Scrapé · séances et préavis · disponible']
+		] as const)('donne le niveau d’une commune scrapée seulement s’il manque quelque chose (%j)', (donne, cellule) => {
+			const niveau = sourceSite({ conseil: { body_key: '5643', donne: [...donne] } });
+			const d = deduireCouverture({
+				sources: [...SOURCES, niveau],
+				etat: etat({ ...tous, 'site-5643': disponible }),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, niveau.id] } : x)),
+				communes: communesJ0,
+				maintenant: MAINTENANT
+			});
+			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([cellule]);
+		});
 	});
 
 	it('donne pour Permis la paire de la CAMAC partout', () => {
@@ -468,6 +507,11 @@ describe("chargement de l'état des sources", () => {
 		const url = new URL(lienPannes(source('camac', { communes: 'canton', mode: 'api' })));
 		expect(url.origin + url.pathname).toBe('https://github.com/Louni-M/vigie-vaud-donnees/issues');
 		expect(url.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : Source camac"');
+	});
+
+	it("mène à l'issue panne-source de sa plateforme pour une commune scrapée", () => {
+		const url = new URL(lienPannes(sourceSite()));
+		expect(url.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : i-web"');
 	});
 
 	it('donne null si le fichier est absent, illisible ou injoignable', async () => {
