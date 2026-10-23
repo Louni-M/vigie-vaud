@@ -494,7 +494,7 @@ def main(argv: list[str] | None = None) -> int:
     if plateforme is None:
         print(f"plateforme {args.plateforme} absente de la section `plateformes` de {args.sources}", file=sys.stderr)
         return 2
-    jour = datetime.now(ZoneInfo("Europe/Lausanne")).date()
+    jour = datetime.now(ZoneInfo("Europe/Zurich")).date()
     with httpx.Client() as http:
         robot = Robot(
             http, lambda: datetime.now(UTC), time.sleep, socket.gethostbyname,
