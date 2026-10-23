@@ -46,7 +46,6 @@ from collections.abc import Callable, Collection, Iterable, Mapping
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
-from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
@@ -65,6 +64,7 @@ from rattachement import (
 )
 from robot_communal import Robot, robot_des_sources
 from schema import (
+    FUSEAU,
     RACINE,
     Conseil,
     Contributeur,
@@ -83,7 +83,7 @@ from schema import (
 )
 from sites_communaux import lire_site
 
-API ="https://api.openparldata.ch/v1"
+API = "https://api.openparldata.ch/v1"
 _CONFIG = json.loads((RACINE / "config.json").read_text())
 USER_AGENT = f"VigieVaud-import (+{_CONFIG['depot']}; {_CONFIG['courriel']})"
 INTERVALLE = 1.0  # secondes, au moins, entre deux requêtes
@@ -93,7 +93,6 @@ TAILLE_RELATION = 1000
 RECOUVREMENT = timedelta(days=1)
 PAR_IDENTIFIANTS = 50  # Objets relus par requête (`id=1,2,…`) pour leurs documents tardifs
 FICHIER_IMPORT = "conseils/import.json"
-FUSEAU = ZoneInfo("Europe/Zurich")  # le jour du passage, d'où part la fenêtre d'un site, est celui de Lausanne
 
 # Les demandes de grâce ne sont pas des Objets : elles nomment un particulier. L'exclusion est une liste de types.
 TYPES_ECARTES = frozenset({"Grâce"})

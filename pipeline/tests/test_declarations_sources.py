@@ -203,7 +203,7 @@ def test_un_cas_fabrique_qui_suit_toutes_les_regles_passe(tmp_path):
         pytest.param(
             [_couverte(conseil={"body_key": "5643", "donne": ["preavis", "seances"]})],
             PLATEFORMES,
-            "site-5643 : la variante i-web/seances ne permet pas le niveau preavis + seances",
+            "site-5643 : la variante i-web/seances ne permet pas le niveau séances et préavis",
             id="niveau que la variante ne permet pas",
         ),
         pytest.param(

@@ -56,7 +56,6 @@ from datetime import UTC, date, datetime, timedelta
 from datetime import time as time_du_jour
 from pathlib import Path
 from typing import Protocol
-from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
@@ -65,8 +64,8 @@ from conseils import OpenParlData, importer_conseils, lire_imports, lire_premier
 from robot_communal import CrawlDelayTropLong, Robot, erreur_tls, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
+    FUSEAU,
     RACINE,
-    EtatReseau,
     EtatSource,
     EtatSources,
     FichierSources,
@@ -417,7 +416,8 @@ def passage(
     communes ; une cible qui ne désigne aucune commune scrapée lève `ValueError` avant toute écriture."""
     rattrapes = _rattrapes(sources, rattrapage, rattrapage_cible)
     genere = _a_la_seconde(horloge())
-    precedent = _lire_etat(depot / FICHIER_ETAT)
+    lu = _lire_etat(depot / FICHIER_ETAT)
+    precedent = lu.sources if lu else {}
     etats: dict[str, EtatSource] = {}
     for source in sources.sources:
         if source.sonde is None:
@@ -436,7 +436,7 @@ def passage(
         attendre,
         resoudre,
         rattrapage=rattrapage_cible is not None,
-        bloques=_lire_reseaux_bloques(depot / FICHIER_ETAT),
+        bloques=lu.reseaux if lu else {},
     )
     sondes, sautes = sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapes)
     etats |= sondes
@@ -553,18 +553,12 @@ def _a_la_seconde(heure: datetime) -> datetime:
     return heure.astimezone(UTC).replace(microsecond=0)
 
 
-def _lire_etat(chemin: Path) -> dict[str, EtatSource]:
+def _lire_etat(chemin: Path) -> EtatSources | None:
+    """L'état du passage précédent ; `None` s'il est absent, illisible ou d'une autre version."""
     try:
-        return EtatSources.model_validate_json(chemin.read_bytes()).sources
+        return EtatSources.model_validate_json(chemin.read_bytes())
     except (FileNotFoundError, ValidationError):
-        return {}
-
-
-def _lire_reseaux_bloques(chemin: Path) -> dict[str, EtatReseau]:
-    try:
-        return EtatSources.model_validate_json(chemin.read_bytes()).reseaux
-    except (FileNotFoundError, ValidationError):
-        return {}
+        return None
 
 
 def sonder(client: httpx.Client, sonde: Sonde) -> str | None:
@@ -651,7 +645,6 @@ def _suivant(avant: EtatSource | None, heure: datetime, motif: str | None) -> Et
 
 # --- Import quotidien des conseils (ADR 0015) ------------------------------------------------------------------
 
-FUSEAU = ZoneInfo("Europe/Zurich")
 HEURE_IMPORT = time_du_jour(7)  # à Lausanne
 
 
@@ -671,6 +664,16 @@ def conseils_dus(conseils: list[Source], imports: Mapping[str, datetime], heure:
     seuil = dernier_seuil(heure)
     cles = (s.conseil.cle for s in conseils if s.conseil is not None)
     return {c for c in cles if c not in imports or imports[c] < seuil}
+
+
+def _dus(
+    conseils: list[Source], imports: Mapping[str, datetime], heure: datetime, rattrapes: Collection[str] | None
+) -> set[str]:
+    """Les clés des conseils que ce passage importe (et dont il sonde le site) : ceux qui sont dus, ou, pour un
+    rattrapage, ceux de `rattrapes`."""
+    if rattrapes is None:
+        return conseils_dus(conseils, imports, heure)
+    return {s.conseil.cle for s in conseils if s.conseil is not None} & set(rattrapes)
 
 
 def _sites_sondes(sources: FichierSources) -> list[Source]:
@@ -695,10 +698,7 @@ def sonder_les_sites(
     sauté (« Crawl-delay trop long (600 s) »)."""
     sites = _sites_sondes(sources)
     heure = _a_la_seconde(horloge())
-    if rattrapes is None:
-        dus = conseils_dus(sites, imports, heure)
-    else:
-        dus = {s.conseil.cle for s in sites} & set(rattrapes)
+    dus = _dus(sites, imports, heure, rattrapes)
     seuil = dernier_seuil(heure)
     etats: dict[str, EtatSource] = {}
     lents: dict[str, str] = {}  # les conseils des sites au `Crawl-delay` trop long, et ce motif
@@ -758,10 +758,7 @@ def importer_les_conseils(
     sautes = sautes or {}
     heure = _a_la_seconde(horloge())
     avant = lire_imports(depot)
-    if rattrapes is None:
-        dus = conseils_dus(conseils, avant, heure)
-    else:
-        dus = {s.conseil.cle for s in conseils} & set(rattrapes)
+    dus = _dus(conseils, avant, heure, rattrapes)
     for conseil in conseils:
         if conseil.conseil.cle in dus and conseil.conseil.cle in sautes:
             print(f"Import sauté : {conseil.nom} ({sautes[conseil.conseil.cle]})", file=sys.stderr)

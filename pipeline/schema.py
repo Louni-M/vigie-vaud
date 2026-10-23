@@ -24,7 +24,8 @@ import json
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NamedTuple
+from zoneinfo import ZoneInfo
 
 from pydantic import (
     AfterValidator,
@@ -41,6 +42,8 @@ from typing_extensions import TypeAliasType
 
 RACINE = Path(__file__).resolve().parent.parent
 DOSSIER_SCHEMA = RACINE / "schema"
+# L'heure de Lausanne : le jour d'un passage, sa fenêtre, le 7 h des imports, les jours des fichiers de lecture.
+FUSEAU = ZoneInfo("Europe/Zurich")
 
 
 class Modele(BaseModel):
@@ -142,6 +145,27 @@ class Sonde(Modele):
 
 
 DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "preavis", "seances"])
+
+
+class Niveau(NamedTuple):
+    """Un niveau (CONTEXT.md) : ce que donne un conseil scrapé, tel que `conseil.donne` l'écrit (ADR-0010)."""
+
+    donne: frozenset[str]
+    libelle: str  # « objets et séances »
+    objets: bool  # le conseil donne-t-il des Objets, tous ou ses préavis seulement ?
+
+
+# Les trois niveaux, du plus complet au moins complet : le seul endroit où un niveau s'interprète, côté pipeline.
+NIVEAUX = (
+    Niveau(frozenset({"objets", "seances"}), "objets et séances", True),
+    Niveau(frozenset({"preavis", "seances"}), "séances et préavis", True),
+    Niveau(frozenset({"seances"}), "séances seulement", False),
+)
+
+
+def niveau_de(donne: list[str] | tuple[str, ...]) -> Niveau | None:
+    """Le niveau de ce que donne un conseil, dans n'importe quel ordre ; `None` hors des trois."""
+    return next((n for n in NIVEAUX if n.donne == frozenset(donne)), None)
 
 
 class Conseil(Modele):

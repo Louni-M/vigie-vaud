@@ -39,14 +39,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
 
 from mesure_sites import Mesure, PagesLues
 from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Robot, robot_des_sources
-from schema import RACINE, FichierSources, Plateforme, Site, Source, lire_sources
+from schema import FUSEAU, RACINE, FichierSources, Plateforme, Site, Source, lire_sources, niveau_de
 from sites_communaux import LECTEURS, debut_de_fenetre
 
 LICENCE = "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
@@ -109,8 +108,9 @@ def _ecarts(fichier: FichierSources, communes: set[int]) -> list[str]:
 
 
 def _niveau(donne: Sequence[str]) -> str:
-    """« objets + seances » : un niveau, tel que `conseil.donne` l'écrit."""
-    return " + ".join(sorted(donne))
+    """Un niveau en toutes lettres (« séances et préavis ») ; hors des trois, tel que `conseil.donne` l'écrit."""
+    niveau = niveau_de(list(donne))
+    return niveau.libelle if niveau else " + ".join(sorted(donne))
 
 
 # --- Candidats et mesures ---------------------------------------------------------------------------------------
@@ -352,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
     if plateforme is None:
         print(f"plateforme {args.plateforme} absente de la section `plateformes` de {args.sources}", file=sys.stderr)
         return 2
-    jour = datetime.now(ZoneInfo("Europe/Zurich")).date()
+    jour = datetime.now(FUSEAU).date()
     with httpx.Client() as http:
         robot = robot_des_sources(http, fichier, lambda: datetime.now(UTC))
         if args.verifier:

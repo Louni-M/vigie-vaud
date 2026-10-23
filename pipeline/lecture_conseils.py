@@ -18,9 +18,9 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 from schema import (
+    FUSEAU,
     Auteur,
     ConseilIndexe,
     EntreeFil,
@@ -41,7 +41,6 @@ from schema import (
 
 Archive = Mapping[str, Objet | Seance]
 
-SUISSE = ZoneInfo("Europe/Zurich")
 FENETRE_FIL = timedelta(days=21)  # le fil du site en montre 14 : la marge couvre des imports manqués
 FENETRE_RECENTS = timedelta(days=14)
 # Où sont les fichiers de lecture dans le dépôt (motifs de `Path.glob`) : `lecture` produit tout ce qui doit y être,
@@ -58,7 +57,7 @@ MOTIFS_LECTURE = (
 def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict[str, Enveloppe]:
     """Les fichiers de lecture des conseils déclarés dans `sources`, par chemin, au passage de l'heure `genere`, et ceux
     de l'archive d'une commune scrapée passée non couverte (`_conseils_lus`)."""
-    aujourdhui = genere.astimezone(SUISSE).date()
+    aujourdhui = genere.astimezone(FUSEAU).date()
     depuis = aujourdhui - FENETRE_FIL
     documents: dict[str, Enveloppe] = {}
     fil: list[EntreeFil] = []

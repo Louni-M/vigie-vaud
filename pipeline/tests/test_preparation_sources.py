@@ -265,16 +265,16 @@ def test_au_dela_du_plafond_au_niveau_objets_et_seances_blonay_tient_en_seances_
     seances_seules["conseil"]["donne"] = ["seances"]
 
     assert _verifier(reseau, horloge, SITE_BLONAY) == [
-        "site-5892 (Blonay - Saint-Légier) : niveau déclaré objets + seances, mesuré seances (72 requêtes au passage "
-        "ordinaire, au-delà du plafond de 60)"
+        "site-5892 (Blonay - Saint-Légier) : niveau déclaré objets et séances, mesuré séances seulement (72 requêtes "
+        "au passage ordinaire, au-delà du plafond de 60)"
     ]
     assert _verifier(reseau, horloge, seances_seules) == []
     sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[1:2], _fichier().plateformes[0], JOUR)
     assert sources == [seances_seules]
     assert remarques == {
         "site-5892": [
-            "Blonay - Saint-Légier : 72 requêtes au niveau objets + seances, au-delà du plafond de 60 ; déclarée au "
-            "niveau seances"
+            "Blonay - Saint-Légier : 72 requêtes au niveau objets et séances, au-delà du plafond de 60 ; déclarée au "
+            "niveau séances seulement"
         ]
     }
 
@@ -422,7 +422,7 @@ def test_une_autre_plateforme_n_ajoute_que_son_module_de_lecture(monkeypatch):
     assert sources[0]["conseil"] == {"body_key": "5999", "donne": ["preavis", "seances"]}
     assert remarques == {
         "site-5999": [
-            "Exemple : 72 requêtes au niveau objets + seances, au-delà du plafond de 60 ; déclarée au niveau "
-            "preavis + seances"
+            "Exemple : 72 requêtes au niveau objets et séances, au-delà du plafond de 60 ; déclarée au niveau "
+            "séances et préavis"
         ]
     }

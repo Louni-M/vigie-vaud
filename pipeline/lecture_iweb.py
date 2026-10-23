@@ -53,7 +53,7 @@ from urllib.parse import urljoin, urlsplit
 from bruts import Bruts
 from mesure_sites import Mesure, PagesLues, RobotSansReseau, liens, sans_journal
 from robot_communal import PageNonLue, Robot
-from schema import Plateforme, Site, Source
+from schema import Plateforme, Site, Source, niveau_de
 
 TABLEAUX_SEANCES = ("icmsTableFutureSitzungen", "icmsTablePastSitzungen")
 TABLEAU_OBJETS = "icmsTable-geschaefteList"
@@ -74,7 +74,8 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
     lignes = _lignes_de_seances(liste.texte, liste.url)
     lignes_objets: list[_LigneObjet] = []
     preavis: list[dict] = []
-    if site.variante != "seances" and {"objets", "preavis"} & set(conseil.donne):
+    niveau = niveau_de(conseil.donne)
+    if site.variante != "seances" and niveau is not None and niveau.objets:
         if site.objets is None:
             raise ValueError(f"{source.id} : variante {site.variante} sans page `objets`")
         # La page des préavis peut être celle des Séances (Puidoux) : elle n'est pas relue.
