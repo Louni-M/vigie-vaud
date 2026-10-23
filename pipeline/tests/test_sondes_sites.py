@@ -31,6 +31,8 @@ from test_sites_communaux import (
 
 UA_SONDE = "VigieVaud-sonde (+https://louni-m.github.io/vigie-vaud/a-propos#robot; vigievaud.gentile263@passinbox.com)"
 LISTE = f"{PREVERENGES}/sitzung"
+ROBOTS = f"{PREVERENGES}/robots.txt"
+S = timedelta(seconds=1)
 SITE_BLONAY = _site(5892, "Blonay - Saint-Légier", f"{BLONAY}/seances", f"{BLONAY}/conseil-communal")
 
 
@@ -92,22 +94,22 @@ def test_la_sonde_lit_la_page_de_liste_sous_le_nom_vigievaud_sonde_avant_l_impor
 
     _passer(tmp_path, horloge, reseau)
 
-    sonde, import_ = reseau.journal[0], reseau.journal[1]
-    assert (sonde.url, sonde.user_agent, sonde.heure) == (LISTE, UA_SONDE, T0)
+    sonde, import_ = reseau.journal[1], reseau.journal[2]
+    assert (sonde.url, sonde.user_agent, sonde.heure) == (LISTE, UA_SONDE, T0 + timedelta(seconds=5))
     assert (import_.url, import_.user_agent.split(" ")[0], import_.heure) == (
         LISTE,
         "VigieVaud-import",
-        T0 + timedelta(seconds=5),
+        T0 + timedelta(seconds=10),
     )
     assert _etat(tmp_path) == {
         "etat": "disponible",
-        "depuis": "2026-10-23T05:17:00Z",
-        "derniere_sonde": "2026-10-23T05:17:00Z",
-        "dernier_succes": "2026-10-23T05:17:00Z",
+        "depuis": "2026-10-23T05:17:05Z",
+        "derniere_sonde": "2026-10-23T05:17:05Z",
+        "dernier_succes": "2026-10-23T05:17:05Z",
         "echecs_consecutifs": 0,
         "motif": None,
     }
-    assert _importe(tmp_path) == "2026-10-23T05:17:00Z"
+    assert _importe(tmp_path) == "2026-10-23T05:17:05Z"
 
 
 def test_un_marqueur_absent_saute_l_import_du_jour_et_deux_echecs_mettent_la_commune_en_panne(
@@ -119,17 +121,17 @@ def test_un_marqueur_absent_saute_l_import_du_jour_et_deux_echecs_mettent_la_com
 
     _passer(tmp_path, horloge, reseau)
 
-    assert [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal] == [(LISTE, "VigieVaud-sonde")]
+    assert [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal] == [(ROBOTS, "VigieVaud-sonde"), (LISTE, "VigieVaud-sonde")]
     assert _etat(tmp_path) == {
         "etat": "disponible",
         "depuis": None,
-        "derniere_sonde": "2026-10-23T05:17:00Z",
+        "derniere_sonde": "2026-10-23T05:17:05Z",
         "dernier_succes": None,
         "echecs_consecutifs": 1,
         "motif": "marqueur absent",
     }
     assert _importe(tmp_path) is None
-    assert _importe(tmp_path, "5586") == "2026-10-23T05:17:00Z"  # OpenParlData n'en souffre pas
+    assert _importe(tmp_path, "5586") == "2026-10-23T05:17:05Z"  # OpenParlData n'en souffre pas
     assert "Import sauté : Conseil communal de Préverenges (site de la commune) (sonde en échec : marqueur absent)" in (
         capsys.readouterr().err
     )
@@ -138,9 +140,9 @@ def test_un_marqueur_absent_saute_l_import_du_jour_et_deux_echecs_mettent_la_com
     reseau.journal.clear()
     _passer(tmp_path, horloge, reseau, heure=T0 + timedelta(minutes=30))
 
-    assert [r.url for r in reseau.journal] == [LISTE]
+    assert [r.url for r in reseau.journal] == [ROBOTS, LISTE]
     etat = _etat(tmp_path)
-    assert (etat["etat"], etat["depuis"], etat["echecs_consecutifs"]) == ("en_panne", "2026-10-23T05:17:00Z", 2)
+    assert (etat["etat"], etat["depuis"], etat["echecs_consecutifs"]) == ("en_panne", "2026-10-23T05:17:05Z", 2)
     assert _importe(tmp_path) is None
 
 
@@ -166,7 +168,7 @@ def test_une_page_de_liste_en_erreur_est_un_echec_de_la_sonde_qui_dit_son_motif(
     _passer(tmp_path, horloge, reseau)
 
     assert (_etat(tmp_path)["echecs_consecutifs"], _etat(tmp_path)["motif"]) == (1, motif)
-    assert len(reseau.journal) == 1
+    assert len(reseau.journal) == 2  # robots.txt, puis la page de liste
     assert _importe(tmp_path) is None
 
 
@@ -178,7 +180,7 @@ def test_une_liste_vide_n_est_pas_une_panne(tmp_path, horloge):
     _passer(tmp_path, horloge, reseau)
 
     assert (_etat(tmp_path)["etat"], _etat(tmp_path)["echecs_consecutifs"]) == ("disponible", 0)
-    assert _importe(tmp_path) == "2026-10-23T05:17:00Z"
+    assert _importe(tmp_path) == "2026-10-23T05:17:05Z"
 
 
 def test_une_liste_illisible_met_l_import_en_echec_sans_panne_et_n_est_pas_resondee_le_meme_jour(tmp_path, horloge):
@@ -193,8 +195,8 @@ def test_une_liste_illisible_met_l_import_en_echec_sans_panne_et_n_est_pas_reson
     _passer(tmp_path, horloge, reseau, heure=T0 + timedelta(minutes=30))
 
     assert _etat(tmp_path)["etat"] == "disponible"
-    assert _etat(tmp_path)["derniere_sonde"] == "2026-10-23T05:17:00Z"
-    assert [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal] == [(LISTE, "VigieVaud-import")]
+    assert _etat(tmp_path)["derniere_sonde"] == "2026-10-23T05:17:05Z"
+    assert [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal] == [(ROBOTS, "VigieVaud-import"), (LISTE, "VigieVaud-import")]
     assert _importe(tmp_path) is None
 
 
@@ -207,10 +209,10 @@ def test_une_commune_n_est_sondee_qu_une_fois_par_jour_juste_avant_son_import(tm
     du_premier_jour = list(reseau.journal)
     _passer(tmp_path, horloge, reseau, heure=T0 + timedelta(days=1))
 
-    sondes = [r.heure for r in reseau.journal if r.user_agent.startswith("VigieVaud-sonde")]
-    assert sondes == [T0, T0 + timedelta(days=1)]
-    assert [r.heure for r in du_premier_jour if r.url == LISTE] == [T0, T0 + timedelta(seconds=5)]
-    assert _etat(tmp_path)["derniere_sonde"] == "2026-10-24T05:17:00Z"
+    sondes = [r.heure for r in reseau.journal if r.url == LISTE and r.user_agent.startswith("VigieVaud-sonde")]
+    assert sondes == [T0 + 5 * S, T0 + timedelta(days=1) + 5 * S]  # après robots.txt
+    assert [r.heure for r in du_premier_jour if r.url == LISTE] == [T0 + 5 * S, T0 + 10 * S]
+    assert _etat(tmp_path)["derniere_sonde"] == "2026-10-24T05:17:05Z"
 
 
 def test_une_commune_sondee_a_un_passage_precedent_garde_son_etat_dans_etat_sources(tmp_path, horloge):
@@ -235,9 +237,9 @@ def test_une_commune_revient_a_la_premiere_sonde_reussie_et_son_import_reprend(t
 
     assert _etat(tmp_path) == {
         "etat": "disponible",
-        "depuis": "2026-10-23T06:17:00Z",
-        "derniere_sonde": "2026-10-23T06:17:00Z",
-        "dernier_succes": "2026-10-23T06:17:00Z",
+        "depuis": "2026-10-23T06:17:05Z",
+        "derniere_sonde": "2026-10-23T06:17:05Z",
+        "dernier_succes": "2026-10-23T06:17:05Z",
         "echecs_consecutifs": 0,
         "motif": None,
     }

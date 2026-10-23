@@ -19,6 +19,7 @@ Usage : `uv run python schema.py` écrit les JSON Schema dans `schema/`.
 from __future__ import annotations
 
 import datetime as dt
+import ipaddress
 import json
 import re
 from datetime import datetime, timedelta
@@ -282,12 +283,45 @@ class Source(Modele):
         return self
 
 
+def _reseau_canonique(reseau: str) -> str:
+    """Un /24 IPv4 ou un /64 IPv6, écrit comme le robot communal l'écrit (« 195.65.10.0/24 »)."""
+    try:
+        lu = ipaddress.ip_network(reseau)
+    except ValueError as e:
+        raise ValueError(f"réseau illisible : {reseau}") from e
+    if lu.prefixlen != (24 if lu.version == 4 else 64) or str(lu) != reseau:
+        raise ValueError(f"{reseau} : un /24 IPv4 ou un /64 IPv6, écrit « 195.65.10.0/24 »")
+    return reseau
+
+
+Reseau = TypeAliasType(
+    "Reseau",
+    Annotated[
+        str, StringConstraints(pattern=r"^[0-9a-f.:]+/(24|64)$"), AfterValidator(_reseau_canonique)
+    ],
+)
+
+
+class ReseauRalenti(Modele):
+    """Un réseau que le robot communal lit plus lentement que 5 s par requête : un ralentissement décidé à la main,
+    après un blocage. Rien ne s'adapte tout seul."""
+
+    reseau: Reseau = Field(description="Le /24 (IPv6 : /64) des sites concernés, « 195.65.10.0/24 ».")
+    intervalle: Annotated[float, Field(gt=5)] = Field(
+        description="Secondes, au moins, entre deux requêtes vers ce réseau (5 s ailleurs, ou le `Crawl-delay` d'un "
+        "site s'il est plus grand)."
+    )
+
+
 class FichierSources(Modele):
     """`sources.json` : chaque source y est déclarée une seule fois, pour le site et pour le cron."""
 
     schema_: str | None = Field(default=None, alias="$schema")
     plateformes: list[Plateforme] = Field(
         default=[], description="Les plateformes retenues, que citent les blocs `site` des sources communales."
+    )
+    reseaux: list[ReseauRalenti] = Field(
+        default=[], description="Les réseaux ralentis à la main pour le robot communal."
     )
     sources: list[Source]
 
@@ -298,6 +332,9 @@ class FichierSources(Modele):
             if s.id in vus:
                 raise ValueError(f"identifiant de source en double : {s.id}")
             vus.add(s.id)
+        reseaux = [r.reseau for r in self.reseaux]
+        if len(set(reseaux)) != len(reseaux):
+            raise ValueError("réseau ralenti déclaré deux fois")
         return self
 
 
@@ -329,6 +366,17 @@ class EtatSource(Modele):
     )
 
 
+class EtatReseau(Modele):
+    """Un réseau que le robot communal a cessé de lire après une 429, une 503, une connexion refusée ou un délai
+    dépassé. Au passage suivant (ou après `jusqu_a`), une seule sonde le teste avant les autres."""
+
+    depuis: Horodatage = Field(description="Heure du blocage.")
+    jusqu_a: Horodatage | None = Field(
+        description="Fin du blocage demandée par `Retry-After` ; `null` : la fin du passage du blocage."
+    )
+    motif: str = Field(description="Ce qui a bloqué le réseau (« HTTP 429 », « délai dépassé »…).")
+
+
 class EtatSources(Enveloppe):
     """`etat-sources.json` : l'état de chaque source sondée, indexé par identifiant de source."""
 
@@ -336,6 +384,12 @@ class EtatSources(Enveloppe):
     sources: dict[IdSource, EtatSource] = Field(
         description="Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), "
         "qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import."
+    )
+    reseaux: dict[Reseau, EtatReseau] = Field(
+        default={},
+        exclude_if=lambda reseaux: not reseaux,
+        description="Les réseaux (/24) bloqués pour le robot communal et pas encore testés de nouveau ; absent "
+        "quand il n'y en a aucun.",
     )
 
 

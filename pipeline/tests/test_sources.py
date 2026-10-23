@@ -256,6 +256,33 @@ def test_une_declaration_invalide_est_refusee(tmp_path, sources):
         lire_sources(_ecrire(tmp_path, sources))
 
 
+def _avec_reseaux(tmp_path, reseaux):
+    chemin = tmp_path / "sources.json"
+    chemin.write_text(json.dumps({"reseaux": reseaux, "sources": [_source()]}))
+    return chemin
+
+
+def test_un_reseau_ralenti_a_la_main_est_un_24_et_son_intervalle(tmp_path):
+    fichier = lire_sources(_avec_reseaux(tmp_path, [{"reseau": "195.65.10.0/24", "intervalle": 15}]))
+
+    assert [(r.reseau, r.intervalle) for r in fichier.reseaux] == [("195.65.10.0/24", 15)]
+    assert lire_sources(_ecrire(tmp_path, [_source()])).reseaux == []
+
+
+@pytest.mark.parametrize(
+    "reseaux",
+    [
+        pytest.param([{"reseau": "195.65.10.20/24", "intervalle": 15}], id="adresse au lieu du réseau"),
+        pytest.param([{"reseau": "195.65.0.0/16", "intervalle": 15}], id="pas un /24"),
+        pytest.param([{"reseau": "195.65.10.0/24", "intervalle": 5}], id="pas plus lent que 5 s"),
+        pytest.param([{"reseau": "195.65.10.0/24", "intervalle": 15}] * 2, id="réseau en double"),
+    ],
+)
+def test_un_reseau_ralenti_invalide_est_refuse(tmp_path, reseaux):
+    with pytest.raises(ValidationError):
+        lire_sources(_avec_reseaux(tmp_path, reseaux))
+
+
 @pytest.mark.parametrize(
     ("body_key", "cle", "commune"),
     [("VD", "vd", None), ("5586", "5586", 5586), ("5938", "5938", 5938)],
