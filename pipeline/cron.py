@@ -57,10 +57,11 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
-from robot_communal import Robot
+from robot_communal import PLAFOND, Robot
 from schema import (
     DOSSIER_SCHEMA,
     RACINE,
+    EtatReseau,
     EtatSource,
     EtatSources,
     FichierSources,
@@ -399,7 +400,9 @@ def passage(
     l'import des conseils dus (`importer_les_conseils`), sauf ceux dont la sonde du site a échoué ; l'import ne
     touche pas à l'état des sources. Les sites des communes sont sondés et lus par un robot communal, un seul pour
     tout le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de
-    chaque hôte. Le commit et le push sont l'affaire de l'appelant."""
+    chaque hôte ; il ralentit les réseaux de la section `reseaux` de `sources.json`, plafonne chaque commune à
+    `PLAFOND` requêtes hors rattrapage, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
+    (`reseaux`) pour que le passage suivant les teste d'abord. Le commit et le push sont l'affaire de l'appelant."""
     genere = _a_la_seconde(horloge())
     precedent = _lire_etat(depot / FICHIER_ETAT)
     etats: dict[str, EtatSource] = {}
@@ -408,9 +411,17 @@ def passage(
             continue
         heure = _a_la_seconde(horloge())
         etats[source.id] = _suivant(precedent.get(source.id), heure, sonder(client, source.sonde))
-    robot = Robot(client, horloge, attendre, resoudre)
+    robot = Robot(
+        client,
+        horloge,
+        attendre,
+        resoudre,
+        intervalles={r.reseau: r.intervalle for r in sources.reseaux},
+        bloques=_lire_reseaux_bloques(depot / FICHIER_ETAT),
+        plafond=None if rattrapage else PLAFOND,
+    )
     etats |= sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapage)
-    etat = EtatSources(version=1, genere=genere, sources=etats)
+    etat = EtatSources(version=1, genere=genere, sources=etats, reseaux=robot.reseaux_bloques())
     (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
     shutil.rmtree(depot / "schema", ignore_errors=True)
     shutil.copytree(DOSSIER_SCHEMA, depot / "schema")
@@ -428,6 +439,10 @@ def passage(
         if s.id in etats and etats[s.id].echecs_consecutifs
     }
     importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapage, sautes)
+    if robot.reseaux_bloques() != etat.reseaux:
+        # Un réseau bloqué pendant l'import : le passage suivant doit le savoir pour le tester d'abord.
+        etat = etat.model_copy(update={"reseaux": robot.reseaux_bloques()})
+        (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
     return etat
 
 
@@ -504,6 +519,13 @@ def _a_la_seconde(heure: datetime) -> datetime:
 def _lire_etat(chemin: Path) -> dict[str, EtatSource]:
     try:
         return EtatSources.model_validate_json(chemin.read_bytes()).sources
+    except (FileNotFoundError, ValidationError):
+        return {}
+
+
+def _lire_reseaux_bloques(chemin: Path) -> dict[str, EtatReseau]:
+    try:
+        return EtatSources.model_validate_json(chemin.read_bytes()).reseaux
     except (FileNotFoundError, ValidationError):
         return {}
 
@@ -644,15 +666,26 @@ def sonder_les_sites(
     dus = {s.conseil.cle for s in sites} if rattrapage else conseils_dus(sites, imports, heure)
     seuil = dernier_seuil(heure)
     etats: dict[str, EtatSource] = {}
+
+    def sonder(source: Source) -> None:
+        motif = sonder_site(robot, source, sources.plateformes)
+        etats[source.id] = _suivant(precedent.get(source.id), _a_la_seconde(horloge()), motif)
+
+    # Un réseau bloqué à un passage précédent est d'abord testé par une seule sonde, celle de sa première commune
+    # due, même si elle a déjà été sondée ce jour : elle le rouvre aux autres, ou il reste bloqué.
     for source in sites:
+        if source.conseil.cle in dus and robot.a_tester(source.site.seances):
+            sonder(source)
+    for source in sites:
+        if source.id in etats:
+            continue
         avant = precedent.get(source.id)
         reussie_ce_jour = avant is not None and not avant.echecs_consecutifs and avant.derniere_sonde >= seuil
         if source.conseil.cle not in dus or reussie_ce_jour:
             if avant is not None:
                 etats[source.id] = avant
             continue
-        motif = sonder_site(robot, source, sources.plateformes)
-        etats[source.id] = _suivant(avant, _a_la_seconde(horloge()), motif)
+        sonder(source)
     return etats
 
 

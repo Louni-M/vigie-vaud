@@ -110,7 +110,7 @@ def test_un_conseil_sans_page_des_membres_est_importe_ses_elus_masques(tmp_path,
     _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_PREVERENGES))
 
     assert not any(r.url.startswith(MEMBRES) for r in reseau.journal)
-    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:00Z"
+    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:05Z"
     seance = _lire(tmp_path, "conseils/5643/seances/2026-06-18.json")
     assert [d["titre"] for d in seance["documents"]] == ["Postulat de [particulier] pour un parc"]
     assert [p["titre"] for p in seance["ordre_du_jour"]] == [
@@ -129,7 +129,7 @@ def test_une_page_des_membres_qui_ne_se_lit_plus_n_empeche_pas_l_import_et_la_li
     _passer(tmp_path, horloge, reseau, _monde(horloge), sources=AVEC_MEMBRES, heure=T0 + timedelta(days=1))
 
     assert f"page des membres {MEMBRES} non lue" in capsys.readouterr().err
-    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-24T05:17:00Z"
+    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-24T05:17:05Z"
     assert _lire(tmp_path, "conseils/5643/membres.json")["membres"] == ["Béatrice Moser", "Steen Boschetti"]
     seance = _lire(tmp_path, "conseils/5643/seances/2026-06-18.json")
     assert seance["ordre_du_jour"][0]["titre"] == "Préavis 4-26 - Budget (Rapp. Mme Moser)"

@@ -5,7 +5,8 @@ nom `VigieVaud-sonde`, et y cherche le marqueur de sa variante, déclaré dans l
 `sources.json`. Aucune ligne de code n'est propre à une plateforme : une refonte du site fait disparaître le
 marqueur. Rien de la page n'est conservé.
 
-**Pannes** : erreur HTTP, délai dépassé, site injoignable, page illisible, marqueur absent. **Pas des pannes** : une
+**Pannes** : erreur HTTP, délai dépassé, site injoignable, page illisible, page de liste interdite par `robots.txt`
+(« le site refuse les robots »), réseau bloqué (« accès refusé »), marqueur absent. **Pas des pannes** : une
 liste vide (le marqueur est celui du tableau, présent même sans ligne) ni une liste dont aucune ligne ne se lit, qui
 ne met en échec que l'import.
 """
@@ -14,7 +15,18 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from robot_communal import DelaiDepasse, ErreurHttp, Injoignable, PageIllisible, PageNonLue, Robot
+from robot_communal import (
+    DelaiDepasse,
+    ErreurHttp,
+    Injoignable,
+    PageIllisible,
+    PageInterdite,
+    PageNonLue,
+    PlafondAtteint,
+    ReseauBloque,
+    Robot,
+    RobotsIndisponible,
+)
 from schema import Plateforme, Source
 
 
@@ -29,7 +41,15 @@ def sonder_site(robot: Robot, source: Source, plateformes: Sequence[Plateforme])
     if variante is None:
         return f"variante {site.plateforme}/{site.variante} non déclarée"
     try:
-        page = robot.lire(site.seances, "sonde")
+        page = robot.pour(source.id).lire(site.seances, "sonde")
+    except ReseauBloque:
+        return "accès refusé"
+    except PlafondAtteint:
+        return "plafond atteint"
+    except RobotsIndisponible as e:
+        return f"robots.txt en erreur ({e.raison})"
+    except PageInterdite:
+        return "le site refuse les robots"
     except ErreurHttp as e:
         return f"HTTP {e.statut}"
     except DelaiDepasse:
