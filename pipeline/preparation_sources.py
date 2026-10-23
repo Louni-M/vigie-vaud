@@ -36,9 +36,7 @@ import csv
 import io
 import json
 import re
-import socket
 import sys
-import time
 from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -52,7 +50,7 @@ import httpx
 from pydantic import ValidationError
 
 import lecture_iweb
-from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Reponse, Robot
+from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Reponse, Robot, robot_des_sources
 from schema import RACINE, FichierSources, Plateforme, Site, Source, lire_sources
 from sites_communaux import debut_de_fenetre
 
@@ -496,10 +494,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     jour = datetime.now(ZoneInfo("Europe/Zurich")).date()
     with httpx.Client() as http:
-        robot = Robot(
-            http, lambda: datetime.now(UTC), time.sleep, socket.gethostbyname,
-            intervalles={r.reseau: r.intervalle for r in fichier.reseaux},  # ralentissements faits à la main
-        )
+        robot = robot_des_sources(http, fichier, lambda: datetime.now(UTC))
         if args.verifier:
             ecarts = verifier(robot, fichier, plateforme.id, jour)
             for e in ecarts:

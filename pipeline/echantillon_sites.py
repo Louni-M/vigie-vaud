@@ -37,9 +37,7 @@ import argparse
 import hashlib
 import json
 import re
-import socket
 import sys
-import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -48,10 +46,12 @@ from pathlib import Path
 
 import httpx
 
-from robot_communal import Robot
+from robot_communal import Robot, robot_des_sources
+from schema import RACINE, lire_sources
 
 DOSSIER = Path(__file__).resolve().parent / "tests" / "echantillon-sites"
 BRUT = Path.home() / ".cache" / "vigie-vaud" / "echantillon-sites"
+SOURCES = RACINE / "sources.json"
 
 
 @dataclass(frozen=True)
@@ -461,7 +461,8 @@ def main(argv: list[str] | None = None) -> None:
     if not choisis:
         sys.exit(f"aucun échantillon pour {', '.join(args.choix)} ; connus : {', '.join(e.nom for e in ECHANTILLONS)}")
     with httpx.Client() as http:
-        robot = None if args.hors_ligne else Robot(http, lambda: datetime.now(UTC), time.sleep, socket.gethostbyname)
+        # Au débit de l'ADR-0006, réseaux ralentis à la main compris (section `reseaux` de `sources.json`).
+        robot = None if args.hors_ligne else robot_des_sources(http, lire_sources(SOURCES), lambda: datetime.now(UTC))
         for echantillon in choisis:
             for chemin in enregistrer(robot, echantillon, DOSSIER, args.brut):
                 print(f"{chemin.relative_to(DOSSIER)} : {chemin.stat().st_size / 1024:.1f} Ko")

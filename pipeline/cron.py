@@ -63,7 +63,7 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
-from robot_communal import PLAFOND, Robot
+from robot_communal import Robot, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
     RACINE,
@@ -430,14 +430,14 @@ def passage(
             continue
         heure = _a_la_seconde(horloge())
         etats[source.id] = _suivant(precedent.get(source.id), heure, sonder(client, source.sonde))
-    robot = Robot(
+    robot = robot_des_sources(
         client,
+        sources,
         horloge,
         attendre,
         resoudre,
-        intervalles={r.reseau: r.intervalle for r in sources.reseaux},
+        rattrapage=rattrapage_cible is not None,
         bloques=_lire_reseaux_bloques(depot / FICHIER_ETAT),
-        plafond=None if rattrapage_cible is not None else PLAFOND,
     )
     etats |= sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapes)
     etat = EtatSources(version=1, genere=genere, sources=etats, reseaux=robot.reseaux_bloques())

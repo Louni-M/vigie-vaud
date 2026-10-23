@@ -22,7 +22,7 @@ from typing import Literal
 
 import httpx
 
-from schema import RACINE, EtatReseau
+from schema import RACINE, EtatReseau, FichierSources
 
 Role = Literal["sonde", "import"]
 INTERVALLE = 5.0  # secondes, au moins, entre deux requêtes vers un même /24
@@ -339,6 +339,30 @@ class Robot:
         ecart = (self._horloge() - derniere).total_seconds()
         if ecart < intervalle:
             self._attendre(intervalle - ecart)
+
+
+def robot_des_sources(
+    http: httpx.Client,
+    sources: FichierSources,
+    horloge: Callable[[], datetime],
+    attendre: Callable[[float], None] = time.sleep,
+    resoudre: Callable[[str], str] = socket.gethostbyname,
+    *,
+    rattrapage: bool = False,
+    bloques: Mapping[str, EtatReseau] | None = None,
+) -> Robot:
+    """Le robot communal réglé par `sources.json`, le seul qu'utilisent le cron, l'import seul et les scripts de
+    préparation : les réseaux ralentis à la main (section `reseaux`), et `PLAFOND` requêtes par commune au passage
+    ordinaire, aucun au `rattrapage`. `bloques` : les réseaux bloqués aux passages précédents (`etat-sources.json`)."""
+    return Robot(
+        http,
+        horloge,
+        attendre,
+        resoudre,
+        intervalles={r.reseau: r.intervalle for r in sources.reseaux},
+        bloques=bloques,
+        plafond=None if rattrapage else PLAFOND,
+    )
 
 
 # --- robots.txt (RFC 9309) ----------------------------------------------------------------------------------------

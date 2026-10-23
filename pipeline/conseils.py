@@ -63,7 +63,7 @@ from rattachement import (
     porte_sur_le_canton,
     rattacher_objet,
 )
-from robot_communal import Robot
+from robot_communal import Robot, robot_des_sources
 from schema import (
     RACINE,
     Conseil,
@@ -722,10 +722,12 @@ def main(argv: list[str] | None = None) -> None:
         changes = reconstruire(args.depot.resolve(), lire_sources(args.sources), horloge)
         print(f"Fichiers de lecture reconstruits : {len(changes)} écrit(s) ou supprimé(s)")
         return
+    sources = lire_sources(args.sources)
     with httpx.Client() as http:
         opd = OpenParlData(http, horloge)
-        robot = Robot(http, horloge)
-        importer_conseils(args.depot.resolve(), lire_sources(args.sources), opd, horloge, args.depuis, robot=robot)
+        # Un import lancé à la main est un passage ordinaire : réseaux ralentis et plafond de 60 requêtes par commune.
+        robot = robot_des_sources(http, sources, horloge)
+        importer_conseils(args.depot.resolve(), sources, opd, horloge, args.depuis, robot=robot)
 
 
 if __name__ == "__main__":
