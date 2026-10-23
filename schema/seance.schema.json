@@ -9,6 +9,44 @@
       "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$",
       "type": "string"
     },
+    "DocumentObjet": {
+      "additionalProperties": false,
+      "properties": {
+        "titre": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Nom du document, sinon sa catégorie."
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lien": {
+          "$ref": "#/$defs/Lien",
+          "description": "Le document chez la source (PDF, page ou vidéo)."
+        }
+      },
+      "required": [
+        "titre",
+        "date",
+        "lien"
+      ],
+      "title": "DocumentObjet",
+      "type": "object"
+    },
     "Horodatage": {
       "format": "date-time",
       "type": "string"
@@ -92,8 +130,15 @@
       "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
     },
     "id": {
-      "description": "Identifiant de la Séance dans OpenParlData.",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée."
     },
     "date": {
       "$ref": "#/$defs/DateSeance",
@@ -116,6 +161,14 @@
     "ordre_du_jour": {
       "items": {
         "$ref": "#/$defs/PointOrdreDuJour"
+      },
+      "type": "array"
+    },
+    "documents": {
+      "default": [],
+      "description": "Documents de la Séance (ordre du jour, procès-verbal…), titres masqués. Absent quand il n'y en a pas : Lausanne et Yverdon n'en ont pas.",
+      "items": {
+        "$ref": "#/$defs/DocumentObjet"
       },
       "type": "array"
     }

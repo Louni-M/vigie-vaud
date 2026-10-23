@@ -342,6 +342,21 @@ export interface LigneSeance {
 	 * Nombre de points de l'ordre du jour.
 	 */
 	points: number;
+	/**
+	 * Les documents d'une Séance sans points, que sa ligne montre à la place du nombre de points. Absent pour une Séance avec points ou sans documents.
+	 */
+	documents?: DocumentObjet[];
+}
+export interface DocumentObjet {
+	/**
+	 * Nom du document, sinon sa catégorie.
+	 */
+	titre: string | null;
+	date: string | null;
+	/**
+	 * Le document chez la source (PDF, page ou vidéo).
+	 */
+	lien: string;
 }
 /**
  * `conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est
@@ -357,9 +372,9 @@ export interface Objet {
 	 */
 	genere: string;
 	/**
-	 * Identifiant de l'Objet dans OpenParlData.
+	 * Identifiant de l'Objet dans OpenParlData ; `null` pour un Objet scrapé.
 	 */
-	id: number;
+	id: number | null;
 	/**
 	 * Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).
 	 */
@@ -414,17 +429,6 @@ export interface Etape {
 	 */
 	libelle: string;
 }
-export interface DocumentObjet {
-	/**
-	 * Nom du document, sinon sa catégorie.
-	 */
-	titre: string | null;
-	date: string | null;
-	/**
-	 * Le document chez la source (PDF, page ou vidéo).
-	 */
-	lien: string;
-}
 /**
  * `conseils/communes/<ofs>.json` (« Au Grand Conseil ») : les Objets du Grand Conseil rattachés à la commune,
  * par date de dernière étape décroissante. Écrit seulement s'il y en a au moins un.
@@ -454,9 +458,9 @@ export interface Seance {
 	 */
 	genere: string;
 	/**
-	 * Identifiant de la Séance dans OpenParlData.
+	 * Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée.
 	 */
-	id: number;
+	id: number | null;
 	/**
 	 * Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).
 	 */
@@ -467,6 +471,10 @@ export interface Seance {
 	nom: string;
 	lien: Lien | null;
 	ordre_du_jour: PointOrdreDuJour[];
+	/**
+	 * Documents de la Séance (ordre du jour, procès-verbal…), titres masqués. Absent quand il n'y en a pas : Lausanne et Yverdon n'en ont pas.
+	 */
+	documents?: DocumentObjet[];
 }
 export interface PointOrdreDuJour {
 	/**
