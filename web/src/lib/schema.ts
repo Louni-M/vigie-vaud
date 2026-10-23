@@ -10,6 +10,7 @@ export type DocumentCommun =
 	| IndexConseils
 	| ListeObjets
 	| ListeSeances
+	| MembresConseil
 	| Objet
 	| RattachementsCommune
 	| Seance
@@ -358,6 +359,30 @@ export interface DocumentObjet {
 	 * Le document chez la source (PDF, page ou vidéo).
 	 */
 	lien: string;
+}
+/**
+ * `conseils/<conseil>/membres.json` : les élu·e·s connu·e·s d'un conseil scrapé, que le masquage épargne
+ * (ADR 0007) : vu·e·s sur la page des membres du conseil ou comme contributeur·rice·s d'un Objet autre qu'une
+ * pétition. La liste ne fait que s'allonger : un nom qui disparaît de la page y reste. Publique, en clair, sans
+ * limite de durée. Les conseils d'OpenParlData n'en ont pas : leurs élu·e·s connu·e·s sont tiré·e·s de l'archive.
+ */
+export interface MembresConseil {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	/**
+	 * Le conseil (`body_key` en minuscules : le n° OFS de la commune).
+	 */
+	conseil: string;
+	/**
+	 * Noms complets, « Prénom Nom », triés sans tenir compte des accents ni de la casse.
+	 */
+	membres: string[];
 }
 /**
  * `conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est

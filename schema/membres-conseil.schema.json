@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CleConseil": {
+      "pattern": "^[a-z0-9]+$",
+      "type": "string"
+    },
+    "Horodatage": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`conseils/<conseil>/membres.json` : les élu·e·s connu·e·s d'un conseil scrapé, que le masquage épargne\n(ADR 0007) : vu·e·s sur la page des membres du conseil ou comme contributeur·rice·s d'un Objet autre qu'une\npétition. La liste ne fait que s'allonger : un nom qui disparaît de la page y reste. Publique, en clair, sans\nlimite de durée. Les conseils d'OpenParlData n'en ont pas : leurs élu·e·s connu·e·s sont tiré·e·s de l'archive.",
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Version 1.",
+      "type": "integer"
+    },
+    "genere": {
+      "$ref": "#/$defs/Horodatage",
+      "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
+    },
+    "conseil": {
+      "$ref": "#/$defs/CleConseil",
+      "description": "Le conseil (`body_key` en minuscules : le n° OFS de la commune)."
+    },
+    "membres": {
+      "description": "Noms complets, « Prénom Nom », triés sans tenir compte des accents ni de la casse.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "genere",
+    "conseil",
+    "membres"
+  ],
+  "title": "MembresConseil",
+  "type": "object"
+}
