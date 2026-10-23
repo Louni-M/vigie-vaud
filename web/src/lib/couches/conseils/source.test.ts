@@ -13,13 +13,16 @@ const AVEC_SITE = avecSources(SOURCES, sourceSite());
 describe('pied de la fiche d’un Objet ou d’une Séance', () => {
 	it('nomme le site de la commune d’un conseil scrapé, avec le lien de son attribution', () => {
 		expect(piedDeFiche('5643', AVEC_SITE)).toEqual({
-			texte: 'Source : site de la commune de Préverenges',
+			texte: 'Source\u00a0: site de la commune de Préverenges',
 			lien: 'https://www.preverenges.ch/conseil'
 		});
 	});
 
-	it.each(['vd', '5586', '5938'])('reprend l’attribution d’OpenParlData déclarée pour le conseil %s', (conseil) => {
-		expect(piedDeFiche(conseil, AVEC_SITE)).toEqual({ texte: 'Source: OpenParlData.ch', lien: 'https://openparldata.ch' });
+	it.each(['vd', '5586', '5938'])('nomme OpenParlData, « Source : » à l’espace insécable, pour le conseil %s', (conseil) => {
+		expect(piedDeFiche(conseil, AVEC_SITE)).toEqual({
+			texte: 'Source\u00a0: OpenParlData.ch',
+			lien: 'https://openparldata.ch'
+		});
 	});
 
 	it('ne dit rien d’un conseil que sources.json ne déclare pas', () => {

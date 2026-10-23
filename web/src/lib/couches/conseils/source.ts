@@ -18,16 +18,21 @@ export interface TexteLie {
 /** « Commune de Préverenges » → « commune de Préverenges » : l'attribution reprise au milieu d'une phrase. */
 const enMinuscule = (texte: string) => texte.charAt(0).toLowerCase() + texte.slice(1);
 
+/** « Source : », avec l'espace insécable de la typographie française avant les deux-points. */
+const SOURCE = 'Source\u00a0: ';
+
 /**
- * Le pied de la fiche d'un élément du conseil (`vd`, `5643`), tiré de l'attribution de sa source : « Source : site de
- * la commune de Préverenges » pour une commune scrapée, l'attribution telle quelle sinon (« Source: OpenParlData.ch »),
- * avec son lien. `null` pour un conseil que `sources` ne déclare pas.
+ * Le pied de la fiche d'un élément du conseil (`vd`, `5643`), tiré de l'attribution de sa source, pour tous les
+ * conseils : « Source : site de la commune de Préverenges » pour une commune scrapée, « Source : OpenParlData.ch »
+ * pour OpenParlData (dont l'attribution s'écrit « Source: OpenParlData.ch »), avec son lien. `null` pour un conseil
+ * que `sources` ne déclare pas.
  */
 export function piedDeFiche(conseil: string, sources: readonly Source[] = SOURCES): TexteLie | null {
 	const source = sourceDuConseil(conseil, sources);
 	if (!source) return null;
 	const { texte, lien } = source.attribution;
-	return { texte: source.site ? `Source : site de la ${enMinuscule(texte)}` : texte, lien };
+	const nom = source.site ? `site de la ${enMinuscule(texte)}` : texte.replace(/^Source\s*:\s*/, '');
+	return { texte: SOURCE + nom, lien };
 }
 
 /** La note de niveau : « Séances seulement : les objets sont sur le site de la commune › », la suite en lien. */
