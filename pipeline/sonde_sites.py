@@ -5,10 +5,10 @@ nom `VigieVaud-sonde`, et y cherche le marqueur de sa variante, déclaré dans l
 `sources.json`. Aucune ligne de code n'est propre à une plateforme : une refonte du site fait disparaître le
 marqueur. Rien de la page n'est conservé.
 
-**Pannes** : erreur HTTP, délai dépassé, site injoignable, page illisible, page de liste interdite par `robots.txt`
-(« le site refuse les robots »), réseau bloqué (« accès refusé »), marqueur absent. **Pas des pannes** : une
-liste vide (le marqueur est celui du tableau, présent même sans ligne) ni une liste dont aucune ligne ne se lit, qui
-ne met en échec que l'import.
+**Pannes** : erreur HTTP, délai dépassé, site injoignable, erreur TLS, page illisible, page de liste interdite par
+`robots.txt` (« le site refuse les robots »), réseau bloqué (« accès refusé »), marqueur absent. **Pas des pannes** :
+une liste vide (le marqueur est celui du tableau, présent même sans ligne) ni une liste dont aucune ligne ne se lit,
+qui ne met en échec que l'import.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from collections.abc import Sequence
 from robot_communal import (
     DelaiDepasse,
     ErreurHttp,
+    ErreurTls,
     Injoignable,
     PageIllisible,
     PageInterdite,
@@ -54,6 +55,8 @@ def sonder_site(robot: Robot, source: Source, plateformes: Sequence[Plateforme])
         return f"HTTP {e.statut}"
     except DelaiDepasse:
         return "délai dépassé"
+    except ErreurTls:
+        return "erreur TLS"
     except Injoignable:
         return "site injoignable"
     except PageIllisible:

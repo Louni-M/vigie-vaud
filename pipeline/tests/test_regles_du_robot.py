@@ -17,7 +17,7 @@ import pytest
 
 from cron import passage
 from faux_openparldata import HorlogeFactice
-from faux_sites import DELAI, REFUS, Page, echantillon
+from faux_sites import DELAI, REFUS, TLS, Page, echantillon
 from schema import FichierSources
 from test_cron import IssuesFactices
 from test_sites_communaux import (
@@ -257,14 +257,19 @@ def test_une_429_une_503_un_refus_ou_un_delai_bloque_le_24_et_les_communes_non_s
     }
 
 
-@pytest.mark.parametrize("page", [Page("", statut=404), Page("", statut=403)], ids=["404", "403"])
-def test_une_404_ou_une_403_reste_une_erreur_de_la_commune(tmp_path, horloge, page):
+@pytest.mark.parametrize(
+    ("page", "motif"),
+    [(Page("", statut=404), "HTTP 404"), (Page("", statut=403), "HTTP 403"), (TLS, "erreur TLS")],
+    ids=["404", "403", "tls"],
+)
+def test_une_404_une_403_ou_une_erreur_tls_reste_une_erreur_de_la_commune(tmp_path, horloge, page, motif):
+    # Un certificat expiré chez Préverenges ne met pas les autres communes du /24 d'i-web en « accès refusé ».
     reseau = _meme_24(horloge)
     reseau.pages[LISTE] = page
 
     _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
 
-    assert _etat(tmp_path)["echecs_consecutifs"] == 1
+    assert (_etat(tmp_path)["echecs_consecutifs"], _etat(tmp_path)["motif"]) == (1, motif)
     assert _etat(tmp_path, "site-5892")["echecs_consecutifs"] == 0
     assert _importe(tmp_path, "5892") is not None
     assert _reseaux_bloques(tmp_path) == {}

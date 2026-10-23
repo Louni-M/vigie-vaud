@@ -12,6 +12,7 @@ import ipaddress
 import json
 import re
 import socket
+import ssl
 import threading
 import time
 from collections.abc import Callable, Mapping
@@ -76,6 +77,11 @@ class ConnexionRefusee(Injoignable):
     """Le serveur a refusé la connexion : le réseau est bloqué."""
 
 
+class ErreurTls(Injoignable):
+    """La connexion chiffrée a échoué (certificat expiré ou invalide, poignée de main TLS) : une erreur de ce site,
+    qui ne bloque pas son réseau, partagé avec d'autres communes."""
+
+
 class PageIllisible(PageNonLue):
     """La réponse est arrivée mais son corps ne se décode pas (compression annoncée et corps qui n'en est pas une)."""
 
@@ -105,8 +111,18 @@ class PlafondAtteint(PageNonLue):
 STATUTS_BLOQUANTS = (429, 503)
 
 
+def erreur_tls(erreur: BaseException | None) -> bool:
+    """L'erreur vient-elle de TLS (certificat, poignée de main) ? httpx la range parmi les erreurs de connexion."""
+    while erreur is not None:
+        if isinstance(erreur, ssl.SSLError):
+            return True
+        erreur = erreur.__cause__ or erreur.__context__
+    return False
+
+
 def _bloquante(erreur: PageNonLue) -> bool:
-    """Une 429, une 503, une connexion refusée ou un délai dépassé : le réseau de la page est bloqué."""
+    """Une 429, une 503, une connexion refusée ou un délai dépassé : le réseau de la page est bloqué. Une erreur TLS
+    ne l'est pas : elle ne dit rien que du site qui l'a."""
     if isinstance(erreur, ErreurHttp):
         return erreur.statut in STATUTS_BLOQUANTS
     return isinstance(erreur, (DelaiDepasse, ConnexionRefusee))
@@ -139,7 +155,8 @@ class Robot:
     **`robots.txt`** est lu avant la première page de chaque hôte, une fois pour la vie du robot, sous le nom
     `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`).
 
-    **Blocage** : une 429, une 503, une connexion refusée ou un délai dépassé arrête toute requête vers ce réseau
+    **Blocage** : une 429, une 503, une connexion refusée ou un délai dépassé (pas une erreur TLS) arrête toute
+    requête vers ce réseau
     (`ReseauBloque`) pour la vie du robot, et au-delà si `Retry-After` le demande. Le robot reçoit les réseaux
     bloqués aux passages précédents (`bloques`) et rend ceux qui le restent (`reseaux_bloques`) : un réseau dont le
     blocage a pris fin est à tester, seule une requête de sonde peut le faire, et la première qui ne le bloque pas de
@@ -266,6 +283,8 @@ class Robot:
             self._bloquer(reseau, "délai dépassé")
             raise DelaiDepasse(f"{url} : délai de {DELAI:.0f} s dépassé") from e
         except httpx.ConnectError as e:
+            if erreur_tls(e):
+                raise ErreurTls(f"{url} : erreur TLS ({e})") from e
             self._bloquer(reseau, "connexion refusée")
             raise ConnexionRefusee(f"{url} : {e}") from e
         except httpx.TransportError as e:

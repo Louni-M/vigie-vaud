@@ -46,7 +46,6 @@ import os
 import re
 import shutil
 import socket
-import ssl
 import subprocess
 import sys
 import time
@@ -63,7 +62,7 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
-from robot_communal import Robot, robot_des_sources
+from robot_communal import Robot, erreur_tls, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
     RACINE,
@@ -580,7 +579,7 @@ def sonder(client: httpx.Client, sonde: Sonde) -> str | None:
     except httpx.TimeoutException:
         return "délai dépassé"
     except httpx.RequestError as e:
-        return "erreur TLS" if _cause_tls(e) else "erreur réseau"
+        return "erreur TLS" if erreur_tls(e) else "erreur réseau"
     if not reponse.is_success:
         return f"HTTP {reponse.status_code}"
     try:
@@ -613,14 +612,6 @@ def _champs(enregistrement: object) -> dict:
         if isinstance(enregistrement.get(cle), dict):
             return enregistrement[cle]
     return enregistrement
-
-
-def _cause_tls(erreur: BaseException) -> bool:
-    while erreur is not None:
-        if isinstance(erreur, ssl.SSLError):
-            return True
-        erreur = erreur.__cause__ or erreur.__context__
-    return False
 
 
 def _suivant(avant: EtatSource | None, heure: datetime, motif: str | None) -> EtatSource:

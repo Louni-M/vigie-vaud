@@ -2,7 +2,8 @@
 
 Un `Reseau` sert des pages par URL (corps en octets ou en texte, en-têtes, statut), suit la résolution d'adresse
 de chaque hôte (`adresses`, pour le /24 du robot) et sait répondre ce qu'un site réel répond quand il refuse : un
-statut d'erreur avec ses en-têtes (`Retry-After`), une redirection, une connexion refusée, un délai dépassé. Chaque
+statut d'erreur avec ses en-têtes (`Retry-After`), une redirection, une connexion refusée, un délai dépassé, une
+erreur TLS. Chaque
 requête est notée dans `journal` avec son URL, son User-Agent et l'heure de l'horloge factice ; `en_vol_max` dit
 combien de requêtes ont été en cours en même temps, au plus.
 
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import ssl
 import threading
 import time
 from collections.abc import Callable
@@ -49,6 +51,7 @@ def redirection(vers: str, statut: int = 302) -> Page:
 
 REFUS = "refus"  # connexion refusée
 DELAI = "delai"  # délai dépassé
+TLS = "tls"  # certificat refusé à la poignée de main TLS
 
 
 @dataclass
@@ -61,7 +64,7 @@ class Requete:
 @dataclass
 class Reseau:
     horloge: Callable[[], datetime]
-    pages: dict[str, Page | str] = field(default_factory=dict)  # URL → page, ou REFUS / DELAI
+    pages: dict[str, Page | str] = field(default_factory=dict)  # URL → page, ou REFUS / DELAI / TLS
     adresses: dict[str, str] = field(default_factory=dict)  # hôte → adresse IP
     journal: list[Requete] = field(default_factory=list)
     resolutions: list[str] = field(default_factory=list)
@@ -99,6 +102,12 @@ class Reseau:
                 raise httpx.ConnectError("Connection refused", request=requete)
             if page == DELAI:
                 raise httpx.ReadTimeout("timed out", request=requete)
+            if page == TLS:
+                # Comme httpx : une erreur de connexion, causée par l'erreur `ssl` de la poignée de main.
+                try:
+                    raise ssl.SSLCertVerificationError(1, "certificate verify failed: certificate has expired")
+                except ssl.SSLError as e:
+                    raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED]", request=requete) from e
             if page is None:
                 return httpx.Response(404, text="introuvable")
             return page.reponse()
