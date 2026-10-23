@@ -11,6 +11,11 @@ du lien) et, quand le site les publie en HTML, les points de son ordre du jour (
 Une Séance scrapée n'a pas d'identifiant (`id` nul) : son lien est le lien stable, sa date celle de la liste, telle
 quelle, même fictive. Une ligne sans lien ou sans date lisible, ou une Séance dont la page n'a pas pu être lue, est
 sautée et notée dans le journal ; une liste dont aucune ligne ne se lit, ou sans ses tableaux, lève `ValueError`.
+
+**Membres** : la page des membres (`site.membres`, facultative) porte le tableau `icmsTable-personList`, en JSON
+échappé dans `data-entities` comme les Séances ; la colonne `_nameVorname` donne « Nom Prénom », remis en « Prénom
+Nom » (ordre des contributeurs d'OpenParlData, que le masquage attend). Une page des membres illisible est notée dans
+le journal et ne donne personne : l'import continue.
 """
 
 from __future__ import annotations
@@ -29,6 +34,7 @@ from robot_communal import PageNonLue, Robot
 from schema import Source
 
 TABLEAUX_SEANCES = ("icmsTableFutureSitzungen", "icmsTablePastSitzungen")
+TABLEAU_MEMBRES = "icmsTable-personList"
 VARIANTES = ("seances",)
 
 
@@ -54,7 +60,7 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
             _journal(source, f"Séance {ligne.lien} non lue ({e})")
             continue
         seances.append(_meeting(ligne, page.texte, page.url))
-    return Bruts(conseil, seances=seances)
+    return Bruts(conseil, seances=seances, membres=_membres(robot, source))
 
 
 def _journal(source: Source, message: str) -> None:
@@ -151,6 +157,50 @@ def _meeting(ligne: _Ligne, texte: str, url: str) -> dict:
         "agendas": {"data": points},
         "docs": {"data": documents},
     }
+
+
+# --- Page des membres ---------------------------------------------------------------------------------------------
+
+
+def _membres(robot: Robot, source: Source) -> list[str]:
+    """Les élu·e·s de la page des membres (`site.membres`), dans l'ordre du site, chacun·e « Prénom Nom ». Sans page
+    des membres, aucun·e ; une page qui ne se lit pas, ou sans son tableau, n'empêche pas l'import : notée dans le
+    journal, elle ne donne personne (en cas de doute, on masque)."""
+    url = source.site.membres if source.site else None
+    if url is None:
+        return []
+    try:
+        page = robot.lire(url, "import")
+    except PageNonLue as e:
+        _journal(source, f"page des membres {url} non lue ({e})")
+        return []
+    tableau = next(
+        (n for n in _arbre(page.texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES), None
+    )
+    try:
+        lignes = json.loads(tableau.attr("data-entities") or "")["data"] if tableau else None
+    except (ValueError, KeyError, TypeError):
+        lignes = None
+    if not isinstance(lignes, list):
+        _journal(source, f"page des membres {page.url} sans tableau `{TABLEAU_MEMBRES}` lisible")
+        return []
+    membres = []
+    for ligne in lignes:
+        nom = _nom_de_membre(ligne) if isinstance(ligne, dict) else None
+        if nom:
+            membres.append(nom)
+    return membres
+
+
+def _nom_de_membre(ligne: dict) -> str | None:
+    """« Prénom Nom », depuis la colonne `_nameVorname` (« Nom Prénom » : le dernier mot est pris pour le prénom,
+    un prénom composé s'écrivant avec un trait d'union) ou `_vornameName` (déjà dans l'ordre)."""
+    if ligne.get("_vornameName"):
+        return _texte(str(ligne["_vornameName"])) or None
+    mots = _texte(str(ligne.get("_nameVorname") or "")).split()
+    if not mots:
+        return None
+    return " ".join(mots[-1:] + mots[:-1])
 
 
 # --- Analyse du HTML ----------------------------------------------------------------------------------------------
