@@ -2,12 +2,16 @@
 	/*
 	 * Volet d'une couche, assemblé par le registre : interrupteur (ou « permanente »), badge de fraîcheur de chaque
 	 * source et lien vers la page Couverture, attribution de chaque source tirée de sources.json, puis le `Volet` de
-	 * la couche. Sans `onfermer` (vue Couches du téléphone), le volet n'a pas de croix. Avec `onvoir` (téléphone, couche
-	 * qui grise au moins une commune), il a en tête un bouton « Voir sur la carte », qui montre ce grisage.
+	 * la couche. Les sites des communes y sont regroupés par plateforme : un badge et une attribution pour toutes ses
+	 * communes couvertes, qui renvoie à sa fiche de la page Couverture ; une commune non couverte n'y figure pas.
+	 * Sans `onfermer` (vue Couches du téléphone), le volet n'a pas de croix. Avec `onvoir` (téléphone, couche qui
+	 * grise au moins une commune), il a en tête un bouton « Voir sur la carte », qui montre ce grisage.
 	 */
 	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
-	import { source } from '#lib/sources.js';
+	import BadgeSites from '#lib/components/BadgeSites.svelte';
+	import type { Source } from '#lib/schema.js';
+	import { nomDePlateforme, source } from '#lib/sources.js';
 	import type { Registre } from './registre.svelte.js';
 	import type { CoucheInscrite } from './types.js';
 
@@ -19,7 +23,17 @@
 	}: { couche: CoucheInscrite; registre: Registre; onfermer?: () => void; onvoir?: () => void } = $props();
 
 	const active = $derived(registre.active(couche.id));
-	const sources = $derived(couche.sources.map(source));
+	const toutes = $derived(couche.sources.map(source));
+	const sources = $derived(toutes.filter((s) => !s.site));
+	// Les sites couverts, par plateforme, dans l'ordre de leur première apparition.
+	const plateformes = $derived.by(() => {
+		const parId = new Map<string, Source[]>();
+		for (const s of toutes) {
+			if (!s.site || s.couverture?.mode === 'non_couvert') continue;
+			parId.set(s.site.plateforme, [...(parId.get(s.site.plateforme) ?? []), s]);
+		}
+		return [...parId].map(([id, sites]) => ({ id, nom: nomDePlateforme(id), sites }));
+	});
 	// Une même attribution (« Source: OpenParlData.ch », pour les trois conseils) n'est citée qu'une fois.
 	const attributions = $derived(
 		sources.filter((s, i) => sources.findIndex((t) => t.attribution.texte === s.attribution.texte) === i)
@@ -54,6 +68,7 @@
 
 	<p class="badges">
 		{#each sources as s (s.id)}<BadgeFraicheur source={s} />{/each}
+		{#each plateformes as p (p.id)}<BadgeSites plateforme={p.nom} sources={p.sites} />{/each}
 		<a class="couverture" href={resolve('/couverture')}>Couverture</a>
 	</p>
 
@@ -61,6 +76,10 @@
 		{#each attributions as s, i (s.id)}
 			{#if i > 0}<span aria-hidden="true"> · </span>{/if}
 			<a href={s.attribution.lien} target="_blank" rel="noopener">{s.attribution.texte}</a>
+		{/each}
+		{#each plateformes as p, i (p.id)}
+			{#if attributions.length > 0 || i > 0}<span aria-hidden="true"> · </span>{/if}
+			<a href="{resolve('/couverture')}#plateforme-{p.id}">Sites de {p.sites.length} communes ({p.nom})</a>
 		{/each}
 	</p>
 
