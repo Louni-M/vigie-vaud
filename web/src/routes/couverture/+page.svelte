@@ -5,10 +5,12 @@
 		libelleCommunes,
 		libelleEtat,
 		libelleLimites,
-		libelleMode
+		libelleMode,
+		libellePlateforme,
+		type CommunePlateforme
 	} from '#lib/couverture.js';
 	import { couvertureChargee, couvertureCourante } from '#lib/couverture-courante.svelte.js';
-	import { lienPannes } from '#lib/etat-sources.js';
+	import { lienIssuePlateforme, lienPannes } from '#lib/etat-sources.js';
 	import { dernierImport } from '#lib/imports-conseils.js';
 	import { importsCharges, importsCourants } from '#lib/imports-courants.svelte.js';
 	import { canonique } from '#lib/indexation.js';
@@ -33,6 +35,13 @@
 	});
 
 	const quand = (iso: string | null | undefined) => (iso ? `le ${dateHeure(iso)}` : '—');
+
+	// Les communes d'une fiche de plateforme, par nom, pour qu'on y trouve la sienne.
+	const parBfs = $derived(new Map(data.communes.map((c) => [c.bfs, c])));
+	const communesTriees = (liste: readonly CommunePlateforme[]) =>
+		[...liste].sort((a, b) =>
+			(parBfs.get(a.bfs)?.nom ?? a.source.nom_court).localeCompare(parBfs.get(b.bfs)?.nom ?? b.source.nom_court, 'fr')
+		);
 </script>
 
 <svelte:head>
@@ -49,7 +58,8 @@
 	<p class="intro">
 		Pour chaque couche et chaque commune : le <strong>mode</strong> (les données viennent d’une API, sont scrapées,
 		ou la commune n’est pas couverte) et l’<strong>état</strong> de la source, vérifié toutes les 30 minutes par une
-		sonde. Les conseils sont importés une fois par jour ; une sonde vérifie que leur source répond.
+		sonde. Les conseils sont importés une fois par jour ; une sonde vérifie que leur source répond. Le site d’une
+		commune n’est sondé qu’une fois par jour, juste avant son import : ses communes sont regroupées par plateforme.
 	</p>
 
 	<section class="encarts" aria-label="Sources">
@@ -99,6 +109,53 @@
 			</article>
 		{/each}
 	</section>
+
+	{#if couverture.plateformes.length > 0}
+		<section class="plateformes" aria-label="Sites des communes, par plateforme">
+			{#each couverture.plateformes as p (p.id)}
+				{@const issue = charge ? lienIssuePlateforme(p) : null}
+				<article class="encart fiche" aria-labelledby="plateforme-{p.id}">
+					<h2 id="plateforme-{p.id}">{libellePlateforme(p, charge)}</h2>
+					{#if issue}
+						<p><a href={issue} target="_blank" rel="noopener">Suivre la panne (issue ouverte)</a></p>
+					{/if}
+					<details>
+						<summary>Ses {p.communes.length} communes</summary>
+						<ul>
+							{#each communesTriees(p.communes) as c (c.source.id)}
+								{@const commune = parBfs.get(c.bfs)}
+								<li>
+									<p class="nom">
+										{#if commune}
+											<a href={lienCommune(commune.slug)}>{commune.nom}</a>
+										{:else}
+											{c.source.nom_court}
+										{/if}
+									</p>
+									<p class="paire" data-etat={charge ? c.paire.etat?.etat : undefined}>
+										{libelleCellule([c], charge)[0]}
+									</p>
+									{#if c.paire.mode !== 'non_couvert'}
+										<dl>
+											<dt>Dernier import</dt>
+											<dd>{importsCharge ? quand(dernierImport(imports, c.source)?.toISOString()) : '…'}</dd>
+											<dt>Dernière sonde</dt>
+											<dd>{charge ? quand(c.sonde?.derniere_sonde) : '…'}</dd>
+										</dl>
+									{/if}
+									<p>
+										<a href={c.source.attribution.lien} target="_blank" rel="noopener">
+											Le conseil sur le site de la commune ›
+										</a>
+									</p>
+								</li>
+							{/each}
+						</ul>
+					</details>
+				</article>
+			{/each}
+		</section>
+	{/if}
 
 	<section class="communes" aria-labelledby="titre-communes">
 		<h2 id="titre-communes">Les {data.communes.length} communes</h2>
@@ -203,6 +260,46 @@
 	}
 	dd {
 		margin: 0;
+	}
+	/* Une fiche par plateforme, sur toute la largeur : sa liste de communes se déplie au doigt. */
+	.plateformes {
+		display: grid;
+		gap: 12px;
+		margin: 0 0 32px;
+	}
+	.fiche summary {
+		display: flex;
+		align-items: center;
+		min-height: 44px;
+		cursor: pointer;
+		font-size: 15px;
+		font-weight: 500;
+	}
+	.fiche ul {
+		list-style: none;
+		margin: 4px 0 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		gap: 8px 16px;
+	}
+	.fiche li {
+		border-top: 1px solid var(--line);
+		padding: 8px 0;
+		font-size: 14px;
+	}
+	.fiche li p {
+		margin: 2px 0;
+	}
+	.fiche li a {
+		display: inline-block;
+		padding: 4px 0;
+	}
+	.fiche .nom {
+		font-weight: 600;
+	}
+	.fiche dl {
+		margin: 4px 0;
 	}
 	.licence {
 		display: block;

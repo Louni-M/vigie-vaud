@@ -594,12 +594,24 @@ def reunir_membres(*listes: Iterable[str]) -> list[str]:
     return sorted(noms, key=lambda nom: (plier(nom), nom))
 
 
+def _lire_import(depot: Path) -> ImportConseils | None:
+    try:
+        return ImportConseils.model_validate_json((depot / FICHIER_IMPORT).read_bytes())
+    except (FileNotFoundError, ValidationError):
+        return None
+
+
 def lire_imports(depot: Path) -> dict[str, datetime]:
     """Le dernier import réussi de chaque conseil, par clé, lu dans `conseils/import.json` (vide s'il manque)."""
-    try:
-        return dict(ImportConseils.model_validate_json((depot / FICHIER_IMPORT).read_bytes()).conseils)
-    except (FileNotFoundError, ValidationError):
-        return {}
+    lu = _lire_import(depot)
+    return dict(lu.conseils) if lu else {}
+
+
+def lire_premiers_imports(depot: Path) -> dict[str, datetime]:
+    """Le premier import réussi de chaque conseil scrapé, par clé, lu dans `conseils/import.json` (vide s'il
+    manque)."""
+    lu = _lire_import(depot)
+    return dict(lu.premiers) if lu else {}
 
 
 def importer_conseils(
@@ -628,6 +640,7 @@ def importer_conseils(
     repertoire = Repertoire.lire(communes)
     corrections = lire_corrections(depot)
     imports = lire_imports(depot)
+    premiers = lire_premiers_imports(depot)
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
     membres: dict[str, MembresConseil] = {}
@@ -655,6 +668,8 @@ def importer_conseils(
             continue
         nouveaux |= elements
         archive = {**archive, **elements}
+        if source.site is not None and cle not in imports:
+            premiers.setdefault(cle, genere)
         imports[cle] = genere
         if source.site is not None:
             # La liste ne fait que s'allonger : les noms déjà connus, ceux de la page, les auteur·e·s des Objets.
@@ -663,7 +678,7 @@ def importer_conseils(
             membres[cle] = MembresConseil(version=1, genere=genere, conseil=cle, membres=noms)
         print(f"{source.nom} : {len(bruts.objets)} Objet(s), {len(bruts.seances)} Séance(s) lus")
 
-    etat = ImportConseils(version=1, genere=genere, conseils=imports)
+    etat = ImportConseils(version=1, genere=genere, conseils=imports, premiers=premiers)
     documents: dict[str, Enveloppe] = {chemin_element(cle, e): e for cle, e in nouveaux.items()}
     documents |= {chemin_membres(cle): liste for cle, liste in membres.items()}
     documents |= lecture(archive, sources, genere)
