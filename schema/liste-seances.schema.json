@@ -13,8 +13,50 @@
       "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$",
       "type": "string"
     },
+    "DocumentObjet": {
+      "additionalProperties": false,
+      "properties": {
+        "titre": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Nom du document, sinon sa catégorie."
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lien": {
+          "$ref": "#/$defs/Lien",
+          "description": "Le document chez la source (PDF, page ou vidéo)."
+        }
+      },
+      "required": [
+        "titre",
+        "date",
+        "lien"
+      ],
+      "title": "DocumentObjet",
+      "type": "object"
+    },
     "Horodatage": {
       "format": "date-time",
+      "type": "string"
+    },
+    "Lien": {
+      "pattern": "^https?://\\S+$",
       "type": "string"
     },
     "LigneSeance": {
@@ -32,6 +74,14 @@
           "description": "Nombre de points de l'ordre du jour.",
           "minimum": 0,
           "type": "integer"
+        },
+        "documents": {
+          "default": [],
+          "description": "Les documents d'une Séance sans points, que sa ligne montre à la place du nombre de points. Absent pour une Séance avec points ou sans documents.",
+          "items": {
+            "$ref": "#/$defs/DocumentObjet"
+          },
+          "type": "array"
         }
       },
       "required": [

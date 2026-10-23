@@ -123,8 +123,8 @@ def test_masquer(titre, attendu):
 
 
 # La même table que `web/src/lib/masquage.test.ts` (`masquerNoms`), cas pour cas : sans élu·e connu·e, le cron
-# masque comme le site, les auteur·e·s de pétition sans civilité mis à part (une règle des conseils seulement). Un cas
-# ajouté d'un côté s'ajoute de l'autre.
+# masque comme le site, sauf là où une règle des conseils seulement s'en écarte (`ECARTS_DU_CRON`) : les auteur·e·s de
+# pétition et les noms après un déclencheur, masqué·e·s sans civilité. Un cas ajouté d'un côté s'ajoute de l'autre.
 CAS_DU_SITE = [
     ("Construction d’une villa pour le compte de Dupont Jean", "Construction d’une villa pour le compte de [particulier]"),
     ("Recours pour le compte de Swisscom SA", None),
@@ -152,8 +152,14 @@ CAS_DU_SITE = [
 ]
 
 
+# Après « hoirie », un nom est masqué dans les titres des conseils ; le site, qui ne masque que les permis, y voit une
+# entité.
+ECARTS_DU_CRON = {"Rénovation pour le compte de l’Hoirie Favre": "Rénovation pour le compte de l’Hoirie [particulier]"}
+
+
 @pytest.mark.parametrize(("titre", "attendu"), CAS_DU_SITE)
 def test_sans_elu_connu_le_cron_masque_comme_le_site(titre, attendu):
+    attendu = ECARTS_DU_CRON.get(titre, attendu)
     assert masquer(titre) == (titre if attendu is None else attendu)
 
 
@@ -204,3 +210,95 @@ def test_un_petitionnaire_elu_connu_reste_et_son_nom_de_famille_seul_aussi():
         masquer("rp_petition_marc_dupont_postulat_dupont.pdf", ELUS, petitionnaires)
         == "rp_petition_[particulier]_postulat_dupont.pdf"
     )
+
+
+# Un nom partiel après une civilité (ADR 0007, pour tous les conseils, pas pour le site) : il reste quand un·e élu·e
+# connu·e porte ce nom de famille, avec la même initiale s'il y en a une, et qu'un contexte d'élu·e le précède ; sinon,
+# il est masqué (dans un village, un opposant porte souvent le nom d'un·e élu·e).
+@pytest.mark.parametrize(
+    ("titre", "attendu"),
+    [
+        # Contexte d'élu·e et homonyme connu·e, sans initiale : le nom reste.
+        ("Préavis 12/2026 - Réfection du collège (Rapp. M. Socchi)", None),
+        ("Interpellation urgente de Mme Métraux : « Quel avenir pour la grande salle ? »", None),
+        ("Réponse de la Municipalité à la motion de M. Dupont", None),
+        ("Simple question de M. SOCCHI sur les horaires du bus", None),
+        ("Rapport du rapporteur, M. Dupont, sur le budget 2027", None),
+        ("Démission de la conseillère communale Mme Métraux", None),
+        ("Postulat 2026/04 de M. Dupont : « Des bancs »", None),
+        ("Réfection du chemin du Stand, M. Dupont et consorts", None),
+        # Avec l'initiale de l'élu·e : le nom reste ; avec une autre initiale, c'est quelqu'un d'autre.
+        ("Interpellation de M. J. Dupont : « Le parking »", None),
+        ("Préavis 13/2026 - Budget (Rapp. Mme A.-L. Métraux)", None),
+        ("Préavis 13/2026 - Budget (Rapp. Mme A. Métraux)", None),
+        ("Interpellation de M. P. Dupont : « Le parking »", "Interpellation de [particulier] : « Le parking »"),
+        ("Préavis 13/2026 - Budget (Rapp. Mme L.-A. Métraux)", "Préavis 13/2026 - Budget (Rapp. [particulier])"),
+        # Contexte d'élu·e sans homonyme connu·e : masqué.
+        ("Préavis 14/2026 - Éclairage public (Rapp. M. Exemple)", "Préavis 14/2026 - Éclairage public (Rapp. [particulier])"),
+        ("Interpellation de M. C. Modèle : « Le parking »", "Interpellation de [particulier] : « Le parking »"),
+        # Homonyme connu·e sans contexte d'élu·e : masqué, c'est peut-être un opposant du village.
+        ("Opposition de M. Dupont au plan de quartier", "Opposition de [particulier] au plan de quartier"),
+        ("Vente de la parcelle 412 à M. J. Socchi", "Vente de la parcelle 412 à [particulier]"),
+        ("Pétition de M. Dupont et consorts : « Des bancs »", "Pétition de [particulier] et consorts : « Des bancs »"),
+        (
+            "Postulat de M. Paul Exemple : « La lettre de M. Dupont »",
+            "Postulat de [particulier] : « La lettre de [particulier] »",
+        ),
+        # Plusieurs noms partiels : seul l'inconnu est masqué.
+        ("Postulat de MM. Dupont et Modèle : « Des bancs »", "Postulat de MM. Dupont et [particulier] : « Des bancs »"),
+        # Un prénom n'est pas un nom de famille.
+        ("Interpellation de M. Loris : « Le parking »", "Interpellation de [particulier] : « Le parking »"),
+    ],
+)
+def test_un_nom_partiel_ne_reste_qu_avec_un_contexte_d_elu_et_un_homonyme_connu(titre, attendu):
+    assert masquer(titre, ELUS) == (titre if attendu is None else attendu)
+
+
+# Les déclencheurs sans civilité (ADR 0007, pour tous les conseils, pas pour le site) : après « succession de »,
+# « hoirie », « feu », « legs de », « opposition de » ou « acquéreur », un nom est masqué comme après une civilité,
+# sauf entité ou élu·e connu·e.
+@pytest.mark.parametrize(
+    ("titre", "attendu"),
+    [
+        # Succession de
+        ("Préavis 15/2026 - Succession de Paul Exemple : acceptation", "Préavis 15/2026 - Succession de [particulier] : acceptation"),
+        ("Acceptation de la succession d'Albert Modèle", "Acceptation de la succession d'[particulier]"),
+        ("Succession de Swisscom SA : reprise du bail", None),
+        ("Succession de Jean Dupont à la présidence du conseil", None),
+        ("Succession de Mme Zoé Modèle : acceptation", "Succession de [particulier] : acceptation"),
+        # Hoirie
+        ("Hoirie Exemple - vente de la parcelle 88", "Hoirie [particulier] - vente de la parcelle 88"),
+        ("Accord avec l'hoirie de feu Paul Exemple", "Accord avec l'hoirie de feu [particulier]"),
+        ("Hoirie Rive Immobilière SA : vente de la parcelle 88", None),
+        ("Rachat de la parcelle 88 à l'hoirie Loris Socchi", None),
+        # Feu
+        ("Don en mémoire de feu Paul Exemple", "Don en mémoire de feu [particulier]"),
+        ("Fonds de feue Zoé Modèle pour les aînés", "Fonds de feue [particulier] pour les aînés"),
+        ("Archives de feu Société de Musique L'Écho", None),
+        ("Hommage à feu Jean Dupont, ancien syndic", None),
+        ("Feu d'artifice du 1er Août et feux de signalisation", None),
+        # Legs de
+        ("Legs de Zoé Modèle à la Commune", "Legs de [particulier] à la Commune"),
+        ("Acceptation du legs d'Exemple Paul", "Acceptation du legs d'[particulier]"),
+        ("Legs de Fondation Exemple pour la bibliothèque", None),
+        ("Legs de Loris Socchi à la bibliothèque", None),
+        # Opposition de
+        ("Levée de l'opposition de Exemple Paul et Modèle Zoé", "Levée de l'opposition de [particulier]"),
+        ("Oppositions de Jean Dupont et Paul Exemple au plan", "Oppositions de Jean Dupont et [particulier] au plan"),
+        (
+            "Opposition de Paul Exemple, Chemin des Lilas 2, 1000 Exempleville",
+            "Opposition de [particulier], [coordonnées]",
+        ),
+        ("Opposition de Pro Natura au plan de quartier", None),
+        ("Opposition de Swisscom SA à l'antenne", None),
+        ("Opposition de Anne-Laure Métraux au plan de quartier", None),
+        # Acquéreur
+        ("Vente de la parcelle 210, acquéreur Paul Exemple", "Vente de la parcelle 210, acquéreur [particulier]"),
+        ("Vente de la parcelle 211 - acquéreurs : Paul et Zoé Exemple", "Vente de la parcelle 211 - acquéreurs : [particulier]"),
+        ("Vente de la parcelle 212, acquéreuse Zoé Modèle", "Vente de la parcelle 212, acquéreuse [particulier]"),
+        ("Vente de la parcelle 213, acquéreur Coopérative Les Lilas", None),
+        ("Vente de la parcelle 214, acquéreur Jean Dupont", None),
+    ],
+)
+def test_un_nom_sans_civilite_est_masque_apres_un_declencheur(titre, attendu):
+    assert masquer(titre, ELUS) == (titre if attendu is None else attendu)

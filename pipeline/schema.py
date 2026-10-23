@@ -289,7 +289,7 @@ class Objet(Enveloppe):
     `<conseil>/<numéro>`, la barre oblique du numéro devenant `-` (`vd/26_INT_140`, `5586/POS25-115`)."""
 
     version: Literal[1] = Field(description="Version 1.")
-    id: int = Field(description="Identifiant de l'Objet dans OpenParlData.")
+    id: int | None = Field(description="Identifiant de l'Objet dans OpenParlData ; `null` pour un Objet scrapé.")
     numero: str = Field(min_length=1, description="Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).")
     type: str = Field(description="Type brut de la source (`type_name`).")
     statut: Statut | None
@@ -323,11 +323,17 @@ class Seance(Enveloppe):
     """`conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`."""
 
     version: Literal[1] = Field(description="Version 1.")
-    id: int = Field(description="Identifiant de la Séance dans OpenParlData.")
+    id: int | None = Field(description="Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée.")
     date: DateSeance = Field(description="Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).")
     nom: str = Field(description="Nom brut de la source ; le site affiche un nom composé à partir de la date.")
     lien: Lien | None
     ordre_du_jour: list[PointOrdreDuJour]
+    documents: list[DocumentObjet] = Field(
+        default=[],
+        exclude_if=lambda documents: not documents,
+        description="Documents de la Séance (ordre du jour, procès-verbal…), titres masqués. Absent quand il n'y en "
+        "a pas : Lausanne et Yverdon n'en ont pas.",
+    )
 
 
 class Correction(Modele):
@@ -391,6 +397,12 @@ class LigneSeance(Modele):
     cle: CleElement = Field(description="`<conseil>/<jour>` : le fichier d'archive de la Séance.")
     date: DateSeance
     points: Annotated[int, Field(ge=0)] = Field(description="Nombre de points de l'ordre du jour.")
+    documents: list[DocumentObjet] = Field(
+        default=[],
+        exclude_if=lambda documents: not documents,
+        description="Les documents d'une Séance sans points, que sa ligne montre à la place du nombre de points. "
+        "Absent pour une Séance avec points ou sans documents.",
+    )
 
 
 class ListeSeances(Enveloppe):

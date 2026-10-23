@@ -86,7 +86,7 @@ def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict
             version=1,
             genere=genere,
             conseil=conseil,
-            seances=[LigneSeance(cle=c, date=s.date, points=len(s.ordre_du_jour)) for c, s in seances],
+            seances=[ligne_seance(c, s) for c, s in seances],
         )
 
         fil += [_entree_objet(conseil, c, o, commune) for c, o in objets if date_de_reference(o) >= depuis]
@@ -128,6 +128,16 @@ def ligne_objet(cle: str, objet: Objet) -> LigneObjet:
         statut=objet.statut,
         derniere_etape=_derniere_etape(objet),
         communes=list(objet.communes),
+    )
+
+
+def ligne_seance(cle: str, seance: Seance) -> LigneSeance:
+    """Une Séance en ligne légère ; une Séance sans points y garde ses documents, que sa ligne montre à leur place."""
+    return LigneSeance(
+        cle=cle,
+        date=seance.date,
+        points=len(seance.ordre_du_jour),
+        documents=[] if seance.ordre_du_jour else seance.documents,
     )
 
 
