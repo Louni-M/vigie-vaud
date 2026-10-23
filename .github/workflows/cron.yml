@@ -5,21 +5,28 @@ name: Passage du cron
 # `GITHUB_TOKEN` du dépôt de données, sans aucun secret, et `github.repository` y désigne le dépôt de données.
 # Un passage : sondes et état des sources, import quotidien des conseils dus (`pipeline/cron.py`), commit qui sert
 # d'archive, push (avec `pull --rebase` et deux nouveaux essais au plus), puis publication du dépôt de données sur
-# Pages. L'entrée `rattrapage` (lancement manuel du déclencheur) importe tous les conseils depuis tout l'historique.
+# Pages. Lancé à la main depuis le déclencheur, l'entrée `rattrapage` importe tous les conseils d'OpenParlData depuis
+# tout l'historique, sans toucher aux sites des communes ; l'entrée `rattrapage_cible` (une plateforme, `i-web`, ou le
+# n° OFS d'une commune scrapée) rouvre toutes les pages des sites visés, sans plafond, au même débit (ADR 0010).
 on:
   workflow_call:
     inputs:
       rattrapage:
-        description: Importer tous les conseils depuis tout l'historique
+        description: Importer tous les conseils d'OpenParlData depuis tout l'historique
         type: boolean
         default: false
+      rattrapage_cible:
+        description: Plateforme (i-web) ou n° OFS d'une commune scrapée dont relire tout le site
+        type: string
+        default: ''
 
 jobs:
   passage:
     runs-on: ubuntu-24.04
-    # Un passage ordinaire sonde et importe au plus un jour de changements ; le rattrapage relit tout l'historique
-    # à une requête par seconde.
-    timeout-minutes: ${{ inputs.rattrapage && 360 || 20 }}
+    # Un passage ordinaire sonde et importe au plus un jour de changements, sites des communes compris (environ
+    # 25 minutes à 5 s par requête) ; un rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à
+    # deux heures pour une plateforme). 360 minutes est le plus long délai d'un job hébergé par GitHub.
+    timeout-minutes: ${{ (inputs.rattrapage || inputs.rattrapage_cible != '') && 360 || 45 }}
     permissions:
       contents: write
       issues: write
@@ -57,9 +64,12 @@ jobs:
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          # La cible passe par l'environnement, jamais dans le script lui-même : c'est un texte saisi à la main.
+          RATTRAPAGE_CIBLE: ${{ inputs.rattrapage_cible }}
         run: >-
           uv run --no-dev --project code/pipeline python code/pipeline/cron.py --depot donnees
           ${{ inputs.rattrapage && '--rattrapage' || '' }}
+          ${RATTRAPAGE_CIBLE:+--rattrapage-cible "$RATTRAPAGE_CIBLE"}
 
       # `upload-pages-artifact` laisse de côté `.git`, `.github` et, depuis sa v4, tout fichier caché.
       - uses: actions/upload-pages-artifact@v5

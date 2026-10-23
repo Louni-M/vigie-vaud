@@ -42,6 +42,17 @@
         "$ref": "#/$defs/CleConseil"
       },
       "type": "object"
+    },
+    "rattrapages": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Horodatage"
+      },
+      "default": {},
+      "description": "Par clé de conseil, l'heure de son dernier rattrapage réussi (relecture de tout l'historique, lancée à la main : rattrapage ciblé d'une plateforme ou d'une commune scrapée, ou rattrapage d'OpenParlData). Un conseil jamais rattrapé n'y figure pas ; absent quand il n'y en a aucun.",
+      "propertyNames": {
+        "$ref": "#/$defs/CleConseil"
+      },
+      "type": "object"
     }
   },
   "required": [

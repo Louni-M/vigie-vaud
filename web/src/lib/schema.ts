@@ -206,6 +206,12 @@ export interface ImportConseils {
 	premiers?: {
 		[k: string]: Horodatage;
 	};
+	/**
+	 * Par clé de conseil, l'heure de son dernier rattrapage réussi (relecture de tout l'historique, lancée à la main : rattrapage ciblé d'une plateforme ou d'une commune scrapée, ou rattrapage d'OpenParlData). Un conseil jamais rattrapé n'y figure pas ; absent quand il n'y en a aucun.
+	 */
+	rattrapages?: {
+		[k: string]: Horodatage;
+	};
 }
 /**
  * `conseils/index.json` : chaque conseil importé, dans l'ordre de `sources.json`, et le nombre d'Objets du

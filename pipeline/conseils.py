@@ -614,6 +614,12 @@ def lire_premiers_imports(depot: Path) -> dict[str, datetime]:
     return dict(lu.premiers) if lu else {}
 
 
+def lire_rattrapages(depot: Path) -> dict[str, datetime]:
+    """Le dernier rattrapage réussi de chaque conseil, par clé, lu dans `conseils/import.json` (vide s'il manque)."""
+    lu = _lire_import(depot)
+    return dict(lu.rattrapages) if lu else {}
+
+
 def importer_conseils(
     depot: Path,
     sources: FichierSources,
@@ -631,7 +637,8 @@ def importer_conseils(
     de recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
     `rattrapage`. Un conseil dont la source a un bloc `site` est lu sur le site de sa commune par `robot`
     (`lire_site`), dans la fenêtre du jour à Lausanne, ou en entier pour un `rattrapage`. Un conseil en échec est
-    signalé, garde sa date, et les autres continuent. Le commit et le push sont l'affaire de l'appelant.
+    signalé, garde sa date, et les autres continuent ; un `rattrapage` réussi est aussi noté dans `rattrapages`.
+    Le commit et le push sont l'affaire de l'appelant.
 
     Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; un
     `corrections.json` invalide lève `pydantic.ValidationError` avant tout import."""
@@ -641,6 +648,7 @@ def importer_conseils(
     corrections = lire_corrections(depot)
     imports = lire_imports(depot)
     premiers = lire_premiers_imports(depot)
+    rattrapages = lire_rattrapages(depot)
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
     membres: dict[str, MembresConseil] = {}
@@ -671,6 +679,8 @@ def importer_conseils(
         if source.site is not None and cle not in imports:
             premiers.setdefault(cle, genere)
         imports[cle] = genere
+        if rattrapage:
+            rattrapages[cle] = genere
         if source.site is not None:
             # La liste ne fait que s'allonger : les noms déjà connus, ceux de la page, les auteur·e·s des Objets.
             objets = [e for k, e in archive.items() if isinstance(e, Objet) and k.startswith(cle + "/")]
@@ -678,7 +688,7 @@ def importer_conseils(
             membres[cle] = MembresConseil(version=1, genere=genere, conseil=cle, membres=noms)
         print(f"{source.nom} : {len(bruts.objets)} Objet(s), {len(bruts.seances)} Séance(s) lus")
 
-    etat = ImportConseils(version=1, genere=genere, conseils=imports, premiers=premiers)
+    etat = ImportConseils(version=1, genere=genere, conseils=imports, premiers=premiers, rattrapages=rattrapages)
     documents: dict[str, Enveloppe] = {chemin_element(cle, e): e for cle, e in nouveaux.items()}
     documents |= {chemin_membres(cle): liste for cle, liste in membres.items()}
     documents |= lecture(archive, sources, genere)

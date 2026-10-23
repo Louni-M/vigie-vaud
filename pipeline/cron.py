@@ -24,12 +24,18 @@ En local, contre un clone du dépôt de données (depuis `pipeline/`) :
 
     uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push
     uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push --rattrapage
+    uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push --rattrapage-cible i-web
 
 `--sans-push` écrit l'état et committe sans pousser, et affiche les issues au lieu de les ouvrir. `--rattrapage`
-importe tous les conseils depuis tout l'historique, à toute heure (le même chemin, `depuis` vide). En production,
-le workflow réutilisable `.github/workflows/cron.yml` lance la même commande sans `--sans-push`, avec le
-`GITHUB_TOKEN` et le `GITHUB_REPOSITORY` du dépôt de données dans l'environnement, puis publie le dépôt sur Pages ;
-un lancement manuel (`workflow_dispatch`) avec l'entrée `rattrapage` y ajoute `--rattrapage`.
+importe tous les conseils d'OpenParlData depuis tout l'historique, à toute heure (le même chemin, `depuis` vide),
+sans toucher aux sites des communes. `--rattrapage-cible` (ADR 0010) prend une plateforme (`i-web`) ou le n° OFS
+d'une commune scrapée et rouvre toutes les pages de son site ou de ceux de la plateforme, hors de la fenêtre de
+6 mois et sans plafond de requêtes, au même débit, sans toucher à OpenParlData ni aux autres communes ; il note
+l'heure de chaque rattrapage dans `conseils/import.json` (`rattrapages`). En production, le workflow réutilisable
+`.github/workflows/cron.yml` lance la même commande sans `--sans-push`, avec le `GITHUB_TOKEN` et le
+`GITHUB_REPOSITORY` du dépôt de données dans l'environnement, puis publie le dépôt sur Pages ; un lancement manuel
+(`workflow_dispatch`) y ajoute `--rattrapage` avec l'entrée `rattrapage`, ou `--rattrapage-cible` avec l'entrée
+`rattrapage_cible`.
 """
 
 from __future__ import annotations
@@ -392,6 +398,7 @@ def passage(
     attendre: Callable[[float], None] = time.sleep,
     rattrapage: bool = False,
     resoudre: Callable[[str], str] = socket.gethostbyname,
+    rattrapage_cible: str | None = None,
 ) -> EtatSources:
     """Sonde chaque source qui a un bloc `sonde` et le site de chaque commune due (`sonder_les_sites`), puis écrit
     `etat-sources.json` et copie `schema/` dans `depot`, un clone du dépôt de données. L'état précédent est relu
@@ -401,13 +408,25 @@ def passage(
     touche pas à l'état des sources. Les sites des communes sont sondés et lus par un robot communal, un seul pour
     tout le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de
     chaque hôte ; il ralentit les réseaux de la section `reseaux` de `sources.json`, plafonne chaque commune à
-    `PLAFOND` requêtes hors rattrapage, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
-    (`reseaux`) pour que le passage suivant les teste d'abord. Le commit et le push sont l'affaire de l'appelant."""
+    `PLAFOND` requêtes hors rattrapage ciblé, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
+    (`reseaux`) pour que le passage suivant les teste d'abord. Le commit et le push sont l'affaire de l'appelant.
+
+    Un `rattrapage` relit tout l'historique des conseils d'OpenParlData, à toute heure, sans toucher aux sites des
+    communes. Un `rattrapage_cible` (une plateforme ou le n° OFS d'une commune scrapée, lancé à la main) relit tout
+    le site des seules communes visées, à toute heure, chacune sondée d'abord comme au passage ordinaire, sans
+    plafond de requêtes mais au même débit, sans toucher à OpenParlData, aux sondes des sources ni aux autres
+    communes ; une cible qui ne désigne aucune commune scrapée lève `ValueError` avant toute écriture."""
+    rattrapes = _rattrapes(sources, rattrapage, rattrapage_cible)
     genere = _a_la_seconde(horloge())
     precedent = _lire_etat(depot / FICHIER_ETAT)
     etats: dict[str, EtatSource] = {}
     for source in sources.sources:
         if source.sonde is None:
+            continue
+        if rattrapage_cible is not None:
+            # Le rattrapage ciblé ne touche qu'aux sites visés : les sondes des sources gardent leur état.
+            if source.id in precedent:
+                etats[source.id] = precedent[source.id]
             continue
         heure = _a_la_seconde(horloge())
         etats[source.id] = _suivant(precedent.get(source.id), heure, sonder(client, source.sonde))
@@ -418,16 +437,17 @@ def passage(
         resoudre,
         intervalles={r.reseau: r.intervalle for r in sources.reseaux},
         bloques=_lire_reseaux_bloques(depot / FICHIER_ETAT),
-        plafond=None if rattrapage else PLAFOND,
+        plafond=None if rattrapage_cible is not None else PLAFOND,
     )
-    etats |= sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapage)
+    etats |= sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapes)
     etat = EtatSources(version=1, genere=genere, sources=etats, reseaux=robot.reseaux_bloques())
     (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
     shutil.rmtree(depot / "schema", ignore_errors=True)
     shutil.copytree(DOSSIER_SCHEMA, depot / "schema")
 
     try:
-        _accorder_issues(issues, [s for s in sources.sources if s.sonde is not None], precedent, etats)
+        sondees = [s for s in sources.sources if s.sonde is not None and s.id in etats]
+        _accorder_issues(issues, sondees, precedent, etats)
         _accorder_pannes_plateformes(issues, sources, precedent, etats)
     except httpx.HTTPError as e:
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
@@ -438,12 +458,34 @@ def passage(
         for s in _sites_sondes(sources)
         if s.id in etats and etats[s.id].echecs_consecutifs
     }
-    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapage, sautes)
+    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes)
     if robot.reseaux_bloques() != etat.reseaux:
         # Un réseau bloqué pendant l'import : le passage suivant doit le savoir pour le tester d'abord.
         etat = etat.model_copy(update={"reseaux": robot.reseaux_bloques()})
         (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
     return etat
+
+
+def _rattrapes(sources: FichierSources, rattrapage: bool, cible: str | None) -> frozenset[str] | None:
+    """Les clés des conseils qu'un rattrapage relit en entier : ceux d'OpenParlData pour un `rattrapage`, ceux des
+    communes scrapées de la plateforme ou du n° OFS `cible` pour un rattrapage ciblé ; `None` pour un passage
+    ordinaire. Lève `ValueError` si les deux sont demandés, ou si `cible` ne désigne aucune commune scrapée."""
+    if cible is None:
+        if not rattrapage:
+            return None
+        return frozenset(s.conseil.cle for s in sources.sources if s.conseil is not None and s.site is None)
+    if rattrapage:
+        raise ValueError("un rattrapage d'OpenParlData et un rattrapage ciblé ne se lancent pas ensemble")
+    cles = frozenset(
+        s.conseil.cle
+        for s in _sites_sondes(sources)
+        if s.site.plateforme == cible.strip() or s.conseil.cle == cible.strip().lower()
+    )
+    if not cles:
+        raise ValueError(
+            f"rattrapage ciblé : « {cible} » n'est ni une plateforme ni le n° OFS d'une commune scrapée"
+        )
+    return cles
 
 
 def _accorder_issues(
@@ -655,15 +697,19 @@ def sonder_les_sites(
     precedent: Mapping[str, EtatSource],
     imports: Mapping[str, datetime],
     horloge: Callable[[], datetime],
-    rattrapage: bool,
+    rattrapes: Collection[str] | None = None,
 ) -> dict[str, EtatSource]:
     """L'état de chaque source communale sondée. Une commune est sondée une fois par jour, juste avant son import :
-    au passage où son conseil est dû (tous pour un `rattrapage`), sauf si une sonde a déjà réussi depuis le dernier
-    7 h à Lausanne. Une sonde en échec est donc refaite au passage suivant, et la commune passe en panne à deux
-    échecs, comme toute source. Une commune qui n'est pas sondée à ce passage garde son état précédent."""
+    au passage où son conseil est dû (pour un rattrapage, quand sa clé est dans `rattrapes`), sauf si une sonde a
+    déjà réussi depuis le dernier 7 h à Lausanne. Une sonde en échec est donc refaite au passage suivant, et la
+    commune passe en panne à deux échecs, comme toute source. Une commune qui n'est pas sondée à ce passage garde
+    son état précédent."""
     sites = _sites_sondes(sources)
     heure = _a_la_seconde(horloge())
-    dus = {s.conseil.cle for s in sites} if rattrapage else conseils_dus(sites, imports, heure)
+    if rattrapes is None:
+        dus = conseils_dus(sites, imports, heure)
+    else:
+        dus = {s.conseil.cle for s in sites} & set(rattrapes)
     seuil = dernier_seuil(heure)
     etats: dict[str, EtatSource] = {}
 
@@ -696,21 +742,24 @@ def importer_les_conseils(
     robot: Robot,
     horloge: Callable[[], datetime],
     issues: ClientIssues,
-    rattrapage: bool,
+    rattrapes: Collection[str] | None = None,
     sautes: Mapping[str, str | None] | None = None,
 ) -> None:
-    """Importe les conseils dus (tous, depuis tout l'historique, pour un `rattrapage`), puis accorde les issues
-    `import-conseils` aux dates d'import. `sautes` donne, par clé, les conseils dont la sonde du site a échoué et
-    le motif : leur import du jour est sauté, ce qui vaut un import en échec ordinaire. Seules les sondes décident
-    d'une panne : l'import ne touche pas à l'état des sources, et une erreur de l'API des issues est affichée sans
-    faire échouer le passage."""
+    """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique), puis accorde
+    les issues `import-conseils` aux dates d'import. `sautes` donne, par clé, les conseils dont la sonde du site a
+    échoué et le motif : leur import du jour est sauté, ce qui vaut un import en échec ordinaire. Seules les sondes
+    décident d'une panne : l'import ne touche pas à l'état des sources, et une erreur de l'API des issues est
+    affichée sans faire échouer le passage."""
     conseils = [s for s in sources.sources if s.conseil is not None]
     if not conseils:
         return
     sautes = sautes or {}
     heure = _a_la_seconde(horloge())
     avant = lire_imports(depot)
-    dus = {s.conseil.cle for s in conseils} if rattrapage else conseils_dus(conseils, avant, heure)
+    if rattrapes is None:
+        dus = conseils_dus(conseils, avant, heure)
+    else:
+        dus = {s.conseil.cle for s in conseils} & set(rattrapes)
     for conseil in conseils:
         if conseil.conseil.cle in dus and conseil.conseil.cle in sautes:
             print(f"Import sauté : {conseil.nom} (sonde en échec : {sautes[conseil.conseil.cle]})", file=sys.stderr)
@@ -719,7 +768,7 @@ def importer_les_conseils(
     if dus:
         try:
             apres = importer_conseils(
-                depot, sources, opd, horloge, dus=dus, rattrapage=rattrapage, robot=robot
+                depot, sources, opd, horloge, dus=dus, rattrapage=rattrapes is not None, robot=robot
             ).conseils
         except Exception:
             # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus : l'état des
@@ -840,8 +889,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--depot", type=Path, required=True, help="clone local du dépôt de données")
     parser.add_argument("--sources", type=Path, default=RACINE / "sources.json", help="déclaration des sources")
     parser.add_argument("--sans-push", action="store_true", help="écrire l'état et committer sans pousser")
-    parser.add_argument(
-        "--rattrapage", action="store_true", help="importer tous les conseils depuis tout l'historique, à toute heure"
+    rattrapages = parser.add_mutually_exclusive_group()
+    rattrapages.add_argument(
+        "--rattrapage",
+        action="store_true",
+        help="importer tous les conseils d'OpenParlData depuis tout l'historique, à toute heure, sans les sites",
+    )
+    rattrapages.add_argument(
+        "--rattrapage-cible",
+        metavar="CIBLE",
+        help="relire tout le site des communes d'une plateforme (i-web) ou d'une commune scrapée (n° OFS)",
     )
     args = parser.parse_args(argv)
 
@@ -851,7 +908,15 @@ def main(argv: list[str] | None = None) -> None:
     with httpx.Client() as client, httpx.Client(timeout=30) as client_github:
         issues = client_issues(args.sans_push, os.environ, client_github)
         horloge = lambda: datetime.now(UTC)  # noqa: E731
-        etat = passage(depot, lire_sources(args.sources), client, horloge, issues, rattrapage=args.rattrapage)
+        etat = passage(
+            depot,
+            lire_sources(args.sources),
+            client,
+            horloge,
+            issues,
+            rattrapage=args.rattrapage,
+            rattrapage_cible=args.rattrapage_cible or None,
+        )
     for id_source, e in etat.sources.items():
         print(f"{id_source} : {e.etat}" + (f" ({e.motif}, {e.echecs_consecutifs} échec(s))" if e.motif else ""))
 

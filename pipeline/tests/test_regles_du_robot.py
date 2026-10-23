@@ -390,7 +390,7 @@ def test_une_commune_qui_depasse_60_requetes_a_son_import_en_echec_note_dans_le_
     assert not (tmp_path / "conseils/5643/seances").exists()
 
 
-def test_le_rattrapage_n_a_pas_de_plafond(tmp_path, horloge):
+def test_le_rattrapage_cible_n_a_pas_de_plafond(tmp_path, horloge):
     reseau = _preverenges(horloge)
     _soixante_seances_de_plus(reseau)
 
@@ -402,8 +402,8 @@ def test_le_rattrapage_n_a_pas_de_plafond(tmp_path, horloge):
             horloge=horloge,
             issues=IssuesFactices(),
             attendre=horloge.attendre,
-            rattrapage=True,
             resoudre=reseau.resoudre,
+            rattrapage_cible="5643",
         )
 
     assert len(_lues(reseau)) == 68  # les 7 habituelles, la Séance de février hors de la fenêtre, et les 60
