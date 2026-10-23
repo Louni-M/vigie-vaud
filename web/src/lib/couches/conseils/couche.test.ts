@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { commune } from '#tests/faux-canton.js';
-import { sourceSite } from '#tests/faux-conseils.js';
+import { avecSources, sourceSite } from '#tests/faux-conseils.js';
 import { SOURCES } from '#lib/sources.js';
 import { messageIntrouvable } from './cles.js';
 import { coucheConseils } from './index.js';
@@ -45,7 +45,7 @@ describe('élément introuvable', () => {
 		['5643/2026-09-11', 'Aucune séance le 11 septembre 2026 au Conseil communal de Préverenges dans les données du site de Préverenges.'],
 		['5643/12-2026', 'Aucun objet n° 12/2026 au Conseil communal de Préverenges dans les données du site de Préverenges.']
 	])('nomme le site de la commune d’un conseil scrapé : %s', (cle, attendu) => {
-		expect(messageIntrouvable(cle, [...SOURCES, sourceSite()])).toBe(attendu);
+		expect(messageIntrouvable(cle, avecSources(SOURCES, sourceSite()))).toBe(attendu);
 	});
 
 	it('met l’apostrophe typographique au site d’une commune en voyelle', () => {

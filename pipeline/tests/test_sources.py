@@ -15,7 +15,8 @@ RACINE = Path(__file__).resolve().parents[2]
 def test_sources_json_declare_les_sources_de_j0_la_dgmr_et_les_trois_conseils():
     fichier = lire_sources(RACINE / "sources.json")
 
-    assert [s.id for s in fichier.sources] == [
+    # Les sources communales (`site-<n° OFS>`, bloc `site`) suivent : voir `test_declarations_sources.py`.
+    assert [s.id for s in fichier.sources if s.site is None] == [
         "camac-permis",
         "dgmr-restrictions",
         "swisstopo-fond",
@@ -35,7 +36,7 @@ def test_sources_json_declare_les_sources_de_j0_la_dgmr_et_les_trois_conseils():
 def test_la_camac_et_la_dgmr_couvrent_le_canton_et_chaque_conseil_communal_sa_commune():
     fichier = lire_sources(RACINE / "sources.json")
 
-    couvertures = {s.id: s.couverture for s in fichier.sources if s.couverture is not None}
+    couvertures = {s.id: s.couverture for s in fichier.sources if s.couverture is not None and s.site is None}
     assert {id: (c.communes, c.mode) for id, c in couvertures.items()} == {
         "camac-permis": ("canton", "api"),
         "dgmr-restrictions": ("canton", "api"),
@@ -47,7 +48,7 @@ def test_la_camac_et_la_dgmr_couvrent_le_canton_et_chaque_conseil_communal_sa_co
 def test_les_trois_conseils_passent_par_le_cron_avec_l_attribution_d_openparldata():
     fichier = lire_sources(RACINE / "sources.json")
 
-    conseils = {s.id: s for s in fichier.sources if s.conseil is not None}
+    conseils = {s.id: s for s in fichier.sources if s.conseil is not None and s.site is None}
     assert {id: (s.nom, s.nom_court) for id, s in conseils.items()} == {
         "openparldata-vd": ("Grand Conseil (OpenParlData)", "Grand Conseil"),
         "openparldata-5586": ("Conseil communal de Lausanne (OpenParlData)", "Conseil de Lausanne"),
@@ -73,10 +74,10 @@ def test_les_trois_conseils_passent_par_le_cron_avec_l_attribution_d_openparldat
     }
 
 
-def test_chaque_conseil_a_une_sonde_legere_sur_openparldata_qui_lit_data():
+def test_chaque_conseil_d_openparldata_a_une_sonde_legere_qui_lit_data():
     fichier = lire_sources(RACINE / "sources.json")
 
-    sondes = {s.id: s.sonde for s in fichier.sources if s.conseil is not None}
+    sondes = {s.id: s.sonde for s in fichier.sources if s.conseil is not None and s.site is None}
     assert {id: (str(s.url), s.champs) for id, s in sondes.items()} == {
         "openparldata-vd": (
             "https://api.openparldata.ch/v1/affairs/?body_key=VD&limit=1&fields=id,number,title&client=vigie-vaud",
