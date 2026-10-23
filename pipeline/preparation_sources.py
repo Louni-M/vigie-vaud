@@ -10,9 +10,9 @@ fois, 5 s au moins par /24, `VigieVaud-import`) :
   membres ; d'abord celles déjà déclarées, puis la page du conseil et quelques liens de son menu (`ESSAIS` au plus par
   sorte de page) ;
 - la **variante**, d'où vient le niveau ;
-- le **nombre de requêtes** que la commune coûtera au passage ordinaire, face au plafond de 60 : il est compté en
-  passant les pages lues au module de lecture de la plateforme, sans réseau (une page d'une Séance ou d'un Objet de la
-  fenêtre compte pour deux requêtes, son lien stable étant redirigé).
+- le **nombre de requêtes** que la commune coûtera au passage ordinaire, face au plafond de 60 (`robots.txt` et
+  sonde compris) : il est compté en passant les pages lues au module de lecture de la plateforme, sans réseau (une
+  page d'une Séance ou d'un Objet de la fenêtre compte pour deux requêtes, son lien stable étant redirigé).
 
 Trois opérations :
 
@@ -52,11 +52,10 @@ import httpx
 from pydantic import ValidationError
 
 import lecture_iweb
-from robot_communal import ErreurHttp, PageNonLue, Reponse, Robot
+from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Reponse, Robot
 from schema import RACINE, FichierSources, Plateforme, Site, Source, lire_sources
 from sites_communaux import debut_de_fenetre
 
-PLAFOND = 60  # requêtes au plus par commune et par passage ordinaire (ADR 0006)
 ESSAIS = 3  # liens du menu essayés au plus, par sorte de page
 LICENCE = "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
 # Les communes qui disparaissent au 1er janvier 2027 ne sont pas déclarées (spec de J3, « Sources communales »).
@@ -327,14 +326,14 @@ class _RobotSansReseau:
 
 def _lire_sans_reseau(lecteur: _Lecteur, source: Source, depuis: date | None):
     """Le conseil de `source` lu par le module de lecture sur les pages déjà lues : (requêtes du passage ordinaire,
-    sonde comprise ; `Bruts`, ou `None` si la lecture échoue). Le journal du module est tu."""
+    `robots.txt` et sonde compris ; `Bruts`, ou `None` si la lecture échoue). Le journal du module est tu."""
     robot = _RobotSansReseau(lecteur.pages)
     with contextlib.redirect_stderr(io.StringIO()):
         try:
             bruts = lecture_iweb.lire(robot, source, depuis)  # type: ignore[arg-type]
         except (ValueError, PageNonLue):
             bruts = None
-    return robot.requetes + 1, bruts
+    return robot.requetes + 2, bruts  # `robots.txt` et la sonde, lus avant l'import
 
 
 MESURES: dict[str, Callable[[_Lecteur, Candidat, Plateforme, date], Mesure]] = {"i-web": _mesurer_iweb}

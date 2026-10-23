@@ -220,11 +220,12 @@ def test_une_variante_ou_une_page_qui_ne_correspond_plus_au_site_est_un_ecart():
 def test_une_commune_au_dela_du_plafond_de_60_requetes_est_un_ecart():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
-    # 3 Séances de la liste dans la fenêtre, et 28 de plus : chacune est lue par son lien stable, redirigé (2 requêtes).
+    # 3 Séances de la liste dans la fenêtre, et 28 de plus : chacune est lue par son lien stable, redirigé (2 requêtes) ;
+    # avec robots.txt, la sonde, la liste et la page des membres (redirigée), 67 requêtes.
     _seances_dans_la_fenetre(reseau, f"{PREVERENGES}/sitzung", 28)
 
     assert _verifier(reseau, horloge, SITE_PREVERENGES) == [
-        "site-5643 (Préverenges) : 66 requêtes au passage ordinaire, au-delà du plafond de 60"
+        "site-5643 (Préverenges) : 67 requêtes au passage ordinaire, au-delà du plafond de 60"
     ]
 
 
