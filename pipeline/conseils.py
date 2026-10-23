@@ -1,10 +1,11 @@
-"""Import des conseils (ADR 0015 et 0017) : les Objets et les Séances d'OpenParlData dans l'archive du dépôt de
-données, un fichier par élément.
+"""Import des conseils (ADR 0010, 0015 et 0017) : les Objets et les Séances d'OpenParlData et des sites des
+communes dans l'archive du dépôt de données, un fichier par élément.
 
 Le passage suit quatre étapes, chacune à sa place :
 
 1. `importer(opd, conseil, depuis)` lit les changements bruts d'un conseil chez OpenParlData, et pour le Grand
-   Conseil les Objets dont un document a changé depuis ;
+   Conseil les Objets dont un document a changé depuis ; pour une source communale (bloc `site`),
+   `sites_communaux.lire_site` lit le site de la commune par le robot communal et rend les mêmes `Bruts` ;
 2. `vers_archive(bruts, archive, genere, communes, corrections)`, fonction pure, les masque (`masquage.py`,
    ADR 0007), rattache les Objets du Grand Conseil aux communes qu'ils nomment (`rattachement.py`, ADR 0016) et les
    normalise en Objets et Séances de l'archive ;
@@ -40,14 +41,15 @@ import re
 import sys
 import time
 from collections.abc import Callable, Collection, Iterable, Mapping
-from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
 
+from bruts import Bruts
 from lecture_conseils import MOTIFS_LECTURE, lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
 from rattachement import (
@@ -59,6 +61,7 @@ from rattachement import (
     porte_sur_le_canton,
     rattacher_objet,
 )
+from robot_communal import Robot
 from schema import (
     RACINE,
     Conseil,
@@ -75,8 +78,9 @@ from schema import (
     Statut,
     lire_sources,
 )
+from sites_communaux import lire_site
 
-API = "https://api.openparldata.ch/v1"
+API ="https://api.openparldata.ch/v1"
 _CONFIG = json.loads((RACINE / "config.json").read_text())
 USER_AGENT = f"VigieVaud-import (+{_CONFIG['depot']}; {_CONFIG['courriel']})"
 INTERVALLE = 1.0  # secondes, au moins, entre deux requêtes
@@ -86,6 +90,7 @@ TAILLE_RELATION = 1000
 RECOUVREMENT = timedelta(days=1)
 PAR_IDENTIFIANTS = 50  # Objets relus par requête (`id=1,2,…`) pour leurs documents tardifs
 FICHIER_IMPORT = "conseils/import.json"
+FUSEAU = ZoneInfo("Europe/Zurich")  # le jour du passage, d'où part la fenêtre d'un site, est celui de Lausanne
 
 # Les demandes de grâce ne sont pas des Objets : elles nomment un particulier. L'exclusion est une liste de types.
 TYPES_ECARTES = frozenset({"Grâce"})
@@ -148,15 +153,6 @@ class OpenParlData:
         reponse = self._http.get(url, params=parametres, headers={"User-Agent": USER_AGENT}, timeout=120)
         reponse.raise_for_status()
         return reponse.json()
-
-
-@dataclass
-class Bruts:
-    """Ce qu'OpenParlData a renvoyé pour un conseil : ses Objets et ses Séances, relations développées."""
-
-    conseil: Conseil
-    objets: list[dict] = field(default_factory=list)
-    seances: list[dict] = field(default_factory=list)
 
 
 def parametres_objets(conseil: Conseil, depuis: date | None) -> dict[str, str]:
@@ -587,16 +583,19 @@ def importer_conseils(
     dus: Collection[str] | None = None,
     rattrapage: bool = False,
     communes: Path = COMMUNES_JSON,
+    robot: Robot | None = None,
 ) -> ImportConseils:
     """Importe chaque conseil déclaré dans `sources` dans `depot`, un clone du dépôt de données, ou seulement ceux
-    dont la clé est dans `dus`. Chaque conseil repart du jour de son dernier import réussi moins un jour de
-    recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
-    `rattrapage`. Un conseil en échec est signalé, garde sa date, et les autres continuent. Le commit et le push
-    sont l'affaire de l'appelant.
+    dont la clé est dans `dus`. Un conseil d'OpenParlData repart du jour de son dernier import réussi moins un jour
+    de recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
+    `rattrapage`. Un conseil dont la source a un bloc `site` est lu sur le site de sa commune par `robot`
+    (`lire_site`), dans la fenêtre du jour à Lausanne, ou en entier pour un `rattrapage`. Un conseil en échec est
+    signalé, garde sa date, et les autres continuent. Le commit et le push sont l'affaire de l'appelant.
 
     Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; un
     `corrections.json` invalide lève `pydantic.ValidationError` avant tout import."""
     genere = horloge().astimezone(UTC).replace(microsecond=0)
+    jour = genere.astimezone(FUSEAU).date()
     repertoire = Repertoire.lire(communes)
     corrections = lire_corrections(depot)
     imports = lire_imports(depot)
@@ -611,7 +610,12 @@ def importer_conseils(
         else:
             debut = depuis or (imports[cle].date() - RECOUVREMENT if cle in imports else None)
         try:
-            bruts = importer(opd, source.conseil, debut)
+            if source.site is not None:
+                if robot is None:
+                    raise ValueError("aucun robot communal pour lire le site de la commune")
+                bruts = lire_site(robot, source, sources.plateformes, jour, rattrapage)
+            else:
+                bruts = importer(opd, source.conseil, debut)
             elements = vers_archive(bruts, archive, genere, repertoire, corrections)
         except Exception as e:
             # Toute erreur, prévue (HTTP, relation tronquée) ou non (réponse d'une forme inattendue), ne vaut
@@ -658,7 +662,8 @@ def main(argv: list[str] | None = None) -> None:
         return
     with httpx.Client() as http:
         opd = OpenParlData(http, horloge)
-        importer_conseils(args.depot.resolve(), lire_sources(args.sources), opd, horloge, args.depuis)
+        robot = Robot(http, horloge)
+        importer_conseils(args.depot.resolve(), lire_sources(args.sources), opd, horloge, args.depuis, robot=robot)
 
 
 if __name__ == "__main__":

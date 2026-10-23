@@ -6,8 +6,32 @@ import type {
 	LigneObjet,
 	Objet,
 	RattachementsCommune,
-	Seance
+	Seance,
+	Source
 } from '#lib/schema.js';
+
+/**
+ * La source d'une commune scrapée, déclarée comme le seront celles des communes i-web dans `sources.json` : par
+ * défaut Préverenges, en séances seulement, sa page de liste des Séances et la page de son conseil.
+ */
+export function sourceSite(champs: Partial<Source> = {}): Source {
+	return {
+		id: 'site-5643',
+		nom: 'Conseil communal de Préverenges (site de la commune)',
+		nom_court: 'Site de Préverenges',
+		attribution: {
+			texte: 'Commune de Préverenges',
+			lien: 'https://www.preverenges.ch/conseil',
+			licence: 'Actes officiels (art. 5 LDA) : métadonnées et liens seulement'
+		},
+		voie_acces: 'cron',
+		fraicheur: 'import',
+		couverture: { communes: [5643], mode: 'scrape' },
+		conseil: { body_key: '5643', donne: ['seances'] },
+		site: { plateforme: 'i-web', variante: 'seances', seances: 'https://www.preverenges.ch/sitzung' },
+		...champs
+	};
+}
 
 /**
  * Faux dépôt de données des conseils, pour les tests : des fabriques de fichiers de lecture et d'archive, typées par

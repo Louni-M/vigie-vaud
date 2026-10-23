@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { commune } from '#tests/faux-canton.js';
+import { sourceSite } from '#tests/faux-conseils.js';
+import { SOURCES } from '#lib/sources.js';
+import { messageIntrouvable } from './cles.js';
 import { coucheConseils } from './index.js';
 
 describe('couche Conseils', () => {
@@ -36,6 +39,25 @@ describe('élément introuvable', () => {
 		['n’importe quoi', 'Aucun objet n° n’importe quoi dans les données d’OpenParlData.']
 	])('%s', (cle, attendu) => {
 		expect(coucheConseils.introuvable?.(cle)).toBe(attendu);
+	});
+
+	it.each([
+		['5643/2026-09-11', 'Aucune séance le 11 septembre 2026 au Conseil communal de Préverenges dans les données du site de Préverenges.'],
+		['5643/12-2026', 'Aucun objet n° 12/2026 au Conseil communal de Préverenges dans les données du site de Préverenges.']
+	])('nomme le site de la commune d’un conseil scrapé : %s', (cle, attendu) => {
+		expect(messageIntrouvable(cle, [...SOURCES, sourceSite()])).toBe(attendu);
+	});
+
+	it('met l’apostrophe typographique au site d’une commune en voyelle', () => {
+		const aigle = sourceSite({
+			id: 'site-5401',
+			nom: "Conseil communal d'Aigle (site de la commune)",
+			nom_court: "Site d'Aigle",
+			conseil: { body_key: '5401', donne: ['seances'] }
+		});
+		expect(messageIntrouvable('5401/2026-10-06', [aigle])).toBe(
+			'Aucune séance le 6 octobre 2026 au Conseil communal d’Aigle dans les données du site d’Aigle.'
+		);
 	});
 });
 

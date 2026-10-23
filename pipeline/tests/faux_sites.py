@@ -5,16 +5,23 @@ de chaque hôte (`adresses`, pour le /24 du robot) et sait répondre ce qu'un si
 statut d'erreur avec ses en-têtes (`Retry-After`), une redirection, une connexion refusée, un délai dépassé. Chaque
 requête est notée dans `journal` avec son URL, son User-Agent et l'heure de l'horloge factice ; `en_vol_max` dit
 combien de requêtes ont été en cours en même temps, au plus.
+
+`echantillon(plateforme, variante)` sert les pages enregistrées par le script d'échantillon (`echantillon-sites/`),
+chacune à son URL, avec la redirection de l'URL demandée vers l'URL finale. Le passage du cron reçoit un seul
+transport : `Reseau.transport(repli)` sert les sites de `adresses` et passe toute autre requête à `repli`, le faux
+OpenParlData.
 """
 
 from __future__ import annotations
 
 import gzip
+import json
 import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
@@ -63,8 +70,15 @@ class Reseau:
     _en_vol: int = 0
     _verrou: threading.Lock = field(default_factory=threading.Lock)
 
-    def transport(self) -> httpx.MockTransport:
-        return httpx.MockTransport(self._repondre)
+    def transport(self, repli: httpx.BaseTransport | None = None) -> httpx.MockTransport:
+        """Le transport du réseau ; avec `repli`, une requête vers un hôte absent de `adresses` lui est passée."""
+
+        def repondre(requete: httpx.Request) -> httpx.Response:
+            if repli is not None and requete.url.host not in self.adresses:
+                return repli.handle_request(requete)
+            return self._repondre(requete)
+
+        return httpx.MockTransport(repondre)
 
     def resoudre(self, hote: str) -> str:
         self.resolutions.append(hote)
@@ -94,3 +108,22 @@ class Reseau:
 
     def heures(self, hote: str | None = None) -> list[datetime]:
         return [r.heure for r in self.journal if hote is None or urlsplit(r.url).hostname == hote]
+
+
+ECHANTILLONS = Path(__file__).resolve().parent / "echantillon-sites"
+
+
+def echantillon(plateforme: str, variante: str) -> dict[str, Page]:
+    """Les pages de l'échantillon d'une variante, par URL : chaque page à son URL finale, servie avec son
+    `Content-Type`, et l'URL demandée qui y redirige. Le corps enregistré est décompressé : une page que le site a
+    servie avec `content-encoding: gzip` est recompressée (`Page.gzip`), sans recopier l'en-tête de l'index."""
+    dossier = ECHANTILLONS / plateforme / variante
+    index = json.loads((dossier / "index.json").read_text(encoding="utf-8"))
+    pages: dict[str, Page] = {}
+    for p in index["pages"]:
+        entetes = {"Content-Type": p["entetes"]["content-type"]}
+        gzip_ = p["entetes"].get("content-encoding", "").lower() == "gzip"
+        pages[p["finale"]] = Page((dossier / p["fichier"]).read_bytes(), p["statut"], entetes, gzip=gzip_)
+        if p["url"] != p["finale"]:
+            pages[p["url"]] = redirection(urlsplit(p["finale"]).path)
+    return pages

@@ -61,10 +61,15 @@ def test_les_trois_conseils_passent_par_le_cron_avec_l_attribution_d_openparldat
             "lien": "https://openparldata.ch",
             "licence": "CC BY 4.0",
         }
-    assert {id: s.conseil.model_dump() for id, s in conseils.items()} == {
+    assert {id: s.conseil.model_dump(exclude_none=True) for id, s in conseils.items()} == {
         "openparldata-vd": {"body_key": "VD", "donne": ["objets", "seances"], "groupe": 1965},
-        "openparldata-5586": {"body_key": "5586", "donne": ["objets", "seances"], "groupe": None},
-        "openparldata-5938": {"body_key": "5938", "donne": ["seances"], "groupe": None},
+        "openparldata-5586": {"body_key": "5586", "donne": ["objets", "seances"]},
+        # Yverdon ne donne que ses Séances : sa note de niveau renvoie à la page du conseil sur le site de la ville.
+        "openparldata-5938": {
+            "body_key": "5938",
+            "donne": ["seances"],
+            "page": "https://www.yverdon-les-bains.ch/vie-politique/conseil-communal",
+        },
     }
 
 

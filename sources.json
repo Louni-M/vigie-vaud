@@ -199,7 +199,11 @@
 			"voie_acces": "cron",
 			"fraicheur": "import",
 			"couverture": { "communes": [5938], "mode": "api" },
-			"conseil": { "body_key": "5938", "donne": ["seances"] },
+			"conseil": {
+				"body_key": "5938",
+				"donne": ["seances"],
+				"page": "https://www.yverdon-les-bains.ch/vie-politique/conseil-communal"
+			},
 			"sonde": {
 				"url": "https://api.openparldata.ch/v1/meetings/?body_key=5938&limit=1&fields=id,begin_date&client=vigie-vaud",
 				"delai": 20,

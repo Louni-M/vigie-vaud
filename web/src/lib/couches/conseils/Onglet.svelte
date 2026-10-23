@@ -4,8 +4,8 @@
 	 * badges et, pour une commune que la couche ne couvre pas, « Non couvert » en tête ; il remonte l'onglet quand on
 	 * change de fiche. Le conseil est lu dans `conseils/index.json`.
 	 *
-	 * Commune dont le conseil est couvert : le nom du conseil (et, s'il ne donne que ses Séances, « OpenParlData ne
-	 * donne que ses séances »), l'en-tête de séance, « Objets récents », « Séances passées », puis, après un
+	 * Commune dont le conseil est couvert : le nom du conseil (et, s'il ne donne que ses Séances, la note « Séances
+	 * seulement : les objets sont sur le site de la commune › », `noteDeNiveau`), l'en-tête de séance, « Objets récents », « Séances passées », puis, après un
 	 * séparateur, « Au Grand Conseil ». Commune non couverte : « Au Grand Conseil » seul, sous « Non couvert ».
 	 *
 	 * Fiche du Grand Conseil : l'en-tête de séance, « Objets récents » avec les puces « Tous · Nomment une commune ·
@@ -22,7 +22,9 @@
 	import { conseils } from './donnees.js';
 	import { coucheConseils } from './index.js';
 	import ObjetsRecents from './ObjetsRecents.svelte';
+	import { SOURCES } from '#lib/sources.js';
 	import SeancesPassees from './SeancesPassees.svelte';
+	import { noteDeNiveau } from './source.js';
 	import TeteSeance from './TeteSeance.svelte';
 
 	let { ctx }: { ctx: Contexte<undefined> } = $props();
@@ -54,8 +56,15 @@
 		{/if}
 	{:else}
 		{#if conseil}
+			{@const source = SOURCES.find((s) => s.id === conseil.source)}
+			{@const note = source && noteDeNiveau(source)}
 			<h3>{conseil.nom}</h3>
-			{#if !conseil.donne.includes('objets')}<p class="note">OpenParlData ne donne que ses séances.</p>{/if}
+			{#if note}
+				<p class="note">
+					{note.niveau} :
+					{#if note.lien}<a href={note.lien} target="_blank" rel="noopener">{note.suite}</a>{:else}{note.suite}{/if}
+				</p>
+			{/if}
 			<TeteSeance {conseil} {ouvrir} />
 			{#if conseil.donne.includes('objets')}<ObjetsRecents {conseil} {ouvrir} />{/if}
 			{#if conseil.donne.includes('seances')}<SeancesPassees {conseil} {ouvrir} />{/if}

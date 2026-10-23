@@ -500,7 +500,45 @@ export interface PointOrdreDuJour {
  */
 export interface FichierSources {
 	$schema?: string | null;
+	/**
+	 * Les plateformes retenues, que citent les blocs `site` des sources communales.
+	 */
+	plateformes?: Plateforme[];
 	sources: Source[];
+}
+/**
+ * Une plateforme retenue : le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes.
+ */
+export interface Plateforme {
+	/**
+	 * Identifiant cité par le bloc `site` des sources (`i-web`).
+	 */
+	id: string;
+	/**
+	 * Nom affiché par la page Couverture et l'À propos.
+	 */
+	nom: string;
+	editeur: string;
+	/**
+	 * @minItems 1
+	 */
+	variantes: [Variante, ...Variante[]];
+}
+export interface Variante {
+	/**
+	 * Identifiant de la variante dans sa plateforme (`seances`).
+	 */
+	id: string;
+	/**
+	 * Marqueur que la sonde cherche sur la page de liste des Séances d'une commune.
+	 */
+	marqueur: string;
+	/**
+	 * Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`["seances"]` : séances seulement).
+	 *
+	 * @minItems 1
+	 */
+	niveaux: [[DonneeConseil, ...DonneeConseil[]], ...[DonneeConseil, ...DonneeConseil[]][]];
 }
 export interface Source {
 	/**
@@ -531,6 +569,10 @@ export interface Source {
 	 * Le conseil que donne la source, importé par le cron.
 	 */
 	conseil?: Conseil | null;
+	/**
+	 * Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData.
+	 */
+	site?: Site | null;
 }
 export interface Attribution {
 	/**
@@ -573,7 +615,8 @@ export interface Sonde {
 	jamais_vide?: boolean;
 }
 /**
- * Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc.
+ * Un conseil importé par le cron : exposé par OpenParlData, ou lu sur le site de sa commune quand la source a un
+ * bloc `site`. Le cron importe chaque source qui a ce bloc.
  */
 export interface Conseil {
 	/**
@@ -581,13 +624,42 @@ export interface Conseil {
 	 */
 	body_key: string;
 	/**
-	 * Ce que le conseil donne : ses Objets, ses Séances, ou les deux.
+	 * Ce que le conseil donne : ses Objets, ses Séances, ou les deux. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import.
 	 *
 	 * @minItems 1
 	 */
 	donne: [DonneeConseil, ...DonneeConseil[]];
 	/**
+	 * Page du conseil sur le site de sa commune, vers laquelle renvoie la note de niveau d'un conseil qui ne donne pas tout et n'a pas de bloc `site` (Yverdon) ; une commune scrapée renvoie à `site.seances`.
+	 */
+	page?: Lien | null;
+	/**
 	 * `group_id` des Séances à importer : celui du Grand Conseil écarte les Séances du Conseil d'État.
 	 */
 	groupe?: number | null;
+}
+/**
+ * Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.
+ */
+export interface Site {
+	/**
+	 * Identifiant de la plateforme, déclarée dans `plateformes`.
+	 */
+	plateforme: string;
+	/**
+	 * Identifiant de la variante, déclarée dans sa plateforme.
+	 */
+	variante: string;
+	/**
+	 * Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée.
+	 */
+	seances: string;
+	/**
+	 * Page de liste des Objets ou des préavis, selon la variante.
+	 */
+	objets?: Lien | null;
+	/**
+	 * Page des membres du conseil, en HTML ; absente si le site n'en a pas.
+	 */
+	membres?: Lien | null;
 }

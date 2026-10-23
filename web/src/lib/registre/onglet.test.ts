@@ -6,6 +6,9 @@ import type { Source } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
 import type { CoucheInscrite } from './types.js';
 import { commune } from '#tests/faux-canton.js';
+import { sourceSite } from '#tests/faux-conseils.js';
+import { libelleBadge } from '#lib/fraicheur.js';
+import { dernierImport } from '#lib/imports-conseils.js';
 
 const LAUSANNE = commune(5586, 'Lausanne', [6.58, 46.5, 6.72, 46.6]);
 const BUSSIGNY = commune(5624, 'Bussigny', [6.53, 46.54, 6.57, 46.57]);
@@ -39,6 +42,20 @@ describe('badges sous le nom d’un onglet', () => {
 
 		expect(noms(couche, 5590, sources)).toEqual(['a', 'b']);
 		expect(noms(couche, 5586, sources)).toEqual(['b']);
+	});
+
+	it('dans une commune scrapée, le site de la commune, importé comme un conseil d’OpenParlData', () => {
+		const site = sourceSite();
+		const sources = [...SOURCES, site];
+		const couche = { ...coucheConseils, sources: [...coucheConseils.sources, site.id] };
+		const imports = { version: 1 as const, genere: '2026-10-23T05:17:00Z', conseils: { '5643': '2026-10-23T05:17:00Z' } };
+		const maintenant = new Date('2026-10-23T11:30:00Z');
+
+		const badges = sourcesDeLOnglet(couche, sources, 5643).map((s) =>
+			libelleBadge(s, { derniere: dernierImport(imports, s), erreur: null }, maintenant)
+		);
+
+		expect(badges).toEqual(['importé il y a 6 h · Site de Préverenges', 'dernier import inconnu · Grand Conseil']);
 	});
 
 	it('dans une fiche propre, seulement les sources qui portent sur tout le canton', () => {
