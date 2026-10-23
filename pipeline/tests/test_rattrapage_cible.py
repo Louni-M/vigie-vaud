@@ -111,6 +111,16 @@ def test_le_rattrapage_d_une_plateforme_lit_toutes_ses_communes_et_seulement_ell
     assert "site-5999" not in _lire(tmp_path, "etat-sources.json")["sources"]
 
 
+def test_un_rattrapage_ne_signale_pas_en_echec_les_communes_qu_il_ne_tente_pas(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    monde = _monde(horloge)
+
+    issues = _passer(tmp_path, horloge, reseau, _sources(), monde=monde, heure=T0, rattrapage_cible="5643")
+
+    # Blonay - Saint-Légier et Exemple n'ont jamais été importés, mais ce rattrapage ne les visait pas.
+    assert issues.signalements == []
+
+
 def test_le_rattrapage_d_openparldata_ne_touche_aucun_site(tmp_path, horloge):
     reseau = _reseau(horloge)
 
