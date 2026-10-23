@@ -79,19 +79,20 @@ class IssuesFactices:
     def retour(self, source, panne, etat):
         self.signalements.append(("retour", source.id, panne.depuis.isoformat(), etat.depuis.isoformat()))
 
-    def plateformes_signalees(self, plateformes):
+    def plateformes_signalees(self, sorte, plateformes):
         return None
 
-    def panne_plateforme(self, plateforme, pannes):
-        listees = [(s.id, e.depuis.isoformat()) for s, e in pannes]
-        self.signalements.append(("panne_plateforme", plateforme.id, listees))
+    def plateforme_touchee(self, sorte, plateforme, communes):
+        listees = [(s.id, detail) for s, detail in communes]
+        self.signalements.append(("plateforme_touchee", sorte.etiquette, plateforme.id, listees))
 
-    def liste_plateforme(self, plateforme, pannes, revenues):
-        listees = [(s.id, e.depuis.isoformat()) for s, e in pannes]
-        self.signalements.append(("liste_plateforme", plateforme.id, listees, [s.id for s in revenues]))
+    def liste_plateforme(self, sorte, plateforme, communes, revenues):
+        listees = [(s.id, detail) for s, detail in communes]
+        revenues = [s.id for s in revenues]
+        self.signalements.append(("liste_plateforme", sorte.etiquette, plateforme.id, listees, revenues))
 
-    def retour_plateforme(self, plateforme, revenues):
-        self.signalements.append(("retour_plateforme", plateforme.id, [s.id for s in revenues]))
+    def retour_plateforme(self, sorte, plateforme, revenues):
+        self.signalements.append(("retour_plateforme", sorte.etiquette, plateforme.id, [s.id for s in revenues]))
 
     def imports_signales(self, conseils):
         return None
