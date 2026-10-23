@@ -496,7 +496,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     jour = datetime.now(ZoneInfo("Europe/Lausanne")).date()
     with httpx.Client() as http:
-        robot = Robot(http, lambda: datetime.now(UTC), time.sleep, socket.gethostbyname)
+        robot = Robot(
+            http, lambda: datetime.now(UTC), time.sleep, socket.gethostbyname,
+            intervalles={r.reseau: r.intervalle for r in fichier.reseaux},  # ralentissements faits à la main
+        )
         if args.verifier:
             ecarts = verifier(robot, fichier, plateforme.id, jour)
             for e in ecarts:

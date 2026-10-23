@@ -12,7 +12,7 @@ import { chargerEtatSources, lienIssuePlateforme, lienPannes, lireEtatSources } 
 import type { CoucheInscrite } from './registre/types.js';
 import { COUCHES } from './registre/couches.js';
 import type { EtatSource, EtatSources, Plateforme, RaisonNonCouvert, Source } from './schema.js';
-import { SOURCES } from './sources.js';
+import { PLATEFORMES, SOURCES } from './sources.js';
 import communesJ0 from '../../static/communes.json';
 import { avecSources, sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 
@@ -346,7 +346,7 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 				'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'
 			]);
 			// La fiche de sa plateforme, faute d'encart, dit ce que la sonde a mesuré.
-			expect(d.plateformes[0].communes[0].sonde).toEqual(panne);
+			expect(d.plateformes[0].communes.find((x) => x.source.id === 'site-5643')?.sonde).toEqual(panne);
 			// Une panne ne grise rien.
 			expect(d.couvre('conseils', 5643)).toBe(true);
 		});
@@ -446,13 +446,28 @@ describe('encarts de la page Couverture : un par source', () => {
 	const encart = (id: string) => c.sources.find((s) => s.source.id === id)!;
 
 	it('a un encart par source des couches Permis, Conseils et Routes, Grand Conseil compris', () => {
-		const ids = c.sources.map((s) => s.source.id);
-		expect(ids.slice(0, 4)).toEqual(['camac-permis', 'openparldata-vd', 'openparldata-5586', 'openparldata-5938']);
-		expect(ids.at(-1)).toBe('dgmr-restrictions');
-		// Une par commune i-web couverte, dans l'ordre de sources.json ; aucune pour une commune non couverte.
-		expect(ids.slice(4, -1)).toHaveLength(25);
-		expect(ids.slice(4, -1).every((id) => id.startsWith('site-'))).toBe(true);
-		expect(ids).not.toContain('site-5568');
+		// Les communes scrapées n'ont pas d'encart : elles sont dans la fiche de leur plateforme.
+		expect(c.sources.map((s) => s.source.id)).toEqual([
+			'camac-permis',
+			'openparldata-vd',
+			'openparldata-5586',
+			'openparldata-5938',
+			'dgmr-restrictions'
+		]);
+	});
+
+	it('a la fiche i-web des communes déclarées dans sources.json, couvertes et non couvertes', () => {
+		const d = deduireCouverture({
+			sources: SOURCES,
+			etat: null,
+			couches: COUCHES,
+			communes: communesJ0,
+			plateformes: PLATEFORMES,
+			maintenant: MAINTENANT
+		});
+		expect(d.plateformes.map((p) => libellePlateforme(p, false))).toEqual([
+			'i-web : 25 communes couvertes, 3 non couvertes'
+		]);
 	});
 
 	it('donne à l’encart de la DGMR tout le canton et sa ligne Limites', () => {
@@ -546,10 +561,12 @@ describe('fiche par plateforme de la page Couverture', () => {
 		echecs_consecutifs: 2,
 		motif: 'marqueur absent'
 	};
+	// Les sources réelles sans leurs communes scrapées, pour que la fiche ne compte que celles du test.
+	const reelles = SOURCES.filter((x) => !x.site);
 	const communes = (...s: Source[]) =>
 		deduireCouverture({
-			sources: [...SOURCES, ...s],
-			etat: etat(Object.fromEntries([...SOURCES.map((x) => [x.id, disponible]), ['site-5643', panne], ['site-5892', disponible]])),
+			sources: [...reelles, ...s],
+			etat: etat(Object.fromEntries([...reelles.map((x) => [x.id, disponible]), ['site-5643', panne], ['site-5892', disponible]])),
 			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, ...s.map((y) => y.id)] } : x)),
 			communes: communesJ0,
 			plateformes: [IWEB, QUICKSITE],
