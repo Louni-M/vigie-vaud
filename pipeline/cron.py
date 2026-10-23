@@ -746,8 +746,8 @@ def importer_les_conseils(
     rattrapes: Collection[str] | None = None,
     sautes: Mapping[str, str] | None = None,
 ) -> None:
-    """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique), puis accorde
-    les issues `import-conseils` aux dates d'import. `sautes` donne, par clé, les conseils dont le site n'est pas lu
+    """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique), puis, hors
+    rattrapage, accorde les issues `import-conseils` et `a-verifier` aux dates d'import. `sautes` donne, par clé, les conseils dont le site n'est pas lu
     à ce passage et pourquoi (sonde en échec, `Crawl-delay` trop long) : leur import du jour est sauté, ce qui vaut un
     import en échec ordinaire. Seules les sondes
     décident d'une panne : l'import ne touche pas à l'état des sources, et une erreur de l'API des issues est
@@ -775,6 +775,10 @@ def importer_les_conseils(
             print("Import des conseils en échec, le passage suivant réessaiera :", file=sys.stderr)
             traceback.print_exc()
 
+    if rattrapes is not None:
+        # Un rattrapage ne lit que les conseils visés : les autres, qu'il ne tente pas, n'y sont pas en échec. Le
+        # passage ordinaire suivant accorde les issues.
+        return
     try:
         _accorder_issues_import(issues, sources, avant, apres, heure)
     except httpx.HTTPError as e:
