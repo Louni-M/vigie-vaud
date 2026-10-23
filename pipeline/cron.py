@@ -16,7 +16,9 @@ est refait au passage suivant. Le site d'une commune est sondé une fois par jou
 en échec saute l'import et est refaite au passage suivant. Quand aucun import d'un conseil n'a réussi depuis plus de
 24 h, ou dès le premier échec d'un conseil qui n'a jamais été importé, le passage ouvre son issue `import-conseils`,
 qu'il commente et ferme au premier import réussi. Seules les sondes mettent une source en panne : un import en échec
-ne touche pas à l'état des sources.
+ne touche pas à l'état des sources. Pour les communes scrapées, l'issue `import-conseils` est aussi celle de leur
+plateforme (« Import en échec : i-web »), comme l'issue `a-verifier` (« À vérifier : i-web »), qui liste les conseils
+sans aucune nouvelle Séance, tenue ou annoncée, depuis 9 mois.
 
 En local, contre un clone du dépôt de données (depuis `pipeline/`) :
 
@@ -95,8 +97,8 @@ Touchee = tuple[Source, str]
 
 
 class ClientIssues(Protocol):
-    """Les issues `panne-source` du dépôt de données : `IssuesGitHub` en production, `IssuesAffichees` sans push.
-    Une erreur de l'API lève `httpx.HTTPError`."""
+    """Les issues `panne-source`, `import-conseils` et `a-verifier` du dépôt de données : `IssuesGitHub` en
+    production, `IssuesAffichees` sans push. Une erreur de l'API lève `httpx.HTTPError`."""
 
     def signalees(self, sources: list[Source]) -> set[str] | None:
         """Identifiants des `sources` qui ont une issue `panne-source` ouverte, ou `None` pour un client qui ne voit
@@ -221,8 +223,8 @@ A_VERIFIER = SorteIssue(
 
 
 class IssuesGitHub:
-    """Client d'issues du cron : il ouvre et ferme les issues `panne-source` et `import-conseils` du dépôt de
-    données `depot` (« propriétaire/nom ») avec le `GITHUB_TOKEN` de ce dépôt (ADR 0014)."""
+    """Client d'issues du cron : il ouvre et ferme les issues `panne-source`, `import-conseils` et `a-verifier` du
+    dépôt de données `depot` (« propriétaire/nom ») avec le `GITHUB_TOKEN` de ce dépôt (ADR 0014)."""
 
     def __init__(self, client: httpx.Client, depot: str, jeton: str) -> None:
         self._client = client

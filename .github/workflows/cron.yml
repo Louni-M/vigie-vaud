@@ -48,7 +48,7 @@ jobs:
       - name: Installer le pipeline
         run: uv sync --locked --no-dev --project code/pipeline
 
-      # Les issues `panne-source` et `import-conseils` s'ouvrent dans le dépôt de données (`GITHUB_REPOSITORY`,
+      # Les issues `panne-source`, `import-conseils` et `a-verifier` s'ouvrent dans le dépôt de données (`GITHUB_REPOSITORY`,
       # celui du déclencheur) avec son `GITHUB_TOKEN`, que `cron.py` lit dans l'environnement.
       - name: Passage du cron
         env:
