@@ -292,6 +292,19 @@ class ImportConseils(Enveloppe):
     )
 
 
+class MembresConseil(Enveloppe):
+    """`conseils/<conseil>/membres.json` : les élu·e·s connu·e·s d'un conseil scrapé, que le masquage épargne
+    (ADR 0007) : vu·e·s sur la page des membres du conseil ou comme contributeur·rice·s d'un Objet autre qu'une
+    pétition. La liste ne fait que s'allonger : un nom qui disparaît de la page y reste. Publique, en clair, sans
+    limite de durée. Les conseils d'OpenParlData n'en ont pas : leurs élu·e·s connu·e·s sont tiré·e·s de l'archive."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    conseil: CleConseil = Field(description="Le conseil (`body_key` en minuscules : le n° OFS de la commune).")
+    membres: list[str] = Field(
+        description="Noms complets, « Prénom Nom », triés sans tenir compte des accents ni de la casse."
+    )
+
+
 # --- Archive des conseils (conseils/<conseil>/objets|seances/*.json, dépôt de données ; ADR 0017) --------------
 
 CleElement = TypeAliasType("CleElement", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+/[^/\s]+$")])
@@ -548,6 +561,7 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "enveloppe": Enveloppe,
     "etat-sources": EtatSources,
     "import-conseils": ImportConseils,
+    "membres-conseil": MembresConseil,
     "objet": Objet,
     "seance": Seance,
     "liste-objets": ListeObjets,

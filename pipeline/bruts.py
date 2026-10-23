@@ -11,8 +11,10 @@ from schema import Conseil
 @dataclass
 class Bruts:
     """Les Objets (*affairs*) et les Séances (*meetings*) d'un conseil, relations développées, à la forme
-    d'OpenParlData : un site communal rend la même forme, réduite aux champs que l'import lit."""
+    d'OpenParlData : un site communal rend la même forme, réduite aux champs que l'import lit. `membres` : les noms
+    complets (« Prénom Nom ») lus sur la page des membres d'un conseil scrapé ; vide pour OpenParlData."""
 
     conseil: Conseil
     objets: list[dict] = field(default_factory=list)
     seances: list[dict] = field(default_factory=list)
+    membres: list[str] = field(default_factory=list)
