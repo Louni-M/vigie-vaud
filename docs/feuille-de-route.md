@@ -37,7 +37,7 @@ météo, radios, accidents.
 | **J0 Socle** | Renommage, licence, registre des couches, fiche commune à onglets (seulement ceux des couches présentes), hôtels de ville, dépôt de données et cron (qui surveille les sources pour la Couverture), page Couverture, badges de fraîcheur, permis migrés en couche, suppression du code de la version hébergée ; à la fin, dépôt rendu public sous le nom `vigie-vaud` et GitHub Pages activé. Décisions : carte [#1](https://github.com/Louni-M/CyberSwissNews/issues/1) |
 | **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal |
 | **J2 Routes** | Restrictions de circulation DGMR en cours et à venir |
-| **J3 Conseils communaux** | Scrapers des sites communaux pour couvrir le plus de communes possible dans la couche Conseils, plateforme par plateforme : i-web, Quicksite (avec Montreux et Vevey), Webcommunes et COMMUNEapp, publiés l'un après l'autre (environ 80 communes et 230 000 habitants) ; une commune est couverte dès ses Séances. Décisions : carte « J3 Conseils communaux spécifié » |
+| **J3 Conseils communaux** | Scrapers des sites communaux pour couvrir le plus de communes possible dans la couche Conseils, plateforme par plateforme : i-web, Quicksite (avec Montreux et Vevey), Webcommunes et COMMUNEapp, publiés l'un après l'autre, en une étape de J3 par plateforme, chacune avec sa branche et sa PR (environ 80 communes et 230 000 habitants) ; une commune est couverte dès ses Séances. Décisions : carte « J3 Conseils communaux spécifié » ; spécification [#144](https://github.com/Louni-M/vigie-vaud/issues/144) |
 | **J4 Trains** | Panneau des perturbations CFF filtré sur Vaud ; gares sur la carte, départs et retards au clic |
 | **J5 Presse et incidents** | Flux RSS via le cron ; couche « Incidents » tirée des communiqués de police et rattachée aux communes |
 | **J6 Météo** | Mesures actuelles MétéoSuisse ; prévisions Open-Meteo dans la fiche ; pas d'alertes officielles (pas en données ouvertes), lien vers MétéoSuisse à la place |
@@ -56,8 +56,8 @@ météo, radios, accidents.
       et statut ;
     - le lien vers le PDF.
   - Chaque scraper est testé sur des pages HTML enregistrées.
-  - En production, un résultat vide ou un format inattendu ouvre une **issue GitHub** et passe la commune « en
-    panne » sur la page Couverture.
+  - Pannes, sondes et issues suivent les règles de J3 (ADR-0010) : seules les sondes décident d'une panne, et les
+    issues s'ouvrent par plateforme.
   - Le format compatible avec OpenParlData permet de leur proposer ces scrapers (le contact est pris par Loulou).
 - **Statuts et auteur·e·s des Objets communaux tirés des PDF** (règles fixes, OCR ou IA) : les scrapers de J3
   ne lisent que le HTML et les noms de fichiers.
