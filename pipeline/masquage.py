@@ -1,17 +1,24 @@
 """Masquage des noms de particuliers par le cron (ADR 0007), avant tout commit dans le dépôt de données.
 
 C'est la version du cron de `web/src/lib/masquage.ts` (`masquerNoms`), elle-même portage de `mask_names` (étiquette
-`chantiers-hebergee`) : mêmes expressions, mêmes cas. Elle n'y ajoute que deux choses, pour les conseils :
+`chantiers-hebergee`) : mêmes expressions, mêmes cas. Elle n'y ajoute que ces règles, pour tous les conseils (Grand
+Conseil, Lausanne et Yverdon compris) :
 
 - les **élu·e·s connu·e·s** du conseil, nommé·e·s en vertu de leur mandat, sont épargné·e·s. Une personne n'est
   épargnée que si son nom entier est celui d'un·e élu·e (à la casse et aux accents près) : un homonyme partiel est
-  masqué ;
+  masqué, sauf le nom partiel en contexte d'élu·e (ci-dessous) ;
 - les **auteur·e·s d'une pétition** sont masqué·e·s même sans civilité, comme Lausanne les nomme (« Pétition de
   Exemple Paul et crts », « Pétition déposée le 7 mai 2024 de Julie Modèle et crts : »), sauf élu·e connu·e ou entité ;
 - les **pétitionnaires que la source connaît** (prénom et nom des contributeurs d'une pétition) sont masqué·e·s dans
   les textes de leur pétition sous toutes leurs formes : nom de fichier en snake_case
   (« 2025_08_rp_petition_paul_exemple_parc.pdf »), sans civilité ni « Pétition de » (« par Exemple Paul et crts »,
   « (Paul Exemple) »), nom de famille seul (« rapport pétition Exemple.pdf »), sauf élu·e connu·e ;
+- un **nom partiel** après une civilité (« (Rapp. M. Exemple) », « Interpellation de M. C. Exemple ») reste quand
+  un·e élu·e connu·e porte ce nom de famille, avec la même initiale s'il y en a une, et qu'un contexte d'élu·e le
+  précède (« Rapp. », rapporteur·e, interpellation, postulat, motion, question, conseiller·ère, consorts) ; sinon,
+  il est masqué : dans un village, un opposant porte souvent le nom d'un·e élu·e ;
+- un nom **sans civilité** est masqué comme après une civilité, sauf entité ou élu·e connu·e, après un
+  **déclencheur** : « succession de », « hoirie », « feu », « legs de », « opposition de », « acquéreur » ;
 - les **coordonnées** deviennent « [coordonnées] » : tout téléphone suisse et tout courriel, partout, et l'adresse
   postale (voie et numéro, NPA et localité) qui suit un particulier masqué (« de [particulier] - Chemin des
   Lilas 46 - 1004 Lausanne - 079 … : »). Ailleurs, une adresse est celle d'une entité ou d'un immeuble, sujet de
@@ -63,10 +70,31 @@ PETITION_RE = re.compile(
     r"(?=\s+et\s+(?:crts|consorts)\b|\s*[-:,;.(«\"“]|\s+d[ée]pos[ée]e?\b|\s*$)"
 )
 ENTRE_PETITIONNAIRES = re.compile(r"((?:\s+et|,)\s+)")
+# Les déclencheurs d'un nom sans civilité, masqué comme après une civilité : les préavis de succession, de legs, de
+# vente et d'aménagement nomment des particuliers (« Succession de Paul Exemple », « Hoirie Exemple », « opposition de
+# Exemple Paul et Modèle Zoé », « acquéreur : Paul Exemple »).
+DECLENCHEUR = (
+    r"(?i:\b(?:(?:successions?|legs|oppositions?)\s+(?:de\s+|d[’'])|hoiries?\s+(?:de\s+|d[’'])?"
+    r"|feue?\s+|acqu[ée]r(?:eur|euse)(?:·euse)?(?:·?s)?\s*[:,]?\s*))"
+)
 # Un collectif qui signe une pétition reste nommé, comme une entité.
 COLLECTIF_RE = re.compile(r"^(?:Collectif|Comité|Habitant[e·]*s|Riverain[e·]*s|Parents|Amis|Groupement|Mouvement|Pro)\b")
 # Entre le prénom et le nom d'un·e pétitionnaire connu·e, ou dans un nom composé : espace, tiret ou souligné.
 ENTRE_LES_NOMS = r"[\s_-]+"
+# Le contexte d'élu·e qui permet de garder un nom partiel (« (Rapp. M. Exemple) », « Interpellation urgente de
+# Mme Exemple ») : un de ces mots, puis rien que des mots en minuscules, des numéros ou de la ponctuation jusqu'à la
+# civilité, jamais un autre nom. « et consorts » ou « et crts » après le nom en est un aussi, hors d'une pétition.
+CONTEXTE_D_ELU = (
+    r"(?i:\brapp\.|\b(?:rapporteur|rapporteuse|rapportrice|interpellation|postulat|motion|question|"
+    r"conseill(?:er|[eè]re)(?:·[eè]re)?|consorts)s?(?!\w))"
+)
+CONTEXTE_AVANT_RE = re.compile(
+    rf"{CONTEXTE_D_ELU}(?:\s*[:,(–-]|\s+(?:[a-zà-öø-ÿœ]+[’']?|[a-zà-öø-ÿœ]*\d[\w/.-]*|n[°o]))*\s*$"
+)
+CONSORTS_APRES_RE = re.compile(r"^\s+et\s+(?:consorts|crts)\b")
+PETITION_AVANT_RE = re.compile(r"(?i:p[ée]tition)")
+# Un nom partiel : des initiales (« J. », « J.-P. »), puis le nom de famille.
+INITIALE_RE = re.compile(r"^[A-ZÀ-Ý]\.(?:-[A-ZÀ-Ý]\.)?$")
 # Un nom de famille plus court n'est masqué qu'avec le prénom : seul, ce serait un mot (« Do », « Py »).
 NOM_SEUL_MIN = 3
 # Un téléphone suisse, sous toutes ses formes : « 079 000 00 00 », « 021/000.00.00 », « +41 79 000 00 00 », « 0041 21… ».
@@ -80,6 +108,9 @@ VOIE = (
     r"(?i:chemin|ch\.|rue|ruelle|avenue|av\.|route|rte|place|pl\.|boulevard|bd|quai|all[ée]e|sentier|impasse|"
     r"passage|promenade|escaliers|mont[ée]e|chauss[ée]e|esplanade|clos|square|faubourg|grand-rue)"
 )
+# Après un déclencheur, une adresse n'est pas un nom de plus (« Opposition de Paul Exemple, Chemin des Lilas 2 »).
+PERSONNE_HORS_VOIE = rf"(?!{VOIE}\s){PERSONNE}"
+DECLENCHEUR_RE = re.compile(rf"({DECLENCHEUR})({PERSONNE_HORS_VOIE}(?:(?:\s+et|,)\s+{PERSONNE_HORS_VOIE})*)")
 FIN_DE_PARTIE = r"(?=\s+[-–]\s|\s*[,:;«»()\"“]|\s*$)"
 DANS_LA_PARTIE = r"(?:(?!\s[-–]\s)[^,:;«»()\"“])"
 PARTIE_D_ADRESSE = (
@@ -95,18 +126,23 @@ COORDONNEES_APRES_RE = re.compile(
 
 def masquer(titre: str, elus: Iterable[str] = (), petitionnaires: Iterable[tuple[str, str]] = ()) -> str:
     """`titre`, les noms de particuliers remplacés par « [particulier] ». Les noms de `elus` (noms complets, tels
-    que les contributeurs des Objets les donnent) restent. `petitionnaires` (prénom, nom de famille) : les
+    que les contributeurs des Objets les donnent, « Prénom Nom ») restent, et leurs noms de famille dans un contexte
+    d'élu·e. `petitionnaires` (prénom, nom de famille) : les
     pétitionnaires que la source connaît, masqué·e·s où qu'ils ou elles soient nommé·e·s, sauf élu·e connu·e."""
     connus = {_cle(e) for e in elus if e.strip()}
+    noms_de_famille = _noms_de_famille(connus)
 
     def personne(m: re.Match) -> str:
         parties = ENTRE_PERSONNES.split(m[2])
-        noms = parties[0::2]
-        if all(_cle(n) in connus for n in noms):
+        en_contexte = _en_contexte_d_elu(m.string[: m.start()], m.string[m.end() :])
+        garde = [
+            _cle(n) in connus or (en_contexte and _nom_partiel_connu(n, noms_de_famille)) for n in parties[0::2]
+        ]
+        if all(garde):
             return m[0]
-        if not any(_cle(n) in connus for n in noms):
+        if not any(garde):
             return MASQUE
-        return m[1] + "".join(p if i % 2 or _cle(p) in connus else MASQUE for i, p in enumerate(parties))
+        return m[1] + "".join(p if i % 2 or garde[i // 2] else MASQUE for i, p in enumerate(parties))
 
     def compte(m: re.Match) -> str:
         parties = re.split(r"(\s-\s)", m[2])
@@ -118,7 +154,7 @@ def masquer(titre: str, elus: Iterable[str] = (), petitionnaires: Iterable[tuple
                 parties[i] = MASQUE
         return m[1] + "".join(parties)
 
-    def petition(m: re.Match) -> str:
+    def sans_civilite(m: re.Match) -> str:
         parties = ENTRE_PETITIONNAIRES.split(m[2])
         garde = [_cle(p) in connus or bool(ENTITE_RE.search(p) or COLLECTIF_RE.search(p)) for p in parties[0::2]]
         if not any(garde):
@@ -133,7 +169,8 @@ def masquer(titre: str, elus: Iterable[str] = (), petitionnaires: Iterable[tuple
     s = re.sub(r"\bS\.?\s?à\s?r\.?\s?l\.?(?!\w)", "Sàrl", s, flags=re.I)
     # Civilités d'abord (« M. Dupont ») : le point de « M. » couperait sinon le segment « pour le compte de ».
     s = CIVILITE_RE.sub(personne, s)
-    s = PETITION_RE.sub(petition, s)
+    s = PETITION_RE.sub(sans_civilite, s)
+    s = DECLENCHEUR_RE.sub(sans_civilite, s)
     s = COMPTE_RE.sub(compte, s)
     s = _masquer_petitionnaires(s, petitionnaires, connus)
     return COORDONNEES_APRES_RE.sub(lambda m: m[1] + COORDONNEES, s)
@@ -163,6 +200,38 @@ def _masquer_petitionnaires(s: str, petitionnaires: Iterable[tuple[str, str]], c
         morceaux += [s[fin : m.start()], MASQUE]
         fin = m.end()
     return "".join(morceaux) + s[fin:]
+
+
+def _en_contexte_d_elu(avant: str, apres: str) -> bool:
+    """Un contexte d'élu·e entoure-t-il la civilité ? `avant` et `apres` : le texte qui la précède et celui qui suit
+    ses noms."""
+    if CONTEXTE_AVANT_RE.search(avant[-120:]):
+        return True
+    return bool(CONSORTS_APRES_RE.match(apres)) and not PETITION_AVANT_RE.search(avant)
+
+
+def _noms_de_famille(connus: Iterable[str]) -> dict[str, set[str]]:
+    """Les noms de famille possibles des élu·e·s connu·e·s (« Prénom Nom », comme les contributeurs des Objets), chacun
+    avec les prénoms qui le précèdent : « anne-laure metraux » donne « metraux » → {« anne-laure »}. Un nom composé
+    donne chacune de ses fins (« marie dupont lambert » : « dupont lambert » et « lambert »)."""
+    noms: dict[str, set[str]] = {}
+    for elu in connus:
+        mots = elu.split()
+        for k in range(1, len(mots)):
+            noms.setdefault(" ".join(mots[k:]), set()).add(" ".join(mots[:k]))
+    return noms
+
+
+def _nom_partiel_connu(nom: str, noms_de_famille: dict[str, set[str]]) -> bool:
+    """`nom` (« Exemple », « C. Exemple », « J.-P. Exemple ») est-il le nom de famille d'un·e élu·e connu·e, avec la
+    même initiale s'il en a une ?"""
+    mots = nom.split()
+    initiales = []
+    while mots and INITIALE_RE.match(mots[0]):
+        initiales += [_cle(c) for c in re.findall(r"\w", mots.pop(0))]
+    if not mots or (prenoms := noms_de_famille.get(_cle(" ".join(mots)))) is None:
+        return False
+    return any([p[0] for p in re.split(r"[\s-]+", prenom)][: len(initiales)] == initiales for prenom in prenoms)
 
 
 def _motif(nom: str) -> str:
