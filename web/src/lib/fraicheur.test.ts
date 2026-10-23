@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { libelleBadge, messageEchec } from './fraicheur.js';
+import { libelleBadge, libelleBadgeSites, messageEchec } from './fraicheur.js';
 
 /** Horloge fixée : 15 octobre 2026, 10 h UTC. */
 const maintenant = new Date('2026-10-15T10:00:00Z');
@@ -53,6 +53,28 @@ describe('libellé du badge de fraîcheur', () => {
 		expect(libelleBadge(camac, { derniere: null, erreur: 'indisponible' }, maintenant)).toBe(
 			'service indisponible · CAMAC'
 		);
+	});
+});
+
+describe('libellé du badge des sites d’une plateforme', () => {
+	it('donne le plus ancien des derniers imports quand tous les sites ont été importés', () => {
+		expect(libelleBadgeSites('i-web', [ilYa(45), ilYa(11 * 60), ilYa(5)], maintenant)).toBe(
+			'importés il y a 11 h · 3 sites i-web'
+		);
+	});
+
+	it('dit combien de sites ont été importés tant qu’il en manque', () => {
+		expect(libelleBadgeSites('i-web', [ilYa(45), null, null], maintenant)).toBe(
+			'importé il y a 45 min · 1 sur 3 sites i-web'
+		);
+	});
+
+	it('dit le dernier import inconnu tant qu’aucun site n’a été importé', () => {
+		expect(libelleBadgeSites('i-web', [null, null], maintenant)).toBe('dernier import inconnu · 2 sites i-web');
+	});
+
+	it('accorde un site seul', () => {
+		expect(libelleBadgeSites('Quicksite', [ilYa(2)], maintenant)).toBe('importé il y a 2 min · 1 site Quicksite');
 	});
 });
 
