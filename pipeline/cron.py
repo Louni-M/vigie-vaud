@@ -705,7 +705,7 @@ def sonder_les_sites(
 
     def sonder(source: Source) -> None:
         try:
-            motif = sonder_site(robot, source, sources.plateformes)
+            motif = sonder_site(robot, source, sources)
         except CrawlDelayTropLong as e:
             lents[source.conseil.cle] = e.motif
             if source.id in precedent:

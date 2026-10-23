@@ -664,7 +664,7 @@ def importer_conseils(
             if source.site is not None:
                 if robot is None:
                     raise ValueError("aucun robot communal pour lire le site de la commune")
-                bruts = lire_site(robot, source, sources.plateformes, jour, rattrapage)
+                bruts = lire_site(robot, source, sources, jour, rattrapage)
             else:
                 bruts = importer(opd, source.conseil, debut)
             connus = lire_membres(depot, cle) if source.site is not None else []

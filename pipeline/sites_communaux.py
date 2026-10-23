@@ -16,13 +16,13 @@ une erreur, qui met l'import de la commune en échec.
 from __future__ import annotations
 
 import calendar
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from datetime import date
 
 import lecture_iweb
 from bruts import Bruts
 from robot_communal import Robot
-from schema import Plateforme, Source
+from schema import FichierSources, Source
 
 MOIS_DE_LA_FENETRE = 6
 
@@ -42,9 +42,7 @@ def debut_de_fenetre(jour: date) -> date:
     return mois_plus_tot(jour, MOIS_DE_LA_FENETRE)
 
 
-def lire_site(
-    robot: Robot, source: Source, plateformes: Sequence[Plateforme], jour: date, rattrapage: bool = False
-) -> Bruts:
+def lire_site(robot: Robot, source: Source, sources: FichierSources, jour: date, rattrapage: bool = False) -> Bruts:
     """Le conseil de `source` lu sur le site de sa commune, au passage du `jour` (à Lausanne) : les Séances et les
     Objets des 6 derniers mois et à venir, ou tous pour un `rattrapage`. Lève `ValueError` pour une plateforme ou une
     variante non déclarée, ou sans module de lecture, et l'erreur du robot quand un réseau bloqué ou le plafond de
@@ -52,10 +50,10 @@ def lire_site(
     site = source.site
     if site is None or source.conseil is None:
         raise ValueError(f"{source.id} : ni bloc `site` ni bloc `conseil`")
-    plateforme = next((p for p in plateformes if p.id == site.plateforme), None)
+    plateforme = sources.plateforme(site.plateforme)
     if plateforme is None or site.plateforme not in LECTEURS:
         raise ValueError(f"{source.id} : plateforme {site.plateforme} non déclarée ou sans module de lecture")
-    if not any(v.id == site.variante for v in plateforme.variantes):
+    if sources.variante_de(site) is None:
         raise ValueError(f"{source.id} : variante {site.variante} non déclarée dans {plateforme.nom}")
     lecteur = robot.pour(source.id)
     bruts = LECTEURS[site.plateforme](lecteur, source, None if rattrapage else debut_de_fenetre(jour))

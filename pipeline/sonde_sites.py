@@ -13,8 +13,6 @@ qui ne met en échec que l'import.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from robot_communal import (
     CrawlDelayTropLong,
     DelaiDepasse,
@@ -29,18 +27,17 @@ from robot_communal import (
     Robot,
     RobotsIndisponible,
 )
-from schema import Plateforme, Source
+from schema import FichierSources, Source
 
 
-def sonder_site(robot: Robot, source: Source, plateformes: Sequence[Plateforme]) -> str | None:
+def sonder_site(robot: Robot, source: Source, sources: FichierSources) -> str | None:
     """Sonde le site de `source` : `None` si la page de liste répond avec le marqueur de sa variante, sinon le motif
     court de l'échec (« HTTP 503 », « marqueur absent »…). Lève `CrawlDelayTropLong` quand le `Crawl-delay` du site
     est trop long pour qu'il soit lu : ce n'est ni un succès ni une panne, et la page n'est pas demandée."""
     site = source.site
     if site is None:
         raise ValueError(f"{source.id} : pas de bloc `site`")
-    plateforme = next((p for p in plateformes if p.id == site.plateforme), None)
-    variante = next((v for v in plateforme.variantes if v.id == site.variante), None) if plateforme else None
+    variante = sources.variante_de(site)
     if variante is None:
         return f"variante {site.plateforme}/{site.variante} non déclarée"
     try:

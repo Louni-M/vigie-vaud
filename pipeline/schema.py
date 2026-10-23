@@ -231,6 +231,10 @@ class Plateforme(Modele):
     editeur: str = Field(min_length=1)
     variantes: Annotated[list[Variante], Field(min_length=1)]
 
+    def variante(self, id_variante: str | None) -> Variante | None:
+        """La variante déclarée sous cet identifiant, ou `None`."""
+        return next((v for v in self.variantes if v.id == id_variante), None)
+
 
 # La règle du validateur de `Source` pour une commune non couverte, ni conseil ni sonde, reprise pour le contrôle de
 # `sources.json` à la construction du site (Ajv). Un seul `if` : un `allOf` ferait de `Source` un alias en TypeScript.
@@ -324,6 +328,15 @@ class FichierSources(Modele):
         default=[], description="Les réseaux ralentis à la main pour le robot communal."
     )
     sources: list[Source]
+
+    def plateforme(self, id_plateforme: str) -> Plateforme | None:
+        """La plateforme déclarée sous cet identifiant, ou `None`."""
+        return next((p for p in self.plateformes if p.id == id_plateforme), None)
+
+    def variante_de(self, site: Site) -> Variante | None:
+        """La variante du site d'une commune, ou `None` si sa plateforme ou sa variante n'est pas déclarée."""
+        plateforme = self.plateforme(site.plateforme)
+        return plateforme.variante(site.variante) if plateforme else None
 
     @model_validator(mode="after")
     def _ids_uniques(self) -> FichierSources:
