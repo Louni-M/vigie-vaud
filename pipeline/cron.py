@@ -1,7 +1,8 @@
 """Un passage du cron (ADR 0005, 0014 et 0015) : sondes et état des sources, puis import quotidien des conseils.
 
 Le passage relit `sources.json` et l'état précédent dans un clone du dépôt de données, sonde chaque source qui a
-un bloc `sonde`, écrit `etat-sources.json`, copie `schema/`, importe les conseils dus (`conseils.py`), puis committe
+un bloc `sonde`, écrit `etat-sources.json`, copie `schema/`, importe les conseils dus (`conseils.py` : OpenParlData,
+et les sites des communes par le robot communal), puis committe
 (l'historique sert d'archive) et pousse. Il ouvre l'issue `panne-source` d'une source en panne et ferme celle d'une
 source disponible, dans le dépôt de données. Une erreur de l'API des issues ne fait pas échouer le passage : l'état
 est tout de même écrit et publié, et le passage suivant, qui compare de nouveau l'état aux issues ouvertes, refait
