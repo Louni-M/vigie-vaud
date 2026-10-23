@@ -195,6 +195,7 @@ _À éviter_ : réunion, session
 ### Planification
 
 **Jalon** :
-Une étape de développement publiable seule (J0 à J7), avec sa branche et sa PR. Ce qui vient après J7 forme la
+Une étape de développement publiable seule (J0 à J7), avec sa branche et sa PR. Seul J3 Conseils communaux se
+publie en **étapes de J3**, une par plateforme, chacune avec sa branche et sa PR. Ce qui vient après J7 forme la
 **phase 2**.
 _À éviter_ : sprint, version
