@@ -19,6 +19,12 @@ stable `/_rte/information/<id>`. La fiche de chaque Objet de la fenêtre donne s
 statut et ses auteur·e·s (`dl` : « Statut », « Auteur »). Un Objet sans numéro n'est pas importé ; de deux Objets de
 même numéro, le premier du site l'emporte ; l'un et l'autre sont notés dans le journal. Un point d'ordre du jour est
 relié à son Objet par le numéro (`item_affair_number`) de l'Objet que sa colonne « Affaire » cite.
+
+Variante **pages** (module Séances et préavis rédigés, niveau « séances et préavis ») : la page des préavis
+(`site.objets`, parfois la page des Séances elle-même, alors lue une seule fois) porte un tableau saisi à la main
+(`div.icms-wysiwyg`). Chaque ligne est un Objet de type « Préavis », sans page propre : numéro brut et date dans la
+première colonne, titre et statut dans les colonnes « Titre » et « Statut » de l'en-tête, documents par ses liens.
+La liste est relue en entier à chaque passage, sans fenêtre. Mêmes règles pour un préavis sans numéro ou en double.
 """
 
 from __future__ import annotations
@@ -38,7 +44,8 @@ from schema import Source
 
 TABLEAUX_SEANCES = ("icmsTableFutureSitzungen", "icmsTablePastSitzungen")
 TABLEAU_OBJETS = "icmsTable-geschaefteList"
-VARIANTES = ("seances", "objets")
+VARIANTES = ("seances", "objets", "pages")
+TYPE_PREAVIS = "Préavis"  # le type des Objets d'une page qui ne liste que des préavis
 
 
 def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
@@ -52,11 +59,16 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
     liste = robot.lire(site.seances, "import")
     lignes = _lignes_de_seances(liste.texte, liste.url)
     lignes_objets: list[_LigneObjet] = []
-    if site.variante == "objets" and {"objets", "preavis"} & set(conseil.donne):
+    preavis: list[dict] = []
+    if site.variante != "seances" and {"objets", "preavis"} & set(conseil.donne):
         if site.objets is None:
             raise ValueError(f"{source.id} : variante {site.variante} sans page `objets`")
-        page = robot.lire(site.objets, "import")
-        lignes_objets = _lignes_d_objets(source, page.texte, page.url)
+        # La page des préavis peut être celle des Séances (Puidoux) : elle n'est pas relue.
+        page = liste if site.objets == site.seances else robot.lire(site.objets, "import")
+        if site.variante == "objets":
+            lignes_objets = _lignes_d_objets(source, page.texte, page.url)
+        else:
+            preavis = _preavis_rediges(source, page.texte, page.url)
     numeros = {o.lien: o.numero for o in lignes_objets}  # pour relier les points à leur Objet
     seances = []
     for ligne in lignes:
@@ -71,7 +83,7 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
             _journal(source, f"Séance {ligne.lien} non lue ({e})")
             continue
         seances.append(_meeting(ligne, page.texte, page.url, numeros))
-    objets = []
+    objets = preavis
     for objet in lignes_objets:
         if depuis is not None and objet.jour is not None and objet.jour < depuis:
             continue
@@ -301,6 +313,94 @@ def _prenom_nom(nom: str) -> str:
     reconnaît : le dernier mot est pris pour le prénom."""
     mots = nom.split()
     return " ".join([mots[-1], *mots[:-1]])
+
+
+# --- Préavis rédigés dans une page (variante pages) ---------------------------------------------------------------
+
+# « Préavis 09-2021 – 09.11.2021 », « Préavis n° 12/2026 du 19 mai 2026 » : le numéro est le premier mot qui suit le
+# mot « Préavis » (s'il y est), quand il porte un chiffre et n'est pas une date.
+_NUMERO_PREAVIS = re.compile(r"^(?:préavis(?:\s+municipal)?\s*)?(?:n[°o]\.?\s*)?(?P<numero>\S*\d\S*)", re.I)
+_MOIS = "janvier février mars avril mai juin juillet août septembre octobre novembre décembre".split()
+_DATE_EN_LETTRES = re.compile(rf"\b(\d{{1,2}})(?:er)?\s+({'|'.join(_MOIS)})\s+(\d{{4}})\b", re.I)
+
+
+def _preavis_rediges(source: Source, texte: str, url: str) -> list[dict]:
+    """Les préavis des tableaux rédigés dans la page (`div.icms-wysiwyg`), dans l'ordre du site, à la forme d'une
+    *affair* : la première colonne donne le numéro brut et la date (« Préavis 09-2021 – 09.11.2021 »), les colonnes
+    « Titre » et « Statut » de l'en-tête (sinon la deuxième, et pas de statut) le titre et le statut ; les liens de la
+    ligne sont ses documents. Un préavis sans numéro n'est pas importé, ni le second de deux préavis de même
+    numéro ; l'un et l'autre sont notés dans le journal. Une page sans tableau rédigé lève `ValueError`."""
+    redige = [n for n in _arbre(texte).elements() if "icms-wysiwyg" in (n.attr("class") or "").split()]
+    tableaux = [t for r in redige for t in r.elements() if t.tag == "table"]
+    if not tableaux:
+        raise ValueError(f"{url} : aucun tableau de préavis rédigé dans la page")
+    preavis: list[dict] = []
+    for tableau in tableaux:
+        rangees = [
+            [c for c in tr.enfants_elements() if c.tag in ("td", "th")] for tr in tableau.elements() if tr.tag == "tr"
+        ]
+        rangees = [r for r in rangees if r]
+        entete = [_espaces(c.texte()).lower() for c in rangees[0]] if rangees else []
+        if entete and not re.search(r"\d", entete[0]):
+            rangees = rangees[1:]
+        else:
+            entete = []
+        col_titre = next((i for i, t in enumerate(entete) if "titre" in t), 1)
+        col_statut = next((i for i, t in enumerate(entete) if "statut" in t), None)
+        for cellules in rangees:
+            textes = [_espaces(c.texte()) for c in cellules]
+            if len(textes) <= col_titre:
+                _journal(source, f"ligne de préavis illisible ({textes[0]})")
+                continue
+            numero = _NUMERO_PREAVIS.match(textes[0])
+            numero = numero["numero"].rstrip(".,;:") if numero and not _DATE.fullmatch(numero["numero"]) else None
+            if not numero:
+                _journal(source, f"Objet sans numéro, non importé : {textes[0]}")
+                continue
+            if any(p["number"] == numero for p in preavis):
+                _journal(source, f"Objet {numero} en double, le premier du site gardé : {textes[col_titre]}")
+                continue
+            reste = textes[0][textes[0].index(numero) + len(numero) :]
+            statut = textes[col_statut] if col_statut is not None and col_statut < len(textes) else ""
+            liens = [a for c in cellules for a in c.elements() if a.tag == "a" and a.attr("href")]
+            preavis.append(
+                {
+                    "id": None,
+                    "number": numero,
+                    "title": {"fr": textes[col_titre]},
+                    "type_name": {"fr": TYPE_PREAVIS},
+                    "state_name": {"fr": statut} if statut else None,
+                    "begin_date": _jour_ecrit(reste),
+                    "url_external": None,
+                    "docs": {
+                        "data": [
+                            {
+                                "name": _espaces(a.texte()) or (a.attr("href") or "").rsplit("/", 1)[-1],
+                                "url": urljoin(url, a.attr("href") or ""),
+                                "date": None,
+                                "category": None,
+                            }
+                            for a in liens
+                        ]
+                    },
+                }
+            )
+    return preavis
+
+
+def _jour_ecrit(texte: str) -> str | None:
+    """La première date d'un texte, en chiffres (« 09.11.2021 ») ou en lettres (« 19 mai 2026 »), au format ISO."""
+    chiffres, lettres = _DATE.search(texte), _DATE_EN_LETTRES.search(texte)
+    if chiffres and (not lettres or chiffres.start() < lettres.start()):
+        jour = _date(chiffres)
+    elif lettres:
+        try:
+            jour = date(int(lettres[3]), _MOIS.index(lettres[2].lower()) + 1, int(lettres[1]))
+        except ValueError:
+            jour = None
+    else:
+        jour = None
+    return jour.isoformat() if jour else None
 
 
 # --- Analyse du HTML ----------------------------------------------------------------------------------------------

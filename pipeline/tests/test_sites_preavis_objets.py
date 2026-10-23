@@ -198,3 +198,62 @@ def test_un_objet_d_avant_la_fenetre_n_est_ni_ouvert_ni_importe_au_passage_ordin
     assert not any(r.url.endswith("/3002200") for r in reseau.journal)
     assert not (tmp_path / "conseils/5892/objets/2026-PM-37.json").exists()
     assert (tmp_path / "conseils/5892/objets/2026-PO-02.json").exists()
+
+
+# --- Variante pages : les préavis rédigés dans une page (Puidoux) ----------------------------------------------------
+
+SITE_PUIDOUX = _commune(
+    5607, "Puidoux", "pages", ["preavis", "seances"], f"{PUIDOUX}/seances", f"{PUIDOUX}/seances", f"{PUIDOUX}/conseil"
+)
+
+
+def _puidoux(horloge):
+    reseau = Reseau(horloge, adresses={"www.puidoux.ch": "193.34.137.9"})
+    reseau.pages |= echantillon("i-web", "pages")
+    return reseau
+
+
+def test_les_preavis_rediges_dans_une_page_sont_archives_avec_leur_numero_brut_leur_date_et_leur_document(
+    tmp_path, horloge, capsys
+):
+    reseau = _puidoux(horloge)
+
+    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_PUIDOUX))
+
+    preavis = _lire(tmp_path, "conseils/5607/objets/10-2023.json")
+    del preavis["genere"]
+    assert preavis == {
+        "version": 1,
+        "id": None,
+        "numero": "10-2023",
+        "type": "Préavis",
+        "statut": {"libelle": "Retiré", "date": None},
+        "depose": "2023-11-21",
+        "titre": "Concernant la démolition et la reconstruction d’un chalet d’alpage au Mont-Chesau",
+        "contributeurs": [],
+        "etapes": [],
+        "documents": [
+            {
+                "titre": "Préavis 10-2023 – 21.11.2023",
+                "date": None,
+                "lien": f"{PUIDOUX}/_docn/5549947/Pr%C3%A9avis_10-2023.pdf",
+            }
+        ],
+        "lien": None,
+        "communes": [],
+    }
+    # Toutes les lignes de la liste, même hors de la fenêtre ; la proposition du bureau, sans numéro, n'en est pas.
+    assert sorted(p.name for p in (tmp_path / "conseils/5607/objets").iterdir()) == [
+        "03-2026.json",
+        "05-2026.json",
+        "07-2026.json",
+        "08-2024.json",
+        "09-2021.json",
+        "10-2023.json",
+    ]
+    sans_document = _lire(tmp_path, "conseils/5607/objets/09-2021.json")
+    assert (sans_document["depose"], sans_document["titre"], sans_document["documents"]) == ("2021-11-09", "Budget 2022", [])
+    assert _lire(tmp_path, "conseils/5607/objets/03-2026.json")["depose"] == "2026-05-19"  # « du 19 mai 2026 »
+    assert "élément sauté, Objet sans numéro, non importé : Proposition du bureau du CC" in capsys.readouterr().err
+    # La page des préavis est celle des Séances : elle n'est lue qu'une fois.
+    assert [r.url for r in reseau.journal].count(f"{PUIDOUX}/seances") == 1
