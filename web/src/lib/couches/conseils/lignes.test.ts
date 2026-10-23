@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	auteursObjet,
+	contenuTete,
 	dateObjet,
+	detailSeance,
 	filtrerObjets,
 	nomSeance,
 	PUCES_OBJETS, ordreDuJour,
@@ -9,7 +11,7 @@ import {
 	siteDuLien,
 	teteSeance
 } from './lignes.js';
-import { conseilLausanne, conseilYverdon, ligneObjet } from '#tests/faux-conseils.js';
+import { conseilLausanne, conseilYverdon, ligneObjet, seance } from '#tests/faux-conseils.js';
 import type { LigneSeance } from '#lib/schema.js';
 
 describe('nom composé d’une Séance', () => {
@@ -61,6 +63,56 @@ describe('en-tête de séance', () => {
 
 	it('rien pour un conseil sans Séance connue', () => {
 		expect(teteSeance(conseilYverdon({ derniere_seance: null }))).toBeNull();
+	});
+});
+
+describe('ligne d’une Séance', () => {
+	const odj = { titre: 'Ordre du jour', date: '2026-10-01', lien: 'https://www.bussigny.ch/odj.pdf' };
+	const pv = { titre: null, date: null, lien: 'https://www.bussigny.ch/pv.pdf' };
+
+	it('donne son nombre de points après sa date', () => {
+		expect(detailSeance({ cle: '5586/2026-10-06', date: '2026-10-06', points: 1 })).toEqual({ points: '1 point' });
+		expect(detailSeance({ cle: '5586/2026-10-06', date: '2026-10-06', points: 12 })).toEqual({ points: '12 points' });
+	});
+
+	it('sans points, montre ses documents en lien à la place du nombre de points', () => {
+		const ligne: LigneSeance = { cle: '5624/2026-11-03', date: '2026-11-03', points: 0, documents: [odj, pv] };
+		expect(detailSeance(ligne)).toEqual({
+			documents: [
+				{ texte: 'Ordre du jour', lien: 'https://www.bussigny.ch/odj.pdf' },
+				{ texte: 'Document', lien: 'https://www.bussigny.ch/pv.pdf' }
+			]
+		});
+	});
+
+	it('sans points ni documents, reste à « 0 points »', () => {
+		expect(detailSeance({ cle: '5938/2026-10-01', date: '2026-10-01', points: 0 })).toEqual({ points: '0 points' });
+	});
+});
+
+describe('contenu de l’en-tête de séance', () => {
+	const odj = { titre: 'Ordre du jour', date: '2026-10-01', lien: 'https://www.bussigny.ch/odj.pdf' };
+
+	it('donne les 5 premiers points de l’ordre du jour, et leur nombre', () => {
+		const points = Array.from({ length: 7 }, (_, i) => ({
+			numero: String(i + 1),
+			titre: `Point ${i + 1}`,
+			categorie: null,
+			resultat: null,
+			objet: null
+		}));
+		const contenu = contenuTete(seance({ ordre_du_jour: points, documents: [odj] }));
+		expect(contenu).toEqual({ points: points.slice(0, 5), total: 7 });
+	});
+
+	it('sans points, montre les documents de la Séance en lien', () => {
+		expect(contenuTete(seance({ ordre_du_jour: [], documents: [odj] }))).toEqual({
+			documents: [{ texte: 'Ordre du jour', lien: 'https://www.bussigny.ch/odj.pdf' }]
+		});
+	});
+
+	it('sans points ni documents, rien : l’ordre du jour n’est pas encore publié', () => {
+		expect(contenuTete(seance({ ordre_du_jour: [] }))).toBeNull();
 	});
 });
 
