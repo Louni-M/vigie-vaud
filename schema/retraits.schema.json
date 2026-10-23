@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "CibleRetrait": {
+      "pattern": "^(titre|nom|point:[1-9][0-9]*|document:https?://\\S+)$",
+      "type": "string"
+    },
+    "CleElement": {
+      "pattern": "^[a-z0-9]+/[^/\\s]+$",
+      "type": "string"
+    },
+    "Retrait": {
+      "additionalProperties": false,
+      "description": "Une correction par élément (ADR 0007), écrite à la main dans `retraits.json` pour un retrait : le texte\ncorrigé d'un champ d'un élément de l'archive, que le cron réapplique à chaque import et à chaque rattrapage. Le\nnom retiré n'y figure jamais.",
+      "properties": {
+        "element": {
+          "$ref": "#/$defs/CleElement",
+          "description": "Clé de l'Objet (`5586/POS25-115`) ou de la Séance (`5586/2026-10-20`)."
+        },
+        "cible": {
+          "$ref": "#/$defs/CibleRetrait",
+          "description": "Le champ corrigé : `titre` (d'un Objet), `nom` (d'une Séance), `point:<n>` (titre du n-ième point de l'ordre du jour d'une Séance, à partir de 1) ou `document:<lien>` (titre du document qui a ce lien)."
+        },
+        "texte": {
+          "description": "Le texte qui remplace celui de la source, sans le nom retiré.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "date": {
+          "description": "Jour du retrait.",
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "element",
+        "cible",
+        "texte",
+        "date"
+      ],
+      "title": "Retrait",
+      "type": "object"
+    }
+  },
+  "description": "`retraits.json`, à la racine du dépôt de données : les corrections par élément des retraits, écrites à la\nmain et appliquées après le masquage, à chaque import comme au rattrapage, pour tous les conseils. Sans\nenveloppe : le cron ne l'écrit jamais.",
+  "items": {
+    "$ref": "#/$defs/Retrait"
+  },
+  "title": "Retraits",
+  "type": "array"
+}

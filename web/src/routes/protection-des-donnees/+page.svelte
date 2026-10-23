@@ -39,9 +39,10 @@
 		dans les ordres du jour des séances sont remplacés par « [particulier] » avant publication, lors de l’import
 		quotidien, et leurs coordonnées (adresse, téléphone, courriel) par « [coordonnées] » : ils n’atteignent jamais
 		le dépôt de données public. Les pétitions n’affichent pas leurs
-		auteur·e·s. Si un nom est passé à travers, écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a> : il est retiré,
-		historique du dépôt de données public compris. Le texte d’origine reste chez OpenParlData et sur le site du
-		conseil.
+		auteur·e·s. Si un nom est passé à travers, écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>, par courriel et
+		jamais dans une issue publique, qui publierait le nom : il est retiré dans les 7 jours, historique du dépôt de
+		données public compris, et ne revient pas aux imports suivants. Le texte d’origine reste chez OpenParlData et
+		sur le site du conseil.
 	</p>
 
 	<h2>Ce que votre visite transmet</h2>

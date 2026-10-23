@@ -12,6 +12,7 @@ export type DocumentCommun =
 	| ListeSeances
 	| Objet
 	| RattachementsCommune
+	| Retraits
 	| Seance
 	| FichierSources;
 export type NumeroOfs = number;
@@ -29,6 +30,12 @@ export type DonneeConseil = 'objets' | 'seances';
 export type DateSeance = string;
 export type SorteContributeur = 'personne' | 'groupe';
 export type Lien = string;
+/**
+ * `retraits.json`, à la racine du dépôt de données : les corrections par élément des retraits, écrites à la
+ * main et appliquées après le masquage, à chaque import comme au rattrapage, pour tous les conseils. Sans
+ * enveloppe : le cron ne l'écrit jamais.
+ */
+export type Retraits = Retrait[];
 export type VoieAcces = 'direct' | 'cron' | 'worker' | 'preparee';
 export type SorteFraicheur = 'donnee' | 'requete' | 'millesime' | 'import';
 export type ModeCouverture = 'api' | 'scrape';
@@ -440,6 +447,29 @@ export interface RattachementsCommune {
 	genere: string;
 	commune: NumeroOfs;
 	objets: LigneObjet[];
+}
+/**
+ * Une correction par élément (ADR 0007), écrite à la main dans `retraits.json` pour un retrait : le texte
+ * corrigé d'un champ d'un élément de l'archive, que le cron réapplique à chaque import et à chaque rattrapage. Le
+ * nom retiré n'y figure jamais.
+ */
+export interface Retrait {
+	/**
+	 * Clé de l'Objet (`5586/POS25-115`) ou de la Séance (`5586/2026-10-20`).
+	 */
+	element: string;
+	/**
+	 * Le champ corrigé : `titre` (d'un Objet), `nom` (d'une Séance), `point:<n>` (titre du n-ième point de l'ordre du jour d'une Séance, à partir de 1) ou `document:<lien>` (titre du document qui a ce lien).
+	 */
+	cible: string;
+	/**
+	 * Le texte qui remplace celui de la source, sans le nom retiré.
+	 */
+	texte: string;
+	/**
+	 * Jour du retrait.
+	 */
+	date: string;
 }
 /**
  * `conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`.
