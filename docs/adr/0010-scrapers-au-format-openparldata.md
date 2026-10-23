@@ -5,6 +5,33 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
 
 ## Conséquences
 
+- Un scraper produit les mêmes enregistrements bruts que l'import de J1 lit chez OpenParlData : des *affairs* et des
+  *meetings* avec leurs relations développées (`docs`, `agendas`, `contributors`, `events`), réduits aux champs que
+  l'import lit déjà. Ils passent ensuite par la même normalisation, le même masquage et la même écriture que ceux
+  d'OpenParlData ; il n'y a qu'un chemin vers l'archive. Écartée : l'entrée directe dans le modèle commun, qui
+  ferait un second masquage et laisserait le format OpenParlData sur le papier.
+- Correspondance des champs : `body_key` est le n° OFS de la commune ; les libellés sont imbriqués (`{"fr": …}`) ;
+  le type est celui que le site donne (catégorie, type de document, titre d'une page qui ne liste que des préavis),
+  sans regroupement ; statut, auteur·e·s et étapes ne figurent que si le site les publie. Le numéro d'un Objet est
+  brut, fautes de saisie comprises, sans le mot qui le précède (« Préavis n° »), et pris à un seul endroit par
+  variante ; un Objet sans numéro n'est pas importé (noté dans le journal), et une commune dont les préavis n'ont
+  pas de numéro est déclarée en Séances seules. Sa date est celle que le site lui donne, sinon la mise en ligne de
+  son premier document. Un document a pour nom le texte de son lien, sinon le nom du fichier, et pour date celle
+  affichée, sinon sa mise en ligne. Le lien d'un élément est sa page propre sous sa forme stable
+  (`/_rte/anlass/<id>` plutôt que la redirection), sinon rien.
+- Une Séance porte ses documents (ordre du jour, procès-verbal, convocation), comme les `docs` d'un *meeting*. Ses
+  points ne sont remplis que si le site structure l'ordre du jour en HTML ; sinon son PDF est un document de la
+  Séance. Le scraper relie un point à son Objet par le numéro (`item_affair_number`), qu'il tire lui-même des listes
+  relues chaque jour ; les documents d'un point sans Objet vont à la Séance. Deux Séances d'un même jour sont
+  fusionnées en une, comme OpenParlData le fait pour Lausanne. Lausanne et Yverdon restent sans documents de Séance
+  dans J3.
+- Un élément scrapé n'a pas d'identifiant OpenParlData (`id` nul) et ne garde pas celui de sa plateforme, qui reste
+  dans son lien quand il en a un : son identité est sa clé dans l'archive (ADR-0017). Un nom de fichier ou une
+  empreinte (COMMUNEapp) n'identifie qu'un document. Si un site donne deux Objets de même numéro, le premier dans
+  l'ordre du site l'emporte et l'autre est noté dans le journal. Écartée : une empreinte entière tirée de
+  l'identifiant de la plateforme (un faux identifiant OpenParlData, qui ne survit pas à une refonte).
+- La réponse d'OpenParlData sur une contribution (forme, licence) est inconnue au 23 octobre 2026 : J3 ne construit
+  ni flux ni export pour eux. Leur réponse ouvrira un ticket à part.
 - Chaque scraper est testé sur des pages HTML enregistrées, comme l'import de J1 sur son échantillon réel
   d'OpenParlData. Un échantillon par variante de plateforme (et non par commune) donne, pour une commune choisie,
   chaque sorte de page que le scraper lit : liste des Séances, page d'une Séance, liste et page des Objets, page des

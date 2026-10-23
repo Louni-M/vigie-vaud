@@ -17,6 +17,10 @@ de l'archive) ; l'`id` d'OpenParlData comme nom de fichier (rien ne garantit qu'
 - Environ 11 000 petits fichiers, dont l'historique git se lit élément par élément.
 - Le cron compare chaque fichier à l'ancien sans `genere` et ne réécrit que ce qui change : le `genere` d'un fichier
   est l'heure de son dernier vrai changement. Seul `conseils/import.json` (dernier import réussi de chaque conseil, chacun importé à part) change chaque jour.
+- La clé est aussi l'identité d'un élément d'un passage à l'autre, pour un conseil scrapé comme pour OpenParlData
+  (ADR-0010) : une refonte du site change les liens, pas les numéros ni les jours, et retombe sur le même fichier.
+  Un numéro corrigé par le conseil (`12/206` devenu `12/2026`) fait un second fichier ; l'ancien se retire à la
+  main.
 - L'import ne supprime jamais un élément : une absence chez OpenParlData n'efface rien de l'archive. Seule une
   réécriture à la main (ADR-0007) retire quelque chose.
 - Les fichiers de lecture se recalculent sans import : un changement de leur forme, de la règle de rattachement ou de
