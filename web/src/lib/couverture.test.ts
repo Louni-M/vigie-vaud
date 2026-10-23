@@ -13,6 +13,7 @@ import { COUCHES } from './registre/couches.js';
 import type { EtatSource, EtatSources, Source } from './schema.js';
 import { SOURCES } from './sources.js';
 import communesJ0 from '../../static/communes.json';
+import { sourceSite } from '#tests/faux-conseils.js';
 
 const MAINTENANT = new Date('2026-10-12T14:30:00Z');
 const COMMUNES = [{ bfs: 5586 }, { bfs: 5590 }, { bfs: 5889 }];
@@ -307,6 +308,19 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 		expect(cellule('conseils', 5586)).toEqual(['API · disponible']);
 		expect(cellule('conseils', 5938)).toEqual(['API · séances seulement · disponible']);
 		expect(cellule('conseils', 5624)).toEqual(['Non couvert']);
+	});
+
+	it('donne pour Conseils « Scrapé · séances seulement » à une commune scrapée en séances seules', () => {
+		// Sans sonde avant #150, l'état de la source est « non surveillée ».
+		const site = sourceSite();
+		const d = deduireCouverture({
+			sources: [...SOURCES, site],
+			etat: etat(tous),
+			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, site.id] } : x)),
+			communes: communesJ0,
+			maintenant: MAINTENANT
+		});
+		expect(libelleCellule(d.cellule('conseils', 5643))).toEqual(['Scrapé · séances seulement · non surveillée']);
 	});
 
 	it('donne pour Permis la paire de la CAMAC partout', () => {

@@ -73,7 +73,7 @@
 	{#if objet.lien}
 		<p class="externe"><a href={objet.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(objet.lien)} ›</a></p>
 	{/if}
-	<Source />
+	<Source conseil={lireCle(cle)?.conseil ?? ''} />
 </article>
 
 <style>

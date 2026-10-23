@@ -61,7 +61,7 @@
 	{#if seance.lien}
 		<p class="externe"><a href={seance.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(seance.lien)} ›</a></p>
 	{/if}
-	<Source />
+	<Source conseil={lireCle(cle)?.conseil ?? ''} />
 </article>
 
 <style>

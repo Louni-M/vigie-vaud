@@ -57,7 +57,7 @@ export const coucheConseils: Couche<undefined> = {
 			element: cle,
 			libelle: `Objet ${numero} · ${nom}`
 		})),
-	introuvable: messageIntrouvable,
+	introuvable: (cle) => messageIntrouvable(cle),
 	titre: titreElement,
 	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
