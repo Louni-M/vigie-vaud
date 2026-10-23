@@ -44,7 +44,8 @@ def lire_site(
 ) -> Bruts:
     """Le conseil de `source` lu sur le site de sa commune, au passage du `jour` (à Lausanne) : les Séances et les
     Objets des 6 derniers mois et à venir, ou tous pour un `rattrapage`. Lève `ValueError` pour une plateforme ou une
-    variante non déclarée, ou sans module de lecture."""
+    variante non déclarée, ou sans module de lecture, et l'erreur du robot quand un réseau bloqué ou le plafond de
+    requêtes a interrompu la lecture."""
     site = source.site
     if site is None or source.conseil is None:
         raise ValueError(f"{source.id} : ni bloc `site` ni bloc `conseil`")
@@ -53,4 +54,11 @@ def lire_site(
         raise ValueError(f"{source.id} : plateforme {site.plateforme} non déclarée ou sans module de lecture")
     if not any(v.id == site.variante for v in plateforme.variantes):
         raise ValueError(f"{source.id} : variante {site.variante} non déclarée dans {plateforme.nom}")
-    return LECTEURS[site.plateforme](robot, source, None if rattrapage else debut_de_fenetre(jour))
+    lecteur = robot.pour(source.id)
+    bruts = LECTEURS[site.plateforme](lecteur, source, None if rattrapage else debut_de_fenetre(jour))
+    # Un réseau bloqué ou le plafond atteint en cours de lecture met l'import en échec, même si le module de lecture
+    # a sauté la page : l'import sera refait en entier au passage suivant.
+    interruption = lecteur.interruption()
+    if interruption is not None:
+        raise interruption
+    return bruts

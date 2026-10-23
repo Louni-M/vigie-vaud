@@ -2,20 +2,21 @@
 un rôle. Le réseau est un faux (`faux_sites.Reseau`) qui note chaque requête avec l'heure d'une horloge factice ;
 l'attente du robot fait avancer cette horloge.
 
-Ce que le passage du cron observe déjà sur l'échantillon (5 s par /24 et réseaux qui ne s'attendent pas,
-redirections, User-Agents de la sonde et de l'import, encodage, `content-encoding` en minuscules, erreurs vues par la
-sonde) est testé par lui (`test_sites_communaux.py`, `test_sondes_sites.py`). Restent ici ce que le passage ne montre
-pas encore : requêtes de plusieurs fils, erreurs typées et `Retry-After` (blocage, #151).
+Ce que le passage du cron observe sur l'échantillon (5 s par /24 et réseaux qui ne s'attendent pas, redirections,
+User-Agents de la sonde et de l'import, encodage, `content-encoding` en minuscules, erreurs vues par la sonde,
+`robots.txt`, `Crawl-delay`, réseaux ralentis, blocage et `Retry-After`, plafond) est testé par lui
+(`test_sites_communaux.py`, `test_sondes_sites.py`, `test_regles_du_robot.py`). Restent ici ce que le passage ne
+montre pas : la forme de la réponse, les requêtes de plusieurs fils et un nom d'hôte inconnu.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import httpx
 import pytest
 
 from faux_openparldata import HorlogeFactice
-from faux_sites import DELAI, REFUS, Page, Reseau
-from robot_communal import DelaiDepasse, ErreurHttp, Injoignable, Robot
+from faux_sites import Page, Reseau
+from robot_communal import Injoignable, Robot
 
 T0 = datetime(2026, 10, 23, 7, 0, tzinfo=UTC)
 IWEB = "195.65.10.20"
@@ -61,37 +62,6 @@ def test_une_requete_a_la_fois_meme_appele_de_plusieurs_fils(horloge):
 
     assert len(reseau.journal) == 16  # robots.txt et la page, pour chaque site
     assert reseau.en_vol_max == 1
-
-
-@pytest.mark.parametrize(
-    ("page", "erreur"),
-    [
-        (Page("introuvable", statut=404), ErreurHttp),
-        (Page("", statut=503, entetes={"Retry-After": "3600"}), ErreurHttp),
-        (REFUS, Injoignable),
-        (DELAI, DelaiDepasse),
-    ],
-)
-def test_une_page_non_lue_leve_une_erreur_typee_et_compte_dans_le_debit(horloge, page, erreur):
-    reseau = Reseau(horloge, adresses={"www.commune.ch": IWEB})
-    reseau.pages |= {"https://www.commune.ch/seances": page, "https://www.commune.ch/": Page("")}
-    robot = _robot(reseau, horloge)
-
-    with pytest.raises(erreur):
-        robot.lire("https://www.commune.ch/seances", "sonde")
-    robot.lire("https://www.commune.ch/", "sonde")
-
-    assert reseau.heures() == [T0 + timedelta(seconds=n) for n in (0, 5, 10)]  # robots.txt, puis les deux pages
-
-
-def test_une_erreur_http_dit_son_statut_et_son_retry_after(horloge):
-    reseau = Reseau(horloge, adresses={"www.commune.ch": IWEB})
-    reseau.pages["https://www.commune.ch/"] = Page("", statut=429, entetes={"Retry-After": "120"})
-
-    with pytest.raises(ErreurHttp) as e:
-        _robot(reseau, horloge).lire("https://www.commune.ch/", "import")
-
-    assert (e.value.statut, e.value.retry_after) == (429, "120")
 
 
 def test_un_nom_d_hote_inconnu_rend_la_page_injoignable_sans_requete(horloge):

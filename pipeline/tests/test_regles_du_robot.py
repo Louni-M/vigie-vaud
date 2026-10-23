@@ -15,9 +15,20 @@ from datetime import timedelta
 import pytest
 
 from faux_openparldata import HorlogeFactice
-from faux_sites import Page
+from faux_sites import DELAI, REFUS, Page, echantillon
 from schema import FichierSources
-from test_sites_communaux import PLATEFORMES, PREVERENGES, SITE_PREVERENGES, T0, _opendata, _preverenges
+from test_cron import IssuesFactices
+from test_sites_communaux import (
+    BLONAY,
+    PLATEFORMES,
+    PREVERENGES,
+    SITE_PREVERENGES,
+    T0,
+    _opendata,
+    _preverenges,
+    _site,
+    _sources,
+)
 from test_sondes_sites import LISTE, UA_SONDE, _etat, _importe, _lire, _passer
 
 ROBOTS = f"{PREVERENGES}/robots.txt"
@@ -194,3 +205,141 @@ def test_un_reseau_ralenti_a_la_main_dans_sources_json_espace_ses_requetes(
     heures = [secondes for _, secondes, _ in _lues(reseau)]
     assert heures == [intervalle * i for i in range(len(heures))]
     assert len(heures) == 7
+
+
+# --- Blocage d'un /24 -----------------------------------------------------------------------------------------------
+
+SITE_BLONAY_MEME_24 = _site(5892, "Blonay - Saint-Légier", f"{BLONAY}/seances", f"{BLONAY}/conseil-communal")
+SOURCES_MEME_24 = _sources(_opendata("5586"), SITE_PREVERENGES, SITE_BLONAY_MEME_24)
+
+
+def _meme_24(horloge):
+    """Préverenges et Blonay - Saint-Légier, deux communes i-web sur le même /24 (la plage d'i-web)."""
+    reseau = _preverenges(horloge)
+    reseau.adresses["www.blonay-saint-legier.ch"] = "195.65.10.22"
+    reseau.pages |= echantillon("i-web", "objets")
+    return reseau
+
+
+def _reseaux_bloques(depot):
+    return _lire(depot, "etat-sources.json").get("reseaux", {})
+
+
+@pytest.mark.parametrize(
+    ("page", "motif", "blocage"),
+    [
+        (Page("", statut=429), "HTTP 429", "HTTP 429"),
+        (Page("", statut=503), "HTTP 503", "HTTP 503"),
+        (REFUS, "site injoignable", "connexion refusée"),
+        (DELAI, "délai dépassé", "délai dépassé"),
+    ],
+    ids=["429", "503", "refus", "delai"],
+)
+def test_une_429_une_503_un_refus_ou_un_delai_bloque_le_24_et_les_communes_non_sondees_ont_l_acces_refuse(
+    tmp_path, horloge, page, motif, blocage
+):
+    reseau = _meme_24(horloge)
+    reseau.pages[LISTE] = page
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    assert [r.url for r in reseau.journal] == [ROBOTS, LISTE]  # rien vers Blonay, ni sonde ni import
+    assert (_etat(tmp_path)["motif"], _etat(tmp_path, "site-5892")["motif"]) == (motif, "accès refusé")
+    assert _importe(tmp_path) is None and _importe(tmp_path, "5892") is None
+    assert _importe(tmp_path, "5586") is not None  # OpenParlData n'en souffre pas
+    assert _reseaux_bloques(tmp_path) == {
+        "195.65.10.0/24": {"depuis": "2026-10-23T05:17:05Z", "jusqu_a": None, "motif": blocage}
+    }
+
+
+@pytest.mark.parametrize("page", [Page("", statut=404), Page("", statut=403)], ids=["404", "403"])
+def test_une_404_ou_une_403_reste_une_erreur_de_la_commune(tmp_path, horloge, page):
+    reseau = _meme_24(horloge)
+    reseau.pages[LISTE] = page
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    assert _etat(tmp_path)["echecs_consecutifs"] == 1
+    assert _etat(tmp_path, "site-5892")["echecs_consecutifs"] == 0
+    assert _importe(tmp_path, "5892") is not None
+    assert _reseaux_bloques(tmp_path) == {}
+
+
+def test_au_passage_suivant_une_seule_sonde_teste_le_reseau_avant_les_autres(tmp_path, horloge):
+    reseau = _meme_24(horloge)
+    reseau.pages[LISTE] = Page("", statut=429)
+    issues = IssuesFactices()
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, issues=issues)
+
+    # 30 minutes plus tard, le site refuse toujours : une seule sonde, et Blonay passe en panne, dans l'issue d'i-web.
+    reseau.journal.clear()
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, heure=T0 + timedelta(minutes=30), issues=issues)
+
+    assert [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal] == [
+        (ROBOTS, "VigieVaud-sonde"),
+        (LISTE, "VigieVaud-sonde"),
+    ]
+    etat = _etat(tmp_path, "site-5892")
+    assert (etat["etat"], etat["motif"]) == ("en_panne", "accès refusé")
+    plateforme = [s for s in issues.signalements if s[0].endswith("_plateforme")]
+    assert plateforme[-1][:2] == ("panne_plateforme", "i-web")
+    assert [s for s, _ in plateforme[-1][2]] == ["site-5643", "site-5892"]
+
+    # Le site répond de nouveau : la sonde qui teste le réseau rouvre le réseau à toutes les communes.
+    reseau.pages |= echantillon("i-web", "seances")
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, heure=T0 + timedelta(minutes=60), issues=issues)
+
+    assert _importe(tmp_path) is not None and _importe(tmp_path, "5892") is not None
+    assert _reseaux_bloques(tmp_path) == {}
+    plateforme = [s for s in issues.signalements if s[0].endswith("_plateforme")]
+    assert plateforme[-1] == ("retour_plateforme", "i-web", ["site-5643", "site-5892"])
+
+
+def test_retry_after_prolonge_le_blocage_au_dela_du_passage_sans_aucune_requete(tmp_path, horloge):
+    reseau = _meme_24(horloge)
+    reseau.pages[LISTE] = Page("", statut=503, entetes={"Retry-After": "7200"})
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+    assert _reseaux_bloques(tmp_path)["195.65.10.0/24"]["jusqu_a"] == "2026-10-23T07:17:05Z"
+
+    reseau.pages |= echantillon("i-web", "seances")  # le site répond, mais le robot attend 2 h
+    for minutes in (30, 60, 90):
+        reseau.journal.clear()
+        _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, heure=T0 + timedelta(minutes=minutes))
+        assert not any(r.url.startswith((PREVERENGES, BLONAY)) for r in reseau.journal)
+
+    assert (_etat(tmp_path)["etat"], _etat(tmp_path)["motif"]) == ("en_panne", "accès refusé")
+    reseau.journal.clear()
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, heure=T0 + timedelta(minutes=150))
+
+    assert _lues(reseau)[:2] == [("/robots.txt", 150 * 60, "sonde"), ("/sitzung", 150 * 60 + 5, "sonde")]
+    assert _etat(tmp_path)["etat"] == "disponible"
+    assert _importe(tmp_path) is not None and _importe(tmp_path, "5892") is not None
+
+
+def test_un_blocage_pendant_l_import_met_les_imports_du_reseau_en_echec_et_une_sonde_teste_le_reseau_au_suivant(
+    tmp_path, horloge, capsys
+):
+    reseau = _meme_24(horloge)
+    seance = f"{PREVERENGES}/_rte/anlass/6987193"
+    page = reseau.pages[seance]
+    reseau.pages[seance] = Page("", statut=429)
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    assert seance in [r.url for r in reseau.journal]
+    assert not any(r.url.startswith(BLONAY) and "import" in r.user_agent for r in reseau.journal)
+    assert _importe(tmp_path) is None and _importe(tmp_path, "5892") is None
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune)" in journal
+    assert "Import en échec : Conseil communal de Blonay - Saint-Légier (site de la commune)" in journal
+    assert _etat(tmp_path)["echecs_consecutifs"] == 0  # les deux sondes avaient réussi
+
+    # Au passage suivant, les deux imports sont refaits, mais une sonde teste d'abord le réseau.
+    reseau.pages[seance] = page
+    reseau.journal.clear()
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, heure=T0 + timedelta(minutes=30))
+
+    roles = [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal if r.url.startswith((PREVERENGES, BLONAY))]
+    assert roles[:3] == [(ROBOTS, "VigieVaud-sonde"), (LISTE, "VigieVaud-sonde"), (LISTE, "VigieVaud-import")]
+    assert [u for u, role in roles if role == "VigieVaud-sonde"] == [ROBOTS, LISTE]
+    assert _importe(tmp_path) is not None and _importe(tmp_path, "5892") is not None

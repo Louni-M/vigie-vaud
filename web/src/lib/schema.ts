@@ -87,6 +87,12 @@ export interface EtatSources {
 	sources: {
 		[k: string]: EtatSource;
 	};
+	/**
+	 * Les réseaux (/24) bloqués pour le robot communal et pas encore testés de nouveau ; absent quand il n'y en a aucun.
+	 */
+	reseaux?: {
+		[k: string]: EtatReseau;
+	};
 }
 /**
  * Ce que les sondes ont mesuré pour une source, dans un état binaire (sans « dégradée »).
@@ -112,6 +118,24 @@ export interface EtatSource {
 	 * Cause courte du dernier échec (« HTTP 503 », « délai dépassé », « marqueur absent »…).
 	 */
 	motif: string | null;
+}
+/**
+ * Un réseau que le robot communal a cessé de lire après une 429, une 503, une connexion refusée ou un délai
+ * dépassé. Au passage suivant (ou après `jusqu_a`), une seule sonde le teste avant les autres.
+ */
+export interface EtatReseau {
+	/**
+	 * Heure du blocage.
+	 */
+	depuis: string;
+	/**
+	 * Fin du blocage demandée par `Retry-After` ; `null` : la fin du passage du blocage.
+	 */
+	jusqu_a: Horodatage | null;
+	/**
+	 * Ce qui a bloqué le réseau (« HTTP 429 », « délai dépassé »…).
+	 */
+	motif: string;
 }
 /**
  * `conseils/fil.json` : les Objets et les Séances de tous les conseils datés des 21 derniers jours (heure de

@@ -363,6 +363,17 @@ class EtatSource(Modele):
     )
 
 
+class EtatReseau(Modele):
+    """Un réseau que le robot communal a cessé de lire après une 429, une 503, une connexion refusée ou un délai
+    dépassé. Au passage suivant (ou après `jusqu_a`), une seule sonde le teste avant les autres."""
+
+    depuis: Horodatage = Field(description="Heure du blocage.")
+    jusqu_a: Horodatage | None = Field(
+        description="Fin du blocage demandée par `Retry-After` ; `null` : la fin du passage du blocage."
+    )
+    motif: str = Field(description="Ce qui a bloqué le réseau (« HTTP 429 », « délai dépassé »…).")
+
+
 class EtatSources(Enveloppe):
     """`etat-sources.json` : l'état de chaque source sondée, indexé par identifiant de source."""
 
@@ -370,6 +381,12 @@ class EtatSources(Enveloppe):
     sources: dict[IdSource, EtatSource] = Field(
         description="Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), "
         "qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import."
+    )
+    reseaux: dict[Reseau, EtatReseau] = Field(
+        default={},
+        exclude_if=lambda reseaux: not reseaux,
+        description="Les réseaux (/24) bloqués pour le robot communal et pas encore testés de nouveau ; absent "
+        "quand il n'y en a aucun.",
     )
 
 
