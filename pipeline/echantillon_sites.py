@@ -128,6 +128,8 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             ("2909893", "3002200", "3000802", "2981212", "3002125"),
         ),
         PageEchantillon("objet", "https://www.blonay-saint-legier.ch/_rte/information/3002200", ("div.maincontent",)),
+        # Le postulat d'un élu (2026-PO-02) : un Objet dont la fiche publie ses auteur·e·s.
+        PageEchantillon("postulat", "https://www.blonay-saint-legier.ch/_rte/information/3000802", ("div.maincontent",)),
     )),
     # Préavis rédigés dans une page (tableau saisi à la main sous les Séances), à côté du module Séances.
     Echantillon("i-web", "pages", "Puidoux", 5607, (
