@@ -45,6 +45,42 @@ describe('contrôle de sources.json à la construction', () => {
 		]);
 	});
 
+	describe('commune non couverte d’une plateforme retenue', () => {
+		const nonCouverte = (couverture: Source['couverture'], autres: Partial<Source> = {}): Source => ({
+			id: 'site-5643',
+			nom: 'Conseil communal de Préverenges (site de la commune)',
+			nom_court: 'Site de Préverenges',
+			attribution: { texte: 'Commune de Préverenges', lien: 'https://www.preverenges.ch/conseil', licence: 'LDA' },
+			voie_acces: 'cron',
+			fraicheur: 'import',
+			couverture,
+			site: { plateforme: 'i-web' },
+			...autres
+		});
+
+		it('accepte une raison et ni conseil ni sonde', () => {
+			expect(erreurs(nonCouverte({ communes: [5643], mode: 'non_couvert', raison: 'preavis_seuls' }))).toEqual([]);
+		});
+
+		it('refuse un non_couvert sans raison, une raison hors non_couvert, et un conseil', () => {
+			expect(erreurs(nonCouverte({ communes: [5643], mode: 'non_couvert' }))).toContain(
+				"/sources/0/couverture must have required property 'raison'"
+			);
+			expect(erreurs(nonCouverte({ communes: [5643], mode: 'scrape', raison: 'rien_en_ligne' }))).toContain(
+				'/sources/0/couverture/raison must be null'
+			);
+			const avecConseil = nonCouverte(
+				{ communes: [5643], mode: 'non_couvert', raison: 'rien_en_ligne' },
+				{ conseil: { body_key: '5643', donne: ['seances'] } }
+			);
+			expect(erreurs(avecConseil)).toContain('/sources/0/conseil must be null');
+		});
+
+		it('ne prend pas une Couverture nulle pour une commune non couverte', () => {
+			expect(erreurs({ ...nonCouverte(null), conseil: { body_key: 'VD', donne: ['seances'] } })).toEqual([]);
+		});
+	});
+
 	it('refuse un n° OFS qui n’est pas une commune actuelle', () => {
 		expect(erreurs(conseil('x', '9999', { communes: [9999], mode: 'api' }))).toEqual([
 			"x : le n° OFS 9999 n'est pas une commune actuelle"

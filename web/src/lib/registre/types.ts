@@ -105,6 +105,12 @@ export interface Contexte<P = unknown> {
 	fermer(): void;
 }
 
+/** Ce qui suit « Non couvert : » en tête de l'onglet : une phrase, puis un lien facultatif (son texte et son adresse). */
+export interface MessageNonCouvert {
+	texte: string;
+	lien?: { texte: string; url: string };
+}
+
 /** Un type d'entrée du fil cantonal (« Nouveaux dossiers ») : une puce et la pastille de ses entrées. */
 export interface TypeFil {
 	id: string;
@@ -192,10 +198,12 @@ export interface Couche<P = unknown> {
 	 */
 	resume?: string | ((commune: Commune) => string);
 	/**
-	 * Ce qui suit « Non couvert : » en tête de l'onglet d'une commune que la couche ne couvre pas, une phrase
-	 * (« OpenParlData ne donne pas le conseil communal de Bussigny. ») ; sinon, le message commun du registre.
+	 * Ce qui suit « Non couvert : » en tête de l'onglet d'une commune que la couche ne couvre pas : une phrase
+	 * (« Vigie Vaud ne lit pas encore le site de cette commune. »), ou une phrase et un lien vers la source
+	 * (« le site de Sainte-Croix ne publie que des préavis. Le conseil sur le site de la commune › ») ; sinon, le
+	 * message commun du registre.
 	 */
-	nonCouvert?(commune: Commune): string;
+	nonCouvert?(commune: Commune): string | MessageNonCouvert;
 	/** Ce que la couche apporte au fil cantonal, quelle que soit son activation. */
 	fil?: Fil;
 	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */

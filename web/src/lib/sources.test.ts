@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { sourceSite } from '#tests/faux-conseils.js';
+import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
+import { sourcesDeLaCouche } from '#lib/couches/conseils/source.js';
 import {
 	cleConseil,
 	communeDuConseil,
@@ -115,10 +116,10 @@ const commune = (ofs: number, nomPlateforme = 'i-web'): Source =>
 		}
 	});
 
-/** Une commune d'une plateforme retenue, déclarée sans conseil : elle n'est pas couverte. */
+/** Une commune d'une plateforme retenue déclarée non couverte (#154) : sa raison, sa plateforme, ni conseil ni sonde. */
 const nonCouverte = (ofs: number, nomPlateforme = 'i-web'): Source => {
-	const { conseil: _, ...s } = commune(ofs, nomPlateforme);
-	return s;
+	const s = sourceNonCouverte('preavis_seuls', { bfs: ofs, nom: String(ofs), site: `https://${ofs}.ch` });
+	return { ...s, site: { plateforme: nomPlateforme } };
 };
 
 describe('conseils couverts avec des communes lues sur leur site, pour À propos', () => {
@@ -224,6 +225,15 @@ describe('liste Sources d’À propos, avec des communes lues sur leur site', ()
 			licence: 'Actes officiels (art. 5 LDA) : métadonnées et liens seulement',
 			voie_acces: 'cron'
 		});
+	});
+
+	it('y range aussi les communes non couvertes que la couche Conseils déclare (#154), sans entrée à part', () => {
+		const declarees = [{ nom: 'Conseils', sources: sourcesDeLaCouche(sources) }];
+		expect(declarees[0].sources).toContain('site-5790');
+		expect(ids(grouperSources(declarees, sources, PLATEFORMES))).toEqual([
+			['Conseils', ['vd', 'sites-des-communes']],
+			['Carte et communes', ['fond']]
+		]);
 	});
 
 	it('n’ajoute pas l’entrée sans source communale', () => {

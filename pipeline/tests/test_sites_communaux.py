@@ -262,6 +262,30 @@ def test_un_second_passage_ne_reecrit_rien(tmp_path, horloge):
     assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-24T05:17:00Z"
 
 
+def test_une_commune_non_couverte_n_est_ni_sondee_ni_importee(tmp_path, horloge):
+    # Une commune i-web qui ne publie que des préavis : déclarée avec sa plateforme, sa page de liste et sa raison,
+    # mais sans conseil ni sonde. Son site n'est jamais lu, même s'il répond.
+    sainte_croix = "https://www.sainte-croix.ch"
+    reseau = _preverenges(horloge)
+    reseau.adresses["www.sainte-croix.ch"] = "193.34.137.9"
+    reseau.pages[f"{sainte_croix}/seances"] = reseau.pages[f"{PREVERENGES}/sitzung"]
+    non_couverte = {
+        k: v for k, v in _site(5568, "Sainte-Croix", f"{sainte_croix}/seances", f"{sainte_croix}/conseil").items()
+        if k != "conseil"
+    } | {"couverture": {"communes": [5568], "mode": "non_couvert", "raison": "preavis_seuls"}}
+
+    sources = _sources(_opendata("5586"), SITE_PREVERENGES, non_couverte)
+
+    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=sources)
+
+    assert not any(r.url.startswith(sainte_croix) for r in reseau.journal)
+    assert any(r.url.startswith(PREVERENGES) for r in reseau.journal)
+    assert "site-5568" not in _lire(tmp_path, "etat-sources.json")["sources"]
+    assert [c["cle"] for c in _lire(tmp_path, "conseils/index.json")["conseils"]] == ["5586", "5643"]
+    assert set(_lire(tmp_path, "conseils/import.json")["conseils"]) == {"5586", "5643"}
+    assert not (tmp_path / "conseils/5568").exists()
+
+
 # --- Cas instables, fabriqués par retouche de l'échantillon ---------------------------------------------------------
 
 

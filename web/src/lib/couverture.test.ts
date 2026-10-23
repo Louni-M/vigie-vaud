@@ -10,10 +10,10 @@ import {
 import { chargerEtatSources, lienPannes, lireEtatSources } from './etat-sources.js';
 import type { CoucheInscrite } from './registre/types.js';
 import { COUCHES } from './registre/couches.js';
-import type { EtatSource, EtatSources, Source } from './schema.js';
+import type { EtatSource, EtatSources, RaisonNonCouvert, Source } from './schema.js';
 import { SOURCES } from './sources.js';
 import communesJ0 from '../../static/communes.json';
-import { sourceSite } from '#tests/faux-conseils.js';
+import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 
 const MAINTENANT = new Date('2026-10-12T14:30:00Z');
 const COMMUNES = [{ bfs: 5586 }, { bfs: 5590 }, { bfs: 5889 }];
@@ -359,6 +359,38 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 				maintenant: MAINTENANT
 			});
 			expect(d.etat('site-5643')).toEqual({ etat: 'non_surveillee' });
+		});
+	});
+
+	describe('commune non couverte d’une plateforme retenue', () => {
+		const d = (raison: RaisonNonCouvert = 'preavis_seuls') => {
+			const nonCouverte = sourceNonCouverte(raison);
+			return deduireCouverture({
+				sources: [...SOURCES, nonCouverte],
+				etat: etat(tous),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, nonCouverte.id] } : x)),
+				communes: communesJ0,
+				maintenant: MAINTENANT
+			});
+		};
+
+		it.each([
+			['preavis_seuls', 'Non couvert · préavis seuls'],
+			['rien_en_ligne', 'Non couvert · rien en ligne'],
+			['demande_commune', 'Non couvert · à la demande de la commune'],
+			['refus_robots', 'Non couvert · le site refuse les robots'],
+			['nouveau_site', 'Non couvert · nouveau site pas encore lu']
+		] as const)('donne sa raison dans la cellule (%s), les autres restent « Non couvert »', (raison, libelle) => {
+			expect(libelleCellule(d(raison).cellule('conseils', 5568))).toEqual([libelle]);
+			expect(libelleCellule(d(raison).cellule('conseils', 5624))).toEqual(['Non couvert']);
+		});
+
+		it('ne couvre pas sa commune : elle est grisée au volet Conseils, et sans encart de source', () => {
+			const c = d();
+			expect(c.couvre('conseils', 5568)).toBe(false);
+			expect(c.grisees('conseils')).toContain(5568);
+			expect(c.grisees('conseils')).toHaveLength(298);
+			expect(c.sources.map((s) => s.source.id)).not.toContain('site-5568');
 		});
 	});
 

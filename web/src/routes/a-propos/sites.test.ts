@@ -2,7 +2,7 @@
 // deux plateformes, trois communes couvertes et une non couverte, en plus des sources réelles.
 import { render } from 'svelte/server';
 import { describe, expect, it, vi } from 'vitest';
-import { sourceSite } from '#tests/faux-conseils.js';
+import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 import type { FichierSources, Plateforme, Source } from '#lib/schema.js';
 
 vi.mock('../../../../sources.json', async (importOriginal) => {
@@ -30,7 +30,8 @@ vi.mock('../../../../sources.json', async (importOriginal) => {
 				seances: `https://${ofs}.ch/seances`
 			}
 		});
-	const { conseil: _, ...nonCouverte } = commune(5790, 'i-web');
+	// Déclarée comme le veut #154 : sa raison, sa plateforme seule, ni conseil ni sonde.
+	const nonCouverte = sourceNonCouverte('preavis_seuls', { bfs: 5790, nom: '5790', site: 'https://5790.ch' });
 	const fichier: FichierSources = {
 		plateformes: [plateforme('i-web', 'i-web'), plateforme('quicksite', 'Quicksite')],
 		sources: [...reel.sources, commune(5643, 'i-web'), commune(5891, 'quicksite'), nonCouverte, commune(5642, 'i-web')]
@@ -62,6 +63,7 @@ describe('À propos, avec des communes lues sur leur site', () => {
 			'Sites des communes Les sites des communes dont Vigie Vaud lit le conseil, sur i-web et Quicksite : chaque commune, avec le lien vers son site et son état, est sur la page Couverture. Licence : Actes officiels (art. 5 LDA) : métadonnées et liens seulement · Voie d’accès : Cron'
 		);
 		expect(texte).not.toContain('Commune 5643');
-		expect(texte).not.toContain('Commune 5790');
+		expect(texte).not.toContain('Commune de 5790');
+		expect(texte.match(/Sites des communes/g)).toHaveLength(1);
 	});
 });

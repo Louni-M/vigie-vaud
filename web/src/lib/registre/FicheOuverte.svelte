@@ -132,8 +132,10 @@
 			{#key `${courant.id}:${cle}`}
 				<div hidden={element !== null}>
 					{#if !couvert && commune}
+						{@const message = messageNonCouvert(courant, commune)}
 						<p class="non-couvert">
-							<strong>Non couvert</strong> : {messageNonCouvert(courant, commune)}
+							<strong>Non couvert</strong> : {message.texte}
+							{#if message.lien}<a href={message.lien.url} target="_blank" rel="noopener">{message.lien.texte}</a>{/if}
 							<a href={resolve('/couverture')}>Voir la Couverture</a>
 						</p>
 					{/if}
