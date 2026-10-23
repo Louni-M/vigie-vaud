@@ -1,19 +1,22 @@
 """Un passage du cron (ADR 0005, 0014 et 0015) : sondes et état des sources, puis import quotidien des conseils.
 
 Le passage relit `sources.json` et l'état précédent dans un clone du dépôt de données, sonde chaque source qui a
-un bloc `sonde`, écrit `etat-sources.json`, copie `schema/`, importe les conseils dus (`conseils.py` : OpenParlData,
-et les sites des communes par le robot communal), puis committe
-(l'historique sert d'archive) et pousse. Il ouvre l'issue `panne-source` d'une source en panne et ferme celle d'une
-source disponible, dans le dépôt de données. Une erreur de l'API des issues ne fait pas échouer le passage : l'état
-est tout de même écrit et publié, et le passage suivant, qui compare de nouveau l'état aux issues ouvertes, refait
-ce qui a manqué.
+un bloc `sonde` et le site de chaque commune due (`sonde_sites.py`, par le robot communal), écrit
+`etat-sources.json`, copie `schema/`, importe les conseils dus (`conseils.py` : OpenParlData, et les sites des
+communes par le robot communal), puis committe (l'historique sert d'archive) et pousse. Il ouvre l'issue
+`panne-source` d'une source en panne et ferme celle d'une source disponible, dans le dépôt de données ; pour les
+communes scrapées, l'issue est celle de leur plateforme (« Panne : i-web »), avec la liste des communes en panne,
+ouverte avec la première et fermée au retour de la dernière. Une erreur de l'API des issues ne fait pas échouer le
+passage : l'état est tout de même écrit et publié, et le passage suivant, qui compare de nouveau l'état aux issues
+ouvertes, refait ce qui a manqué.
 
-Les sondes tournent à chaque passage (toutes les 30 minutes). Chaque conseil, lui, s'importe une fois par jour, au
-premier passage après 7 h à Lausanne, depuis le jour de son dernier import réussi ; un import en échec est refait au
-passage suivant. Quand aucun import d'un conseil n'a réussi depuis plus de 24 h, ou dès le premier échec d'un
-conseil qui n'a jamais été importé, le passage ouvre son issue `import-conseils`, qu'il commente et ferme au premier
-import réussi. Seules les sondes mettent une source en panne :
-un import en échec ne touche pas à l'état des sources.
+Les sondes des sources tournent à chaque passage (toutes les 30 minutes). Chaque conseil, lui, s'importe une fois
+par jour, au premier passage après 7 h à Lausanne, depuis le jour de son dernier import réussi ; un import en échec
+est refait au passage suivant. Le site d'une commune est sondé une fois par jour, juste avant son import : une sonde
+en échec saute l'import et est refaite au passage suivant. Quand aucun import d'un conseil n'a réussi depuis plus de
+24 h, ou dès le premier échec d'un conseil qui n'a jamais été importé, le passage ouvre son issue `import-conseils`,
+qu'il commente et ferme au premier import réussi. Seules les sondes mettent une source en panne : un import en échec
+ne touche pas à l'état des sources.
 
 En local, contre un clone du dépôt de données (depuis `pipeline/`) :
 
@@ -32,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import socket
 import ssl
@@ -51,7 +55,18 @@ from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports
 from robot_communal import Robot
-from schema import DOSSIER_SCHEMA, RACINE, EtatSource, EtatSources, FichierSources, Sonde, Source, lire_sources
+from schema import (
+    DOSSIER_SCHEMA,
+    RACINE,
+    EtatSource,
+    EtatSources,
+    FichierSources,
+    Plateforme,
+    Sonde,
+    Source,
+    lire_sources,
+)
+from sonde_sites import sonder_site
 
 FICHIER_ETAT = "etat-sources.json"
 ECHECS_AVANT_PANNE = 2
@@ -73,6 +88,25 @@ class ClientIssues(Protocol):
     def retour(self, source: Source, panne: EtatSource | None, etat: EtatSource) -> None:
         """La source qui a une issue ouverte est disponible depuis `etat.depuis`. `panne` est son état en panne
         quand elle revient à ce passage, `None` quand son retour date d'un passage précédent."""
+
+    def plateformes_signalees(self, plateformes: list[Plateforme]) -> dict[str, set[str]] | None:
+        """Pour chaque plateforme qui a une issue `panne-source` ouverte, les identifiants des sources communales que
+        l'issue liste ; `None` pour un client qui ne voit pas les issues : le passage les déduit alors des communes
+        en panne dans l'état relu."""
+
+    def panne_plateforme(self, plateforme: Plateforme, pannes: list[tuple[Source, EtatSource]]) -> None:
+        """Des communes de la plateforme sont en panne, sans issue ouverte : `pannes`, dans l'ordre de
+        `sources.json`, avec leur état (`depuis`, `motif`)."""
+
+    def liste_plateforme(
+        self, plateforme: Plateforme, pannes: list[tuple[Source, EtatSource]], revenues: list[Source]
+    ) -> None:
+        """L'issue ouverte de la plateforme liste d'autres communes que `pannes` : la liste change. `revenues` sont
+        les communes listées qui ne sont plus en panne."""
+
+    def retour_plateforme(self, plateforme: Plateforme, revenues: list[Source]) -> None:
+        """Plus aucune commune de la plateforme qui a une issue ouverte n'est en panne ; `revenues` sont celles que
+        l'issue listait."""
 
     def imports_signales(self, conseils: list[Source]) -> set[str] | None:
         """Identifiants des `conseils` qui ont une issue `import-conseils` ouverte, ou `None` pour un client qui ne
@@ -98,6 +132,20 @@ class IssuesAffichees:
 
     def retour(self, source: Source, panne: EtatSource | None, etat: EtatSource) -> None:
         print(f"Retour : {source.nom} (disponible depuis {etat.depuis:%Y-%m-%d %H:%M}Z)")
+
+    def plateformes_signalees(self, plateformes: list[Plateforme]) -> None:
+        return None
+
+    def panne_plateforme(self, plateforme: Plateforme, pannes: list[tuple[Source, EtatSource]]) -> None:
+        print(f"{titre_panne_plateforme(plateforme)} : {', '.join(_commune_en_panne(s, e) for s, e in pannes)}")
+
+    def liste_plateforme(
+        self, plateforme: Plateforme, pannes: list[tuple[Source, EtatSource]], revenues: list[Source]
+    ) -> None:
+        self.panne_plateforme(plateforme, pannes)
+
+    def retour_plateforme(self, plateforme: Plateforme, revenues: list[Source]) -> None:
+        print(f"Retour : {plateforme.nom} (plus aucune commune en panne)")
 
     def imports_signales(self, conseils: list[Source]) -> None:
         return None
@@ -147,6 +195,35 @@ class IssuesGitHub:
         else:
             commentaire = f"{source.nom} est de nouveau disponible depuis le {etat.depuis:%Y-%m-%d à %H:%M} UTC."
         self._fermer(ETIQUETTE_PANNE, titre_panne(source), commentaire)
+
+    def plateformes_signalees(self, plateformes: list[Plateforme]) -> dict[str, set[str]]:
+        corps = {i["title"]: i.get("body") or "" for i in self._issues_ouvertes(ETIQUETTE_PANNE)}
+        return {
+            p.id: _sources_listees(corps[titre_panne_plateforme(p)])
+            for p in plateformes
+            if titre_panne_plateforme(p) in corps
+        }
+
+    def panne_plateforme(self, plateforme: Plateforme, pannes: list[tuple[Source, EtatSource]]) -> None:
+        corps = {"title": titre_panne_plateforme(plateforme), "body": corps_panne_plateforme(plateforme, pannes)}
+        self._requete("POST", self._api, json=corps | {"labels": [ETIQUETTE_PANNE]})
+
+    def liste_plateforme(
+        self, plateforme: Plateforme, pannes: list[tuple[Source, EtatSource]], revenues: list[Source]
+    ) -> None:
+        titre = titre_panne_plateforme(plateforme)
+        lignes = [f"Communes en panne : {', '.join(s.nom_court for s, _ in pannes)}."]
+        if revenues:
+            lignes.append(f"De nouveau disponibles : {', '.join(s.nom_court for s in revenues)}.")
+        for numero in [i["number"] for i in self._issues_ouvertes(ETIQUETTE_PANNE) if i["title"] == titre]:
+            self._requete("PATCH", f"{self._api}/{numero}", json={"body": corps_panne_plateforme(plateforme, pannes)})
+            self._requete("POST", f"{self._api}/{numero}/comments", json={"body": "\n".join(lignes)})
+
+    def retour_plateforme(self, plateforme: Plateforme, revenues: list[Source]) -> None:
+        commentaire = f"Plus aucune commune de {plateforme.nom} n'est en panne"
+        if revenues:
+            commentaire += f" : {', '.join(s.nom_court for s in revenues)} de nouveau disponible(s)"
+        self._fermer(ETIQUETTE_PANNE, titre_panne_plateforme(plateforme), commentaire + ".")
 
     def imports_signales(self, conseils: list[Source]) -> set[str]:
         titres = {i["title"] for i in self._issues_ouvertes(ETIQUETTE_IMPORT)}
@@ -202,6 +279,38 @@ def titre_panne(source: Source) -> str:
     return f"Panne : {source.nom}"
 
 
+def titre_panne_plateforme(plateforme: Plateforme) -> str:
+    return f"Panne : {plateforme.nom}"
+
+
+# Les identifiants des communes listées, en fin de corps de l'issue d'une plateforme, invisibles dans GitHub : le
+# passage suivant y relit la liste sans dépendre de la mise en forme.
+_SOURCES_LISTEES = re.compile(r"<!-- sources : ([^>]*) -->")
+
+
+def _sources_listees(corps: str) -> set[str]:
+    m = _SOURCES_LISTEES.search(corps)
+    return set(m[1].split()) if m else set()
+
+
+def _commune_en_panne(source: Source, etat: EtatSource) -> str:
+    depuis = f"depuis le {etat.depuis:%Y-%m-%d à %H:%M} UTC" if etat.depuis else "en panne"
+    return f"{source.nom_court} ({depuis}, {etat.motif})"
+
+
+def corps_panne_plateforme(plateforme: Plateforme, pannes: list[tuple[Source, EtatSource]]) -> str:
+    """Le corps de l'issue `panne-source` d'une plateforme : la liste des communes en panne, depuis quand et
+    pourquoi, puis leurs identifiants pour le passage suivant."""
+    lignes = "\n".join(f"- {_commune_en_panne(s, e)}" for s, e in pannes)
+    return (
+        f"La sonde du site de ces communes de {plateforme.nom} échoue :\n\n{lignes}\n\n"
+        "Tant que la sonde d'une commune échoue, son import du jour est sauté ; le site garde ce qui a déjà été "
+        "importé. Le cron tient cette liste à jour à chaque passage et fermera l'issue au retour de la dernière "
+        "commune.\n\n"
+        f"<!-- sources : {' '.join(s.id for s, _ in pannes)} -->"
+    )
+
+
 def titre_import(conseil: Source) -> str:
     return f"Import en échec : {conseil.nom}"
 
@@ -224,13 +333,14 @@ def passage(
     rattrapage: bool = False,
     resoudre: Callable[[str], str] = socket.gethostbyname,
 ) -> EtatSources:
-    """Sonde chaque source qui a un bloc `sonde`, puis écrit `etat-sources.json` et copie `schema/` dans `depot`,
-    un clone du dépôt de données. L'état précédent est relu dans ce clone ; absent, illisible ou d'une autre
-    version, le passage repart de zéro. Les issues sont ensuite accordées à l'état écrit ; une erreur de leur API
-    est affichée sans faire échouer le passage. Vient ensuite l'import des conseils dus (`importer_les_conseils`),
-    qui ne touche pas à l'état des sources. Les sites des communes sont lus par un robot communal, un seul pour tout
-    le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de chaque
-    hôte. Le commit et le push sont l'affaire de l'appelant."""
+    """Sonde chaque source qui a un bloc `sonde` et le site de chaque commune due (`sonder_les_sites`), puis écrit
+    `etat-sources.json` et copie `schema/` dans `depot`, un clone du dépôt de données. L'état précédent est relu
+    dans ce clone ; absent, illisible ou d'une autre version, le passage repart de zéro. Les issues sont ensuite
+    accordées à l'état écrit ; une erreur de leur API est affichée sans faire échouer le passage. Vient ensuite
+    l'import des conseils dus (`importer_les_conseils`), sauf ceux dont la sonde du site a échoué ; l'import ne
+    touche pas à l'état des sources. Les sites des communes sont sondés et lus par un robot communal, un seul pour
+    tout le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de
+    chaque hôte. Le commit et le push sont l'affaire de l'appelant."""
     genere = _a_la_seconde(horloge())
     precedent = _lire_etat(depot / FICHIER_ETAT)
     etats: dict[str, EtatSource] = {}
@@ -239,19 +349,26 @@ def passage(
             continue
         heure = _a_la_seconde(horloge())
         etats[source.id] = _suivant(precedent.get(source.id), heure, sonder(client, source.sonde))
+    robot = Robot(client, horloge, attendre, resoudre)
+    etats |= sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapage)
     etat = EtatSources(version=1, genere=genere, sources=etats)
     (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
     shutil.rmtree(depot / "schema", ignore_errors=True)
     shutil.copytree(DOSSIER_SCHEMA, depot / "schema")
 
     try:
-        _accorder_issues(issues, [s for s in sources.sources if s.id in etats], precedent, etats)
+        _accorder_issues(issues, [s for s in sources.sources if s.sonde is not None], precedent, etats)
+        _accorder_issues_plateformes(issues, sources, precedent, etats)
     except httpx.HTTPError as e:
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
 
     opd = OpenParlData(client, horloge, attendre)
-    robot = Robot(client, horloge, attendre, resoudre)
-    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapage)
+    sautes = {
+        s.conseil.cle: etats[s.id].motif
+        for s in _sites_sondes(sources)
+        if s.id in etats and etats[s.id].echecs_consecutifs
+    }
+    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapage, sautes)
     return etat
 
 
@@ -270,6 +387,41 @@ def _accorder_issues(
             issues.panne(source, apres)
         elif apres.echecs_consecutifs == 0 and source.id in signalees:
             issues.retour(source, avant if avant is not None and avant.etat == "en_panne" else None, apres)
+
+
+def _accorder_issues_plateformes(
+    issues: ClientIssues, sources: FichierSources, precedent: Mapping[str, EtatSource], etats: Mapping[str, EtatSource]
+) -> None:
+    """Une issue `panne-source` par plateforme pour les communes scrapées : ouverte avec la première commune en
+    panne, sa liste mise à jour quand une commune y entre ou en sort, fermée au retour de la dernière. Comme pour
+    une source, la décision part des communes que listent les issues ouvertes ; un client qui ne les voit pas les
+    laisse déduire de l'état relu."""
+    sites = _sites_sondes(sources)
+    plateformes = [p for p in sources.plateformes if any(s.site.plateforme == p.id for s in sites)]
+    if not plateformes:
+        return
+
+    def en_panne(lus: Mapping[str, EtatSource], plateforme: Plateforme) -> list[Source]:
+        return [
+            s
+            for s in sites
+            if s.site.plateforme == plateforme.id and s.id in lus and lus[s.id].etat == "en_panne"
+        ]
+
+    signalees = issues.plateformes_signalees(plateformes)
+    if signalees is None:
+        signalees = {p.id: {s.id for s in en_panne(precedent, p)} for p in plateformes if en_panne(precedent, p)}
+    for plateforme in plateformes:
+        touchees = en_panne(etats, plateforme)
+        pannes = [(s, etats[s.id]) for s in touchees]
+        listees = signalees.get(plateforme.id)
+        revenues = [s for s in sites if listees and s.id in listees and s not in touchees]
+        if touchees and listees is None:
+            issues.panne_plateforme(plateforme, pannes)
+        elif touchees and {s.id for s in touchees} != listees:
+            issues.liste_plateforme(plateforme, pannes, revenues)
+        elif not touchees and listees is not None:
+            issues.retour_plateforme(plateforme, revenues)
 
 
 def _a_la_seconde(heure: datetime) -> datetime:
@@ -397,6 +549,40 @@ def conseils_dus(conseils: list[Source], imports: Mapping[str, datetime], heure:
     return {c for c in cles if c not in imports or imports[c] < seuil}
 
 
+def _sites_sondes(sources: FichierSources) -> list[Source]:
+    """Les sources communales sondées : un bloc `site` et un conseil (une commune non couverte n'en a pas)."""
+    return [s for s in sources.sources if s.site is not None and s.conseil is not None]
+
+
+def sonder_les_sites(
+    robot: Robot,
+    sources: FichierSources,
+    precedent: Mapping[str, EtatSource],
+    imports: Mapping[str, datetime],
+    horloge: Callable[[], datetime],
+    rattrapage: bool,
+) -> dict[str, EtatSource]:
+    """L'état de chaque source communale sondée. Une commune est sondée une fois par jour, juste avant son import :
+    au passage où son conseil est dû (tous pour un `rattrapage`), sauf si une sonde a déjà réussi depuis le dernier
+    7 h à Lausanne. Une sonde en échec est donc refaite au passage suivant, et la commune passe en panne à deux
+    échecs, comme toute source. Une commune qui n'est pas sondée à ce passage garde son état précédent."""
+    sites = _sites_sondes(sources)
+    heure = _a_la_seconde(horloge())
+    dus = {s.conseil.cle for s in sites} if rattrapage else conseils_dus(sites, imports, heure)
+    seuil = dernier_seuil(heure)
+    etats: dict[str, EtatSource] = {}
+    for source in sites:
+        avant = precedent.get(source.id)
+        reussie_ce_jour = avant is not None and not avant.echecs_consecutifs and avant.derniere_sonde >= seuil
+        if source.conseil.cle not in dus or reussie_ce_jour:
+            if avant is not None:
+                etats[source.id] = avant
+            continue
+        motif = sonder_site(robot, source, sources.plateformes)
+        etats[source.id] = _suivant(avant, _a_la_seconde(horloge()), motif)
+    return etats
+
+
 def importer_les_conseils(
     depot: Path,
     sources: FichierSources,
@@ -405,16 +591,24 @@ def importer_les_conseils(
     horloge: Callable[[], datetime],
     issues: ClientIssues,
     rattrapage: bool,
+    sautes: Mapping[str, str | None] | None = None,
 ) -> None:
     """Importe les conseils dus (tous, depuis tout l'historique, pour un `rattrapage`), puis accorde les issues
-    `import-conseils` aux dates d'import. Seules les sondes décident d'une panne : l'import ne touche pas à l'état
-    des sources, et une erreur de l'API des issues est affichée sans faire échouer le passage."""
+    `import-conseils` aux dates d'import. `sautes` donne, par clé, les conseils dont la sonde du site a échoué et
+    le motif : leur import du jour est sauté, ce qui vaut un import en échec ordinaire. Seules les sondes décident
+    d'une panne : l'import ne touche pas à l'état des sources, et une erreur de l'API des issues est affichée sans
+    faire échouer le passage."""
     conseils = [s for s in sources.sources if s.conseil is not None]
     if not conseils:
         return
+    sautes = sautes or {}
     heure = _a_la_seconde(horloge())
     avant = lire_imports(depot)
     dus = {s.conseil.cle for s in conseils} if rattrapage else conseils_dus(conseils, avant, heure)
+    for conseil in conseils:
+        if conseil.conseil.cle in dus and conseil.conseil.cle in sautes:
+            print(f"Import sauté : {conseil.nom} (sonde en échec : {sautes[conseil.conseil.cle]})", file=sys.stderr)
+    dus -= sautes.keys()
     apres = avant
     if dus:
         try:

@@ -68,6 +68,10 @@ class Injoignable(PageNonLue):
     """Connexion refusée, ou nom d'hôte qui ne se résout pas."""
 
 
+class PageIllisible(PageNonLue):
+    """La réponse est arrivée mais son corps ne se décode pas (compression annoncée et corps qui n'en est pas une)."""
+
+
 class Robot:
     """Une requête à la fois, même appelé de plusieurs fils, et au moins `INTERVALLE` secondes entre deux requêtes
     vers un même réseau /24 (IPv6 : /64), mesurées depuis la fin de la précédente. Les réseaux ne s'attendent pas
@@ -122,6 +126,8 @@ class Robot:
             raise DelaiDepasse(f"{url} : délai de {DELAI:.0f} s dépassé") from e
         except httpx.TransportError as e:
             raise Injoignable(f"{url} : {e}") from e
+        except httpx.DecodingError as e:
+            raise PageIllisible(f"{url} : corps illisible ({e})") from e
         finally:
             self._dernieres[reseau] = self._horloge()
 

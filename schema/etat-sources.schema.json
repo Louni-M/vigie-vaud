@@ -54,7 +54,7 @@
               "type": "null"
             }
           ],
-          "description": "Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…)."
+          "description": "Cause courte du dernier échec (« HTTP 503 », « délai dépassé », « marqueur absent »…)."
         }
       },
       "required": [
@@ -93,7 +93,7 @@
       "additionalProperties": {
         "$ref": "#/$defs/EtatSource"
       },
-      "description": "Seules les sources qui ont un bloc `sonde` y figurent.",
+      "description": "Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import.",
       "propertyNames": {
         "$ref": "#/$defs/IdSource"
       },
