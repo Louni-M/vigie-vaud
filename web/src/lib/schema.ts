@@ -342,6 +342,21 @@ export interface LigneSeance {
 	 * Nombre de points de l'ordre du jour.
 	 */
 	points: number;
+	/**
+	 * Les documents d'une Séance sans points, que sa ligne montre à la place du nombre de points. Absent pour une Séance avec points ou sans documents.
+	 */
+	documents?: DocumentObjet[];
+}
+export interface DocumentObjet {
+	/**
+	 * Nom du document, sinon sa catégorie.
+	 */
+	titre: string | null;
+	date: string | null;
+	/**
+	 * Le document chez la source (PDF, page ou vidéo).
+	 */
+	lien: string;
 }
 /**
  * `conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est
@@ -413,17 +428,6 @@ export interface Etape {
 	 * `title.fr` de la source, sinon `title_harmonized.fr`, brut.
 	 */
 	libelle: string;
-}
-export interface DocumentObjet {
-	/**
-	 * Nom du document, sinon sa catégorie.
-	 */
-	titre: string | null;
-	date: string | null;
-	/**
-	 * Le document chez la source (PDF, page ou vidéo).
-	 */
-	lien: string;
 }
 /**
  * `conseils/communes/<ofs>.json` (« Au Grand Conseil ») : les Objets du Grand Conseil rattachés à la commune,

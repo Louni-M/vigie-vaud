@@ -83,6 +83,30 @@ def test_deux_seances_du_meme_jour_n_en_font_qu_une_avec_tous_les_points_et_docu
     ]
 
 
+def test_la_ligne_d_une_seance_sans_points_porte_ses_documents(tmp_path):
+    horloge = HorlogeFactice(T0)
+    odj = Document("Ordre du jour", "https://www.bussigny.ch/odj.pdf", "2026-10-01")
+    monde = Monde(
+        horloge=horloge,
+        reunions=[
+            _seance(begin_date="2026-11-03T20:00:00", documents=[odj]),
+            _seance(id=2, begin_date="2026-10-06T20:00:00", points=[Point(1, "Appel")], documents=[odj]),
+        ],
+    )
+
+    _passer(tmp_path, monde, horloge, SOURCES)
+
+    assert _lire(tmp_path, "conseils/5624/seances.json")["seances"] == [
+        {
+            "cle": "5624/2026-11-03",
+            "date": "2026-11-03T20:00",
+            "points": 0,
+            "documents": [{"titre": "Ordre du jour", "date": "2026-10-01", "lien": "https://www.bussigny.ch/odj.pdf"}],
+        },
+        {"cle": "5624/2026-10-06", "date": "2026-10-06T20:00", "points": 1},
+    ]
+
+
 def _preavis(titre="Préavis 12/2026 - Crédit pour la piscine", updated_at="2026-10-07"):
     return Affaire(
         id=None, body_key="5624", number="12/2026", title=titre, type_name="Préavis", updated_at=updated_at

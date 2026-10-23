@@ -397,6 +397,12 @@ class LigneSeance(Modele):
     cle: CleElement = Field(description="`<conseil>/<jour>` : le fichier d'archive de la Séance.")
     date: DateSeance
     points: Annotated[int, Field(ge=0)] = Field(description="Nombre de points de l'ordre du jour.")
+    documents: list[DocumentObjet] = Field(
+        default=[],
+        exclude_if=lambda documents: not documents,
+        description="Les documents d'une Séance sans points, que sa ligne montre à la place du nombre de points. "
+        "Absent pour une Séance avec points ou sans documents.",
+    )
 
 
 class ListeSeances(Enveloppe):
