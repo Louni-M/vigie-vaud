@@ -74,6 +74,18 @@ describe('conseils couverts, pour À propos', () => {
 		]);
 	});
 
+	it('dit les trois niveaux d’une commune scrapée', () => {
+		const niveaux = (['objets', 'preavis'] as const).map((d) =>
+			conseil(`site-${d}`, 'Conseil communal (site de la commune)', { body_key: '1', donne: [d, 'seances'] })
+		);
+		const seules = conseil('site-seances', 'Conseil communal (site de la commune)', { body_key: '2', donne: ['seances'] });
+		expect(listerConseils([...niveaux, seules]).map((c) => c.donne)).toEqual([
+			'objets et séances',
+			'séances et préavis',
+			'séances seulement'
+		]);
+	});
+
 	it('ne liste rien sans bloc conseil', () => {
 		expect(listerConseils([source('permis'), source('fond')])).toEqual([]);
 	});

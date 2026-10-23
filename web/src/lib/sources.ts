@@ -25,12 +25,20 @@ export const SENS_VOIES: Record<VoieAcces, string> = {
 	preparee: 'la source est transformée une fois en fichier, publié avec le site'
 };
 
-/** Ce que donne un conseil, en toutes lettres : « objets et séances », « séances seulement » ou « objets seulement ». */
+/**
+ * Ce que donne un conseil, en toutes lettres, c'est-à-dire son niveau : « objets et séances », « séances et
+ * préavis », « séances seulement » ; « objets seulement » ou « préavis seulement » sans ses Séances.
+ */
 export function libelleDonne(conseil: { donne: readonly DonneeConseil[] }): string {
-	const objets = conseil.donne.includes('objets');
+	const objets = conseil.donne.includes('objets') ? 'objets' : conseil.donne.includes('preavis') ? 'préavis' : null;
 	const seances = conseil.donne.includes('seances');
-	return objets && seances ? 'objets et séances' : seances ? 'séances seulement' : 'objets seulement';
+	if (objets && seances) return objets === 'objets' ? 'objets et séances' : 'séances et préavis';
+	return seances ? 'séances seulement' : `${objets ?? 'objets'} seulement`;
 }
+
+/** Le conseil donne-t-il des Objets, tous (`objets`) ou ses préavis seulement (`preavis`) ? */
+export const donneDesObjets = (conseil: { donne: readonly DonneeConseil[] }) =>
+	conseil.donne.includes('objets') || conseil.donne.includes('preavis');
 
 /** Clé du conseil dans le dépôt de données : `body_key` en minuscules (`vd`, `5586`), comme `Conseil.cle` du cron. */
 export const cleConseil = (conseil: Conseil) => conseil.body_key.toLowerCase();

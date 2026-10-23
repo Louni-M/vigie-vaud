@@ -323,6 +323,21 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 		expect(libelleCellule(d.cellule('conseils', 5643))).toEqual(['Scrapé · séances seulement · non surveillée']);
 	});
 
+	it.each([
+		[['objets', 'seances'], 'Scrapé · non surveillée'],
+		[['preavis', 'seances'], 'Scrapé · séances et préavis · non surveillée']
+	] as const)('donne pour Conseils le niveau d’une commune scrapée quand il manque quelque chose (%j)', (donne, cellule) => {
+		const site = sourceSite({ conseil: { body_key: '5643', donne: [...donne] } });
+		const d = deduireCouverture({
+			sources: [...SOURCES, site],
+			etat: etat(tous),
+			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, site.id] } : x)),
+			communes: communesJ0,
+			maintenant: MAINTENANT
+		});
+		expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([cellule]);
+	});
+
 	it('donne pour Permis la paire de la CAMAC partout', () => {
 		expect(cellule('permis', 5586)).toEqual(['API · disponible']);
 		expect(cellule('permis', 5624)).toEqual(['API · disponible']);
