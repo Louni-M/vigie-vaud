@@ -66,7 +66,10 @@ export interface Couvrante {
 export interface Couverture {
 	/** Les couches qui ont une Couverture, dans l'ordre du registre : les colonnes du tableau des communes. */
 	colonnes: ColonneCouverture[];
-	/** Les sources de la couche qui couvrent la commune, dans l'ordre de la couche ; aucune : « Non couvert ». */
+	/**
+	 * Les sources de la couche qui couvrent la commune, dans l'ordre de la couche. Aucune : celles qui la déclarent
+	 * non couverte, avec leur raison (« Non couvert · préavis seuls »), sinon rien (« Non couvert »).
+	 */
 	cellule(couche: string, bfs: number): Couvrante[];
 	/**
 	 * Les sources des couches qui ont une Couverture, dans l'ordre du registre, chacune une fois, y compris celles
@@ -119,15 +122,26 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 		const m = mode(id, bfs);
 		return { mode: m, etat: m === 'non_couvert' ? null : etatCouverture(id) };
 	};
+	/** Une source qui déclare la commune non couverte (`mode: non_couvert`, avec sa raison). */
+	const declareNonCouverte = (id: string, bfs: number) => {
+		const c = parId.get(id)?.couverture;
+		return c?.mode === 'non_couvert' && c.communes !== 'canton' && c.communes.includes(bfs);
+	};
 	return {
 		colonnes: avecCouverture.map(({ id, nom }) => ({ id, nom })),
 		cellule(id, bfs) {
 			const couche = avecCouverture.find((c) => c.id === id);
-			return (couche ? couvrantes(couche) : [])
+			const sources = couche ? couvrantes(couche) : [];
+			const couvrent = sources
 				.map((s) => ({ source: parId.get(s)!, paire: paire(s, bfs) }))
 				.filter((c) => c.paire.mode !== 'non_couvert');
+			if (couvrent.length > 0) return couvrent;
+			return sources
+				.filter((s) => declareNonCouverte(s, bfs))
+				.map((s) => ({ source: parId.get(s)!, paire: { mode: 'non_couvert' as const, etat: null } }));
 		},
-		sources: ids.map((id) => {
+		// Une source qui ne déclare que des communes non couvertes ne couvre rien : elle n'a pas d'encart.
+		sources: ids.filter((id) => parId.get(id)!.couverture?.mode !== 'non_couvert').map((id) => {
 			const source = parId.get(id)!;
 			const e = etatCouverture(id);
 			const lu = source.sonde && etat ? (etat.sources[id] ?? null) : null;
@@ -221,12 +235,17 @@ export function libelleLimites(source: Pick<Source, 'limites'>): string | null {
 
 /**
  * Libellé d'une cellule du tableau, une ligne par source qui couvre la commune : « API · disponible »,
- * « API · séances seulement · disponible » pour un conseil qui ne donne pas tout, ou « Non couvert ».
+ * « API · séances seulement · disponible » pour un conseil qui ne donne pas tout, « Non couvert · préavis seuls »
+ * pour une commune non couverte d'une plateforme retenue, ou « Non couvert ».
  * Tant que l'état des sources n'est pas chargé (`charge` faux), l'état est remplacé par « … ».
  */
 export function libelleCellule(couvrantes: readonly Couvrante[], charge = true): string[] {
 	if (couvrantes.length === 0) return [libelleMode('non_couvert')];
 	return couvrantes.map(({ source, paire }) => {
+		if (paire.mode === 'non_couvert') {
+			const raison = source.couverture?.raison;
+			return [libelleMode('non_couvert'), raison ? RAISONS[raison].cellule : null].filter(Boolean).join(' · ');
+		}
 		const donne = source.conseil ? libelleDonne(source.conseil) : null;
 		const etat = paire.etat && (charge ? libelleEtat(paire.etat) : '…');
 		return [libelleMode(paire.mode), donne === 'objets et séances' ? null : donne, etat].filter(Boolean).join(' · ');

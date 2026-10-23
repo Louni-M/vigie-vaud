@@ -53,6 +53,14 @@ export function noteDeNiveau(source: Source): NoteDeNiveau | null {
 }
 
 /**
+ * Les sources de la couche Conseils, dans l'ordre de `sources.json` : chaque source à bloc `conseil`, et chaque
+ * commune non couverte d'une plateforme retenue (bloc `site` sans conseil), pour que sa raison soit dans la cellule
+ * de la Couverture. Ajouter une commune, c'est ajouter son entrée à `sources.json`.
+ */
+export const sourcesDeLaCouche = (sources: readonly Source[] = SOURCES) =>
+	sources.filter((s) => s.conseil || s.site).map((s) => s.id);
+
+/**
  * Ce qui suit « Non couvert : » en tête de l'onglet Conseil d'une commune sans conseil couvert. Commune d'une
  * plateforme retenue déclarée non couverte (une source à bloc `site` en mode `non_couvert`) : la phrase de sa raison
  * et un lien vers la page du conseil, celui de l'attribution. Hors de J3 : une phrase neutre, sans lien.

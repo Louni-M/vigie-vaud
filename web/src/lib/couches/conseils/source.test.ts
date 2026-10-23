@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { coucheConseils } from './index.js';
-import { noteDeNiveau, nonCouvertConseils, piedDeFiche } from './source.js';
+import { noteDeNiveau, nonCouvertConseils, piedDeFiche, sourcesDeLaCouche } from './source.js';
 import { messageNonCouvert } from '#lib/registre/onglet.js';
 import { SOURCES } from '#lib/sources.js';
 import { commune } from '#tests/faux-canton.js';
@@ -45,6 +45,20 @@ describe('note de niveau sous le nom du conseil', () => {
 
 	it.each(['openparldata-5586', 'openparldata-vd'])('ne dit rien d’un conseil qui donne tout (%s)', (id) => {
 		expect(noteDeNiveau(SOURCES.find((s) => s.id === id)!)).toBeNull();
+	});
+});
+
+describe('sources de la couche Conseils', () => {
+	it('déclare chaque conseil et chaque commune non couverte d’une plateforme retenue, dans l’ordre de sources.json', () => {
+		const sources = [...SOURCES, sourceSite(), sourceNonCouverte()];
+
+		expect(sourcesDeLaCouche(sources)).toEqual([
+			'openparldata-vd',
+			'openparldata-5586',
+			'openparldata-5938',
+			'site-5643',
+			'site-5568'
+		]);
 	});
 });
 

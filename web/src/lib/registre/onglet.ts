@@ -7,13 +7,15 @@ import type { CoucheInscrite, MessageNonCouvert } from './types.js';
 /**
  * Les sources de la couche qui concernent la commune, pour les badges sous le nom de l'onglet : d'abord celles dont
  * la Couverture compte la commune (« canton » compris), puis celles qui n'ont pas de Couverture et portent sur le
- * canton (le Grand Conseil), chacune dans l'ordre de la couche. Une source que `sources` ne déclare pas est ignorée.
- * Dans une fiche propre (`bfs` : `null`), seulement celles qui portent sur tout le canton.
+ * canton (le Grand Conseil), chacune dans l'ordre de la couche. Une source que `sources` ne déclare pas est ignorée,
+ * comme celle qui déclare la commune non couverte. Dans une fiche propre (`bfs` : `null`), seulement celles qui
+ * portent sur tout le canton.
  */
 export function sourcesDeLOnglet(couche: CoucheInscrite, sources: readonly Source[], bfs: number | null): Source[] {
 	const declarees = couche.sources.flatMap((id) => sources.filter((s) => s.id === id));
 	const couvrent = declarees.filter(
-		({ couverture: c }) => c && (c.communes === 'canton' || (bfs !== null && c.communes.includes(bfs)))
+		({ couverture: c }) =>
+			c && c.mode !== 'non_couvert' && (c.communes === 'canton' || (bfs !== null && c.communes.includes(bfs)))
 	);
 	const canton = declarees.filter((s) => !s.couverture);
 	return [...couvrent, ...canton];

@@ -6,7 +6,7 @@ import type { Source } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
 import type { CoucheInscrite } from './types.js';
 import { commune } from '#tests/faux-canton.js';
-import { sourceSite } from '#tests/faux-conseils.js';
+import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 import { libelleBadge } from '#lib/fraicheur.js';
 import { dernierImport } from '#lib/imports-conseils.js';
 
@@ -56,6 +56,13 @@ describe('badges sous le nom d’un onglet', () => {
 		);
 
 		expect(badges).toEqual(['importé il y a 6 h · Site de Préverenges', 'dernier import inconnu · Grand Conseil']);
+	});
+
+	it('dans une commune non couverte, pas de badge pour la source qui la déclare non couverte', () => {
+		const nonCouverte = sourceNonCouverte();
+		const couche = { ...coucheConseils, sources: [...coucheConseils.sources, nonCouverte.id] };
+
+		expect(noms(couche, 5568, [...SOURCES, nonCouverte])).toEqual(['Grand Conseil']);
 	});
 
 	it('dans une fiche propre, seulement les sources qui portent sur tout le canton', () => {
