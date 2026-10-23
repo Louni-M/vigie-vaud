@@ -9,13 +9,14 @@ instables (Objet sans numéro, doublon de numéro) par une retouche de la liste.
 import html
 import json
 import re
+from datetime import timedelta
 
 import pytest
 
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
 from schema import FichierSources
-from test_sites_communaux import T0, _lire, _monde, _opendata, _passer, _site
+from passage_sites import T0, _lire, _opendata, _passer, _site
 
 BLONAY = "https://www.blonay-saint-legier.ch"
 PUIDOUX = "https://www.puidoux.ch"
@@ -70,7 +71,7 @@ def horloge():
 def test_un_objet_du_module_objets_est_archive_avec_son_numero_brut_son_type_sa_date_son_statut_et_ses_documents(
     tmp_path, horloge
 ):
-    _passer(tmp_path, horloge, _blonay(horloge), _monde(horloge), sources=_sources(SITE_BLONAY))
+    _passer(tmp_path, horloge, _blonay(horloge), sources=_sources(SITE_BLONAY))
 
     objet = _lire(tmp_path, "conseils/5892/objets/2026-PM-37.json")
     del objet["genere"]
@@ -93,7 +94,7 @@ def test_un_objet_du_module_objets_est_archive_avec_son_numero_brut_son_type_sa_
 def test_les_auteur_e_s_publie_e_s_par_la_fiche_d_un_objet_sont_archive_e_s_et_restent_nomme_e_s_dans_son_titre(
     tmp_path, horloge
 ):
-    _passer(tmp_path, horloge, _blonay(horloge), _monde(horloge), sources=_sources(SITE_BLONAY))
+    _passer(tmp_path, horloge, _blonay(horloge), sources=_sources(SITE_BLONAY))
 
     postulat = _lire(tmp_path, "conseils/5892/objets/2026-PO-02.json")
     assert (postulat["type"], postulat["depose"], postulat["statut"]) == (
@@ -123,7 +124,7 @@ def test_un_point_d_ordre_du_jour_est_relie_a_son_objet_par_son_numero(tmp_path,
     reseau = _blonay(horloge)
     reseau.pages[f"{BLONAY}/_rte/information/2909893"] = _fiche_fabriquee("7100001", statut=False)
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_BLONAY))
+    _passer(tmp_path, horloge, reseau, sources=_sources(SITE_BLONAY))
 
     preavis = _lire(tmp_path, "conseils/5892/objets/2026-PM-23.json")
     assert (preavis["type"], preavis["depose"], preavis["statut"], preavis["contributeurs"]) == (
@@ -156,7 +157,7 @@ def test_les_documents_d_un_point_sans_objet_vont_a_la_seance(tmp_path, horloge)
     reseau.pages[url] = Page(texte, entetes=reseau.pages[url].entetes, gzip=True)
     reseau.pages[f"{BLONAY}/_rte/information/2909893"] = _fiche_fabriquee("7100001")
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_BLONAY))
+    _passer(tmp_path, horloge, reseau, sources=_sources(SITE_BLONAY))
 
     seance = _lire(tmp_path, "conseils/5892/seances/2026-09-29.json")
     assert [(d["titre"], d["lien"].rsplit("/", 1)[1]) for d in seance["documents"]] == [
@@ -206,7 +207,7 @@ def test_un_objet_sans_numero_n_est_pas_importe_et_un_doublon_de_numero_garde_le
     reseau = _blonay(horloge)
     _objets_retouches(reseau, _numeroter({"3000802": "", "2909893": "2026-PM-37"}))
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_BLONAY))
+    _passer(tmp_path, horloge, reseau, sources=_sources(SITE_BLONAY))
 
     assert _lire(tmp_path, "conseils/5892/objets/2026-PM-37.json")["lien"] == f"{BLONAY}/_rte/information/3002200"
     assert sorted(p.name for p in (tmp_path / "conseils/5892/objets").iterdir()) == ["2026-PM-37.json"]
@@ -228,11 +229,30 @@ def test_un_objet_d_avant_la_fenetre_n_est_ni_ouvert_ni_importe_au_passage_ordin
 
     _objets_retouches(reseau, dater)
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_BLONAY))
+    _passer(tmp_path, horloge, reseau, sources=_sources(SITE_BLONAY))
 
     assert not any(r.url.endswith("/3002200") for r in reseau.journal)
     assert not (tmp_path / "conseils/5892/objets/2026-PM-37.json").exists()
     assert (tmp_path / "conseils/5892/objets/2026-PO-02.json").exists()
+
+
+def test_un_objet_sans_identifiant_relu_le_lendemain_remplace_celui_de_l_archive(tmp_path, horloge):
+    # Le site corrige le titre du préavis 37-2026 : sans identifiant, l'Objet relu remplace celui de l'archive, au
+    # même fichier (la clé est son numéro).
+    _passer(tmp_path, horloge, _blonay(horloge), sources=_sources(SITE_BLONAY))
+    reseau = _blonay(horloge)
+
+    def corriger(lignes):
+        for ligne in lignes:
+            ligne["title"] = ligne["title"].replace("Budget 2027 du Fonds culturel Riviera", "Budget 2027 du Fonds")
+        return lignes
+
+    _objets_retouches(reseau, corriger)
+
+    _passer(tmp_path, horloge, reseau, sources=_sources(SITE_BLONAY), heure=T0 + timedelta(days=1))
+
+    objet = _lire(tmp_path, "conseils/5892/objets/2026-PM-37.json")
+    assert (objet["id"], objet["titre"]) == (None, "Préavis 37-2026 - Budget 2027 du Fonds")
 
 
 # --- Variante pages : les préavis rédigés dans une page (Puidoux) ----------------------------------------------------
@@ -253,7 +273,7 @@ def test_les_preavis_rediges_dans_une_page_sont_archives_avec_leur_numero_brut_l
 ):
     reseau = _puidoux(horloge)
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_PUIDOUX))
+    _passer(tmp_path, horloge, reseau, sources=_sources(SITE_PUIDOUX))
 
     preavis = _lire(tmp_path, "conseils/5607/objets/10-2023.json")
     del preavis["genere"]

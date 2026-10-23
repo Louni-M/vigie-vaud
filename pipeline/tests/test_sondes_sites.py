@@ -6,28 +6,28 @@ Une commune scrapée est sondée une fois par jour, juste avant son import : la 
 (`site.seances`) par le robot communal et y cherche le marqueur de sa variante, déclaré dans `plateformes`.
 """
 
-import json
 from datetime import timedelta
 
-import httpx
 import pytest
 
-from cron import IssuesGitHub, passage
+from cron import IssuesGitHub
 from faux_openparldata import HorlogeFactice
 from faux_sites import DELAI, REFUS, Page, echantillon
-from test_cron import DEPOT_DONNEES, JETON, GitHubFactice, IssuesFactices
-from test_sites_communaux import (
+from passage_sites import (
     BLONAY,
     PREVERENGES,
     SITE_PREVERENGES,
     T0,
     _liste_retouchee,
+    _lire,
     _monde,
     _opendata,
+    _passer,
     _preverenges,
     _site,
     _sources,
 )
+from test_cron import DEPOT_DONNEES, JETON, GitHubFactice, IssuesFactices
 
 UA_SONDE = "VigieVaud-sonde (+https://louni-m.github.io/vigie-vaud/a-propos#robot; vigievaud.gentile263@passinbox.com)"
 LISTE = f"{PREVERENGES}/sitzung"
@@ -39,26 +39,6 @@ SITE_BLONAY = _site(5892, "Blonay - Saint-Légier", f"{BLONAY}/seances", f"{BLON
 @pytest.fixture
 def horloge():
     return HorlogeFactice(T0)
-
-
-def _passer(depot, horloge, reseau, sources=None, heure=None, issues=None):
-    horloge.heure = heure or horloge.heure
-    issues = issues if issues is not None else IssuesFactices()
-    with httpx.Client(transport=reseau.transport(repli=_monde(horloge).transport())) as client:
-        passage(
-            depot,
-            sources or _sources(_opendata("5586"), SITE_PREVERENGES),
-            client,
-            horloge=horloge,
-            issues=issues,
-            attendre=horloge.attendre,
-            resoudre=reseau.resoudre,
-        )
-    return issues
-
-
-def _lire(depot, chemin):
-    return json.loads((depot / chemin).read_text(encoding="utf-8"))
 
 
 def _etat(depot, source="site-5643"):
@@ -255,6 +235,21 @@ def test_une_source_communale_sans_conseil_n_est_pas_sondee(tmp_path, horloge):
 
     assert reseau.journal == []
     assert _etat(tmp_path) is None
+
+
+def test_un_site_dont_le_nom_ne_se_resout_plus_est_injoignable_sans_aucune_requete(tmp_path, horloge):
+    # Le nom d'hôte de Préverenges ne se résout plus (domaine expiré) : le robot n'envoie rien, à personne.
+    reseau = _preverenges(horloge)
+    del reseau.adresses["www.preverenges.ch"]
+    monde = _monde(horloge)  # le transport lui passerait toute requête vers un hôte que le faux réseau ne sert pas
+
+    _passer(tmp_path, horloge, reseau, monde=monde)
+
+    assert reseau.journal == []
+    assert not any(r.url.host == "www.preverenges.ch" for _, r in monde.requetes)
+    assert (_etat(tmp_path)["echecs_consecutifs"], _etat(tmp_path)["motif"]) == (1, "site injoignable")
+    assert _importe(tmp_path) is None
+    assert _importe(tmp_path, "5586") is not None
 
 
 # --- Une issue `panne-source` par plateforme --------------------------------------------------------------------------

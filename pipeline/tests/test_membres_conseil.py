@@ -15,12 +15,11 @@ import pytest
 
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page
-from test_sites_communaux import (
+from passage_sites import (
     PREVERENGES,
     SITE_PREVERENGES,
     T0,
     _lire,
-    _monde,
     _passer,
     _preverenges,
     _seance_fabriquee,
@@ -37,7 +36,7 @@ def horloge():
 
 
 def test_la_page_des_membres_remplit_la_liste_des_elus_connus_du_conseil(tmp_path, horloge):
-    _passer(tmp_path, horloge, _preverenges(horloge), _monde(horloge), sources=AVEC_MEMBRES)
+    _passer(tmp_path, horloge, _preverenges(horloge), sources=AVEC_MEMBRES)
 
     membres = _lire(tmp_path, "conseils/5643/membres.json")
     del membres["genere"]
@@ -65,12 +64,12 @@ def _membres_retouches(reseau, noms):
 
 
 def test_un_nom_qui_disparait_de_la_page_des_membres_reste_dans_la_liste(tmp_path, horloge):
-    _passer(tmp_path, horloge, _preverenges(horloge), _monde(horloge), sources=AVEC_MEMBRES)
+    _passer(tmp_path, horloge, _preverenges(horloge), sources=AVEC_MEMBRES)
 
     # Au nouveau bureau, Béatrice Moser n'y est plus et une nouvelle élue y entre.
     reseau = _preverenges(horloge)
     _membres_retouches(reseau, ["Boschetti Steen", "Exemple-Modèle Anne-Laure"])
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=AVEC_MEMBRES, heure=T0 + timedelta(days=1))
+    _passer(tmp_path, horloge, reseau, sources=AVEC_MEMBRES, heure=T0 + timedelta(days=1))
 
     assert _lire(tmp_path, "conseils/5643/membres.json")["membres"] == [
         "Anne-Laure Exemple-Modèle",
@@ -93,7 +92,7 @@ def test_un_membre_nomme_apres_une_civilite_reste_lisible_et_une_personne_inconn
     reseau = _preverenges(horloge)
     _seance_du_18_juin(reseau)
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=AVEC_MEMBRES)
+    _passer(tmp_path, horloge, reseau, sources=AVEC_MEMBRES)
 
     seance = _lire(tmp_path, "conseils/5643/seances/2026-06-18.json")
     assert [d["titre"] for d in seance["documents"]] == ["Postulat de M. Steen Boschetti pour un parc"]
@@ -107,7 +106,7 @@ def test_un_conseil_sans_page_des_membres_est_importe_ses_elus_masques(tmp_path,
     reseau = _preverenges(horloge)
     _seance_du_18_juin(reseau)
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_PREVERENGES))
+    _passer(tmp_path, horloge, reseau, sources=_sources(SITE_PREVERENGES))
 
     assert not any(r.url.startswith(MEMBRES) for r in reseau.journal)
     assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:05Z"
@@ -121,12 +120,12 @@ def test_un_conseil_sans_page_des_membres_est_importe_ses_elus_masques(tmp_path,
 
 
 def test_une_page_des_membres_qui_ne_se_lit_plus_n_empeche_pas_l_import_et_la_liste_reste(tmp_path, horloge, capsys):
-    _passer(tmp_path, horloge, _preverenges(horloge), _monde(horloge), sources=AVEC_MEMBRES)
+    _passer(tmp_path, horloge, _preverenges(horloge), sources=AVEC_MEMBRES)
     reseau = _preverenges(horloge)
     del reseau.pages[f"{PREVERENGES}/conseil/29471"]
     _seance_du_18_juin(reseau)
 
-    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=AVEC_MEMBRES, heure=T0 + timedelta(days=1))
+    _passer(tmp_path, horloge, reseau, sources=AVEC_MEMBRES, heure=T0 + timedelta(days=1))
 
     assert f"page des membres {MEMBRES} non lue" in capsys.readouterr().err
     assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-24T05:17:05Z"

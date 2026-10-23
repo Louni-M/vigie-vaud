@@ -19,8 +19,7 @@ from cron import passage
 from faux_openparldata import HorlogeFactice
 from faux_sites import DELAI, REFUS, TLS, Page, echantillon
 from schema import FichierSources
-from test_cron import IssuesFactices
-from test_sites_communaux import (
+from passage_sites import (
     BLONAY,
     PLATEFORMES,
     PREVERENGES,
@@ -30,11 +29,13 @@ from test_sites_communaux import (
     _liste_retouchee,
     _monde,
     _opendata,
+    _passer,
     _preverenges,
     _site,
     _sources,
 )
-from test_sondes_sites import LISTE, UA_SONDE, _etat, _importe, _lire, _passer
+from test_cron import IssuesFactices
+from test_sondes_sites import LISTE, UA_SONDE, _etat, _importe, _lire
 
 ROBOTS = f"{PREVERENGES}/robots.txt"
 S = timedelta(seconds=1)

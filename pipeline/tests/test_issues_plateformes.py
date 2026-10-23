@@ -8,27 +8,26 @@ comme l'issue `panne-source` de la plateforme. Les conseils d'OpenParlData garde
 
 from datetime import UTC, datetime, timedelta
 
-import httpx
 import pytest
 
-from cron import IssuesGitHub, passage
+from cron import IssuesGitHub
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, echantillon
-from test_cron import DEPOT_DONNEES, JETON, GitHubFactice, IssuesFactices
-from test_sites_communaux import (
+from passage_sites import (
     BLONAY,
     PREVERENGES,
     SITE_PREVERENGES,
     T0,
     _ligne,
     _liste_retouchee,
-    _monde,
     _opendata,
+    _passer,
     _preverenges,
     _seance_fabriquee,
     _site,
     _sources,
 )
+from test_cron import DEPOT_DONNEES, JETON, GitHubFactice, IssuesFactices
 
 LISTE_PREVERENGES = f"{PREVERENGES}/sitzung"
 LISTE_BLONAY = f"{BLONAY}/seances"
@@ -39,14 +38,6 @@ J1 = T0 + timedelta(days=1)
 @pytest.fixture
 def horloge():
     return HorlogeFactice(T0)
-
-
-def _passer(depot, horloge, reseau, sources, heure, issues):
-    horloge.heure = heure
-    with httpx.Client(transport=reseau.transport(repli=_monde(horloge).transport())) as client:
-        passage(
-            depot, sources, client, horloge=horloge, issues=issues, attendre=horloge.attendre, resoudre=reseau.resoudre
-        )
 
 
 def _deux_communes(horloge):
@@ -82,7 +73,7 @@ def test_l_issue_import_conseils_d_une_plateforme_s_ouvre_avec_la_premiere_commu
     issues = IssuesFactices()
 
     def passer(heure):
-        _passer(tmp_path, horloge, reseau, sources, heure, issues)
+        _passer(tmp_path, horloge, reseau, sources, heure=heure, issues=issues)
 
     # Jour 0 : Préverenges, jamais importée, échoue dès son premier import ; Blonay est importée.
     _illisible(reseau, LISTE_PREVERENGES)
@@ -123,7 +114,7 @@ def test_dans_github_l_issue_import_conseils_de_la_plateforme_liste_ses_communes
 
     def passer(heure):
         with github.client() as client:
-            _passer(tmp_path, horloge, reseau, sources, heure, IssuesGitHub(client, DEPOT_DONNEES, JETON))
+            _passer(tmp_path, horloge, reseau, sources, heure=heure, issues=IssuesGitHub(client, DEPOT_DONNEES, JETON))
 
     _illisible(reseau, LISTE_PREVERENGES)
     passer(T0)
@@ -181,7 +172,7 @@ def test_a_verifier_s_ouvre_9_mois_apres_le_premier_import_d_un_conseil_sans_sea
     issues = IssuesFactices()
 
     for jour in (T0, datetime(2027, 7, 22), datetime(2027, 7, 23)):
-        _passer(tmp_path, horloge, reseau, sources, _a_7_h_17(jour), issues)
+        _passer(tmp_path, horloge, reseau, sources, heure=_a_7_h_17(jour), issues=issues)
         if jour.year == 2027 and jour.day == 22:
             assert _de(issues, "a-verifier") == []
 
@@ -200,7 +191,9 @@ def test_a_verifier_compte_depuis_la_derniere_seance_annoncee_et_se_ferme_avec_u
 
     def passer(jour):
         with github.client() as client:
-            _passer(tmp_path, horloge, reseau, sources, _a_7_h_17(jour), IssuesGitHub(client, DEPOT_DONNEES, JETON))
+            _passer(
+                tmp_path, horloge, reseau, sources, heure=_a_7_h_17(jour), issues=IssuesGitHub(client, DEPOT_DONNEES, JETON)
+            )
 
     passer(T0)
     passer(datetime(2027, 7, 28))
