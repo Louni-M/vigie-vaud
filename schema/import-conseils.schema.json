@@ -31,6 +31,17 @@
         "$ref": "#/$defs/CleConseil"
       },
       "type": "object"
+    },
+    "premiers": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Horodatage"
+      },
+      "default": {},
+      "description": "Par clé de conseil scrapé, l'heure de son premier import réussi : l'issue `a-verifier` compte 9 mois depuis ce jour tant que l'archive du conseil n'a aucune Séance. Absent quand il n'y en a pas : les conseils d'OpenParlData n'y figurent pas.",
+      "propertyNames": {
+        "$ref": "#/$defs/CleConseil"
+      },
+      "type": "object"
     }
   },
   "required": [

@@ -247,8 +247,10 @@ def test_le_meme_passage_importe_les_conseils_d_openparldata_comme_sans_site(tmp
     ]
     for chemin in lausanne:
         assert _lire(avec_site, chemin) == _lire(seul, chemin)
+    # Le premier import d'un conseil scrapé est noté à part, pour l'issue `a-verifier` (#155) ; Lausanne n'en a pas.
     assert _lire(avec_site, "conseils/import.json") == _lire(seul, "conseils/import.json") | {
-        "conseils": {"5586": "2026-10-23T05:17:05Z", "5643": "2026-10-23T05:17:05Z"}
+        "conseils": {"5586": "2026-10-23T05:17:05Z", "5643": "2026-10-23T05:17:05Z"},
+        "premiers": {"5643": "2026-10-23T05:17:05Z"},
     }
 
 

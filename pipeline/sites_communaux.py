@@ -31,12 +31,15 @@ MOIS_DE_LA_FENETRE = 6
 LECTEURS: dict[str, Callable[[Robot, Source, date | None], Bruts]] = {"i-web": lecture_iweb.lire}
 
 
+def mois_plus_tot(jour: date, mois: int) -> date:
+    """Le même jour, `mois` mois plus tôt (le dernier du mois s'il n'existe pas)."""
+    annee, rang = divmod(jour.year * 12 + jour.month - 1 - mois, 12)
+    return date(annee, rang + 1, min(jour.day, calendar.monthrange(annee, rang + 1)[1]))
+
+
 def debut_de_fenetre(jour: date) -> date:
-    """Le premier jour de la fenêtre du passage ordinaire : le même jour, 6 mois plus tôt (le dernier du mois s'il
-    n'existe pas)."""
-    rang = jour.year * 12 + jour.month - 1 - MOIS_DE_LA_FENETRE
-    annee, mois = divmod(rang, 12)
-    return date(annee, mois + 1, min(jour.day, calendar.monthrange(annee, mois + 1)[1]))
+    """Le premier jour de la fenêtre du passage ordinaire : le même jour, 6 mois plus tôt."""
+    return mois_plus_tot(jour, MOIS_DE_LA_FENETRE)
 
 
 def lire_site(

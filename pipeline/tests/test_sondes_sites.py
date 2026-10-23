@@ -283,17 +283,14 @@ def test_une_seule_issue_par_plateforme_ouverte_avec_la_premiere_commune_tenue_a
     reseau.pages[f"{BLONAY}/seances"] = echantillon("i-web", "objets")[f"{BLONAY}/seances"]
     passer(J1 + timedelta(minutes=90))
 
-    plateformes = [s for s in issues.signalements if s[0].endswith("_plateforme")]
+    preverenges = ("site-5643", "depuis le 2026-10-23 à 05:17 UTC, marqueur absent")
+    blonay = ("site-5892", "depuis le 2026-10-24 à 05:17 UTC, marqueur absent")
+    plateformes = [s for s in issues.signalements if "plateforme" in s[0] and s[1] == "panne-source"]
     assert plateformes == [
-        ("panne_plateforme", "i-web", [("site-5643", "2026-10-23T05:17:05+00:00")]),
-        (
-            "liste_plateforme",
-            "i-web",
-            [("site-5643", "2026-10-23T05:17:05+00:00"), ("site-5892", "2026-10-24T05:17:10+00:00")],
-            [],
-        ),
-        ("liste_plateforme", "i-web", [("site-5892", "2026-10-24T05:17:10+00:00")], ["site-5643"]),
-        ("retour_plateforme", "i-web", ["site-5892"]),
+        ("plateforme_touchee", "panne-source", "i-web", [preverenges]),
+        ("liste_plateforme", "panne-source", "i-web", [preverenges, blonay], []),
+        ("liste_plateforme", "panne-source", "i-web", [blonay], ["site-5643"]),
+        ("retour_plateforme", "panne-source", "i-web", ["site-5892"]),
     ]
     # Les communes n'ont pas d'issue `panne-source` à elles.
     assert not [s for s in issues.signalements if s[0] in ("panne", "retour")]
@@ -343,7 +340,7 @@ def test_dans_github_l_issue_de_la_plateforme_liste_les_communes_en_panne_et_se_
     passer(J1 + timedelta(minutes=90))
     assert issue["state"] == "closed"
     assert issue["commentaires"][-1] == (
-        "Plus aucune commune de i-web n'est en panne : Site de Blonay - Saint-Légier de nouveau disponible(s)."
+        "Plus aucune commune de i-web n'est en panne.\nDe nouveau disponibles : Site de Blonay - Saint-Légier."
     )
     assert len(_pannes(github)) == 1
 
@@ -387,7 +384,7 @@ def test_les_issues_des_sources_openparldata_restent_par_source(tmp_path, horlog
     for minutes in (0, 30):
         _passer(tmp_path, horloge, reseau, sources=sources, heure=T0 + timedelta(minutes=minutes), issues=issues)
 
-    assert [s[:2] for s in issues.signalements if s[0] in ("panne", "panne_plateforme")] == [
-        ("panne", "openparldata-5586"),
-        ("panne_plateforme", "i-web"),
+    assert [s[:3] for s in issues.signalements if s[0] == "panne" or s[1:2] == ("panne-source",)] == [
+        ("panne", "openparldata-5586", "2026-10-23T05:17:00+00:00"),
+        ("plateforme_touchee", "panne-source", "i-web"),
     ]

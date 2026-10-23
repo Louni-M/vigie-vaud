@@ -270,6 +270,11 @@ def test_une_404_ou_une_403_reste_une_erreur_de_la_commune(tmp_path, horloge, pa
     assert _reseaux_bloques(tmp_path) == {}
 
 
+def _pannes_i_web(issues):
+    """Ce que le passage a signalé à l'issue `panne-source` de la plateforme i-web."""
+    return [s for s in issues.signalements if s[1:3] == ("panne-source", "i-web")]
+
+
 def test_au_passage_suivant_une_seule_sonde_teste_le_reseau_avant_les_autres(tmp_path, horloge):
     reseau = _meme_24(horloge)
     reseau.pages[LISTE] = Page("", statut=429)
@@ -286,9 +291,15 @@ def test_au_passage_suivant_une_seule_sonde_teste_le_reseau_avant_les_autres(tmp
     ]
     etat = _etat(tmp_path, "site-5892")
     assert (etat["etat"], etat["motif"]) == ("en_panne", "accès refusé")
-    plateforme = [s for s in issues.signalements if s[0].endswith("_plateforme")]
-    assert plateforme[-1][:2] == ("panne_plateforme", "i-web")
-    assert [s for s, _ in plateforme[-1][2]] == ["site-5643", "site-5892"]
+    assert _pannes_i_web(issues)[-1] == (
+        "plateforme_touchee",
+        "panne-source",
+        "i-web",
+        [
+            ("site-5643", "depuis le 2026-10-23 à 05:17 UTC, HTTP 429"),  # la sonde qui a testé le réseau
+            ("site-5892", "depuis le 2026-10-23 à 05:17 UTC, accès refusé"),
+        ],
+    )
 
     # Le site répond de nouveau : la sonde qui teste le réseau rouvre le réseau à toutes les communes.
     reseau.pages |= echantillon("i-web", "seances")
@@ -296,8 +307,7 @@ def test_au_passage_suivant_une_seule_sonde_teste_le_reseau_avant_les_autres(tmp
 
     assert _importe(tmp_path) is not None and _importe(tmp_path, "5892") is not None
     assert _reseaux_bloques(tmp_path) == {}
-    plateforme = [s for s in issues.signalements if s[0].endswith("_plateforme")]
-    assert plateforme[-1] == ("retour_plateforme", "i-web", ["site-5643", "site-5892"])
+    assert _pannes_i_web(issues)[-1] == ("retour_plateforme", "panne-source", "i-web", ["site-5643", "site-5892"])
 
 
 def test_retry_after_prolonge_le_blocage_au_dela_du_passage_sans_aucune_requete(tmp_path, horloge):

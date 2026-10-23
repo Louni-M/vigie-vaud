@@ -35,7 +35,7 @@
           "type": "string"
         },
         "donne": {
-          "description": "Ce que le conseil donne : ses Objets, ses Séances, ou les deux. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import.",
+          "description": "Ce que le conseil donne : ses Objets, ses Séances, ou les deux ; `preavis` : ses préavis seulement, parmi ses Objets. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import : `objets` + `seances` (« objets et séances »), `preavis` + `seances` (« séances et préavis ») ou `seances` (« séances seulement »).",
           "items": {
             "$ref": "#/$defs/DonneeConseil"
           },
@@ -145,6 +145,7 @@
     "DonneeConseil": {
       "enum": [
         "objets",
+        "preavis",
         "seances"
       ],
       "type": "string"
@@ -493,7 +494,7 @@
           "type": "string"
         },
         "niveaux": {
-          "description": "Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`[\"seances\"]` : séances seulement).",
+          "description": "Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`[\"seances\"]` : séances seulement ; `[\"preavis\", \"seances\"]` : séances et préavis).",
           "items": {
             "items": {
               "$ref": "#/$defs/DonneeConseil"
