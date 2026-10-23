@@ -136,6 +136,41 @@ def test_un_point_d_ordre_du_jour_est_relie_a_son_objet_par_son_numero(tmp_path,
     assert [(p["numero"], p["objet"]) for p in points] == [("01", None), ("05", None), ("06", "5892/2026-PM-23")]
 
 
+def test_les_documents_d_un_point_sans_objet_vont_a_la_seance(tmp_path, horloge):
+    # Retouche de la Séance du 29 septembre : une annexe au point 01 (sans Objet), et un rapport au point 06, relié au
+    # préavis 23-2026, dont la fiche donne les documents.
+    reseau = _blonay(horloge)
+    url = f"{BLONAY}/seances/6895123"
+    texte = reseau.pages[url].corps.decode("utf-8")
+    texte = texte.replace(
+        "<td>01</td>\n<td><div class=\"icms-wysiwyg\">Adoption de l'ordre du jour définitif</div></td>\n<td></td>",
+        "<td>01</td>\n<td><div class=\"icms-wysiwyg\">Adoption de l'ordre du jour définitif</div></td>\n"
+        '<td><a href="/_doc/7400001">Annexe au point 1</a></td>',
+    )
+    texte = texte.replace(
+        '<td><a href="/_rte/information/2909893">Préavis 23-2026</a></td>',
+        '<td><a href="/_rte/information/2909893">Préavis 23-2026</a>, '
+        '<a href="/_doc/7400002">Rapport de la commission</a></td>',
+    )
+    assert texte.count("/_doc/74000") == 2
+    reseau.pages[url] = Page(texte, entetes=reseau.pages[url].entetes, gzip=True)
+    reseau.pages[f"{BLONAY}/_rte/information/2909893"] = _fiche_fabriquee("7100001")
+
+    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(SITE_BLONAY))
+
+    seance = _lire(tmp_path, "conseils/5892/seances/2026-09-29.json")
+    assert [(d["titre"], d["lien"].rsplit("/", 1)[1]) for d in seance["documents"]] == [
+        ("Ordre du jour", "7246414"),
+        ("Procès-verbal de la séance du 8 septembre 2026", "7262080"),
+        ("Annexe au point 1", "7400001"),
+    ]
+    assert [(p["numero"], p["objet"]) for p in seance["ordre_du_jour"]] == [
+        ("01", None),
+        ("05", None),
+        ("06", "5892/2026-PM-23"),
+    ]
+
+
 def _objets_retouches(reseau, retoucher):
     """La liste des Objets de Blonay - Saint-Légier, dont `retoucher(lignes)` rend les nouvelles lignes, réécrites
     dans `data-entities` comme le site les écrit (JSON échappé dans l'attribut)."""

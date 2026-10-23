@@ -27,6 +27,11 @@ Variante **pages** (module Séances et préavis rédigés, niveau « séances et
 première colonne, titre et statut dans les colonnes « Titre » et « Statut » de l'en-tête, documents par ses liens.
 La liste est relue en entier à chaque passage, sans fenêtre. Mêmes règles pour un préavis sans numéro ou en double.
 
+**Dates** : celle que le site donne (liste des Séances, liste des Objets, cellule d'un préavis rédigé). L'ADR-0010 prend
+sinon la mise en ligne du premier document, mais i-web ne l'affiche nulle part de ce que le robot lit (un document n'y
+porte que son type et sa taille, et le robot ne l'ouvre pas) : sans date du site, la date reste nulle. Les documents
+d'un point d'ordre du jour sans Objet sont ceux de sa Séance ; ceux d'un point relié à son Objet sont à cet Objet.
+
 **Membres** : la page des membres (`site.membres`, facultative) porte le tableau `icmsTable-personList`, en JSON
 échappé dans `data-entities` comme les Séances ; la colonne `_nameVorname` donne « Nom Prénom », remis en « Prénom
 Nom » (ordre des contributeurs d'OpenParlData, que le masquage attend). Une page des membres illisible est notée dans
@@ -174,10 +179,12 @@ def _ligne(brute: object, url: str) -> _Ligne | str:
 def _meeting(ligne: _Ligne, texte: str, url: str, numeros: dict[str, str]) -> dict:
     """La Séance à la forme d'un *meeting* d'OpenParlData, réduit aux champs que l'import lit. Un point est relié à
     son Objet par le numéro (`item_affair_number`) du premier Objet cité dans sa colonne « Affaire » dont la liste
-    des Objets donne le numéro (`numeros`, par lien stable)."""
+    des Objets donne le numéro (`numeros`, par lien stable). Les documents de la page sont ceux de la Séance, avec ceux
+    d'un point sans Objet (ADR-0010) ; ceux d'un point relié à son Objet sont à cet Objet, dont la fiche les donne.
+    Un document n'a pas de date : i-web n'en affiche pas, ni sa mise en ligne."""
     arbre = _arbre(texte)
-    documents = _documents(arbre, url)
     points = []
+    relies: list[_Noeud] = []  # les lignes des points reliés à leur Objet
     for tr in arbre.elements():
         if tr.tag != "tr" or not (tr.attr("id") or "").startswith("traktanden_"):
             continue
@@ -186,13 +193,17 @@ def _meeting(ligne: _Ligne, texte: str, url: str, numeros: dict[str, str]) -> di
             continue
         numero = _espaces(cellules[0].texte()) or None
         liens = [urljoin(url, a.attr("href") or "") for c in cellules[2:] for a in c.elements() if a.tag == "a"]
+        objet = next((numeros[lien] for lien in liens if lien in numeros), None)
+        if objet is not None:
+            relies.append(tr)
         points.append(
             {
                 "item_number_display": numero,
                 "item_title": _espaces(cellules[1].texte()),
-                "item_affair_number": next((numeros[lien] for lien in liens if lien in numeros), None),
+                "item_affair_number": objet,
             }
         )
+    documents = _documents(arbre, url, sauf=relies)
     debut = ligne.jour.isoformat() + (f"T{ligne.heure}:00" if ligne.heure else "")
     return {
         "id": None,
@@ -204,11 +215,11 @@ def _meeting(ligne: _Ligne, texte: str, url: str, numeros: dict[str, str]) -> di
     }
 
 
-def _documents(arbre: _Noeud, url: str) -> list[dict]:
-    """Les documents d'une page (liens `/_doc/<id>`), chacun une fois, nommés par le texte du lien, sinon son titre,
-    sinon la fin du lien."""
+def _documents(arbre: _Noeud, url: str, sauf: list[_Noeud] | None = None) -> list[dict]:
+    """Les documents d'une page (liens `/_doc/<id>`), hors des nœuds `sauf`, chacun une fois, nommés par le texte du
+    lien, sinon son titre, sinon la fin du lien."""
     documents, vus = [], set()
-    for a in arbre.elements():
+    for a in arbre.elements(sauf or []):
         lien = urljoin(url, a.attr("href") or "") if a.tag == "a" else ""
         if "/_doc/" not in lien or lien in vus:
             continue
@@ -550,11 +561,12 @@ class _Noeud:
     def attr(self, nom: str) -> str | None:
         return self.attrs.get(nom)
 
-    def elements(self):
+    def elements(self, sauf: list[_Noeud] | None = None):
+        """Les éléments descendants, dans l'ordre du document, sans ceux de `sauf` ni leurs descendants."""
         for e in self.enfants:
-            if isinstance(e, _Noeud):
+            if isinstance(e, _Noeud) and not any(e is x for x in sauf or ()):
                 yield e
-                yield from e.elements()
+                yield from e.elements(sauf)
 
     def enfants_elements(self) -> list[_Noeud]:
         return [e for e in self.enfants if isinstance(e, _Noeud)]
