@@ -289,7 +289,7 @@ class Objet(Enveloppe):
     `<conseil>/<numéro>`, la barre oblique du numéro devenant `-` (`vd/26_INT_140`, `5586/POS25-115`)."""
 
     version: Literal[1] = Field(description="Version 1.")
-    id: int = Field(description="Identifiant de l'Objet dans OpenParlData.")
+    id: int | None = Field(description="Identifiant de l'Objet dans OpenParlData ; `null` pour un Objet scrapé.")
     numero: str = Field(min_length=1, description="Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).")
     type: str = Field(description="Type brut de la source (`type_name`).")
     statut: Statut | None
@@ -323,7 +323,7 @@ class Seance(Enveloppe):
     """`conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`."""
 
     version: Literal[1] = Field(description="Version 1.")
-    id: int = Field(description="Identifiant de la Séance dans OpenParlData.")
+    id: int | None = Field(description="Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée.")
     date: DateSeance = Field(description="Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).")
     nom: str = Field(description="Nom brut de la source ; le site affiche un nom composé à partir de la date.")
     lien: Lien | None

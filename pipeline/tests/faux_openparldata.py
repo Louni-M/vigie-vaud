@@ -60,7 +60,7 @@ class Document:
 
 @dataclass
 class Affaire:
-    id: int
+    id: int | None  # `None` : un enregistrement sans identifiant, comme ceux d'un site scrapé
     body_key: str
     number: str
     title: str
@@ -110,6 +110,8 @@ class Affaire:
         }
 
     def docs(self) -> list[Doc]:
+        if self.id is None:
+            return []
         return [
             Doc(self.id * 100 + i, self.body_key, self.id, d.mis_a_jour or self.updated_at)
             for i, d in enumerate(self.documents)
@@ -141,7 +143,7 @@ class Point:
 
 @dataclass
 class Reunion:
-    id: int
+    id: int | None  # `None` : un enregistrement sans identifiant, comme ceux d'un site scrapé
     body_key: str
     name: str
     begin_date: str  # « 2026-10-06T00:00:00 »
@@ -228,7 +230,7 @@ class Monde:
         if "from_updated_at" in p:
             depuis = date.fromisoformat(p["from_updated_at"])
             elements = [e for e in elements if date.fromisoformat(e.updated_at) >= depuis]
-        elements.sort(key=lambda e: e.id)
+        elements.sort(key=lambda e: (e.id is None, e.id or 0))  # sans identifiant : à la fin, dans leur ordre
         offset = int(p.get("offset", 0))
         limit = min(int(p.get("limit", 500)), self.taille_page)
         page = elements[offset : offset + limit]

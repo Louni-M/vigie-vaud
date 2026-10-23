@@ -357,9 +357,9 @@ export interface Objet {
 	 */
 	genere: string;
 	/**
-	 * Identifiant de l'Objet dans OpenParlData.
+	 * Identifiant de l'Objet dans OpenParlData ; `null` pour un Objet scrapé.
 	 */
-	id: number;
+	id: number | null;
 	/**
 	 * Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).
 	 */
@@ -454,9 +454,9 @@ export interface Seance {
 	 */
 	genere: string;
 	/**
-	 * Identifiant de la Séance dans OpenParlData.
+	 * Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée.
 	 */
-	id: number;
+	id: number | null;
 	/**
 	 * Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).
 	 */

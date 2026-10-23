@@ -6,6 +6,8 @@ faux OpenParlData, qui ne filtre pas les champs : il sert les `docs` d'une Séan
 module de lecture d'une plateforme. Le conseil de test est celui d'une commune inventée pour ces cas (n° 5624).
 """
 
+from datetime import timedelta
+
 from faux_openparldata import Affaire, Document, HorlogeFactice, Monde, Point, Reunion
 from schema import FichierSources
 from test_import_conseils import T0, _lire, _passer, _source
@@ -79,3 +81,40 @@ def test_deux_seances_du_meme_jour_n_en_font_qu_une_avec_tous_les_points_et_docu
     assert _lire(tmp_path, "conseils/5624/seances.json")["seances"] == [
         {"cle": "5624/2026-10-06", "date": "2026-10-06T18:00", "points": 3}
     ]
+
+
+def _preavis(titre="Préavis 12/2026 - Crédit pour la piscine", updated_at="2026-10-07"):
+    return Affaire(
+        id=None, body_key="5624", number="12/2026", title=titre, type_name="Préavis", updated_at=updated_at
+    )
+
+
+def test_un_enregistrement_brut_sans_identifiant_est_archive_avec_un_identifiant_nul(tmp_path):
+    horloge = HorlogeFactice(T0)
+    monde = Monde(
+        horloge=horloge,
+        affaires=[_preavis()],
+        reunions=[_seance(id=None, points=[Point(1, "Préavis 12/2026 - Crédit", "12/2026")])],
+    )
+
+    _passer(tmp_path, monde, horloge, SOURCES)
+
+    objet = _lire(tmp_path, "conseils/5624/objets/12-2026.json")
+    assert (objet["id"], objet["numero"], objet["titre"]) == (None, "12/2026", "Préavis 12/2026 - Crédit pour la piscine")
+    seance = _lire(tmp_path, "conseils/5624/seances/2026-10-06.json")
+    assert seance["id"] is None
+    assert seance["ordre_du_jour"][0]["objet"] == "5624/12-2026"
+
+
+def test_un_objet_sans_identifiant_relu_remplace_celui_de_l_archive(tmp_path):
+    horloge = HorlogeFactice(T0)
+    monde = Monde(horloge=horloge, affaires=[_preavis()])
+    _passer(tmp_path, monde, horloge, SOURCES)
+
+    horloge.heure = T0 + timedelta(days=1)
+    monde.affaires = [_preavis("Préavis 12/2026 - Crédit pour la piscine couverte", updated_at="2026-10-17")]
+    _passer(tmp_path, monde, horloge, SOURCES)
+
+    assert _lire(tmp_path, "conseils/5624/objets/12-2026.json")["titre"] == (
+        "Préavis 12/2026 - Crédit pour la piscine couverte"
+    )

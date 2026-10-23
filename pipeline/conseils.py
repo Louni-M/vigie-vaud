@@ -277,14 +277,21 @@ def vers_archive(
     textes: dict[str, list[str]] = {}
     petitionnaires: dict[str, list[tuple[str, str]]] = {}
     graces: set[str] = set()
-    for brut in sorted(bruts.objets, key=lambda o: o["id"]):
+    # Par identifiant croissant ; ceux qui n'en ont pas (scrapés) après, dans l'ordre de la source.
+    for brut in sorted(bruts.objets, key=lambda o: (o.get("id") is None, o.get("id") or 0)):
         if _fr(brut.get("type_name")) in TYPES_ECARTES or not brut.get("number"):
             if brut.get("number"):
                 graces.add(brut["number"])
             continue
         cle = cle_objet(conseil, brut["number"])
+        ident = brut.get("id")
+        # Deux Objets de même numéro : le plus petit identifiant l'emporte, d'un import à l'autre, mais seulement
+        # entre deux identifiants connus. Sans identifiant, le premier de la source l'emporte sur les suivants du
+        # même import, et un Objet relu remplace celui de l'archive.
+        if cle in elements and (elements[cle].id is None or ident is None):
+            continue
         deja = elements.get(cle) or archive.get(cle)
-        if isinstance(deja, Objet) and deja.id < brut["id"]:
+        if isinstance(deja, Objet) and deja.id is not None and ident is not None and deja.id < ident:
             continue
         elements[cle] = _objet(brut, genere)
         textes[cle] = [d["text"] for d in _relation(brut, "docs") if isinstance(d.get("text"), str)]
@@ -313,7 +320,7 @@ def vers_archive(
         anciens = {cle: o for cle, o in du_conseil.items() if cle not in elements}
         elements |= corriger_archive(anciens, corrections)
 
-    par_id = {e.id: cle for cle, e in du_conseil.items()}
+    par_id = {e.id: cle for cle, e in du_conseil.items() if e.id is not None}
     seances: dict[str, Seance] = {}
     # Dans l'ordre de leur heure, puis de la source : deux Séances d'un même jour n'en font qu'une, la première.
     for brut in sorted(bruts.seances, key=lambda s: s.get("begin_date") or ""):
@@ -355,7 +362,7 @@ def _objet(brut: dict, genere: datetime) -> Objet:
     return Objet(
         version=1,
         genere=genere,
-        id=brut["id"],
+        id=brut.get("id"),
         numero=brut["number"],
         type=type_,
         statut=statut,
@@ -438,7 +445,7 @@ def _seance(
     return Seance(
         version=1,
         genere=genere,
-        id=brut["id"],
+        id=brut.get("id"),
         date=jour if heure in ("", "00:00") else f"{jour}T{heure}",
         nom=_fr(brut.get("name")) or "",
         lien=_lien(_fr(brut.get("url_external"))),

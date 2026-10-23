@@ -130,8 +130,15 @@
       "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
     },
     "id": {
-      "description": "Identifiant de la Séance dans OpenParlData.",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée."
     },
     "date": {
       "$ref": "#/$defs/DateSeance",
