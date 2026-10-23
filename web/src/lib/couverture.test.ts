@@ -360,6 +360,21 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 			});
 			expect(d.etat('site-5643')).toEqual({ etat: 'non_surveillee' });
 		});
+
+		it.each([
+			[['objets', 'seances'], 'Scrapé · disponible'],
+			[['preavis', 'seances'], 'Scrapé · séances et préavis · disponible']
+		] as const)('donne le niveau d’une commune scrapée seulement s’il manque quelque chose (%j)', (donne, cellule) => {
+			const niveau = sourceSite({ conseil: { body_key: '5643', donne: [...donne] } });
+			const d = deduireCouverture({
+				sources: [...SOURCES, niveau],
+				etat: etat({ ...tous, 'site-5643': disponible }),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, niveau.id] } : x)),
+				communes: communesJ0,
+				maintenant: MAINTENANT
+			});
+			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([cellule]);
+		});
 	});
 
 	describe('commune non couverte d’une plateforme retenue', () => {

@@ -2,9 +2,10 @@
 sites ») : des Objets sans identifiant.
 
 Les Séances scrapées (`id` nul, documents, deux Séances d'un même jour) passent par le passage du cron sur
-l'échantillon i-web (`test_sites_communaux.py`). En attendant le module Objets d'i-web (#152), les Objets sans
-identifiant passent par le passage de l'import de J1, servis par le faux OpenParlData, qui sert un `id` nul comme le
-fera le module de lecture d'une plateforme. Le conseil de test est celui d'une commune inventée (n° 5624).
+l'échantillon i-web (`test_sites_communaux.py`), comme les Objets scrapés (`test_sites_preavis_objets.py`). Ici,
+les Objets sans identifiant passent par le passage de l'import de J1, servis par le faux OpenParlData, qui sert un
+`id` nul comme le module de lecture d'une plateforme : un Objet relu remplace celui de l'archive, ce que l'échantillon
+ne montre pas en un passage. Le conseil de test est celui d'une commune inventée (n° 5624).
 """
 
 from datetime import timedelta
