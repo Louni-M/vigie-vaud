@@ -41,8 +41,13 @@ contact. Pour les sites communaux, à partir de J3 Conseils communaux :
   que des métadonnées et des liens, et les actes officiels (procès-verbaux, rapports, préavis) ne sont pas
   protégés par le droit d'auteur (LDA, art. 5). On ne demande donc aucune autorisation et on n'écrit pas aux
   communes avant de les lire. Écarté : demander une autorisation, ce qui laisserait croire qu'elle est nécessaire,
-  et un refus nous lierait.
+  et un refus nous lierait. La licence déclarée d'une source communale le dit : « Actes officiels (art. 5 LDA) :
+  métadonnées et liens seulement ».
 - **Arrêt à la demande.** Une commune qui demande l'arrêt n'est plus lue et devient non couverte (« à la demande
   de la commune »). Ce qui est déjà importé reste en ligne et dans le dépôt de données, comme archive (ADR-0008).
   Une demande qui touche une personne passe par la procédure de retrait habituelle. Il en va de même d'une commune
-  déclarée non couverte parce que son `robots.txt` interdit désormais le robot.
+  déclarée non couverte parce que son `robots.txt` interdit désormais le robot. Une commune a deux voies, que
+  l'À propos donne dans cet ordre : interdire `VigieVaud` dans son `robots.txt`, qui arrête le robot dès le
+  lendemain sans dépendre de personne, ou écrire au courriel de contact, qui l'arrête dans les 7 jours par une PR
+  sur `sources.json`. Une commune qui veut seulement ralentir le robot le fait par `Crawl-delay`. Comme le robot
+  tourne sur GitHub Actions, dont les adresses changent, l'À propos déconseille de le filtrer par adresse IP.
