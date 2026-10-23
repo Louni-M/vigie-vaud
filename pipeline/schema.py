@@ -414,6 +414,13 @@ class ImportConseils(Enveloppe):
         "9 mois depuis ce jour tant que l'archive du conseil n'a aucune Séance. Absent quand il n'y en a pas : les "
         "conseils d'OpenParlData n'y figurent pas.",
     )
+    rattrapages: dict[CleConseil, Horodatage] = Field(
+        default={},
+        exclude_if=lambda rattrapages: not rattrapages,
+        description="Par clé de conseil, l'heure de son dernier rattrapage réussi (relecture de tout l'historique, "
+        "lancée à la main : rattrapage ciblé d'une plateforme ou d'une commune scrapée, ou rattrapage "
+        "d'OpenParlData). Un conseil jamais rattrapé n'y figure pas ; absent quand il n'y en a aucun.",
+    )
 
 
 class MembresConseil(Enveloppe):
