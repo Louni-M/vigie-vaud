@@ -161,6 +161,12 @@ rattachement n'a pas de fiche commune : il n'apparaît que dans le fil cantonal 
 la fiche du Grand Conseil.
 _À éviter_ : géolocalisation, affectation
 
+**Retrait** :
+La suppression, à la demande, d'un nom de personne d'un élément publié, historique du dépôt de données compris. Il
+tient face aux imports et aux rattrapages suivants. Une commune qui demande l'arrêt du robot n'obtient pas de
+retrait : elle n'est plus lue, et rien de ce qui est déjà importé n'est effacé.
+_À éviter_ : suppression (pour l'arrêt d'une commune), droit à l'oubli
+
 **Incident** :
 Un événement tiré des communiqués de la police cantonale et rattaché à une commune.
 

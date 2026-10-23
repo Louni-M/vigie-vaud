@@ -55,3 +55,18 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
     de succession, de legs, de vente et d'aménagement qui nomment des particuliers.
 - Une amélioration du masquage vaut pour les imports suivants. L'historique n'est réécrit qu'à la main, sur demande
   ou quand un nom est signalé ; l'À propos dit comment demander un retrait.
+  Un retrait doit tenir face aux imports suivants, alors qu'un élément relu (un Objet qu'OpenParlData modifie, une
+  page de liste qu'un scraper relit chaque jour, un rattrapage) rapporterait le nom. Le dépôt de données garde donc
+  des **corrections par élément** : pour un identifiant d'élément, le texte corrigé, que le cron applique à chaque
+  import et à chaque rattrapage, pour tous les conseils. Le nom retiré n'y figure pas. Quand le cas révèle une
+  règle, on corrige aussi le masquage. Écartés : la règle seule (un cas isolé qu'aucune règle générale n'attrape
+  reviendrait) ; une liste de noms à masquer (elle publierait les noms qu'on veut cacher). Une demande se fait par
+  courriel, jamais par une issue, qui publierait le nom.
+- La liste des élu·e·s connu·e·s de chaque conseil est publique, en clair, dans le dépôt de données, et sans limite
+  de durée (ADR-0008) : elle vient de pages publiques et d'un mandat public, et un·e ancien·ne élu·e doit rester
+  lisible dans les titres de son mandat. Les mentions faites dans l'exercice du mandat restent après sa fin ; une
+  autre mention de la personne passe par le retrait ordinaire. Écarté : une liste hachée, qui compliquerait la
+  règle du nom partiel et se casserait avec un dictionnaire de noms.
+- On ne démasque pas un·e élu·e sur demande : la liste ne vient que des sources (Objets, page des membres en HTML),
+  jamais d'une main. Un·e élu·e masqué·e par défaut le reste tant que son conseil ne publie pas sa page des membres.
+  La page Protection des données le dit.
