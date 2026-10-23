@@ -155,7 +155,7 @@ describe("À propos, section du robot communal", () => {
 
   it("dit que ce qui est déjà importé reste, et renvoie à Protection des données pour une personne", () => {
     expect(texte(robot)).toContain("Ce qui est déjà importé reste en ligne");
-    expect(robot).toContain('href="/protection-des-donnees"');
+    expect(robot).toContain('href="/protection-des-donnees#retrait"');
   });
 });
 
