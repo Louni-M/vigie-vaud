@@ -3,7 +3,7 @@
 import { DEPOT_DONNEES, DONNEES } from './config.js';
 import type { FichePlateforme } from './couverture.js';
 import type { EtatSources, Plateforme, Source } from './schema.js';
-import { PLATEFORMES } from './sources.js';
+import { PLATEFORMES, nomDePlateforme } from './sources.js';
 
 /** Seule version du format que le site connaît. */
 export const VERSION_ETAT = 1;
@@ -39,9 +39,7 @@ function rechercherPannes(titre: string): string {
  * suivi du nom de sa plateforme (`titre_plateforme`), déclaré dans `plateformes` (son identifiant à défaut).
  */
 export function lienPannes(source: Source, plateformes: readonly Plateforme[] = PLATEFORMES): string {
-	if (!source.site) return rechercherPannes(source.nom);
-	const { plateforme } = source.site;
-	return rechercherPannes(plateformes.find((p) => p.id === plateforme)?.nom ?? plateforme);
+	return rechercherPannes(source.site ? nomDePlateforme(source.site.plateforme, plateformes) : source.nom);
 }
 
 /**

@@ -2,7 +2,7 @@
 // Couverture déclarée dans `sources.json`, de l'état des sources écrit par le cron et de l'heure courante.
 import type { CoucheInscrite } from './registre/types.js';
 import type { EtatSource, EtatSources, Plateforme, RaisonNonCouvert, Source } from './schema.js';
-import { libelleDonne } from './sources.js';
+import { libelleDonne, niveauDe, nomDePlateforme } from './sources.js';
 
 /** Mode d'une paire (source, commune), connu à la construction. */
 export type Mode = 'api' | 'scrape' | 'non_couvert';
@@ -126,6 +126,15 @@ export interface Couverture {
 }
 
 /**
+ * La source déclare-t-elle la commune non couverte (mode `non_couvert`, avec sa raison) ? La Couverture et le message
+ * de non-couverture de la couche Conseils en dépendent.
+ */
+export const declareNonCouverte = (source: Pick<Source, 'couverture'> | undefined, bfs: number): boolean => {
+	const c = source?.couverture;
+	return c?.mode === 'non_couvert' && c.communes !== 'canton' && c.communes.includes(bfs);
+};
+
+/**
  * Une source est sondée par le cron si elle a un bloc `sonde`, ou si c'est le site d'une commune qui a un conseil :
  * sa sonde se déduit de sa page de liste et du marqueur de sa variante (une commune non couverte n'en a pas).
  */
@@ -171,22 +180,16 @@ export function deduireCouverture({
 		const m = mode(id, bfs);
 		return { mode: m, etat: m === 'non_couvert' ? null : etatCouverture(id) };
 	};
-	/** Une source qui déclare la commune non couverte (`mode: non_couvert`, avec sa raison). */
-	const declareNonCouverte = (id: string, bfs: number) => {
-		const c = parId.get(id)?.couverture;
-		return c?.mode === 'non_couvert' && c.communes !== 'canton' && c.communes.includes(bfs);
-	};
 	/** Ce que les sondes ont mesuré pour la source, s'il est lisible, même périmé. */
 	const lue = (source: Source) => (estSondee(source) && etat ? (etat.sources[source.id] ?? null) : null);
 	const fiches = (): FichePlateforme[] => {
 		const communales = sources.filter(
 			(s) => s.site && s.couverture && s.couverture.communes !== 'canton' && s.couverture.communes.length > 0
 		);
-		const declarees = plateformes.map(({ id, nom }) => ({ id, nom }));
-		const citees = [...new Set(communales.map((s) => s.site!.plateforme))]
-			.filter((id) => !plateformes.some((p) => p.id === id))
-			.map((id) => ({ id, nom: id }));
-		return [...declarees, ...citees].flatMap(({ id, nom }) => {
+		// Les plateformes déclarées, dans leur ordre, puis celles que citent des sources sans y être déclarées.
+		const ids = [...new Set([...plateformes.map((p) => p.id), ...communales.map((s) => s.site!.plateforme)])];
+		return ids.flatMap((id) => {
+			const nom = nomDePlateforme(id, plateformes);
 			const siennes = communales
 				.filter((s) => s.site!.plateforme === id)
 				.map((source) => {
@@ -217,7 +220,7 @@ export function deduireCouverture({
 				.filter((c) => c.paire.mode !== 'non_couvert');
 			if (couvrent.length > 0) return couvrent;
 			return sources
-				.filter((s) => declareNonCouverte(s, bfs))
+				.filter((s) => declareNonCouverte(parId.get(s), bfs))
 				.map((s) => ({ source: parId.get(s)!, paire: { mode: 'non_couvert' as const, etat: null } }));
 		},
 		// Une source communale est dans la fiche de sa plateforme, et une source qui ne déclare que des communes non
@@ -326,9 +329,10 @@ export function libelleCellule(couvrantes: readonly Couvrante[], charge = true):
 			const raison = source.couverture?.raison;
 			return [libelleMode('non_couvert'), raison ? RAISONS[raison].cellule : null].filter(Boolean).join(' · ');
 		}
-		const donne = source.conseil ? libelleDonne(source.conseil) : null;
+		const complet = !source.conseil || niveauDe(source.conseil)?.complet;
+		const donne = source.conseil && !complet ? libelleDonne(source.conseil) : null;
 		const etat = paire.etat && (charge ? libelleEtat(paire.etat) : '…');
-		return [libelleMode(paire.mode), donne === 'objets et séances' ? null : donne, etat].filter(Boolean).join(' · ');
+		return [libelleMode(paire.mode), donne, etat].filter(Boolean).join(' · ');
 	});
 }
 

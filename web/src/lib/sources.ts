@@ -8,6 +8,10 @@ export const SOURCES: readonly Source[] = (fichier as FichierSources).sources;
 /** Les plateformes retenues, que citent les blocs `site` des sources communales. */
 export const PLATEFORMES: readonly Plateforme[] = (fichier as FichierSources).plateformes ?? [];
 
+/** Le nom d'une plateforme (« i-web »), déclaré dans la section `plateformes` ; son identifiant à défaut. */
+export const nomDePlateforme = (id: string, plateformes: readonly Plateforme[] = PLATEFORMES) =>
+	plateformes.find((p) => p.id === id)?.nom ?? id;
+
 /** La source déclarée sous cet identifiant. */
 export function source(id: string): Source {
 	const s = SOURCES.find((s) => s.id === id);
@@ -29,19 +33,65 @@ export const SENS_VOIES: Record<VoieAcces, string> = {
 };
 
 /**
- * Ce que donne un conseil, en toutes lettres, c'est-à-dire son niveau : « objets et séances », « séances et
- * préavis », « séances seulement » ; « objets seulement » ou « préavis seulement » sans ses Séances.
+ * Un niveau (CONTEXT.md) : ce que donne un conseil, tel que `conseil.donne` l'écrit (ADR-0010), et tout ce que le
+ * site en dit. Le seul endroit où un niveau s'interprète, côté site.
  */
-export function libelleDonne(conseil: { donne: readonly DonneeConseil[] }): string {
-	const objets = conseil.donne.includes('objets') ? 'objets' : conseil.donne.includes('preavis') ? 'préavis' : null;
-	const seances = conseil.donne.includes('seances');
-	if (objets && seances) return objets === 'objets' ? 'objets et séances' : 'séances et préavis';
-	return seances ? 'séances seulement' : `${objets ?? 'objets'} seulement`;
+export interface Niveau {
+	donne: readonly DonneeConseil[];
+	/** « objets et séances » : la cellule de la Couverture, la carte du volet, la page Couverture. */
+	libelle: string;
+	/** Ce que la description d'une commune dit de son conseil : « les préavis et les séances ». */
+	resume: string;
+	/** Le conseil donne tout : ni note dans l'onglet, ni niveau dans la cellule, ni mention dans la fiche d'un Objet. */
+	complet: boolean;
+	/** La note de l'onglet, sous le nom du conseil, quand il manque quelque chose. */
+	note: { niveau: string; suite: string } | null;
+	/** Le conseil donne-t-il des Objets, tous ou ses préavis seulement ? */
+	objets: boolean;
 }
+
+/** Les trois niveaux, du plus complet au moins complet. */
+export const NIVEAUX: readonly Niveau[] = [
+	{
+		donne: ['objets', 'seances'],
+		libelle: 'objets et séances',
+		resume: 'les objets et les séances',
+		complet: true,
+		note: null,
+		objets: true
+	},
+	{
+		donne: ['preavis', 'seances'],
+		libelle: 'séances et préavis',
+		resume: 'les préavis et les séances',
+		complet: false,
+		note: { niveau: 'Séances et préavis', suite: 'les autres objets sont sur le site de la commune ›' },
+		objets: true
+	},
+	{
+		donne: ['seances'],
+		libelle: 'séances seulement',
+		resume: 'les séances',
+		complet: false,
+		note: { niveau: 'Séances seulement', suite: 'les objets sont sur le site de la commune ›' },
+		objets: false
+	}
+];
+
+/** Le niveau d'un conseil, d'après ce qu'il donne (dans n'importe quel ordre) ; `undefined` hors des trois. */
+export const niveauDe = (conseil: { donne: readonly DonneeConseil[] }): Niveau | undefined =>
+	NIVEAUX.find((n) => n.donne.length === conseil.donne.length && n.donne.every((d) => conseil.donne.includes(d)));
+
+/**
+ * Ce que donne un conseil, en toutes lettres, c'est-à-dire son niveau : « objets et séances », « séances et
+ * préavis », « séances seulement » ; hors des trois niveaux, « objets seulement » ou « préavis seulement ».
+ */
+export const libelleDonne = (conseil: { donne: readonly DonneeConseil[] }): string =>
+	niveauDe(conseil)?.libelle ?? `${conseil.donne.includes('preavis') ? 'préavis' : 'objets'} seulement`;
 
 /** Le conseil donne-t-il des Objets, tous (`objets`) ou ses préavis seulement (`preavis`) ? */
 export const donneDesObjets = (conseil: { donne: readonly DonneeConseil[] }) =>
-	conseil.donne.includes('objets') || conseil.donne.includes('preavis');
+	niveauDe(conseil)?.objets ?? conseil.donne.some((d) => d !== 'seances');
 
 /** Clé du conseil dans le dépôt de données : `body_key` en minuscules (`vd`, `5586`), comme `Conseil.cle` du cron. */
 export const cleConseil = (conseil: Conseil) => conseil.body_key.toLowerCase();

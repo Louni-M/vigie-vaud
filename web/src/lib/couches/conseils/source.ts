@@ -1,11 +1,11 @@
 // Ce que l'onglet Conseil et les fiches disent de la source d'un conseil, lu dans `sources.json` : le pied de la
 // fiche d'un Objet ou d'une Séance, et la note de niveau sous le nom du conseil (spec de J3, « Couche Conseils et
 // onglet Conseil », « Fiches »). Rien n'y est écrit en dur pour OpenParlData.
-import { RAISONS } from '#lib/couverture.js';
+import { RAISONS, declareNonCouverte } from '#lib/couverture.js';
 import { deCommune } from '#lib/labels.js';
 import type { MessageNonCouvert } from '#lib/registre/types.js';
-import type { DonneeConseil, Objet, Source } from '#lib/schema.js';
-import { SOURCES } from '#lib/sources.js';
+import type { Objet, Source } from '#lib/schema.js';
+import { SOURCES, niveauDe } from '#lib/sources.js';
 import type { Commune } from '#lib/types.js';
 import { sourceDuConseil } from './cles.js';
 
@@ -49,12 +49,9 @@ export interface NoteDeNiveau {
  * autres objets. `null` pour un conseil qui donne ses objets.
  */
 export function noteDeNiveau(source: Source): NoteDeNiveau | null {
-	const donne: readonly DonneeConseil[] = source.conseil?.donne ?? [];
-	if (donne.includes('objets') || !donne.includes('seances')) return null;
-	const lien = source.site?.seances ?? source.conseil?.page ?? null;
-	if (donne.includes('preavis'))
-		return { niveau: 'Séances et préavis', suite: 'les autres objets sont sur le site de la commune ›', lien };
-	return { niveau: 'Séances seulement', suite: 'les objets sont sur le site de la commune ›', lien };
+	const note = source.conseil && niveauDe(source.conseil)?.note;
+	if (!note) return null;
+	return { ...note, lien: source.site?.seances ?? source.conseil?.page ?? null };
 }
 
 /**
@@ -69,7 +66,7 @@ export function mentionNonPublies(
 	sources: readonly Source[] = SOURCES
 ): string | null {
 	const source = sourceDuConseil(conseil, sources);
-	if (!source?.site || source.conseil?.donne.includes('objets')) return null;
+	if (!source?.site || (source.conseil && niveauDe(source.conseil)?.complet)) return null;
 	if (objet.statut || objet.contributeurs.length) return null;
 	return 'Statut et auteur·e·s : non publiés par le site de la commune';
 }
@@ -91,10 +88,7 @@ export function nonCouvertConseils(
 	commune: Pick<Commune, 'bfs' | 'nom'>,
 	sources: readonly Source[] = SOURCES
 ): MessageNonCouvert {
-	const declaree = sources.find(
-		({ site, couverture: c }) =>
-			site && c?.mode === 'non_couvert' && Array.isArray(c.communes) && c.communes.includes(commune.bfs)
-	);
+	const declaree = sources.find((s) => s.site && declareNonCouverte(s, commune.bfs));
 	const raison = declaree?.couverture?.raison;
 	if (!declaree || !raison) return { texte: 'Vigie Vaud ne lit pas encore le site de cette commune.' };
 	return {
