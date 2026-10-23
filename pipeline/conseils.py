@@ -261,8 +261,10 @@ def vers_archive(
 ) -> dict[str, Element]:
     """Les éléments de l'archive tirés de `bruts`, par clé. `archive` (les éléments déjà archivés) sert à résoudre
     l'Objet de chaque point d'ordre du jour et à départager deux Objets de même numéro (il y en a à Lausanne) : le
-    plus petit identifiant l'emporte, d'un import à l'autre. Les demandes de grâce sont écartées, et leurs points
-    d'ordre du jour retirés. Les titres des Objets, de leurs documents et des points sont masqués (ADR 0007), en
+    plus petit identifiant l'emporte, d'un import à l'autre (entre deux identifiants connus : un élément scrapé n'en a
+    pas, et son `id` est nul). Deux Séances d'un même jour n'en font qu'une (`_fusionner`). Les demandes de grâce
+    sont écartées, et leurs points d'ordre du jour retirés. Les titres des Objets, de leurs documents, des points et
+    des documents des Séances sont masqués (ADR 0007), en
     épargnant les élu·e·s connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`. Les pétitionnaires que la
     source connaît le sont dans les textes de leur pétition : son titre, ceux de ses documents (et du même document
     joint à un autre Objet) et ceux de ses points.
