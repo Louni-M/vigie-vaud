@@ -1,0 +1,41 @@
+{
+ "plateforme": "i-web",
+ "variante": "seances",
+ "commune": "Préverenges",
+ "ofs": 5643,
+ "pages": [
+  {
+   "sorte": "seances",
+   "url": "https://www.preverenges.ch/sitzung",
+   "finale": "https://www.preverenges.ch/sitzung",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seances.html"
+  },
+  {
+   "sorte": "seance",
+   "url": "https://www.preverenges.ch/_rte/anlass/6987205",
+   "finale": "https://www.preverenges.ch/sitzung/6987205",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seance.html"
+  },
+  {
+   "sorte": "membres",
+   "url": "https://www.preverenges.ch/conseil",
+   "finale": "https://www.preverenges.ch/conseil/29471",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "membres.html"
+  }
+ ]
+}

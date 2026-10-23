@@ -1,0 +1,52 @@
+{
+ "plateforme": "i-web",
+ "variante": "objets",
+ "commune": "Blonay - Saint-Légier",
+ "ofs": 5892,
+ "pages": [
+  {
+   "sorte": "seances",
+   "url": "https://www.blonay-saint-legier.ch/seances",
+   "finale": "https://www.blonay-saint-legier.ch/seances",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seances.html"
+  },
+  {
+   "sorte": "seance",
+   "url": "https://www.blonay-saint-legier.ch/_rte/anlass/6895123",
+   "finale": "https://www.blonay-saint-legier.ch/seances/6895123",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seance.html"
+  },
+  {
+   "sorte": "objets",
+   "url": "https://www.blonay-saint-legier.ch/objets-politiques",
+   "finale": "https://www.blonay-saint-legier.ch/objets-politiques",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "objets.html"
+  },
+  {
+   "sorte": "objet",
+   "url": "https://www.blonay-saint-legier.ch/_rte/information/3002200",
+   "finale": "https://www.blonay-saint-legier.ch/objetspolitiques/3002200",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "objet.html"
+  }
+ ]
+}
