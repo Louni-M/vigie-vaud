@@ -58,16 +58,19 @@ export function noteDeNiveau(source: Source): NoteDeNiveau | null {
 }
 
 /**
- * La mention de la fiche d'un Objet d'une commune scrapée qui n'a ni statut ni auteur·e : le site de la commune ne
- * les publie pas (un préavis n'est pas d'office de la Municipalité, ni en attente). `null` pour un Objet qui a l'un
- * ou l'autre, ou d'un conseil sans site (OpenParlData).
+ * La mention de la fiche d'un Objet sans statut ni auteur·e, quand le conseil scrapé ne les publie pas : son niveau
+ * n'est pas « objets et séances » (un préavis n'est pas d'office de la Municipalité, ni en attente). `null` pour un
+ * Objet qui a l'un ou l'autre, pour un conseil scrapé qui publie statuts et auteur·e·s (un Objet sans statut de
+ * Blonay - Saint-Légier n'a simplement pas de statut), ou pour un conseil sans site (OpenParlData).
  */
 export function mentionNonPublies(
 	conseil: string,
 	objet: Pick<Objet, 'statut' | 'contributeurs'>,
 	sources: readonly Source[] = SOURCES
 ): string | null {
-	if (!sourceDuConseil(conseil, sources)?.site || objet.statut || objet.contributeurs.length) return null;
+	const source = sourceDuConseil(conseil, sources);
+	if (!source?.site || source.conseil?.donne.includes('objets')) return null;
+	if (objet.statut || objet.contributeurs.length) return null;
 	return 'Statut et auteur·e·s : non publiés par le site de la commune';
 }
 
