@@ -204,3 +204,45 @@ def test_un_petitionnaire_elu_connu_reste_et_son_nom_de_famille_seul_aussi():
         masquer("rp_petition_marc_dupont_postulat_dupont.pdf", ELUS, petitionnaires)
         == "rp_petition_[particulier]_postulat_dupont.pdf"
     )
+
+
+# Un nom partiel après une civilité (ADR 0007, pour tous les conseils, pas pour le site) : il reste quand un·e élu·e
+# connu·e porte ce nom de famille, avec la même initiale s'il y en a une, et qu'un contexte d'élu·e le précède ; sinon,
+# il est masqué (dans un village, un opposant porte souvent le nom d'un·e élu·e).
+@pytest.mark.parametrize(
+    ("titre", "attendu"),
+    [
+        # Contexte d'élu·e et homonyme connu·e, sans initiale : le nom reste.
+        ("Préavis 12/2026 - Réfection du collège (Rapp. M. Socchi)", None),
+        ("Interpellation urgente de Mme Métraux : « Quel avenir pour la grande salle ? »", None),
+        ("Réponse de la Municipalité à la motion de M. Dupont", None),
+        ("Simple question de M. SOCCHI sur les horaires du bus", None),
+        ("Rapport du rapporteur, M. Dupont, sur le budget 2027", None),
+        ("Démission de la conseillère communale Mme Métraux", None),
+        ("Postulat 2026/04 de M. Dupont : « Des bancs »", None),
+        ("Réfection du chemin du Stand, M. Dupont et consorts", None),
+        # Avec l'initiale de l'élu·e : le nom reste ; avec une autre initiale, c'est quelqu'un d'autre.
+        ("Interpellation de M. J. Dupont : « Le parking »", None),
+        ("Préavis 13/2026 - Budget (Rapp. Mme A.-L. Métraux)", None),
+        ("Préavis 13/2026 - Budget (Rapp. Mme A. Métraux)", None),
+        ("Interpellation de M. P. Dupont : « Le parking »", "Interpellation de [particulier] : « Le parking »"),
+        ("Préavis 13/2026 - Budget (Rapp. Mme L.-A. Métraux)", "Préavis 13/2026 - Budget (Rapp. [particulier])"),
+        # Contexte d'élu·e sans homonyme connu·e : masqué.
+        ("Préavis 14/2026 - Éclairage public (Rapp. M. Exemple)", "Préavis 14/2026 - Éclairage public (Rapp. [particulier])"),
+        ("Interpellation de M. C. Modèle : « Le parking »", "Interpellation de [particulier] : « Le parking »"),
+        # Homonyme connu·e sans contexte d'élu·e : masqué, c'est peut-être un opposant du village.
+        ("Opposition de M. Dupont au plan de quartier", "Opposition de [particulier] au plan de quartier"),
+        ("Vente de la parcelle 412 à M. J. Socchi", "Vente de la parcelle 412 à [particulier]"),
+        ("Pétition de M. Dupont et consorts : « Des bancs »", "Pétition de [particulier] et consorts : « Des bancs »"),
+        (
+            "Postulat de M. Paul Exemple : « La lettre de M. Dupont »",
+            "Postulat de [particulier] : « La lettre de [particulier] »",
+        ),
+        # Plusieurs noms partiels : seul l'inconnu est masqué.
+        ("Postulat de MM. Dupont et Modèle : « Des bancs »", "Postulat de MM. Dupont et [particulier] : « Des bancs »"),
+        # Un prénom n'est pas un nom de famille.
+        ("Interpellation de M. Loris : « Le parking »", "Interpellation de [particulier] : « Le parking »"),
+    ],
+)
+def test_un_nom_partiel_ne_reste_qu_avec_un_contexte_d_elu_et_un_homonyme_connu(titre, attendu):
+    assert masquer(titre, ELUS) == (titre if attendu is None else attendu)

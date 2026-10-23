@@ -67,6 +67,20 @@ ENTRE_PETITIONNAIRES = re.compile(r"((?:\s+et|,)\s+)")
 COLLECTIF_RE = re.compile(r"^(?:Collectif|Comité|Habitant[e·]*s|Riverain[e·]*s|Parents|Amis|Groupement|Mouvement|Pro)\b")
 # Entre le prénom et le nom d'un·e pétitionnaire connu·e, ou dans un nom composé : espace, tiret ou souligné.
 ENTRE_LES_NOMS = r"[\s_-]+"
+# Le contexte d'élu·e qui permet de garder un nom partiel (« (Rapp. M. Exemple) », « Interpellation urgente de
+# Mme Exemple ») : un de ces mots, puis rien que des mots en minuscules, des numéros ou de la ponctuation jusqu'à la
+# civilité, jamais un autre nom. « et consorts » ou « et crts » après le nom en est un aussi, hors d'une pétition.
+CONTEXTE_D_ELU = (
+    r"(?i:\brapp\.|\b(?:rapporteur|rapporteuse|rapportrice|interpellation|postulat|motion|question|"
+    r"conseill(?:er|[eè]re)(?:·[eè]re)?|consorts)s?(?!\w))"
+)
+CONTEXTE_AVANT_RE = re.compile(
+    rf"{CONTEXTE_D_ELU}(?:\s*[:,(–-]|\s+(?:[a-zà-öø-ÿœ]+[’']?|[a-zà-öø-ÿœ]*\d[\w/.-]*|n[°o]))*\s*$"
+)
+CONSORTS_APRES_RE = re.compile(r"^\s+et\s+(?:consorts|crts)\b")
+PETITION_AVANT_RE = re.compile(r"(?i:p[ée]tition)")
+# Un nom partiel : des initiales (« J. », « J.-P. »), puis le nom de famille.
+INITIALE_RE = re.compile(r"^[A-ZÀ-Ý]\.(?:-[A-ZÀ-Ý]\.)?$")
 # Un nom de famille plus court n'est masqué qu'avec le prénom : seul, ce serait un mot (« Do », « Py »).
 NOM_SEUL_MIN = 3
 # Un téléphone suisse, sous toutes ses formes : « 079 000 00 00 », « 021/000.00.00 », « +41 79 000 00 00 », « 0041 21… ».
@@ -98,15 +112,19 @@ def masquer(titre: str, elus: Iterable[str] = (), petitionnaires: Iterable[tuple
     que les contributeurs des Objets les donnent) restent. `petitionnaires` (prénom, nom de famille) : les
     pétitionnaires que la source connaît, masqué·e·s où qu'ils ou elles soient nommé·e·s, sauf élu·e connu·e."""
     connus = {_cle(e) for e in elus if e.strip()}
+    noms_de_famille = _noms_de_famille(connus)
 
     def personne(m: re.Match) -> str:
         parties = ENTRE_PERSONNES.split(m[2])
-        noms = parties[0::2]
-        if all(_cle(n) in connus for n in noms):
+        en_contexte = _en_contexte_d_elu(m.string[: m.start()], m.string[m.end() :])
+        garde = [
+            _cle(n) in connus or (en_contexte and _nom_partiel_connu(n, noms_de_famille)) for n in parties[0::2]
+        ]
+        if all(garde):
             return m[0]
-        if not any(_cle(n) in connus for n in noms):
+        if not any(garde):
             return MASQUE
-        return m[1] + "".join(p if i % 2 or _cle(p) in connus else MASQUE for i, p in enumerate(parties))
+        return m[1] + "".join(p if i % 2 or garde[i // 2] else MASQUE for i, p in enumerate(parties))
 
     def compte(m: re.Match) -> str:
         parties = re.split(r"(\s-\s)", m[2])
@@ -163,6 +181,38 @@ def _masquer_petitionnaires(s: str, petitionnaires: Iterable[tuple[str, str]], c
         morceaux += [s[fin : m.start()], MASQUE]
         fin = m.end()
     return "".join(morceaux) + s[fin:]
+
+
+def _en_contexte_d_elu(avant: str, apres: str) -> bool:
+    """Un contexte d'élu·e entoure-t-il la civilité ? `avant` et `apres` : le texte qui la précède et celui qui suit
+    ses noms."""
+    if CONTEXTE_AVANT_RE.search(avant[-120:]):
+        return True
+    return bool(CONSORTS_APRES_RE.match(apres)) and not PETITION_AVANT_RE.search(avant)
+
+
+def _noms_de_famille(connus: Iterable[str]) -> dict[str, set[str]]:
+    """Les noms de famille possibles des élu·e·s connu·e·s (« Prénom Nom », comme les contributeurs des Objets), chacun
+    avec les prénoms qui le précèdent : « anne-laure metraux » donne « metraux » → {« anne-laure »}. Un nom composé
+    donne chacune de ses fins (« marie dupont lambert » : « dupont lambert » et « lambert »)."""
+    noms: dict[str, set[str]] = {}
+    for elu in connus:
+        mots = elu.split()
+        for k in range(1, len(mots)):
+            noms.setdefault(" ".join(mots[k:]), set()).add(" ".join(mots[:k]))
+    return noms
+
+
+def _nom_partiel_connu(nom: str, noms_de_famille: dict[str, set[str]]) -> bool:
+    """`nom` (« Exemple », « C. Exemple », « J.-P. Exemple ») est-il le nom de famille d'un·e élu·e connu·e, avec la
+    même initiale s'il en a une ?"""
+    mots = nom.split()
+    initiales = []
+    while mots and INITIALE_RE.match(mots[0]):
+        initiales += [_cle(c) for c in re.findall(r"\w", mots.pop(0))]
+    if not mots or (prenoms := noms_de_famille.get(_cle(" ".join(mots)))) is None:
+        return False
+    return any([p[0] for p in re.split(r"[\s-]+", prenom)][: len(initiales)] == initiales for prenom in prenoms)
 
 
 def _motif(nom: str) -> str:
