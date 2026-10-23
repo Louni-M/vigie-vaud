@@ -3,15 +3,29 @@
 	import { COURRIEL, DEPOT, DEPOT_DONNEES } from '#lib/config.js';
 	import { canonique } from '#lib/indexation.js';
 	import { COUCHES } from '#lib/registre/couches.js';
-	import { grouperSources, libelleVoie, listerConseils, SENS_VOIES, source, SOURCES } from '#lib/sources.js';
+	import {
+		conseilsCouverts,
+		grouperSources,
+		libelleVoie,
+		PLATEFORMES,
+		phraseSitesLus,
+		SENS_VOIES,
+		source,
+		SOURCES
+	} from '#lib/sources.js';
 
 	// La liste Sources est générée depuis sources.json : une source ajoutée y apparaît sous la couche qui la
-	// déclare, ou sous « Carte et communes » si aucune couche ne la déclare.
-	const groupes = grouperSources(COUCHES, SOURCES);
+	// déclare, ou sous « Carte et communes » si aucune couche ne la déclare. Les sources communales y sont réunies
+	// en une entrée « Sites des communes ».
+	const groupes = grouperSources(COUCHES, SOURCES, PLATEFORMES);
 	/** Une source par voie d'accès employée, pour la légende des voies. */
 	const voies = [...new Map(SOURCES.map((s) => [s.voie_acces, s])).values()];
-	// La liste des conseils couverts aussi : une source de sources.json qui a un bloc `conseil` y apparaît.
-	const conseils = listerConseils(SOURCES);
+	// La liste des conseils couverts aussi : une ligne par source qui a un bloc `conseil` et n'est pas un site,
+	// puis le compte des communes lues sur leur site, par plateforme (sans les communes non couvertes).
+	const conseils = conseilsCouverts(SOURCES, PLATEFORMES);
+	const sitesLus = phraseSitesLus(conseils.sites);
+	/** « i-web et Quicksite » : les plateformes de l'entrée « Sites des communes ». */
+	const ET = new Intl.ListFormat('fr', { type: 'conjunction' });
 	// Le lien vers la page vd.ch des Routes est celui de l'attribution, déclaré une fois dans sources.json.
 	const DGMR = source('dgmr-restrictions');
 </script>
@@ -86,16 +100,33 @@
 	<h3>Conseils</h3>
 	<p>
 		Les <strong>Objets</strong> (motions, postulats, interpellations, décrets, préavis…) et les
-		<strong>Séances</strong>, avec leur ordre du jour, du Grand Conseil et des conseils communaux qu’expose
-		<a href="https://openparldata.ch" target="_blank" rel="noopener">OpenParlData</a>, une plateforme qui rassemble
-		les données des parlements suisses.
+		<strong>Séances</strong>, avec leur ordre du jour, du Grand Conseil et de conseils communaux. Ils viennent
+		d’<a href="https://openparldata.ch" target="_blank" rel="noopener">OpenParlData</a>, une plateforme qui
+		rassemble les données des parlements suisses, ou du site de la commune.
 	</p>
 	<p>
-		À l’inverse des permis, ces données sont <strong>importées une fois par jour</strong> depuis OpenParlData, puis
-		conservées dans le
+		À l’inverse des permis, ces données sont <strong>importées une fois par jour</strong>, puis conservées dans le
 		<a href={DEPOT_DONNEES} target="_blank" rel="noopener">dépôt de données public</a> de Vigie Vaud : un Objet ou
 		une Séance reste consultable même s’il disparaît de la source.
 	</p>
+	<p>
+		Les conseils de {conseils.sites.communes} commune{conseils.sites.communes > 1 ? 's' : ''} sont lus sur le site de leur commune, une fois par jour, par le <a href="#robot">robot de Vigie Vaud</a>. Ce
+		qu’on en tire dépend de ce que chaque site publie :
+	</p>
+	<ul>
+		<li>
+			le niveau varie d’une commune à l’autre : « objets et séances », « séances et préavis » ou « séances
+			seulement » ;
+		</li>
+		<li>
+			le robot lit les pages et les noms des fichiers, pas le contenu des documents : un préavis n’a donc ni statut
+			ni auteur·e, et rien n’est deviné ;
+		</li>
+		<li>
+			l’archive remonte aussi loin que le site ; si le site ne garde que les Séances récentes ou à venir, elle part
+			du premier import.
+		</li>
+	</ul>
 	<p>
 		Le type d’un Objet et son statut sont ceux que donne le conseil, sans traduction ni regroupement. Les pétitions
 		n’affichent pas leurs auteur·e·s, et les demandes de grâce sont écartées. Ce que le site publie sur les personnes
@@ -104,12 +135,15 @@
 	</p>
 	<p>Conseils couverts :</p>
 	<ul class="conseils">
-		{#each conseils as c (c.source.id)}
-			<li><strong>{c.source.nom}</strong> : {c.donne}.</li>
+		{#each conseils.sources as c, i (c.source.id)}
+			<li><strong>{c.source.nom}</strong> : {c.donne}{sitesLus || i < conseils.sources.length - 1 ? ' ;' : '.'}</li>
 		{/each}
+		{#if sitesLus}
+			<li>{sitesLus}. <a href={resolve('/couverture')}>Couverture ›</a></li>
+		{/if}
 	</ul>
 	<p>
-		Les autres conseils communaux ne sont pas dans OpenParlData. Ce que chaque source couvre, commune par commune, est
+		Vigie Vaud ne lit pas encore les autres conseils communaux. Ce que chaque source couvre, commune par commune, est
 		sur la page <a href={resolve('/couverture')}>Couverture</a>.
 	</p>
 
@@ -172,6 +206,64 @@
 		la plus grande part ; une déviation l’est à toutes les communes qu’elle traverse.
 	</p>
 
+	<h2 id="robot">Le robot de Vigie Vaud</h2>
+	<p>
+		Pour les conseils communaux qu’OpenParlData n’expose pas, Vigie Vaud lit le site de la commune avec un robot.
+		Ce qui suit s’adresse au service informatique d’une commune comme à toute personne curieuse.
+	</p>
+	<ul class="robot">
+		<li>
+			<strong>Qui.</strong> Il se présente sous les noms <code>VigieVaud-sonde</code> (la vérification quotidienne
+			de la page de liste) et <code>VigieVaud-import</code> (la lecture), avec un courriel de contact et un lien vers
+			cette section. Ce n’est pas un robot d’IA.
+		</li>
+		<li>
+			<strong>Ce qu’il lit.</strong> La page de liste des Séances du conseil, les pages des Séances et des Objets
+			récents, et la page des membres du conseil. Il n’en garde que des métadonnées et des liens, aucun texte
+			intégral, et ne republie aucun document.
+		</li>
+		<li>
+			<strong>Son rythme.</strong> Une fois par jour, une requête à la fois, au moins 5 secondes entre deux
+			requêtes vers un même réseau, au plus 60 requêtes par commune. De temps en temps, un rattrapage de
+			l’historique, lancé à la main, relit un site au même rythme.
+		</li>
+		<li>
+			<strong>Ses règles.</strong> Il suit <code>robots.txt</code> et <code>Crawl-delay</code> sous le nom
+			<code>VigieVaud</code> ; une règle faite à tous les robots (<code>User-agent: *</code>) le concerne aussi. Il
+			s’arrête après une réponse 429 ou 503.
+		</li>
+		<li>
+			<strong>Le droit.</strong> Les actes officiels ne sont pas protégés par le droit d’auteur (art. 5 LDA) ; le
+			robot n’en garde que les métadonnées et le lien.
+		</li>
+		<li>
+			<strong>Où il tourne.</strong> Sur GitHub Actions, dont les adresses IP changent. Pour le filtrer, passez par
+			son User-Agent ou par <code>robots.txt</code>, jamais par l’adresse IP.
+		</li>
+	</ul>
+	<p>Une commune qui ne veut plus être lue a deux voies :</p>
+	<ol class="robot">
+		<li>
+			interdire <code>VigieVaud</code> dans le <code>robots.txt</code> de son site : le robot s’arrête dès le
+			lendemain, sans attendre personne ;
+			<pre><code>User-agent: VigieVaud
+Disallow: /</code></pre>
+		</li>
+		<li>
+			écrire à <a href="mailto:{COURRIEL}">{COURRIEL}</a> : le robot est arrêté dans les 7 jours.
+		</li>
+	</ol>
+	<p>
+		Pour seulement le ralentir, un <code>Crawl-delay</code> suffit, en secondes :
+	</p>
+	<pre><code>User-agent: VigieVaud
+Crawl-delay: 30</code></pre>
+	<p>
+		Ce qui est déjà importé reste en ligne et dans le dépôt de données, comme archive d’actes officiels. Une demande
+		qui touche une personne passe par le retrait décrit sur la page
+		<a href={resolve('/protection-des-donnees')}>Protection des données</a>.
+	</p>
+
 	<h2 id="sources">Sources</h2>
 	<p>
 		Chaque source est citée avec son attribution, sa licence et sa voie d’accès. L’état de chaque source et les
@@ -186,11 +278,24 @@
 		<h3>{g.titre}</h3>
 		<ul class="sources">
 			{#each g.sources as s (s.id)}
-				<li>
-					<span class="nom">{s.nom}</span>
-					<a href={s.attribution.lien} target="_blank" rel="noopener">{s.attribution.texte}</a>
-					<span class="details">Licence : {s.attribution.licence} · Voie d’accès : {libelleVoie(s)}</span>
-				</li>
+				{#if 'plateformes' in s}
+					<li>
+						<span class="nom">{s.nom}</span>
+						<span>
+							Les sites des communes dont Vigie Vaud lit le conseil{s.plateformes.length > 0
+								? `, sur ${ET.format(s.plateformes)}`
+								: ''} : chaque commune, avec le lien vers son site et son état, est sur la page
+							<a href={resolve('/couverture')}>Couverture</a>.
+						</span>
+						<span class="details">Licence : {s.licence} · Voie d’accès : {libelleVoie(s)}</span>
+					</li>
+				{:else}
+					<li>
+						<span class="nom">{s.nom}</span>
+						<a href={s.attribution.lien} target="_blank" rel="noopener">{s.attribution.texte}</a>
+						<span class="details">Licence : {s.attribution.licence} · Voie d’accès : {libelleVoie(s)}</span>
+					</li>
+				{/if}
 			{/each}
 		</ul>
 	{/each}
@@ -235,8 +340,21 @@
 	.chapeau {
 		font-size: 17px;
 	}
-	.conseils {
+	.conseils,
+	.robot {
 		padding-left: 20px;
+	}
+	.robot li + li {
+		margin-top: 6px;
+	}
+	pre {
+		margin: 6px 0 10px;
+		padding: 8px 12px;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--surface);
+		font-size: 13px;
+		overflow-x: auto;
 	}
 	.voies {
 		font-size: 14px;
