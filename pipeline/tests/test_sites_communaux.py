@@ -291,6 +291,35 @@ def test_une_commune_non_couverte_n_est_ni_sondee_ni_importee(tmp_path, horloge)
     assert not (tmp_path / "conseils/5568").exists()
 
 
+def test_une_commune_passee_non_couverte_garde_en_ligne_ce_qui_a_ete_importe_sans_import_ni_sonde(tmp_path, horloge):
+    # Préverenges est importée, puis demande que son site ne soit plus lu : une PR la déclare non couverte.
+    _passer(tmp_path, horloge, _preverenges(horloge), _monde(horloge))
+    lecture = ["conseils/5643/seances.json", "conseils/5643/seances/2026-09-10.json"]
+    avant = {chemin: _lire(tmp_path, chemin) for chemin in lecture}
+    non_couverte = {k: v for k, v in SITE_PREVERENGES.items() if k not in ("conseil", "site")} | {
+        "couverture": {"communes": [5643], "mode": "non_couvert", "raison": "demande_commune"},
+        "site": {"plateforme": "i-web"},
+    }
+    reseau = _preverenges(horloge)
+
+    _passer(tmp_path, horloge, reseau, _monde(horloge), sources=_sources(_opendata("5586"), non_couverte),
+            heure=T0 + timedelta(days=1))
+
+    assert not any(r.url.startswith(PREVERENGES) for r in reseau.journal)
+    assert "site-5643" not in _lire(tmp_path, "etat-sources.json")["sources"]
+    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:05Z"  # pas réimportée
+    for chemin in lecture:
+        assert _lire(tmp_path, chemin) | {"genere": None} == avant[chemin] | {"genere": None}
+    (conseil,) = [c for c in _lire(tmp_path, "conseils/index.json")["conseils"] if c["cle"] == "5643"]
+    assert (conseil["source"], conseil["commune"], conseil["donne"], conseil["seances"]) == (
+        "site-5643",
+        5643,
+        ["seances"],
+        3,
+    )
+    assert any(e["conseil"] == "5643" for e in _lire(tmp_path, "conseils/fil.json")["entrees"])
+
+
 # --- Cas instables, fabriqués par retouche de l'échantillon ---------------------------------------------------------
 
 

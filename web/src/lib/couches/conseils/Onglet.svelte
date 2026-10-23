@@ -6,7 +6,8 @@
 	 *
 	 * Commune dont le conseil est couvert : le nom du conseil (et, s'il ne donne que ses Séances, la note « Séances
 	 * seulement : les objets sont sur le site de la commune › », `noteDeNiveau`), l'en-tête de séance, « Objets récents », « Séances passées », puis, après un
-	 * séparateur, « Au Grand Conseil ». Commune non couverte : « Au Grand Conseil » seul, sous « Non couvert ».
+	 * séparateur, « Au Grand Conseil ». Commune non couverte : « Au Grand Conseil » seul, sous « Non couvert » ; une
+	 * commune scrapée passée non couverte garde sous sa raison ce qui a déjà été importé, que l'index liste encore.
 	 *
 	 * Fiche du Grand Conseil : l'en-tête de séance, « Objets récents » avec les puces « Tous · Nomment une commune ·
 	 * Sans commune », « Séances passées », aux mêmes longueurs que dans l'onglet d'une commune.

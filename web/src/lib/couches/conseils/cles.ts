@@ -3,7 +3,7 @@
 // et `5586/POS25-115` pour un Objet (la barre oblique du numéro devenue `-`, un espace `_`), `5586/2026-10-06` pour
 // une Séance. Le conseil est la clé du conseil dans le dépôt de données : `vd`, ou le n° OFS de la commune.
 import type { Source } from '#lib/schema.js';
-import { SOURCES, cleConseil, nomDuConseil } from '#lib/sources.js';
+import { SOURCES, cleDeLaSource, nomDuConseil } from '#lib/sources.js';
 import { dateLongue } from './lignes.js';
 
 /** Clé du Grand Conseil dans le dépôt de données. */
@@ -57,9 +57,12 @@ export function nomElement(cle: string): string {
 /** Titre du document, tiré de la clé seule : « Objet POS25/115 – Lausanne – Vigie Vaud ». */
 export const titreElement = (cle: string, nomDeLaFiche: string) => `${nomElement(cle)} – ${nomDeLaFiche} – Vigie Vaud`;
 
-/** La source qui donne ce conseil (`vd`, `5586`), dans `sources.json`. */
+/**
+ * La source qui donne ce conseil (`vd`, `5586`), dans `sources.json` ; pour l'archive d'une commune scrapée passée
+ * non couverte, sa source communale, qui garde son attribution.
+ */
 export const sourceDuConseil = (conseil: string, sources: readonly Source[] = SOURCES) =>
-	sources.find((s) => s.conseil && cleConseil(s.conseil) === conseil);
+	sources.find((s) => cleDeLaSource(s) === conseil);
 
 /** Nom du conseil, tiré du nom de sa source par la règle de l'index : « Conseil communal de Lausanne ». */
 export function nomConseil(conseil: string, sources: readonly Source[] = SOURCES): string | null {

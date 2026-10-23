@@ -46,6 +46,18 @@ export const donneDesObjets = (conseil: { donne: readonly DonneeConseil[] }) =>
 /** Clé du conseil dans le dépôt de données : `body_key` en minuscules (`vd`, `5586`), comme `Conseil.cle` du cron. */
 export const cleConseil = (conseil: Conseil) => conseil.body_key.toLowerCase();
 
+/**
+ * Clé, dans le dépôt de données, du conseil que donne la source : celle de son bloc `conseil` ; pour une commune
+ * scrapée passée non couverte, le n° OFS de sa commune, sous lequel son archive reste en ligne, sans import (récit 33
+ * de la spec de J3) ; `null` pour une source sans conseil.
+ */
+export function cleDeLaSource(source: Source): string | null {
+	if (source.conseil) return cleConseil(source.conseil);
+	const c = source.couverture;
+	if (!source.site || c?.mode !== 'non_couvert' || c.communes === 'canton') return null;
+	return String(c.communes[0]);
+}
+
 /** N° OFS de la commune d'un conseil communal (`body_key` numérique) ; `null` pour le Grand Conseil. */
 export const communeDuConseil = (conseil: Conseil) => (/^\d+$/.test(conseil.body_key) ? Number(conseil.body_key) : null);
 

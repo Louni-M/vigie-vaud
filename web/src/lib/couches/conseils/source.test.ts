@@ -28,6 +28,14 @@ describe('pied de la fiche d’un Objet ou d’une Séance', () => {
 	it('ne dit rien d’un conseil que sources.json ne déclare pas', () => {
 		expect(piedDeFiche('9999', AVEC_SITE)).toBeNull();
 	});
+
+	it('nomme encore le site d’une commune passée non couverte, dont l’archive reste en ligne', () => {
+		const sources = avecSources(SOURCES, sourceNonCouverte('demande_commune'));
+		expect(piedDeFiche('5568', sources)).toEqual({
+			texte: 'Source : site de la commune de Sainte-Croix',
+			lien: 'https://www.sainte-croix.ch/conseil-communal'
+		});
+	});
 });
 
 describe('note de niveau sous le nom du conseil', () => {
