@@ -530,6 +530,10 @@ export interface FichierSources {
 	 * Les plateformes retenues, que citent les blocs `site` des sources communales.
 	 */
 	plateformes?: Plateforme[];
+	/**
+	 * Les réseaux ralentis à la main pour le robot communal.
+	 */
+	reseaux?: ReseauRalenti[];
 	sources: Source[];
 }
 /**
@@ -565,6 +569,20 @@ export interface Variante {
 	 * @minItems 1
 	 */
 	niveaux: [[DonneeConseil, ...DonneeConseil[]], ...[DonneeConseil, ...DonneeConseil[]][]];
+}
+/**
+ * Un réseau que le robot communal lit plus lentement que 5 s par requête : un ralentissement décidé à la main,
+ * après un blocage. Rien ne s'adapte tout seul.
+ */
+export interface ReseauRalenti {
+	/**
+	 * Le /24 (IPv6 : /64) des sites concernés, « 195.65.10.0/24 ».
+	 */
+	reseau: string;
+	/**
+	 * Secondes, au moins, entre deux requêtes vers ce réseau (5 s ailleurs, ou le `Crawl-delay` d'un site s'il est plus grand).
+	 */
+	intervalle: number;
 }
 export interface Source {
 	/**

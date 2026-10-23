@@ -349,7 +349,7 @@ def passage(
             continue
         heure = _a_la_seconde(horloge())
         etats[source.id] = _suivant(precedent.get(source.id), heure, sonder(client, source.sonde))
-    robot = Robot(client, horloge, attendre, resoudre)
+    robot = Robot(client, horloge, attendre, resoudre, intervalles={r.reseau: r.intervalle for r in sources.reseaux})
     etats |= sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapage)
     etat = EtatSources(version=1, genere=genere, sources=etats)
     (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")

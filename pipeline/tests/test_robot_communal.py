@@ -59,7 +59,7 @@ def test_une_requete_a_la_fois_meme_appele_de_plusieurs_fils(horloge):
     for f in fils:
         f.join()
 
-    assert len(reseau.journal) == 8
+    assert len(reseau.journal) == 16  # robots.txt et la page, pour chaque site
     assert reseau.en_vol_max == 1
 
 
@@ -81,7 +81,7 @@ def test_une_page_non_lue_leve_une_erreur_typee_et_compte_dans_le_debit(horloge,
         robot.lire("https://www.commune.ch/seances", "sonde")
     robot.lire("https://www.commune.ch/", "sonde")
 
-    assert reseau.heures() == [T0, T0 + timedelta(seconds=5)]
+    assert reseau.heures() == [T0 + timedelta(seconds=n) for n in (0, 5, 10)]  # robots.txt, puis les deux pages
 
 
 def test_une_erreur_http_dit_son_statut_et_son_retry_after(horloge):

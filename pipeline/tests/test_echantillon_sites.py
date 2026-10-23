@@ -174,8 +174,9 @@ def test_les_pages_sont_lues_par_le_robot_pour_l_import_cinq_secondes_d_ecart(tm
     _enregistrer(reseau, horloge, tmp_path / "echantillon", tmp_path / "brut")
 
     assert [(r.url, (r.heure - T0).total_seconds()) for r in reseau.journal] == [
-        ("https://www.exemple.ch/seances", 0),
-        ("https://www.exemple.ch/seances/11", 5),
+        ("https://www.exemple.ch/robots.txt", 0),  # lu d'abord : le script suit les règles du site
+        ("https://www.exemple.ch/seances", 5),
+        ("https://www.exemple.ch/seances/11", 10),
     ]
     assert all(r.user_agent.startswith("VigieVaud-import ") for r in reseau.journal)
 
@@ -188,7 +189,7 @@ def test_une_page_non_lue_arrete_le_script_sans_nouvel_essai_ni_fichier_ecrit(tm
     with pytest.raises(Injoignable):
         _enregistrer(reseau, horloge, tmp_path / "echantillon", tmp_path / "brut")
 
-    assert [r.url for r in reseau.journal] == ["https://www.exemple.ch/seances"]
+    assert [r.url for r in reseau.journal] == ["https://www.exemple.ch/robots.txt", "https://www.exemple.ch/seances"]
     assert not (tmp_path / "echantillon").exists()
 
 

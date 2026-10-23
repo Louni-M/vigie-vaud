@@ -14,7 +14,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from robot_communal import DelaiDepasse, ErreurHttp, Injoignable, PageIllisible, PageNonLue, Robot
+from robot_communal import (
+    DelaiDepasse,
+    ErreurHttp,
+    Injoignable,
+    PageIllisible,
+    PageInterdite,
+    PageNonLue,
+    Robot,
+    RobotsIndisponible,
+)
 from schema import Plateforme, Source
 
 
@@ -30,6 +39,10 @@ def sonder_site(robot: Robot, source: Source, plateformes: Sequence[Plateforme])
         return f"variante {site.plateforme}/{site.variante} non déclarée"
     try:
         page = robot.lire(site.seances, "sonde")
+    except RobotsIndisponible as e:
+        return f"robots.txt en erreur ({e.raison})"
+    except PageInterdite:
+        return "le site refuse les robots"
     except ErreurHttp as e:
         return f"HTTP {e.statut}"
     except DelaiDepasse:

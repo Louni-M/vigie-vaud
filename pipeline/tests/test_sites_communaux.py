@@ -25,6 +25,7 @@ from test_cron import IssuesFactices
 
 # 07:17 à Lausanne, le jour où l'échantillon a été enregistré : la fenêtre du passage part du 23 avril 2026.
 T0 = datetime(2026, 10, 23, 5, 17, tzinfo=UTC)
+S = timedelta(seconds=1)
 PREVERENGES = "https://www.preverenges.ch"
 IP_PREVERENGES = "195.65.10.20"
 
@@ -224,7 +225,7 @@ def test_les_seances_de_la_fenetre_sont_listees_dans_l_ordre_des_dates_malgre_le
         ["seances"],
     )
     assert (conseil["prochaine_seance"], conseil["derniere_seance"]) == ("5643/2026-10-29", "5643/2026-09-10")
-    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:00Z"
+    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:05Z"
 
 
 def test_le_meme_passage_importe_les_conseils_d_openparldata_comme_sans_site(tmp_path, horloge):
@@ -232,7 +233,9 @@ def test_le_meme_passage_importe_les_conseils_d_openparldata_comme_sans_site(tmp
     seul.mkdir()
     avec_site.mkdir()
 
-    _passer(seul, horloge, _preverenges(horloge), _monde(horloge), sources=_sources(_opendata("5586")))
+    # La sonde du site (robots.txt, puis la page de liste 5 s plus tard) précède l'import : sans site, le passage
+    # part 5 s plus tard pour importer à la même heure.
+    _passer(seul, horloge, _preverenges(horloge), _monde(horloge), sources=_sources(_opendata("5586")), heure=T0 + 5 * S)
     horloge.heure = T0
     _passer(avec_site, horloge, _preverenges(horloge), _monde(horloge))
 
@@ -245,7 +248,7 @@ def test_le_meme_passage_importe_les_conseils_d_openparldata_comme_sans_site(tmp
     for chemin in lausanne:
         assert _lire(avec_site, chemin) == _lire(seul, chemin)
     assert _lire(avec_site, "conseils/import.json") == _lire(seul, "conseils/import.json") | {
-        "conseils": {"5586": "2026-10-23T05:17:00Z", "5643": "2026-10-23T05:17:00Z"}
+        "conseils": {"5586": "2026-10-23T05:17:05Z", "5643": "2026-10-23T05:17:05Z"}
     }
 
 
@@ -259,7 +262,7 @@ def test_un_second_passage_ne_reecrit_rien(tmp_path, horloge):
     assert any("/_rte/anlass/" in r.url for r in reseau.journal)  # les pages ont bien été relues
     apres = {p: p.read_bytes() for p in (tmp_path / "conseils").rglob("*.json") if p.name != "import.json"}
     assert apres == avant
-    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-24T05:17:00Z"
+    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-24T05:17:05Z"
 
 
 def test_une_commune_non_couverte_n_est_ni_sondee_ni_importee(tmp_path, horloge):
@@ -322,7 +325,7 @@ def test_un_element_illisible_est_saute_et_note_dans_le_journal(tmp_path, horlog
     assert "Conseil communal de Préverenges (site de la commune) : élément sauté" in journal
     assert "/_rte/anlass/7400001" in journal
     assert f"{PREVERENGES}/_rte/anlass/6987193 non lue" in journal
-    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:00Z"
+    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:05Z"
 
 
 def test_une_liste_dont_aucune_ligne_ne_se_lit_met_l_import_de_la_commune_en_echec(tmp_path, horloge, capsys):
@@ -332,7 +335,7 @@ def test_une_liste_dont_aucune_ligne_ne_se_lit_met_l_import_de_la_commune_en_ech
     _passer(tmp_path, horloge, reseau, _monde(horloge))
 
     assert "Import en échec : Conseil communal de Préverenges (site de la commune)" in capsys.readouterr().err
-    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:00Z"}
+    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
     assert not (tmp_path / "conseils/5643/seances").exists()
 
 
@@ -343,7 +346,7 @@ def test_une_liste_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):
 
     _passer(tmp_path, horloge, reseau, _monde(horloge))
 
-    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:00Z"
+    assert _lire(tmp_path, "conseils/import.json")["conseils"]["5643"] == "2026-10-23T05:17:05Z"
     assert _lire(tmp_path, "conseils/5643/seances.json")["seances"] == []
 
 
@@ -404,12 +407,13 @@ def test_le_robot_lit_le_site_une_page_toutes_les_5_s_sous_le_nom_vigievaud_impo
 
     s = timedelta(seconds=1)
     assert [(r.url.removeprefix(PREVERENGES), r.heure - T0, r.user_agent.split(" ")[0]) for r in reseau.journal] == [
-        ("/sitzung", 0 * s, "VigieVaud-sonde"),  # la sonde, juste avant l'import (test_sondes_sites.py)
-        ("/sitzung", 5 * s, "VigieVaud-import"),
-        ("/_rte/anlass/6987214", 10 * s, "VigieVaud-import"),  # à venir, puis les passées dans l'ordre du site
-        ("/_rte/anlass/6987193", 15 * s, "VigieVaud-import"),
-        ("/_rte/anlass/6987205", 20 * s, "VigieVaud-import"),
-        ("/sitzung/6987205", 25 * s, "VigieVaud-import"),  # la redirection du lien stable, au même débit
+        ("/robots.txt", 0 * s, "VigieVaud-sonde"),  # lu une fois, avant la sonde (test_regles_du_robot.py)
+        ("/sitzung", 5 * s, "VigieVaud-sonde"),  # la sonde, juste avant l'import (test_sondes_sites.py)
+        ("/sitzung", 10 * s, "VigieVaud-import"),
+        ("/_rte/anlass/6987214", 15 * s, "VigieVaud-import"),  # à venir, puis les passées dans l'ordre du site
+        ("/_rte/anlass/6987193", 20 * s, "VigieVaud-import"),
+        ("/_rte/anlass/6987205", 25 * s, "VigieVaud-import"),
+        ("/sitzung/6987205", 30 * s, "VigieVaud-import"),  # la redirection du lien stable, au même débit
     ]
     assert reseau.journal[-1].user_agent == (
         "VigieVaud-import (+https://louni-m.github.io/vigie-vaud/a-propos#robot; vigievaud.gentile263@passinbox.com)"

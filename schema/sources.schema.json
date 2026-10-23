@@ -218,6 +218,31 @@
       ],
       "type": "string"
     },
+    "Reseau": {
+      "pattern": "^[0-9a-f.:]+/(24|64)$",
+      "type": "string"
+    },
+    "ReseauRalenti": {
+      "additionalProperties": false,
+      "description": "Un réseau que le robot communal lit plus lentement que 5 s par requête : un ralentissement décidé à la main,\naprès un blocage. Rien ne s'adapte tout seul.",
+      "properties": {
+        "reseau": {
+          "$ref": "#/$defs/Reseau",
+          "description": "Le /24 (IPv6 : /64) des sites concernés, « 195.65.10.0/24 »."
+        },
+        "intervalle": {
+          "description": "Secondes, au moins, entre deux requêtes vers ce réseau (5 s ailleurs, ou le `Crawl-delay` d'un site s'il est plus grand).",
+          "exclusiveMinimum": 5,
+          "type": "number"
+        }
+      },
+      "required": [
+        "reseau",
+        "intervalle"
+      ],
+      "title": "ReseauRalenti",
+      "type": "object"
+    },
     "Site": {
       "additionalProperties": false,
       "description": "Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.\nUne commune non couverte d'une plateforme retenue n'y déclare que sa plateforme.",
@@ -517,6 +542,14 @@
       "description": "Les plateformes retenues, que citent les blocs `site` des sources communales.",
       "items": {
         "$ref": "#/$defs/Plateforme"
+      },
+      "type": "array"
+    },
+    "reseaux": {
+      "default": [],
+      "description": "Les réseaux ralentis à la main pour le robot communal.",
+      "items": {
+        "$ref": "#/$defs/ReseauRalenti"
       },
       "type": "array"
     },
