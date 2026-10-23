@@ -5,10 +5,10 @@ import { messageNonCouvert } from '#lib/registre/onglet.js';
 import type { DonneeConseil } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
 import { commune } from '#tests/faux-canton.js';
-import { objet, sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
+import { avecSources, objet, sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 
-// Les sources réelles de `sources.json`, et une commune i-web en séances seules (Préverenges).
-const AVEC_SITE = [...SOURCES, sourceSite()];
+// Les sources réelles de `sources.json`, où Préverenges est une commune i-web en séances seules.
+const AVEC_SITE = avecSources(SOURCES, sourceSite());
 
 describe('pied de la fiche d’un Objet ou d’une Séance', () => {
 	it('nomme le site de la commune d’un conseil scrapé, avec le lien de son attribution', () => {
@@ -64,10 +64,7 @@ describe('note de niveau sous le nom du conseil', () => {
 });
 
 describe('mention du statut et des auteur·e·s dans la fiche d’un Objet', () => {
-	const preverenges = (donne: [DonneeConseil, ...DonneeConseil[]]) => [
-		...SOURCES,
-		sourceSite({ conseil: { body_key: '5643', donne } })
-	];
+	const preverenges = (donne: [DonneeConseil, ...DonneeConseil[]]) => avecSources(SOURCES, sourceSite({ conseil: { body_key: '5643', donne } }));
 	const preavis = objet({ numero: '12-2026', type: 'Préavis', statut: null, contributeurs: [], etapes: [] });
 
 	it('dit qu’un préavis scrapé sans statut ni auteur·e n’en a pas parce que le site ne les publie pas', () => {
@@ -90,15 +87,19 @@ describe('mention du statut et des auteur·e·s dans la fiche d’un Objet', () 
 
 describe('sources de la couche Conseils', () => {
 	it('déclare chaque conseil et chaque commune non couverte d’une plateforme retenue, dans l’ordre de sources.json', () => {
-		const sources = [...SOURCES, sourceSite(), sourceNonCouverte()];
+		const ids = sourcesDeLaCouche(SOURCES);
 
-		expect(sourcesDeLaCouche(sources)).toEqual([
+		expect(ids.slice(0, 7)).toEqual([
 			'openparldata-vd',
 			'openparldata-5586',
 			'openparldata-5938',
-			'site-5643',
-			'site-5568'
+			'site-5410',
+			'site-5414',
+			'site-5458',
+			'site-5487' // Lussery-Villars, non couverte
 		]);
+		expect(ids).toHaveLength(3 + 28);
+		expect(ids).toContain('site-5568');
 	});
 });
 
@@ -114,14 +115,14 @@ describe('message « Non couvert » d’une commune', () => {
 		['refus_robots', 'le site de Sainte-Croix refuse les robots.'],
 		['nouveau_site', 'le nouveau site de Sainte-Croix n’est pas encore lu.']
 	] as const)('d’une plateforme retenue, en %s : la raison et le lien vers le conseil', (raison, texte) => {
-		const sources = [...SOURCES, sourceNonCouverte(raison)];
+		const sources = avecSources(SOURCES, sourceNonCouverte(raison));
 
 		expect(nonCouvertConseils(SAINTE_CROIX, sources)).toEqual({ texte, lien: LIEN });
 	});
 
 	it('élide « de » devant une voyelle', () => {
 		const aigle = { bfs: 5401, nom: 'Aigle', site: 'https://www.aigle.ch' };
-		const sources = [...SOURCES, sourceNonCouverte('refus_robots', aigle)];
+		const sources = avecSources(SOURCES, sourceNonCouverte('refus_robots', aigle));
 
 		expect(nonCouvertConseils(commune(5401, 'Aigle', [6.9, 46.3, 7, 46.35]), sources).texte).toBe(
 			'le site d’Aigle refuse les robots.'
@@ -129,7 +130,7 @@ describe('message « Non couvert » d’une commune', () => {
 	});
 
 	it('hors de J3, sans lien : Vigie Vaud ne lit pas encore le site de la commune', () => {
-		const sources = [...SOURCES, sourceNonCouverte()];
+		const sources = avecSources(SOURCES, sourceNonCouverte());
 
 		expect(nonCouvertConseils(BUSSIGNY, sources)).toEqual({
 			texte: 'Vigie Vaud ne lit pas encore le site de cette commune.'

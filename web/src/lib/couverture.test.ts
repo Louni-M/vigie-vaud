@@ -12,9 +12,9 @@ import { chargerEtatSources, lienIssuePlateforme, lienPannes, lireEtatSources } 
 import type { CoucheInscrite } from './registre/types.js';
 import { COUCHES } from './registre/couches.js';
 import type { EtatSource, EtatSources, Plateforme, RaisonNonCouvert, Source } from './schema.js';
-import { SOURCES } from './sources.js';
+import { PLATEFORMES, SOURCES } from './sources.js';
 import communesJ0 from '../../static/communes.json';
-import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
+import { avecSources, sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 
 const MAINTENANT = new Date('2026-10-12T14:30:00Z');
 const COMMUNES = [{ bfs: 5586 }, { bfs: 5590 }, { bfs: 5889 }];
@@ -239,7 +239,7 @@ describe('grisage de la carte', () => {
 		expect(c.grisees('conseils')).toEqual([5590]);
 	});
 
-	it('grise, avec les couches inscrites, toutes les communes sauf Lausanne et Yverdon au volet Conseils, et rien ailleurs', () => {
+	it('grise, avec les couches inscrites, toutes les communes sauf Lausanne, Yverdon et les communes i-web couvertes au volet Conseils, et rien ailleurs', () => {
 		const c = deduireCouverture({
 			sources: SOURCES,
 			etat: etat({ 'camac-permis': panne, 'openparldata-5586': panne }),
@@ -249,9 +249,11 @@ describe('grisage de la carte', () => {
 		});
 		expect(communesJ0).toHaveLength(300);
 		const grisees = c.grisees('conseils');
-		expect(grisees).toHaveLength(298);
+		expect(grisees).toHaveLength(300 - 2 - 25);
 		expect(grisees).not.toContain(5586);
 		expect(grisees).not.toContain(5938);
+		expect(grisees).not.toContain(5643); // Préverenges, i-web
+		expect(grisees).toContain(5568); // Sainte-Croix, i-web non couverte
 		expect(grisees).toContain(5624); // Bussigny
 		expect(c.grisees('permis')).toEqual([]);
 		expect(c.grisees('routes')).toEqual([]);
@@ -281,12 +283,15 @@ describe('Couverture des conseils déclarés dans sources.json', () => {
 		expect(couvertes('openparldata-vd')).toEqual([]);
 	});
 
-	it('couvre Lausanne et Yverdon par une couche des trois conseils, et grise toutes les autres communes', () => {
-		expect(conseils.map((s) => s.id)).toEqual(['openparldata-vd', 'openparldata-5586', 'openparldata-5938']);
+	it('couvre Lausanne, Yverdon et les 25 communes i-web couvertes, et grise toutes les autres communes', () => {
+		expect(conseils.slice(0, 3).map((s) => s.id)).toEqual(['openparldata-vd', 'openparldata-5586', 'openparldata-5938']);
+		expect(conseils).toHaveLength(3 + 25);
 		expect(c.couvre('conseils', 5586)).toBe(true);
 		expect(c.couvre('conseils', 5938)).toBe(true);
+		expect(c.couvre('conseils', 5643)).toBe(true);
 		expect(c.couvre('conseils', 5590)).toBe(false);
-		expect(c.grisees('conseils')).toHaveLength(298);
+		expect(c.couvre('conseils', 5568)).toBe(false);
+		expect(c.grisees('conseils')).toHaveLength(300 - 2 - 25);
 	});
 });
 
@@ -315,9 +320,9 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 		const site = sourceSite();
 		const avecSite = (sources: Record<string, EtatSource>) =>
 			deduireCouverture({
-				sources: [...SOURCES, site],
+				sources: avecSources(SOURCES, site),
 				etat: etat(sources),
-				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, site.id] } : x)),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...new Set([...x.sources, site.id])] } : x)),
 				communes: communesJ0,
 				maintenant: MAINTENANT
 			});
@@ -341,13 +346,14 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 				'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'
 			]);
 			// La fiche de sa plateforme, faute d'encart, dit ce que la sonde a mesuré.
-			expect(d.plateformes[0].communes[0].sonde).toEqual(panne);
+			expect(d.plateformes[0].communes.find((x) => x.source.id === 'site-5643')?.sonde).toEqual(panne);
 			// Une panne ne grise rien.
 			expect(d.couvre('conseils', 5643)).toBe(true);
 		});
 
 		it("dit l'état inconnu d'une commune pas encore sondée", () => {
-			expect(libelleCellule(avecSite(tous).cellule('conseils', 5643))).toEqual([
+			const { 'site-5643': _, ...sansPreverenges } = tous;
+			expect(libelleCellule(avecSite(sansPreverenges).cellule('conseils', 5643))).toEqual([
 				'Scrapé · séances seulement · inconnu'
 			]);
 		});
@@ -369,9 +375,9 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 		] as const)('donne le niveau d’une commune scrapée seulement s’il manque quelque chose (%j)', (donne, cellule) => {
 			const niveau = sourceSite({ conseil: { body_key: '5643', donne: [...donne] } });
 			const d = deduireCouverture({
-				sources: [...SOURCES, niveau],
+				sources: avecSources(SOURCES, niveau),
 				etat: etat({ ...tous, 'site-5643': disponible }),
-				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, niveau.id] } : x)),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...new Set([...x.sources, niveau.id])] } : x)),
 				communes: communesJ0,
 				maintenant: MAINTENANT
 			});
@@ -383,9 +389,9 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 		const d = (raison: RaisonNonCouvert = 'preavis_seuls') => {
 			const nonCouverte = sourceNonCouverte(raison);
 			return deduireCouverture({
-				sources: [...SOURCES, nonCouverte],
+				sources: avecSources(SOURCES, nonCouverte),
 				etat: etat(tous),
-				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, nonCouverte.id] } : x)),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...new Set([...x.sources, nonCouverte.id])] } : x)),
 				communes: communesJ0,
 				maintenant: MAINTENANT
 			});
@@ -406,7 +412,7 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 			const c = d();
 			expect(c.couvre('conseils', 5568)).toBe(false);
 			expect(c.grisees('conseils')).toContain(5568);
-			expect(c.grisees('conseils')).toHaveLength(298);
+			expect(c.grisees('conseils')).toHaveLength(300 - 2 - 25);
 			expect(c.sources.map((s) => s.source.id)).not.toContain('site-5568');
 		});
 	});
@@ -440,12 +446,27 @@ describe('encarts de la page Couverture : un par source', () => {
 	const encart = (id: string) => c.sources.find((s) => s.source.id === id)!;
 
 	it('a un encart par source des couches Permis, Conseils et Routes, Grand Conseil compris', () => {
+		// Les communes scrapées n'ont pas d'encart : elles sont dans la fiche de leur plateforme.
 		expect(c.sources.map((s) => s.source.id)).toEqual([
 			'camac-permis',
 			'openparldata-vd',
 			'openparldata-5586',
 			'openparldata-5938',
 			'dgmr-restrictions'
+		]);
+	});
+
+	it('a la fiche i-web des communes déclarées dans sources.json, couvertes et non couvertes', () => {
+		const d = deduireCouverture({
+			sources: SOURCES,
+			etat: null,
+			couches: COUCHES,
+			communes: communesJ0,
+			plateformes: PLATEFORMES,
+			maintenant: MAINTENANT
+		});
+		expect(d.plateformes.map((p) => libellePlateforme(p, false))).toEqual([
+			'i-web : 25 communes couvertes, 3 non couvertes'
 		]);
 	});
 
@@ -540,10 +561,12 @@ describe('fiche par plateforme de la page Couverture', () => {
 		echecs_consecutifs: 2,
 		motif: 'marqueur absent'
 	};
+	// Les sources réelles sans leurs communes scrapées, pour que la fiche ne compte que celles du test.
+	const reelles = SOURCES.filter((x) => !x.site);
 	const communes = (...s: Source[]) =>
 		deduireCouverture({
-			sources: [...SOURCES, ...s],
-			etat: etat(Object.fromEntries([...SOURCES.map((x) => [x.id, disponible]), ['site-5643', panne], ['site-5892', disponible]])),
+			sources: [...reelles, ...s],
+			etat: etat(Object.fromEntries([...reelles.map((x) => [x.id, disponible]), ['site-5643', panne], ['site-5892', disponible]])),
 			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, ...s.map((y) => y.id)] } : x)),
 			communes: communesJ0,
 			plateformes: [IWEB, QUICKSITE],
