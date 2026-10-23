@@ -2,17 +2,16 @@
 
 Les déclarations des communes scrapées ne changent que par une PR, jamais par le cron. Ce script aide à les écrire et à
 les tenir justes, en **remesurant les sites d'une plateforme** par le robot communal (ADR 0006 : une requête à la
-fois, 5 s au moins par /24, `VigieVaud-import`) :
+fois, 5 s au moins par /24, `VigieVaud-import`). La mesure propre à une plateforme est celle de son module de lecture
+(`sites_communaux.LECTEURS`, opérations `mesurer` et `requetes`) ; ce script n'en connaît aucune :
 
 - la **plateforme réelle** : une page du conseil sans trace de la plateforme l'écarte (les 15 sites OIOI web que le
   recensement prenait pour i-web) ;
-- les **pages** : la liste des Séances (celle que la sonde lit), la page des Objets ou des préavis, la page des
-  membres ; d'abord celles déjà déclarées, puis la page du conseil et quelques liens de son menu (`ESSAIS` au plus par
-  sorte de page) ;
-- la **variante**, d'où vient le niveau ;
-- le **nombre de requêtes** que la commune coûtera au passage ordinaire, face au plafond de 60 (`robots.txt` et
-  sonde compris) : il est compté en passant les pages lues au module de lecture de la plateforme, sans réseau (une
-  page d'une Séance ou d'un Objet de la fenêtre compte pour deux requêtes, son lien stable étant redirigé).
+- les **pages** : la liste des Séances (celle que la sonde lit, avec le marqueur de sa variante), la page des Objets
+  ou des préavis, la page des membres ;
+- la **variante**, et le **niveau** : le plus haut de ceux que la variante permet (section `plateformes`) dont le
+  passage ordinaire tient sous le plafond de 60 requêtes, `robots.txt` et sonde compris ; ces requêtes sont comptées
+  en rejouant le module de lecture sur les pages lues, sans réseau.
 
 Trois opérations :
 
@@ -31,33 +30,29 @@ Lancé à la main, jamais par le cron. Usage (depuis `pipeline/`) :
 from __future__ import annotations
 
 import argparse
-import contextlib
 import csv
-import io
 import json
 import re
 import sys
 from collections import defaultdict
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit
 from zoneinfo import ZoneInfo
 
 import httpx
 from pydantic import ValidationError
 
-import lecture_iweb
-from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Reponse, Robot, robot_des_sources
+from mesure_sites import Mesure, PagesLues
+from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Robot, robot_des_sources
 from schema import RACINE, FichierSources, Plateforme, Site, Source, lire_sources
-from sites_communaux import debut_de_fenetre
+from sites_communaux import LECTEURS, debut_de_fenetre
 
-ESSAIS = 3  # liens du menu essayés au plus, par sorte de page
 LICENCE = "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
 # Les communes qui disparaissent au 1er janvier 2027 ne sont pas déclarées (spec de J3, « Sources communales »).
 NON_DECLAREES = {5873: "Le Lieu", 5675: "Lucens"}
+REQUETES_AVANT_L_IMPORT = 2  # `robots.txt` et la sonde, lus avant l'import
 
 
 # --- Règles de déclaration, sans réseau -------------------------------------------------------------------------
@@ -66,8 +61,9 @@ NON_DECLAREES = {5873: "Le Lieu", 5675: "Lucens"}
 def verifier_declarations(chemin_sources: Path, chemin_communes: Path) -> list[str]:
     """Les écarts de `sources.json` aux règles de déclaration, sans réseau : chaque n° OFS déclaré existe dans
     `communes.json` ; un conseil n'a qu'une source ; la plateforme et la variante citées sont déclarées et permettent
-    le niveau ; une commune non couverte a une raison et pas de conseil ; une commune couverte d'une plateforme a un
-    conseil, une variante et une page `seances`. Liste vide : tout est juste."""
+    le niveau ; une commune couverte d'une plateforme a un conseil. Une commune non couverte avec un conseil ou sans
+    raison, ou un conseil scrapé sans variante ou sans page des Séances, sont refusés par le schéma lui-même
+    (« sources.json invalide »). Liste vide : tout est juste."""
     try:
         fichier = lire_sources(chemin_sources)
     except ValidationError as e:
@@ -79,7 +75,6 @@ def verifier_declarations(chemin_sources: Path, chemin_communes: Path) -> list[s
 def _ecarts(fichier: FichierSources, communes: set[int]) -> list[str]:
     ecarts: list[str] = []
     conseils: dict[str, list[str]] = defaultdict(list)
-    plateformes = {p.id: p for p in fichier.plateformes}
     for s in fichier.sources:
         declares = []
         if s.couverture is not None and s.couverture.communes != "canton":
@@ -89,35 +84,33 @@ def _ecarts(fichier: FichierSources, communes: set[int]) -> list[str]:
             if s.conseil.commune is not None:
                 declares.append(s.conseil.commune)
         ecarts += [f"{s.id} : n° OFS {o} absent de communes.json" for o in dict.fromkeys(declares) if o not in communes]
-        non_couverte = s.couverture is not None and s.couverture.mode == "non_couvert"
-        if non_couverte and (s.couverture.raison is None or s.conseil is not None):
-            ecarts.append(f"{s.id} : une commune non couverte a une raison et pas de conseil")
         if s.site is None:
             continue
-        plateforme = plateformes.get(s.site.plateforme)
+        plateforme = fichier.plateforme(s.site.plateforme)
         if plateforme is None:
             ecarts.append(f"{s.id} : plateforme {s.site.plateforme} non déclarée")
             continue
-        if non_couverte:
+        if s.couverture is not None and s.couverture.mode == "non_couvert":
             continue
         if s.conseil is None:
             ecarts.append(f"{s.id} : une commune couverte déclare son conseil")
             continue
-        if s.site.variante is None or s.site.seances is None:
-            ecarts.append(f"{s.id} : une commune couverte déclare sa variante et sa page des Séances")
-            continue
-        variante = next((v for v in plateforme.variantes if v.id == s.site.variante), None)
+        variante = plateforme.variante(s.site.variante)
         if variante is None:
             ecarts.append(f"{s.id} : variante {s.site.variante} non déclarée dans {plateforme.id}")
         elif sorted(s.conseil.donne) not in [sorted(n) for n in variante.niveaux]:
             ecarts.append(
-                f"{s.id} : la variante {plateforme.id}/{variante.id} ne permet pas le niveau "
-                + " + ".join(sorted(s.conseil.donne))
+                f"{s.id} : la variante {plateforme.id}/{variante.id} ne permet pas le niveau {_niveau(s.conseil.donne)}"
             )
     ecarts += [
         f"conseil {cle} déclaré par plusieurs sources : {', '.join(ids)}" for cle, ids in conseils.items() if len(ids) > 1
     ]
     return ecarts
+
+
+def _niveau(donne: Sequence[str]) -> str:
+    """« objets + seances » : un niveau, tel que `conseil.donne` l'écrit."""
+    return " + ".join(sorted(donne))
 
 
 # --- Candidats et mesures ---------------------------------------------------------------------------------------
@@ -134,159 +127,51 @@ class Candidat:
     declare: Site | None = None
 
 
-@dataclass
-class Mesure:
-    """Ce que le site d'un candidat montre. `plateforme` : celle mesurée, `None` si la page du conseil n'a pas été lue
-    (`remarques` dit pourquoi), « autre » si elle n'est pas celle qu'on mesure."""
-
-    plateforme: str | None
-    variante: str | None = None
-    seances: str | None = None
-    objets: str | None = None
-    membres: str | None = None
-    requetes: int | None = None  # au passage ordinaire, sonde comprise
-    remarques: list[str] = field(default_factory=list)
-
-
-class _Lecteur:
-    """Le robot, avec la mémoire des pages lues : une page n'est demandée qu'une fois par lancement."""
-
-    def __init__(self, robot: Robot) -> None:
-        self._robot = robot
-        self.pages: dict[str, Reponse | PageNonLue] = {}
-
-    def lire(self, url: str) -> Reponse | PageNonLue:
-        if url not in self.pages:
-            try:
-                self.pages[url] = self._robot.lire(url, "import")
-            except PageNonLue as e:
-                self.pages[url] = e
-        return self.pages[url]
-
-    def texte(self, url: str) -> str | None:
-        page = self.lire(url)
-        return page.texte if isinstance(page, Reponse) else None
-
-
 def _motif(erreur: PageNonLue) -> str:
     return f"HTTP {erreur.statut}" if isinstance(erreur, ErreurHttp) else str(erreur)
 
 
-# --- i-web ------------------------------------------------------------------------------------------------------
-
-_TRACE_IWEB = re.compile(r"icms|/_rt[er]/")
-_TABLEAU_SEANCES = re.compile(r"""id=["']icmsTable(?:Past|Future)Sitzungen["']""")
-_TABLEAU_OBJETS = re.compile(r"""id=["']icmsTable-geschaefteList["']""")
-_TABLEAU_MEMBRES = re.compile(r"""id=["']icmsTable-personList["']""")
-_LIENS = {
-    "seances": re.compile(r"s[ée]ances?|sitzung", re.I),
-    "objets": re.compile(r"objets?[ -]?politiques|geschaefte|pr[ée]avis", re.I),
-    "membres": re.compile(r"membres|composition|conseill[eè]re?s|bureau", re.I),
-}
+# Les niveaux plus complets que celui de la mesure, dont le passage ordinaire dépasse le plafond : (niveau, requêtes).
+AuDela = list[tuple[list[str], int]]
 
 
-def _mesurer_iweb(lecteur: _Lecteur, candidat: Candidat, plateforme: Plateforme, jour: date) -> Mesure:
-    conseil = lecteur.lire(candidat.page)
+def _mesurer(pages: PagesLues, candidat: Candidat, plateforme: Plateforme, jour: date) -> tuple[Mesure, AuDela]:
+    """Le site du candidat mesuré par le module de lecture de la plateforme, puis son niveau : le premier des niveaux
+    de sa variante (section `plateformes`, du plus complet au moins complet) dont le passage ordinaire tient sous le
+    plafond, et ceux qui le dépassent."""
+    if plateforme.id not in LECTEURS:
+        raise ValueError(f"aucun module de lecture pour la plateforme {plateforme.id}")
+    module = LECTEURS[plateforme.id]
+    au_dela: AuDela = []
+    conseil = pages.lire(candidat.page)
     if isinstance(conseil, PageNonLue):
-        return Mesure(None, remarques=[f"page du conseil {candidat.page} non lue ({_motif(conseil)})"])
-    if not _TRACE_IWEB.search(conseil.texte):
-        return Mesure("autre", remarques=[f"aucune trace d'i-web sur {candidat.page}"])
-    mesure = Mesure(plateforme.id)
-    declare = candidat.declare or Site(plateforme=plateforme.id)
-    liens = _liens(conseil.texte, conseil.url)
-
-    def chercher(sorte: str, deja: list[str | None], trouve: Callable[[str, str], bool]) -> str | None:
-        essais = [u for u in deja if u] + [u for u, texte in liens if _LIENS[sorte].search(f"{u} {texte}")][:ESSAIS]
-        for url in dict.fromkeys(essais):
-            texte = lecteur.texte(url)
-            if texte is not None and trouve(url, texte):
-                return url
-        return None
-
-    mesure.seances = chercher("seances", [declare.seances, candidat.page], lambda _, t: bool(_TABLEAU_SEANCES.search(t)))
-    if mesure.seances is None:
-        mesure.remarques.append("aucune page des Séances i-web trouvée")
-        return mesure
-    marqueurs = {v.marqueur for v in plateforme.variantes}
-    if not any(m in (lecteur.texte(mesure.seances) or "") for m in marqueurs):
-        mesure.remarques.append(f"la page des Séances n'a pas le marqueur de la sonde ({', '.join(sorted(marqueurs))})")
-
-    def preavis_rediges(url: str, texte: str) -> bool:
-        if "préavis" not in texte.lower():
-            return False
-        essai = _source_de_mesure(candidat, mesure.seances, "pages", url, None)
-        bruts = _lire_sans_reseau(lecteur, essai, None)[1]
-        return bruts is not None and bool(bruts.objets)
-
-    pages_preavis: list[str] = []
-
-    def objets_ou_preavis(url: str, texte: str) -> bool:
-        if _TABLEAU_OBJETS.search(texte):
-            return True
-        if not pages_preavis and preavis_rediges(url, texte):
-            pages_preavis.append(url)
-        return False
-
-    mesure.objets = chercher("objets", [declare.objets, mesure.seances, candidat.page], objets_ou_preavis)
-    if mesure.objets is not None:
-        mesure.variante = "objets"
-    elif pages_preavis:
-        mesure.variante, mesure.objets = "pages", pages_preavis[0]
-    else:
-        mesure.variante = "seances"
-    mesure.membres = chercher("membres", [declare.membres, candidat.page], lambda _, t: bool(_TABLEAU_MEMBRES.search(t)))
-    source = _source_de_mesure(candidat, mesure.seances, mesure.variante, mesure.objets, mesure.membres)
-    mesure.requetes, bruts = _lire_sans_reseau(lecteur, source, debut_de_fenetre(jour))
-    if bruts is None:
-        mesure.remarques.append("la liste ne se lit pas par le module de lecture")
-    elif mesure.requetes > PLAFOND:
-        mesure.remarques.append(f"{mesure.requetes} requêtes au passage ordinaire, au-delà du plafond de {PLAFOND}")
-    return mesure
+        return Mesure(None, remarques=[f"page du conseil {candidat.page} non lue ({_motif(conseil)})"]), au_dela
+    mesure = module.mesurer(pages, candidat.page, candidat.declare or Site(plateforme=plateforme.id), plateforme)
+    if mesure.plateforme != plateforme.id or mesure.seances is None:
+        return mesure, au_dela
+    variante = plateforme.variante(mesure.variante)
+    if variante is None:
+        mesure.remarques.append(f"variante {mesure.variante} non déclarée dans {plateforme.nom}")
+        return mesure, au_dela
+    if variante.marqueur not in (pages.texte(mesure.seances) or ""):
+        mesure.remarques.append(f"la page des Séances n'a pas le marqueur de la sonde ({variante.marqueur})")
+    for niveau in variante.niveaux:
+        requetes = module.requetes(pages, _source_de_mesure(candidat, plateforme, mesure, niveau), debut_de_fenetre(jour))
+        if requetes is None:
+            mesure.remarques.append("la liste ne se lit pas par le module de lecture")
+            return mesure, au_dela
+        mesure.requetes = requetes + REQUETES_AVANT_L_IMPORT
+        if mesure.requetes <= PLAFOND:
+            mesure.niveau = list(niveau)
+            return mesure, au_dela
+        au_dela.append((list(niveau), mesure.requetes))
+    mesure.remarques.append(f"{mesure.requetes} requêtes au passage ordinaire, au-delà du plafond de {PLAFOND}")
+    return mesure, au_dela
 
 
-class _Liens(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.liens: list[tuple[str, str]] = []
-        self._ouvert: list[str] | None = None
-        self._href = ""
-
-    def handle_starttag(self, tag, attrs):
-        if tag == "a":
-            self._href, self._ouvert = dict(attrs).get("href") or "", []
-
-    def handle_data(self, data):
-        if self._ouvert is not None:
-            self._ouvert.append(data)
-
-    def handle_endtag(self, tag):
-        if tag == "a" and self._ouvert is not None:
-            self.liens.append((self._href, " ".join(" ".join(self._ouvert).split())))
-            self._ouvert = None
-
-
-def _liens(texte: str, url: str) -> list[tuple[str, str]]:
-    """Les liens de la page vers d'autres pages du même site (ni éléments, ni documents, ni pages techniques), dans
-    l'ordre de la page, chacun une fois : (URL absolue, texte du lien)."""
-    analyse = _Liens()
-    analyse.feed(texte)
-    hote, vus, liens = urlsplit(url).hostname, set(), []
-    for href, libelle in analyse.liens:
-        absolu = urljoin(url, href).split("#")[0]
-        parties = urlsplit(absolu)
-        if parties.scheme not in ("http", "https") or parties.hostname != hote or absolu in vus:
-            continue
-        if re.match(r"/_(rt[er]|doc|docn)/", parties.path) or parties.path in ("", "/"):
-            continue
-        vus.add(absolu)
-        liens.append((absolu, libelle))
-    return liens
-
-
-def _source_de_mesure(
-    candidat: Candidat, seances: str, variante: str, objets: str | None, membres: str | None
-) -> Source:
-    donne = NIVEAUX[variante]
+def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure, niveau: Sequence[str]) -> Source:
+    """La source que déclarerait la mesure, au `niveau` donné : de quoi rejouer le module de lecture."""
+    pages = {"seances": mesure.seances, "objets": mesure.objets, "membres": mesure.membres}
     return Source.model_validate(
         {
             "id": f"site-{candidat.ofs}",
@@ -295,53 +180,10 @@ def _source_de_mesure(
             "attribution": {"texte": candidat.commune, "lien": candidat.page, "licence": LICENCE},
             "voie_acces": "cron",
             "fraicheur": "import",
-            "conseil": {"body_key": str(candidat.ofs), "donne": donne},
-            "site": {"plateforme": "i-web", "variante": variante, "seances": seances, "objets": objets,
-                     "membres": membres},
+            "conseil": {"body_key": str(candidat.ofs), "donne": list(niveau)},
+            "site": {"plateforme": plateforme.id, "variante": mesure.variante} | pages,
         }
     )
-
-
-class _RobotSansReseau:
-    """Un robot qui rend les pages déjà lues et compte les requêtes que le passage ordinaire ferait : deux pour une
-    page redirigée (lien stable d'une Séance ou d'un Objet), une sinon. Une page jamais lue est rendue vide."""
-
-    def __init__(self, pages: dict[str, Reponse | PageNonLue]) -> None:
-        self._pages = pages
-        self.requetes = 0
-
-    def lire(self, url: str, role: str) -> Reponse:
-        page = self._pages.get(url)
-        if isinstance(page, PageNonLue):
-            self.requetes += 1
-            raise page
-        if page is None:
-            self.requetes += 2 if "/_rte/" in url else 1
-            return Reponse(url, 200, "", {})
-        self.requetes += 1 if page.url == url else 2
-        return page
-
-
-def _lire_sans_reseau(lecteur: _Lecteur, source: Source, depuis: date | None):
-    """Le conseil de `source` lu par le module de lecture sur les pages déjà lues : (requêtes du passage ordinaire,
-    `robots.txt` et sonde compris ; `Bruts`, ou `None` si la lecture échoue). Le journal du module est tu."""
-    robot = _RobotSansReseau(lecteur.pages)
-    with contextlib.redirect_stderr(io.StringIO()):
-        try:
-            bruts = lecture_iweb.lire(robot, source, depuis)  # type: ignore[arg-type]
-        except (ValueError, PageNonLue):
-            bruts = None
-    return robot.requetes + 2, bruts  # `robots.txt` et la sonde, lus avant l'import
-
-
-MESURES: dict[str, Callable[[_Lecteur, Candidat, Plateforme, date], Mesure]] = {"i-web": _mesurer_iweb}
-NIVEAUX = {"seances": ["seances"], "objets": ["objets", "seances"], "pages": ["preavis", "seances"]}
-
-
-def _mesurer(lecteur: _Lecteur, candidat: Candidat, plateforme: Plateforme, jour: date) -> Mesure:
-    if plateforme.id not in MESURES:
-        raise ValueError(f"aucune mesure pour la plateforme {plateforme.id}")
-    return MESURES[plateforme.id](lecteur, candidat, plateforme, jour)
 
 
 # --- Vérification -----------------------------------------------------------------------------------------------
@@ -349,21 +191,24 @@ def _mesurer(lecteur: _Lecteur, candidat: Candidat, plateforme: Plateforme, jour
 
 def verifier(robot: Robot, fichier: FichierSources, id_plateforme: str, jour: date) -> list[str]:
     """Remesure les communes de `fichier` déclarées sur la plateforme `id_plateforme` et rend leurs écarts au site,
-    sans rien écrire : plateforme, page des Séances (et son marqueur), variante, pages des Objets et des membres,
-    requêtes au passage ordinaire face au plafond ; pour une commune non couverte, une page des Séances apparue."""
-    plateforme = next(p for p in fichier.plateformes if p.id == id_plateforme)
-    lecteur = _Lecteur(robot)
+    sans rien écrire : plateforme, page des Séances (et son marqueur), variante, niveau, pages des Objets et des
+    membres, requêtes au passage ordinaire face au plafond ; pour une commune non couverte, une page des Séances
+    apparue."""
+    plateforme = fichier.plateforme(id_plateforme)
+    if plateforme is None:
+        raise ValueError(f"plateforme {id_plateforme} absente de la section `plateformes`")
+    pages = PagesLues(robot)
     ecarts = []
     for source in fichier.sources:
         if source.site is None or source.site.plateforme != id_plateforme:
             continue
         candidat = _candidat_de_source(source)
-        mesure = _mesurer(lecteur, candidat, plateforme, jour)
-        ecarts += [f"{source.id} ({candidat.commune}) : {e}" for e in _comparer(source, mesure, plateforme)]
+        mesure, au_dela = _mesurer(pages, candidat, plateforme, jour)
+        ecarts += [f"{source.id} ({candidat.commune}) : {e}" for e in _comparer(source, mesure, au_dela, plateforme)]
     return ecarts
 
 
-def _comparer(source: Source, mesure: Mesure, plateforme: Plateforme) -> list[str]:
+def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: Plateforme) -> list[str]:
     if mesure.plateforme is None:
         return mesure.remarques
     if mesure.plateforme != plateforme.id:
@@ -385,6 +230,10 @@ def _comparer(source: Source, mesure: Mesure, plateforme: Plateforme) -> list[st
     ecarts += mesure.remarques  # page des Séances trouvée : marqueur absent, liste illisible, plafond dépassé
     if site.variante != mesure.variante:
         ecarts.append(f"variante déclarée {site.variante}, mesurée {mesure.variante}")
+    elif mesure.niveau is not None and sorted(source.conseil.donne) != sorted(mesure.niveau):
+        depasse = {_niveau(n): r for n, r in au_dela}.get(_niveau(source.conseil.donne))
+        pourquoi = f" ({depasse} requêtes au passage ordinaire, au-delà du plafond de {PLAFOND})" if depasse else ""
+        ecarts.append(f"niveau déclaré {_niveau(source.conseil.donne)}, mesuré {_niveau(mesure.niveau)}{pourquoi}")
     ecarts += ecart("page des Objets", site.objets, mesure.objets)
     ecarts += ecart("page des membres", site.membres, mesure.membres)
     return ecarts
@@ -405,11 +254,12 @@ def brouillon(
 ) -> tuple[list[dict], dict[str, list[str]]]:
     """Remesure les `candidats` et rend le brouillon de leurs sources (au format de `sources.json`), avec les
     remarques à relire par source. Un candidat qui n'est pas sur la plateforme, ou dont la page du conseil ne se lit
-    pas, n'est pas déclaré ; un candidat sans page des Séances est proposé non couvert, raison à relire."""
-    lecteur = _Lecteur(robot)
+    pas, n'est pas déclaré ; un candidat sans page des Séances est proposé non couvert, raison à relire ; un candidat
+    dont le niveau le plus complet dépasse le plafond est déclaré au niveau qui le tient, et le brouillon le dit."""
+    pages = PagesLues(robot)
     sources, remarques = [], {}
     for candidat in candidats:
-        mesure = _mesurer(lecteur, candidat, plateforme, jour)
+        mesure, au_dela = _mesurer(pages, candidat, plateforme, jour)
         cle = f"site-{candidat.ofs}"
         if mesure.plateforme != plateforme.id:
             pourquoi = f"pas sur {plateforme.nom} ({'; '.join(mesure.remarques)})" if mesure.plateforme else (
@@ -420,8 +270,16 @@ def brouillon(
         sources.append(_declaration(candidat, mesure, plateforme))
         if mesure.seances is None:
             remarques[cle] = [f"{candidat.commune} : aucune page des Séances {plateforme.nom} trouvée ; raison à relire"]
-        elif mesure.remarques:
-            remarques[cle] = [f"{candidat.commune} : {r}" for r in mesure.remarques]
+            continue
+        a_relire = [f"{candidat.commune} : {r}" for r in mesure.remarques]
+        if mesure.niveau is not None:
+            a_relire += [
+                f"{candidat.commune} : {requetes} requêtes au niveau {_niveau(niveau)}, au-delà du plafond de "
+                f"{PLAFOND} ; déclarée au niveau {_niveau(mesure.niveau)}"
+                for niveau, requetes in au_dela
+            ]
+        if a_relire:
+            remarques[cle] = a_relire
     return sources, remarques
 
 
@@ -430,7 +288,8 @@ def _de(nom: str) -> str:
 
 
 def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> dict:
-    """La source d'une commune mesurée, au format de `sources.json` (spec de J3, « Sources communales »)."""
+    """La source d'une commune mesurée, au format de `sources.json` (spec de J3, « Sources communales ») ; sans niveau
+    sous le plafond, le moins complet de sa variante, à relire."""
     source = {
         "id": f"site-{candidat.ofs}",
         "nom": f"{candidat.conseil} {_de(candidat.commune)} (site de la commune)",
@@ -439,12 +298,13 @@ def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> 
         "voie_acces": "cron",
         "fraicheur": "import",
     }
-    if mesure.seances is None:
+    variante = plateforme.variante(mesure.variante)
+    if mesure.seances is None or variante is None:
         source["couverture"] = {"communes": [candidat.ofs], "mode": "non_couvert", "raison": "rien_en_ligne"}
         source["site"] = {"plateforme": plateforme.id}
         return source
     source["couverture"] = {"communes": [candidat.ofs], "mode": "scrape"}
-    source["conseil"] = {"body_key": str(candidat.ofs), "donne": NIVEAUX[mesure.variante]}
+    source["conseil"] = {"body_key": str(candidat.ofs), "donne": mesure.niveau or list(variante.niveaux[-1])}
     pages = {"seances": mesure.seances, "objets": mesure.objets, "membres": mesure.membres}
     source["site"] = {"plateforme": plateforme.id, "variante": mesure.variante} | {
         k: v for k, v in pages.items() if v is not None
@@ -488,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         if hors_ligne:
             return 1
     fichier = lire_sources(args.sources)
-    plateforme = next((p for p in fichier.plateformes if p.id == args.plateforme), None)
+    plateforme = fichier.plateforme(args.plateforme)
     if plateforme is None:
         print(f"plateforme {args.plateforme} absente de la section `plateformes` de {args.sources}", file=sys.stderr)
         return 2

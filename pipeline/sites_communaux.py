@@ -4,8 +4,9 @@ d'OpenParlData.
 `lire_site` lit le conseil d'une source communale (bloc `site`) par le robot communal, dans la fenêtre du passage,
 et rend les mêmes `Bruts` qu'OpenParlData (*affairs* et *meetings*, relations développées, réduits aux champs que
 l'import lit), que la suite de l'import (`vers_archive`, `lecture`, `ecrire`) traite comme les autres. Chaque
-plateforme a son module de lecture, avec une seule opération publique ; ses variantes et son analyse des pages
-restent privées.
+plateforme a son module de lecture (`LECTEURS`), avec une seule opération publique pour l'import ; ses variantes et
+son analyse des pages restent privées. Le même module mesure les sites de sa plateforme pour le script de préparation
+des sources (`mesurer`, `requetes`), qui ne connaît aucune plateforme.
 
 **Fenêtre** : le passage ordinaire relit les pages de liste en entier et n'ouvre les pages d'une Séance ou d'un
 Objet que pour ceux des 6 derniers mois et à venir ; le rattrapage ouvre tout. Il n'y a pas de « depuis » pour un
@@ -16,19 +17,39 @@ une erreur, qui met l'import de la commune en échec.
 from __future__ import annotations
 
 import calendar
-from collections.abc import Callable
 from datetime import date
+from typing import Protocol
 
 import lecture_iweb
 from bruts import Bruts
+from mesure_sites import Mesure, PagesLues
 from robot_communal import Robot
-from schema import FichierSources, Source
+from schema import FichierSources, Plateforme, Site, Source
 
 MOIS_DE_LA_FENETRE = 6
 
-# Le module de lecture de chaque plateforme : `lire(robot, source, depuis)`, où `depuis` est le premier jour de la
-# fenêtre (`None` : tout).
-LECTEURS: dict[str, Callable[[Robot, Source, date | None], Bruts]] = {"i-web": lecture_iweb.lire}
+
+class ModuleDeLecture(Protocol):
+    """Le module de lecture d'une plateforme (`lecture_iweb`…). Ajouter une plateforme, c'est écrire ce module et
+    l'inscrire dans `LECTEURS` : ni le robot, ni la sonde, ni l'import, ni le script de préparation n'en changent."""
+
+    def lire(self, robot: Robot, source: Source, depuis: date | None) -> Bruts:
+        """Le conseil de `source`, lu sur son site, dans la fenêtre qui part de `depuis` (`None` : tout)."""
+        ...
+
+    def mesurer(self, pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
+        """Pour le script de préparation des sources : la plateforme réelle, la variante et les pages du site d'une
+        commune, d'après sa page du conseil et ses pages déjà déclarées."""
+        ...
+
+    def requetes(self, pages: PagesLues, source: Source, depuis: date | None) -> int | None:
+        """Pour le script de préparation des sources : les requêtes que `lire` coûterait au passage ordinaire, sans
+        `robots.txt` ni la sonde, rejouée sur les pages déjà lues ; `None` si la lecture échoue."""
+        ...
+
+
+# Le module de lecture de chaque plateforme.
+LECTEURS: dict[str, ModuleDeLecture] = {"i-web": lecture_iweb}
 
 
 def mois_plus_tot(jour: date, mois: int) -> date:
@@ -56,7 +77,7 @@ def lire_site(robot: Robot, source: Source, sources: FichierSources, jour: date,
     if sources.variante_de(site) is None:
         raise ValueError(f"{source.id} : variante {site.variante} non déclarée dans {plateforme.nom}")
     lecteur = robot.pour(source.id)
-    bruts = LECTEURS[site.plateforme](lecteur, source, None if rattrapage else debut_de_fenetre(jour))
+    bruts = LECTEURS[site.plateforme].lire(lecteur, source, None if rattrapage else debut_de_fenetre(jour))
     # Un réseau bloqué ou le plafond atteint en cours de lecture met l'import en échec, même si le module de lecture
     # a sauté la page : l'import sera refait en entier au passage suivant.
     interruption = lecteur.interruption()

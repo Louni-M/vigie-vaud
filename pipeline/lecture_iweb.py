@@ -1,5 +1,6 @@
-"""Module de lecture de la plateforme i-web (ADR 0010) : une seule opération publique, `lire`, qui lit le conseil
-d'une commune i-web par le robot communal et rend ses `Bruts`, à la forme d'OpenParlData.
+"""Module de lecture de la plateforme i-web (ADR 0010) : une seule opération publique pour l'import, `lire`, qui lit
+le conseil d'une commune i-web par le robot communal et rend ses `Bruts`, à la forme d'OpenParlData ; et, pour le
+script de préparation des sources seulement, `mesurer` et `requetes` (`mesure_sites.py`).
 
 Variante **Séances** (module Séances d'i-web) : la page de liste (`site.seances`) porte deux tableaux, les Séances à
 venir (`icmsTableFutureSitzungen`) et passées (`icmsTablePastSitzungen`), dont les lignes sont en JSON échappé dans
@@ -38,14 +39,16 @@ import html
 import json
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from html.parser import HTMLParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from bruts import Bruts
+from mesure_sites import Mesure, PagesLues, RobotSansReseau, liens, sans_journal
 from robot_communal import PageNonLue, Robot
-from schema import Source
+from schema import Plateforme, Site, Source
 
 TABLEAUX_SEANCES = ("icmsTableFutureSitzungen", "icmsTablePastSitzungen")
 TABLEAU_OBJETS = "icmsTable-geschaefteList"
@@ -72,21 +75,21 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
         # La page des préavis peut être celle des Séances (Puidoux) : elle n'est pas relue.
         page = liste if site.objets == site.seances else robot.lire(site.objets, "import")
         if site.variante == "objets":
-            lignes_objets = _lignes_d_objets(source, page.texte, page.url)
+            lignes_objets = _lignes_d_objets(source.nom, page.texte, page.url)
         else:
-            preavis = _preavis_rediges(source, page.texte, page.url)
+            preavis = _preavis_rediges(source.nom, page.texte, page.url)
     numeros = {o.lien: o.numero for o in lignes_objets}  # pour relier les points à leur Objet
     seances = []
     for ligne in lignes:
         if isinstance(ligne, str):
-            _journal(source, f"ligne de Séance illisible ({ligne})")
+            _journal(source.nom, f"ligne de Séance illisible ({ligne})")
             continue
         if depuis is not None and ligne.jour < depuis:
             continue
         try:
             page = robot.lire(ligne.lien, "import")
         except PageNonLue as e:
-            _journal(source, f"Séance {ligne.lien} non lue ({e})")
+            _journal(source.nom, f"Séance {ligne.lien} non lue ({e})")
             continue
         seances.append(_meeting(ligne, page.texte, page.url, numeros))
     objets = preavis
@@ -96,14 +99,15 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
         try:
             page = robot.lire(objet.lien, "import")
         except PageNonLue as e:
-            _journal(source, f"Objet {objet.lien} non lu ({e})")
+            _journal(source.nom, f"Objet {objet.lien} non lu ({e})")
             continue
         objets.append(_affair(objet, page.texte, page.url))
     return Bruts(conseil, objets=objets, seances=seances, membres=_membres(robot, source))
 
 
-def _journal(source: Source, message: str) -> None:
-    print(f"{source.nom} : élément sauté, {message}", file=sys.stderr)
+def _journal(nom: str, message: str) -> None:
+    """Note dans le journal du passage un élément sauté du conseil `nom` (le nom de sa source)."""
+    print(f"{nom} : élément sauté, {message}", file=sys.stderr)
 
 
 # --- Page de liste ------------------------------------------------------------------------------------------------
@@ -229,7 +233,7 @@ class _LigneObjet:
 _LIEN_INFORMATION = re.compile(r"""href=["']([^"']*/_rte/information/\d+)["'][^>]*>(.*?)</a>""", re.S)
 
 
-def _lignes_d_objets(source: Source, texte: str, url: str) -> list[_LigneObjet]:
+def _lignes_d_objets(nom: str, texte: str, url: str) -> list[_LigneObjet]:
     """Les Objets de la liste du module Objets, dans l'ordre du site : numéro brut (pris là seulement), catégorie,
     date, titre et lien stable. Un Objet sans numéro n'est pas gardé, ni le second de deux Objets de même numéro ; une
     ligne sans lien est illisible ; tous sont notés dans le journal. Une liste sans son tableau ou dont aucune ligne
@@ -247,14 +251,14 @@ def _lignes_d_objets(source: Source, texte: str, url: str) -> list[_LigneObjet]:
         lien = _LIEN_INFORMATION.search(str(brute.get("title") or "")) if isinstance(brute, dict) else None
         if lien is None:
             illisibles += 1
-            _journal(source, "ligne d'Objet illisible (sans lien vers sa page)")
+            _journal(nom, "ligne d'Objet illisible (sans lien vers sa page)")
             continue
         titre, numero = _texte(lien[2]), _texte(str(brute.get("_nummer") or ""))
         if not numero:
-            _journal(source, f"Objet sans numéro, non importé : {titre}")
+            _journal(nom, f"Objet sans numéro, non importé : {titre}")
             continue
         if any(o.numero == numero for o in lignes):
-            _journal(source, f"Objet {numero} en double, le premier du site gardé : {titre}")
+            _journal(nom, f"Objet {numero} en double, le premier du site gardé : {titre}")
             continue
         jour = _DATE.search(_texte(str(brute.get("_geschaeftsdatum") or "")))
         lignes.append(
@@ -330,7 +334,7 @@ _MOIS = "janvier février mars avril mai juin juillet août septembre octobre no
 _DATE_EN_LETTRES = re.compile(rf"\b(\d{{1,2}})(?:er)?\s+({'|'.join(_MOIS)})\s+(\d{{4}})\b", re.I)
 
 
-def _preavis_rediges(source: Source, texte: str, url: str) -> list[dict]:
+def _preavis_rediges(nom: str, texte: str, url: str) -> list[dict]:
     """Les préavis des tableaux rédigés dans la page (`div.icms-wysiwyg`), dans l'ordre du site, à la forme d'une
     *affair* : la première colonne donne le numéro brut et la date (« Préavis 09-2021 – 09.11.2021 »), les colonnes
     « Titre » et « Statut » de l'en-tête (sinon la deuxième, et pas de statut) le titre et le statut ; les liens de la
@@ -356,15 +360,15 @@ def _preavis_rediges(source: Source, texte: str, url: str) -> list[dict]:
         for cellules in rangees:
             textes = [_espaces(c.texte()) for c in cellules]
             if len(textes) <= col_titre:
-                _journal(source, f"ligne de préavis illisible ({textes[0]})")
+                _journal(nom, f"ligne de préavis illisible ({textes[0]})")
                 continue
             numero = _NUMERO_PREAVIS.match(textes[0])
             numero = numero["numero"].rstrip(".,;:") if numero and not _DATE.fullmatch(numero["numero"]) else None
             if not numero:
-                _journal(source, f"Objet sans numéro, non importé : {textes[0]}")
+                _journal(nom, f"Objet sans numéro, non importé : {textes[0]}")
                 continue
             if any(p["number"] == numero for p in preavis):
-                _journal(source, f"Objet {numero} en double, le premier du site gardé : {textes[col_titre]}")
+                _journal(nom, f"Objet {numero} en double, le premier du site gardé : {textes[col_titre]}")
                 continue
             reste = textes[0][textes[0].index(numero) + len(numero) :]
             statut = textes[col_statut] if col_statut is not None and col_statut < len(textes) else ""
@@ -422,7 +426,7 @@ def _membres(robot: Robot, source: Source) -> list[str]:
     try:
         page = robot.lire(url, "import")
     except PageNonLue as e:
-        _journal(source, f"page des membres {url} non lue ({e})")
+        _journal(source.nom, f"page des membres {url} non lue ({e})")
         return []
     tableau = next(
         (n for n in _arbre(page.texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES), None
@@ -432,7 +436,7 @@ def _membres(robot: Robot, source: Source) -> list[str]:
     except (ValueError, KeyError, TypeError):
         lignes = None
     if not isinstance(lignes, list):
-        _journal(source, f"page des membres {page.url} sans tableau `{TABLEAU_MEMBRES}` lisible")
+        _journal(source.nom, f"page des membres {page.url} sans tableau `{TABLEAU_MEMBRES}` lisible")
         return []
     membres = []
     for ligne in lignes:
@@ -449,6 +453,87 @@ def _nom_de_membre(ligne: dict) -> str | None:
         return _texte(str(ligne["_vornameName"])) or None
     nom = _texte(str(ligne.get("_nameVorname") or ""))
     return _prenom_nom(nom) if nom else None
+
+
+# --- Mesure du site, pour le script de préparation des sources ------------------------------------------------------
+
+ESSAIS = 3  # liens du menu essayés au plus, par sorte de page
+_TRACE = re.compile(r"icms|/_rt[er]/")  # une page d'i-web en porte toujours
+_TECHNIQUES = re.compile(r"^/_(rt[er]|doc|docn)/")  # liens vers un élément, un document ou une page technique
+_LIENS_DU_MENU = {
+    "seances": re.compile(r"s[ée]ances?|sitzung", re.I),
+    "objets": re.compile(r"objets?[ -]?politiques|geschaefte|pr[ée]avis", re.I),
+    "membres": re.compile(r"membres|composition|conseill[eè]re?s|bureau", re.I),
+}
+
+
+def _porte(texte: str, *tableaux: str) -> bool:
+    """La page porte-t-elle l'un de ces tableaux (`id`) ?"""
+    ids = "|".join(re.escape(t) for t in tableaux)
+    return re.search(rf"""id=["'](?:{ids})["']""", texte) is not None
+
+
+def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
+    """Le site d'une commune mesuré pour le script de préparation des sources, d'après sa page du conseil (déjà lue)
+    et ses pages déjà déclarées : une page du conseil sans trace d'i-web l'écarte (« autre » : les sites OIOI web que
+    le recensement prenait pour i-web) ; puis la page des Séances (tableaux du module Séances), celle des Objets
+    (module Objets) ou des préavis rédigés (variante pages), et celle des membres (`personList`), cherchées d'abord
+    parmi les pages déclarées, puis la page du conseil et `ESSAIS` liens de son menu au plus par sorte de page. Le
+    niveau et les requêtes du passage ordinaire sont l'affaire du script (`requetes`)."""
+    conseil = pages.texte(page_du_conseil) or ""
+    if not _TRACE.search(conseil):
+        return Mesure("autre", remarques=[f"aucune trace d'i-web sur {page_du_conseil}"])
+    mesure = Mesure(plateforme.id)
+    menu = [(u, t) for u, t in liens(conseil, page_du_conseil) if not _TECHNIQUES.match(urlsplit(u).path)]
+
+    def chercher(sorte: str, deja: list[str | None], trouve: Callable[[str, str], bool]) -> str | None:
+        essais = [u for u in deja if u] + [u for u, t in menu if _LIENS_DU_MENU[sorte].search(f"{u} {t}")][:ESSAIS]
+        for url in dict.fromkeys(essais):
+            texte = pages.texte(url)
+            if texte is not None and trouve(url, texte):
+                return url
+        return None
+
+    mesure.seances = chercher(
+        "seances", [declare.seances, page_du_conseil], lambda _, t: _porte(t, *TABLEAUX_SEANCES)
+    )
+    if mesure.seances is None:
+        mesure.remarques.append("aucune page des Séances i-web trouvée")
+        return mesure
+    pages_preavis: list[str] = []
+
+    def objets_ou_preavis(url: str, texte: str) -> bool:
+        if _porte(texte, TABLEAU_OBJETS):
+            return True
+        if not pages_preavis and "préavis" in texte.lower():
+            try:
+                if sans_journal(lambda: _preavis_rediges("", texte, url)):
+                    pages_preavis.append(url)
+            except ValueError:
+                pass
+        return False
+
+    mesure.objets = chercher("objets", [declare.objets, mesure.seances, page_du_conseil], objets_ou_preavis)
+    if mesure.objets is not None:
+        mesure.variante = "objets"
+    elif pages_preavis:
+        mesure.variante, mesure.objets = "pages", pages_preavis[0]
+    else:
+        mesure.variante = "seances"
+    mesure.membres = chercher("membres", [declare.membres, page_du_conseil], lambda _, t: _porte(t, TABLEAU_MEMBRES))
+    return mesure
+
+
+def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | None:
+    """Les requêtes que coûterait la lecture de `source` (`lire`) au passage ordinaire dont la fenêtre part de
+    `depuis`, rejouée sans réseau sur les pages déjà lues : le lien stable d'une Séance ou d'un Objet jamais lu en
+    coûte deux, le site le redirigeant. `robots.txt` et la sonde n'y sont pas. `None` si la lecture échoue."""
+    robot = RobotSansReseau(pages.pages, lambda url: 2 if "/_rte/" in url else 1)
+    try:
+        sans_journal(lambda: lire(robot, source, depuis))  # type: ignore[arg-type]
+    except (ValueError, PageNonLue):
+        return None
+    return robot.requetes
 
 
 # --- Analyse du HTML ----------------------------------------------------------------------------------------------
