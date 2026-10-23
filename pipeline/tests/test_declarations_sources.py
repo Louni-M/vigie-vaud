@@ -24,10 +24,12 @@ def test_le_sources_json_livre_respecte_toutes_les_regles_de_declaration():
 # Les 29 communes i-web du socle (recherche « Publications des conseils », #119), sans les 15 sites OIOI web que le
 # recensement prenait pour i-web. Le Lieu (5873) disparaît au 1er janvier 2027 : elle n'est pas déclarée.
 IWEB_COUVERTES = {
-    5410, 5414, 5458, 5493, 5514, 5523, 5529, 5607, 5634, 5643, 5649, 5654, 5656, 5674, 5704, 5712, 5727, 5747,
-    5749, 5764, 5785, 5841, 5851, 5883, 5892,
+    5414, 5458, 5514, 5523, 5607, 5634, 5643, 5649, 5654, 5656, 5674, 5704, 5712, 5749, 5764, 5841, 5851, 5883, 5892,
 }
 IWEB_PREAVIS_SEULS = {5487, 5568, 5855}  # Lussery-Villars, Sainte-Croix, Dully
+# Sans page des Séances mesurée le 23 octobre 2026 : Ormont-Dessous, Orny, Oulens-sous-Echallens, Saint-Cergue,
+# Bofflens, Corcelles-le-Jorat.
+IWEB_RIEN_EN_LIGNE = {5410, 5493, 5529, 5727, 5747, 5785}
 OIOI_WEB = {5406, 5412, 5426, 5435, 5464, 5515, 5623, 5631, 5702, 5709, 5710, 5821, 5842, 5843, 5891}
 LE_LIEU = 5873
 
@@ -47,7 +49,9 @@ def test_chaque_commune_i_web_du_socle_est_declaree_couverte_ou_non_couverte_ave
         if s["couverture"]["mode"] == "non_couvert"
     }
     assert couvertes == IWEB_COUVERTES
-    assert non_couvertes == dict.fromkeys(IWEB_PREAVIS_SEULS, "preavis_seuls")
+    assert non_couvertes == dict.fromkeys(IWEB_PREAVIS_SEULS, "preavis_seuls") | dict.fromkeys(
+        IWEB_RIEN_EN_LIGNE, "rien_en_ligne"
+    )
     assert len(sites) == 28
 
 
