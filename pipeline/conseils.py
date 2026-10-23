@@ -314,7 +314,9 @@ def vers_archive(
         elements |= corriger_archive(anciens, corrections)
 
     par_id = {e.id: cle for cle, e in du_conseil.items()}
-    for brut in sorted(bruts.seances, key=lambda s: s["id"]):
+    seances: dict[str, Seance] = {}
+    # Dans l'ordre de leur heure, puis de la source : deux Séances d'un même jour n'en font qu'une, la première.
+    for brut in sorted(bruts.seances, key=lambda s: s.get("begin_date") or ""):
         points = [
             p
             for p in _relation(brut, "agendas")
@@ -323,8 +325,22 @@ def vers_archive(
         brut = {**brut, "agendas": {"data": points}}
         seance = _seance(brut, genere, lambda p: _objet_du_point(p, conseil, connus, par_id), elus, petitionnaires)
         if seance is not None:
-            elements[f"{conseil}/{seance.date[:10]}"] = seance
-    return elements
+            cle = f"{conseil}/{seance.date[:10]}"
+            seances[cle] = _fusionner(seances[cle], seance) if cle in seances else seance
+    return elements | seances
+
+
+def _fusionner(premiere: Seance, seconde: Seance) -> Seance:
+    """Une seule Séance pour deux d'un même jour : l'identifiant, l'heure et le nom de la première, ses points puis
+    ceux de la seconde, et leurs documents réunis (un même lien n'y est qu'une fois)."""
+    liens = {d.lien for d in premiere.documents}
+    return premiere.model_copy(
+        update={
+            "lien": premiere.lien or seconde.lien,
+            "ordre_du_jour": premiere.ordre_du_jour + seconde.ordre_du_jour,
+            "documents": premiere.documents + [d for d in seconde.documents if d.lien not in liens],
+        }
+    )
 
 
 def _objet(brut: dict, genere: datetime) -> Objet:
