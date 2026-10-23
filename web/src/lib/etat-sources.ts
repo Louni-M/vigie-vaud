@@ -1,7 +1,9 @@
 // État des sources (`etat-sources.json`), écrit par le cron dans le dépôt de données et lu par le navigateur au
 // chargement, depuis les Pages de ce dépôt. On n'y valide rien au-delà de `version` : le cron valide à l'écriture.
 import { DEPOT_DONNEES, DONNEES } from './config.js';
-import type { EtatSources, Source } from './schema.js';
+import type { FichePlateforme } from './couverture.js';
+import type { EtatSources, Plateforme, Source } from './schema.js';
+import { PLATEFORMES } from './sources.js';
 
 /** Seule version du format que le site connaît. */
 export const VERSION_ETAT = 1;
@@ -25,14 +27,26 @@ export async function chargerEtatSources(f: typeof fetch, donnees: string = DONN
 	}
 }
 
-/**
- * Issues `panne-source` ouvertes pour cette source dans le dépôt de données. Le cron les titre
- * « Panne : <nom de la source> » (`titre_panne` dans `pipeline/cron.py`), et pour une commune scrapée, d'après sa
- * plateforme, « Panne : i-web » (`titre_panne_plateforme`) : la recherche de GitHub ignore la casse, l'identifiant
- * de la plateforme y vaut son nom.
- */
-export function lienPannes(source: Source): string {
-	const titre = source.site ? source.site.plateforme : source.nom;
+/** Recherche des issues `panne-source` ouvertes du dépôt de données qui portent ce titre. */
+function rechercherPannes(titre: string): string {
 	const q = `is:issue is:open label:panne-source in:title "Panne : ${titre}"`;
 	return `${DEPOT_DONNEES}/issues?${new URLSearchParams({ q })}`;
 }
+
+/**
+ * Issues `panne-source` ouvertes pour cette source dans le dépôt de données. Le cron les titre
+ * « Panne : <nom de la source> » (`titre_panne` dans `pipeline/cron.py`), et pour une commune scrapée « Panne : »
+ * suivi du nom de sa plateforme (`titre_plateforme`), déclaré dans `plateformes` (son identifiant à défaut).
+ */
+export function lienPannes(source: Source, plateformes: readonly Plateforme[] = PLATEFORMES): string {
+	if (!source.site) return rechercherPannes(source.nom);
+	const { plateforme } = source.site;
+	return rechercherPannes(plateformes.find((p) => p.id === plateforme)?.nom ?? plateforme);
+}
+
+/**
+ * L'issue ouverte d'une plateforme, pour sa fiche de la page Couverture : celle de ses pannes (« Panne : i-web »),
+ * quand une de ses communes est en panne d'après l'état des sources ; sinon `null`.
+ */
+export const lienIssuePlateforme = (fiche: Pick<FichePlateforme, 'nom' | 'enPanne'>): string | null =>
+	fiche.enPanne > 0 ? rechercherPannes(fiche.nom) : null;

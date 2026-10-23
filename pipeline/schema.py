@@ -353,6 +353,13 @@ class ImportConseils(Enveloppe):
         description="Par clé de conseil (`body_key` en minuscules : `vd`, `5586`…), l'heure du dernier import "
         "réussi. Un conseil jamais importé n'y figure pas."
     )
+    premiers: dict[CleConseil, Horodatage] = Field(
+        default={},
+        exclude_if=lambda premiers: not premiers,
+        description="Par clé de conseil scrapé, l'heure de son premier import réussi : l'issue `a-verifier` compte "
+        "9 mois depuis ce jour tant que l'archive du conseil n'a aucune Séance. Absent quand il n'y en a pas : les "
+        "conseils d'OpenParlData n'y figurent pas.",
+    )
 
 
 class MembresConseil(Enveloppe):
