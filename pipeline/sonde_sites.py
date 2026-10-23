@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from robot_communal import (
+    CrawlDelayTropLong,
     DelaiDepasse,
     ErreurHttp,
     ErreurTls,
@@ -33,7 +34,8 @@ from schema import Plateforme, Source
 
 def sonder_site(robot: Robot, source: Source, plateformes: Sequence[Plateforme]) -> str | None:
     """Sonde le site de `source` : `None` si la page de liste répond avec le marqueur de sa variante, sinon le motif
-    court de l'échec (« HTTP 503 », « marqueur absent »…)."""
+    court de l'échec (« HTTP 503 », « marqueur absent »…). Lève `CrawlDelayTropLong` quand le `Crawl-delay` du site
+    est trop long pour qu'il soit lu : ce n'est ni un succès ni une panne, et la page n'est pas demandée."""
     site = source.site
     if site is None:
         raise ValueError(f"{source.id} : pas de bloc `site`")
@@ -43,6 +45,8 @@ def sonder_site(robot: Robot, source: Source, plateformes: Sequence[Plateforme])
         return f"variante {site.plateforme}/{site.variante} non déclarée"
     try:
         page = robot.pour(source.id).lire(site.seances, "sonde")
+    except CrawlDelayTropLong:
+        raise
     except ReseauBloque:
         return "accès refusé"
     except PlafondAtteint:

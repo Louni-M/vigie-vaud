@@ -260,6 +260,10 @@ Disallow: /</code></pre>
 	<pre><code>User-agent: VigieVaud
 Crawl-delay: 30</code></pre>
 	<p>
+		Le robot suit un <code>Crawl-delay</code> jusqu’à 30 secondes et ne le raccourcit jamais : au-delà, il ne lit
+		plus le site.
+	</p>
+	<p>
 		Ce qui est déjà importé reste en ligne et dans le dépôt de données, comme archive d’actes officiels. Une demande
 		qui touche une personne passe par le retrait décrit sur la page
 		<a href="{resolve('/protection-des-donnees')}#retrait">Protection des données</a>.

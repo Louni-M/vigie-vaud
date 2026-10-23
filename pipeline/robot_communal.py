@@ -30,6 +30,9 @@ INTERVALLE = 5.0  # secondes, au moins, entre deux requêtes vers un même /24
 DELAI = 30.0  # secondes, au plus, pour une requête
 REDIRECTIONS = 5  # redirections suivies, au plus, pour une page
 PLAFOND = 60  # requêtes, au plus, par commune et par passage ordinaire
+# secondes : un `Crawl-delay` plus long n'est jamais raccourci, mais le site n'est alors pas lu (le passage tiendrait
+# plus que son délai de job pour une seule commune)
+CRAWL_DELAY_MAX = 30.0
 
 _CONFIG = json.loads((RACINE / "config.json").read_text())
 A_PROPOS = f"{_CONFIG['site']}/a-propos#robot"
@@ -99,6 +102,15 @@ class RobotsIndisponible(PageInterdite):
         self.raison = raison
 
 
+class CrawlDelayTropLong(PageNonLue):
+    """Le `Crawl-delay` de l'hôte dépasse `CRAWL_DELAY_MAX` : le robot ne le raccourcit pas, il ne lit pas le site
+    (aucune requête après `robots.txt`). `motif` le dit en court (« Crawl-delay trop long (600 s) »)."""
+
+    def __init__(self, url: str, delai: float) -> None:
+        self.motif = f"Crawl-delay trop long ({delai:g} s)"
+        super().__init__(f"{url} : {self.motif}")
+
+
 class ReseauBloque(PageNonLue):
     """Le réseau de la page est bloqué : aucune requête ne lui est envoyée jusqu'à la fin du passage (ou de son
     `Retry-After`), ni, au passage suivant, avant qu'une sonde l'ait testé."""
@@ -153,7 +165,8 @@ class Robot:
     requête et gardé pour la vie du robot (un passage).
 
     **`robots.txt`** est lu avant la première page de chaque hôte, une fois pour la vie du robot, sous le nom
-    `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`).
+    `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`). Un `Crawl-delay` est suivi
+    jusqu'à `CRAWL_DELAY_MAX` ; au-delà, aucune page de l'hôte n'est demandée (`CrawlDelayTropLong`).
 
     **Blocage** : une 429, une 503, une connexion refusée ou un délai dépassé (pas une erreur TLS) arrête toute
     requête vers ce réseau
@@ -205,7 +218,7 @@ class Robot:
                 raise self._echecs[url]
             try:
                 return self._lire(url, role)
-            except (ReseauBloque, PlafondAtteint) as e:
+            except (ReseauBloque, PlafondAtteint, CrawlDelayTropLong) as e:
                 self._interrompre(e)
                 raise
             except (ErreurHttp, DelaiDepasse, Injoignable, PageIllisible) as e:
@@ -223,7 +236,8 @@ class Robot:
 
     def interruption(self) -> PageNonLue | None:
         """Ce qui a interrompu la lecture de cette vue, même si l'appelant a sauté la page : la première page qui
-        a bloqué son réseau, ou qui n'a pas été demandée parce qu'il l'était ou que le plafond était atteint."""
+        a bloqué son réseau, ou qui n'a pas été demandée parce qu'il l'était, que le plafond était atteint ou que le
+        `Crawl-delay` de son hôte était trop long."""
         return self._interruption
 
     def a_tester(self, url: str) -> bool:
@@ -312,6 +326,8 @@ class Robot:
         regles = self._regles(adresse, role)
         if isinstance(regles, PageInterdite):
             raise regles
+        if regles.crawl_delay is not None and regles.crawl_delay > CRAWL_DELAY_MAX:
+            raise CrawlDelayTropLong(url, regles.crawl_delay)
         chemin = adresse.raw_path.decode("ascii", "replace")
         if not regles.permis(chemin):
             raise PageInterdite(f"{url} : interdite par robots.txt")

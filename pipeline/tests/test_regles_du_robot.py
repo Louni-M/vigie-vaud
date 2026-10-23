@@ -183,6 +183,31 @@ def test_un_crawl_delay_plus_grand_que_5_s_espace_les_requetes(tmp_path, horloge
     assert len(heures) == 7  # robots.txt, la sonde, la liste, trois Séances et une redirection
 
 
+@pytest.mark.parametrize("delai", ["31", "600"])
+def test_un_crawl_delay_de_plus_de_30_s_n_est_pas_raccourci_et_la_commune_n_est_pas_lue(tmp_path, horloge, capsys, delai):
+    reseau = _meme_24(horloge)
+    _robots(reseau, f"User-agent: VigieVaud\nCrawl-delay: {delai}\n")
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    # robots.txt seul, rien de plus : ni sonde ni import, et ce n'est pas une panne.
+    assert _lues(reseau) == [("/robots.txt", 0, "sonde")]
+    assert _etat(tmp_path) is None
+    assert _importe(tmp_path) is None
+    assert f"Import sauté : Conseil communal de Préverenges (site de la commune) (Crawl-delay trop long ({delai} s))" in (
+        capsys.readouterr().err
+    )
+    # Blonay, sur le même /24, n'en souffre pas.
+    assert _importe(tmp_path, "5892") is not None
+    assert _reseaux_bloques(tmp_path) == {}
+
+    # Le lendemain, rien ne change : l'état reste celui d'avant, sans panne.
+    reseau.journal.clear()
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24, heure=T0 + timedelta(days=1))
+    assert _lues(reseau) == [("/robots.txt", 86400, "sonde")]
+    assert _etat(tmp_path) is None
+
+
 @pytest.mark.parametrize(
     ("robots", "reseau_lent", "intervalle"),
     [
