@@ -3,7 +3,7 @@
 // et `5586/POS25-115` pour un Objet (la barre oblique du numéro devenue `-`, un espace `_`), `5586/2026-10-06` pour
 // une Séance. Le conseil est la clé du conseil dans le dépôt de données : `vd`, ou le n° OFS de la commune.
 import type { Source } from '#lib/schema.js';
-import { SOURCES, cleConseil, nomDuConseil } from '#lib/sources.js';
+import { SOURCES, cleDeLaSource, nomDuConseil } from '#lib/sources.js';
 import { dateLongue } from './lignes.js';
 
 /** Clé du Grand Conseil dans le dépôt de données. */
@@ -57,9 +57,12 @@ export function nomElement(cle: string): string {
 /** Titre du document, tiré de la clé seule : « Objet POS25/115 – Lausanne – Vigie Vaud ». */
 export const titreElement = (cle: string, nomDeLaFiche: string) => `${nomElement(cle)} – ${nomDeLaFiche} – Vigie Vaud`;
 
-/** La source qui donne ce conseil (`vd`, `5586`), dans `sources.json`. */
+/**
+ * La source qui donne ce conseil (`vd`, `5586`), dans `sources.json` ; pour l'archive d'une commune scrapée passée
+ * non couverte, sa source communale, qui garde son attribution.
+ */
 export const sourceDuConseil = (conseil: string, sources: readonly Source[] = SOURCES) =>
-	sources.find((s) => s.conseil && cleConseil(s.conseil) === conseil);
+	sources.find((s) => cleDeLaSource(s) === conseil);
 
 /** Nom du conseil, tiré du nom de sa source par la règle de l'index : « Conseil communal de Lausanne ». */
 export function nomConseil(conseil: string, sources: readonly Source[] = SOURCES): string | null {
@@ -69,12 +72,15 @@ export function nomConseil(conseil: string, sources: readonly Source[] = SOURCES
 
 /**
  * Message près de la recherche quand la clé ne mène à rien : « Aucun objet n° POS25/999 au Conseil communal de
- * Lausanne dans les données d’OpenParlData. » Le trou peut venir de la source : le message le dit.
+ * Lausanne dans les données d’OpenParlData. », « Aucune séance le 6 octobre 2026 au Conseil communal d’Aigle dans
+ * les données du site d’Aigle. » Le trou peut venir de la source : le message la nomme, d'après `sources`.
  */
-export function messageIntrouvable(cle: string): string {
+export function messageIntrouvable(cle: string, sources: readonly Source[] = SOURCES): string {
 	const lue = lireCle(cle);
-	const conseil = lue && nomConseil(lue.conseil);
-	if (!lue || !conseil) return `Aucun objet n° ${cle} dans les données d’OpenParlData.`;
+	const source = lue && sourceDuConseil(lue.conseil, sources);
+	if (!lue || !source) return `Aucun objet n° ${cle} dans les données d’OpenParlData.`;
 	const quoi = lue.sorte === 'seance' ? `Aucune séance le ${dateLongue(lue.nom)}` : `Aucun objet n° ${numeroObjet(lue)}`;
-	return `${quoi} au ${conseil} dans les données d’OpenParlData.`;
+	// Une source communale se nomme par son nom court, « Site d'Aigle » ; les autres sont lues dans OpenParlData.
+	const donnees = source.site ? `du ${source.nom_court.charAt(0).toLowerCase()}${source.nom_court.slice(1)}` : 'd’OpenParlData';
+	return `${quoi} au ${nomDuConseil(source.nom)} dans les données ${donnees.replace(/'/g, '’')}.`;
 }

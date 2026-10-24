@@ -1,10 +1,11 @@
-"""Import des conseils (ADR 0015 et 0017) : les Objets et les Séances d'OpenParlData dans l'archive du dépôt de
-données, un fichier par élément.
+"""Import des conseils (ADR 0010, 0015 et 0017) : les Objets et les Séances d'OpenParlData et des sites des
+communes dans l'archive du dépôt de données, un fichier par élément.
 
 Le passage suit quatre étapes, chacune à sa place :
 
 1. `importer(opd, conseil, depuis)` lit les changements bruts d'un conseil chez OpenParlData, et pour le Grand
-   Conseil les Objets dont un document a changé depuis ;
+   Conseil les Objets dont un document a changé depuis ; pour une source communale (bloc `site`),
+   `sites_communaux.lire_site` lit le site de la commune par le robot communal et rend les mêmes `Bruts` ;
 2. `vers_archive(bruts, archive, genere, communes, corrections)`, fonction pure, les masque (`masquage.py`,
    ADR 0007), rattache les Objets du Grand Conseil aux communes qu'ils nomment (`rattachement.py`, ADR 0016) et les
    normalise en Objets et Séances de l'archive ;
@@ -14,9 +15,10 @@ Le passage suit quatre étapes, chacune à sa place :
    `supprimer_perimes(depot, documents)` retire les fichiers de lecture que `lecture` ne produit plus.
 
 `importer_conseils` enchaîne les quatre pour chaque source qui a un bloc `conseil`, et tient à jour
-`conseils/import.json` (dernier import réussi de chaque conseil). Un conseil en échec garde sa date et n'empêche
-pas les autres. L'import ne supprime rien de l'archive : un élément absent d'OpenParlData y reste. Les fichiers de
-lecture, eux, sont reconstruits en entier et ne divergent jamais de l'archive.
+`conseils/import.json` (dernier import réussi de chaque conseil) et, pour un conseil scrapé,
+`conseils/<ofs>/membres.json` (ses élu·e·s connu·e·s, une liste qui ne fait que s'allonger). Un conseil en échec
+garde sa date et n'empêche pas les autres. L'import ne supprime rien de l'archive : un élément absent d'OpenParlData
+y reste. Les fichiers de lecture, eux, sont reconstruits en entier et ne divergent jamais de l'archive.
 
 Usage loyal d'OpenParlData : au plus une requête par seconde, un User-Agent avec un contact, la pagination suivie
 jusqu'au bout, et jamais un paramètre répété dans une requête (le cache du serveur ne garde que sa dernière valeur).
@@ -39,8 +41,8 @@ import json
 import re
 import sys
 import time
+import unicodedata
 from collections.abc import Callable, Collection, Iterable, Mapping
-from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
@@ -48,6 +50,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import ValidationError
 
+from bruts import Bruts
 from lecture_conseils import MOTIFS_LECTURE, lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
 from retraits import appliquer_retraits, lire_retraits
@@ -60,7 +63,9 @@ from rattachement import (
     porte_sur_le_canton,
     rattacher_objet,
 )
+from robot_communal import Robot, robot_des_sources
 from schema import (
+    FUSEAU,
     RACINE,
     Conseil,
     Contributeur,
@@ -70,12 +75,14 @@ from schema import (
     Etape,
     FichierSources,
     ImportConseils,
+    MembresConseil,
     Objet,
     PointOrdreDuJour,
     Seance,
     Statut,
     lire_sources,
 )
+from sites_communaux import lire_site
 
 API = "https://api.openparldata.ch/v1"
 _CONFIG = json.loads((RACINE / "config.json").read_text())
@@ -149,15 +156,6 @@ class OpenParlData:
         reponse = self._http.get(url, params=parametres, headers={"User-Agent": USER_AGENT}, timeout=120)
         reponse.raise_for_status()
         return reponse.json()
-
-
-@dataclass
-class Bruts:
-    """Ce qu'OpenParlData a renvoyé pour un conseil : ses Objets et ses Séances, relations développées."""
-
-    conseil: Conseil
-    objets: list[dict] = field(default_factory=list)
-    seances: list[dict] = field(default_factory=list)
 
 
 def parametres_objets(conseil: Conseil, depuis: date | None) -> dict[str, str]:
@@ -259,14 +257,18 @@ def vers_archive(
     genere: datetime,
     communes: Repertoire | None = None,
     corrections: Mapping[str, Correction] | None = None,
+    membres: Iterable[str] = (),
 ) -> dict[str, Element]:
     """Les éléments de l'archive tirés de `bruts`, par clé. `archive` (les éléments déjà archivés) sert à résoudre
     l'Objet de chaque point d'ordre du jour et à départager deux Objets de même numéro (il y en a à Lausanne) : le
-    plus petit identifiant l'emporte, d'un import à l'autre. Les demandes de grâce sont écartées, et leurs points
-    d'ordre du jour retirés. Les titres des Objets, de leurs documents et des points sont masqués (ADR 0007), en
-    épargnant les élu·e·s connu·e·s du conseil, tiré·e·s de `archive` et de `bruts`. Les pétitionnaires que la
-    source connaît le sont dans les textes de leur pétition : son titre, ceux de ses documents (et du même document
-    joint à un autre Objet) et ceux de ses points.
+    plus petit identifiant l'emporte, d'un import à l'autre (entre deux identifiants connus : un élément scrapé n'en a
+    pas, et son `id` est nul). Deux Séances d'un même jour n'en font qu'une (`_fusionner`). Les demandes de grâce
+    sont écartées, et leurs points d'ordre du jour retirés. Les titres des Objets, de leurs documents, des points et
+    des documents des Séances sont masqués (ADR 0007), en
+    épargnant les élu·e·s connu·e·s du conseil : les contributeur·rice·s de ses Objets (`archive` et `bruts`), les
+    `membres` déjà connus d'un conseil scrapé (`membres.json`) et ceux de sa page des membres (`bruts.membres`). Les
+    pétitionnaires que la source connaît le sont dans les textes de leur pétition : son titre, ceux de ses documents
+    (et du même document joint à un autre Objet) et ceux de ses points.
 
     Pour un conseil qui porte sur le canton, chaque Objet est rattaché par le nom (ADR 0016) d'après `communes`
     (`communes.json` par défaut) : son titre masqué, puis le texte de ses documents, qui n'est pas conservé ;
@@ -278,14 +280,21 @@ def vers_archive(
     textes: dict[str, list[str]] = {}
     petitionnaires: dict[str, list[tuple[str, str]]] = {}
     graces: set[str] = set()
-    for brut in sorted(bruts.objets, key=lambda o: o["id"]):
+    # Par identifiant croissant ; ceux qui n'en ont pas (scrapés) après, dans l'ordre de la source.
+    for brut in sorted(bruts.objets, key=lambda o: (o.get("id") is None, o.get("id") or 0)):
         if _fr(brut.get("type_name")) in TYPES_ECARTES or not brut.get("number"):
             if brut.get("number"):
                 graces.add(brut["number"])
             continue
         cle = cle_objet(conseil, brut["number"])
+        ident = brut.get("id")
+        # Deux Objets de même numéro : le plus petit identifiant l'emporte, d'un import à l'autre, mais seulement
+        # entre deux identifiants connus. Sans identifiant, le premier de la source l'emporte sur les suivants du
+        # même import, et un Objet relu remplace celui de l'archive.
+        if cle in elements and (elements[cle].id is None or ident is None):
+            continue
         deja = elements.get(cle) or archive.get(cle)
-        if isinstance(deja, Objet) and deja.id < brut["id"]:
+        if isinstance(deja, Objet) and deja.id is not None and ident is not None and deja.id < ident:
             continue
         elements[cle] = _objet(brut, genere)
         textes[cle] = [d["text"] for d in _relation(brut, "docs") if isinstance(d.get("text"), str)]
@@ -293,7 +302,7 @@ def vers_archive(
 
     connus = {**archive, **elements}
     du_conseil = {cle: e for cle, e in connus.items() if isinstance(e, Objet) and cle.startswith(conseil + "/")}
-    elus = elus_connus(du_conseil.values())
+    elus = elus_connus(du_conseil.values()) | frozenset(membres) | frozenset(bruts.membres)
     # Un document qui répond à la fois à une pétition et à un autre Objet est joint aux deux, sous le même titre.
     petitionnaires_du_document: dict[str, list[tuple[str, str]]] = {}
     for cle, objet in elements.items():
@@ -314,8 +323,10 @@ def vers_archive(
         anciens = {cle: o for cle, o in du_conseil.items() if cle not in elements}
         elements |= corriger_archive(anciens, corrections)
 
-    par_id = {e.id: cle for cle, e in du_conseil.items()}
-    for brut in sorted(bruts.seances, key=lambda s: s["id"]):
+    par_id = {e.id: cle for cle, e in du_conseil.items() if e.id is not None}
+    seances: dict[str, Seance] = {}
+    # Dans l'ordre de leur heure, puis de la source : deux Séances d'un même jour n'en font qu'une, la première.
+    for brut in sorted(bruts.seances, key=lambda s: s.get("begin_date") or ""):
         points = [
             p
             for p in _relation(brut, "agendas")
@@ -324,8 +335,22 @@ def vers_archive(
         brut = {**brut, "agendas": {"data": points}}
         seance = _seance(brut, genere, lambda p: _objet_du_point(p, conseil, connus, par_id), elus, petitionnaires)
         if seance is not None:
-            elements[f"{conseil}/{seance.date[:10]}"] = seance
-    return elements
+            cle = f"{conseil}/{seance.date[:10]}"
+            seances[cle] = _fusionner(seances[cle], seance) if cle in seances else seance
+    return elements | seances
+
+
+def _fusionner(premiere: Seance, seconde: Seance) -> Seance:
+    """Une seule Séance pour deux d'un même jour : l'identifiant, l'heure et le nom de la première, ses points puis
+    ceux de la seconde, et leurs documents réunis (un même lien n'y est qu'une fois)."""
+    liens = {d.lien for d in premiere.documents}
+    return premiere.model_copy(
+        update={
+            "lien": premiere.lien or seconde.lien,
+            "ordre_du_jour": premiere.ordre_du_jour + seconde.ordre_du_jour,
+            "documents": premiere.documents + [d for d in seconde.documents if d.lien not in liens],
+        }
+    )
 
 
 def _objet(brut: dict, genere: datetime) -> Objet:
@@ -340,7 +365,7 @@ def _objet(brut: dict, genere: datetime) -> Objet:
     return Objet(
         version=1,
         genere=genere,
-        id=brut["id"],
+        id=brut.get("id"),
         numero=brut["number"],
         type=type_,
         statut=statut,
@@ -423,11 +448,15 @@ def _seance(
     return Seance(
         version=1,
         genere=genere,
-        id=brut["id"],
+        id=brut.get("id"),
         date=jour if heure in ("", "00:00") else f"{jour}T{heure}",
         nom=_fr(brut.get("name")) or "",
         lien=_lien(_fr(brut.get("url_external"))),
         ordre_du_jour=[_point(p, objet_du_point(p), elus, petitionnaires) for _, p in points],
+        documents=[
+            d.model_copy(update={"titre": masquer(d.titre, elus)}) if d.titre else d
+            for d in _documents(_relation(brut, "docs"))
+        ],
     )
 
 
@@ -541,12 +570,54 @@ def lire_archive(depot: Path) -> dict[str, Element]:
     return archive
 
 
+def chemin_membres(conseil: str) -> str:
+    return f"conseils/{conseil}/membres.json"
+
+
+def lire_membres(depot: Path, conseil: str) -> list[str]:
+    """Les élu·e·s connu·e·s d'un conseil scrapé, lu·e·s dans son `membres.json` (aucun s'il manque)."""
+    try:
+        return MembresConseil.model_validate_json((depot / chemin_membres(conseil)).read_bytes()).membres
+    except FileNotFoundError:
+        return []
+
+
+def reunir_membres(*listes: Iterable[str]) -> list[str]:
+    """Les noms de toutes les `listes`, chacun une fois (espaces resserrés), triés sans tenir compte des accents ni
+    de la casse."""
+    noms = {" ".join(nom.split()) for liste in listes for nom in liste} - {""}
+
+    def plier(nom: str) -> str:
+        decompose = unicodedata.normalize("NFKD", nom)
+        return "".join(c for c in decompose if not unicodedata.combining(c)).casefold()
+
+    return sorted(noms, key=lambda nom: (plier(nom), nom))
+
+
+def _lire_import(depot: Path) -> ImportConseils | None:
+    try:
+        return ImportConseils.model_validate_json((depot / FICHIER_IMPORT).read_bytes())
+    except (FileNotFoundError, ValidationError):
+        return None
+
+
 def lire_imports(depot: Path) -> dict[str, datetime]:
     """Le dernier import réussi de chaque conseil, par clé, lu dans `conseils/import.json` (vide s'il manque)."""
-    try:
-        return dict(ImportConseils.model_validate_json((depot / FICHIER_IMPORT).read_bytes()).conseils)
-    except (FileNotFoundError, ValidationError):
-        return {}
+    lu = _lire_import(depot)
+    return dict(lu.conseils) if lu else {}
+
+
+def lire_premiers_imports(depot: Path) -> dict[str, datetime]:
+    """Le premier import réussi de chaque conseil scrapé, par clé, lu dans `conseils/import.json` (vide s'il
+    manque)."""
+    lu = _lire_import(depot)
+    return dict(lu.premiers) if lu else {}
+
+
+def lire_rattrapages(depot: Path) -> dict[str, datetime]:
+    """Le dernier rattrapage réussi de chaque conseil, par clé, lu dans `conseils/import.json` (vide s'il manque)."""
+    lu = _lire_import(depot)
+    return dict(lu.rattrapages) if lu else {}
 
 
 def importer_conseils(
@@ -559,23 +630,30 @@ def importer_conseils(
     dus: Collection[str] | None = None,
     rattrapage: bool = False,
     communes: Path = COMMUNES_JSON,
+    robot: Robot | None = None,
 ) -> ImportConseils:
     """Importe chaque conseil déclaré dans `sources` dans `depot`, un clone du dépôt de données, ou seulement ceux
-    dont la clé est dans `dus`. Chaque conseil repart du jour de son dernier import réussi moins un jour de
-    recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
-    `rattrapage`. Un conseil en échec est signalé, garde sa date, et les autres continuent. Le commit et le push
-    sont l'affaire de l'appelant.
+    dont la clé est dans `dus`. Un conseil d'OpenParlData repart du jour de son dernier import réussi moins un jour
+    de recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
+    `rattrapage`. Un conseil dont la source a un bloc `site` est lu sur le site de sa commune par `robot`
+    (`lire_site`), dans la fenêtre du jour à Lausanne, ou en entier pour un `rattrapage`. Un conseil en échec est
+    signalé, garde sa date, et les autres continuent ; un `rattrapage` réussi est aussi noté dans `rattrapages`.
+    Le commit et le push sont l'affaire de l'appelant.
 
     Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; les
     retraits de `retraits.json` (ADR 0007) sont réappliqués à toute l'archive après les imports. Un
     `corrections.json` ou un `retraits.json` invalide lève `pydantic.ValidationError` avant tout import."""
     genere = horloge().astimezone(UTC).replace(microsecond=0)
+    jour = genere.astimezone(FUSEAU).date()
     repertoire = Repertoire.lire(communes)
     corrections = lire_corrections(depot)
     retraits = lire_retraits(depot)
     imports = lire_imports(depot)
+    premiers = lire_premiers_imports(depot)
+    rattrapages = lire_rattrapages(depot)
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
+    membres: dict[str, MembresConseil] = {}
     for source in sources.sources:
         if source.conseil is None or (dus is not None and source.conseil.cle not in dus):
             continue
@@ -585,8 +663,14 @@ def importer_conseils(
         else:
             debut = depuis or (imports[cle].date() - RECOUVREMENT if cle in imports else None)
         try:
-            bruts = importer(opd, source.conseil, debut)
-            elements = vers_archive(bruts, archive, genere, repertoire, corrections)
+            if source.site is not None:
+                if robot is None:
+                    raise ValueError("aucun robot communal pour lire le site de la commune")
+                bruts = lire_site(robot, source, sources, jour, rattrapage)
+            else:
+                bruts = importer(opd, source.conseil, debut)
+            connus = lire_membres(depot, cle) if source.site is not None else []
+            elements = vers_archive(bruts, archive, genere, repertoire, corrections, connus)
         except Exception as e:
             # Toute erreur, prévue (HTTP, relation tronquée) ou non (réponse d'une forme inattendue), ne vaut
             # qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
@@ -594,7 +678,16 @@ def importer_conseils(
             continue
         nouveaux |= elements
         archive = {**archive, **elements}
+        if source.site is not None and cle not in imports:
+            premiers.setdefault(cle, genere)
         imports[cle] = genere
+        if rattrapage:
+            rattrapages[cle] = genere
+        if source.site is not None:
+            # La liste ne fait que s'allonger : les noms déjà connus, ceux de la page, les auteur·e·s des Objets.
+            objets = [e for k, e in archive.items() if isinstance(e, Objet) and k.startswith(cle + "/")]
+            noms = reunir_membres(connus, bruts.membres, elus_connus(objets))
+            membres[cle] = MembresConseil(version=1, genere=genere, conseil=cle, membres=noms)
         print(f"{source.nom} : {len(bruts.objets)} Objet(s), {len(bruts.seances)} Séance(s) lus")
 
     # Les retraits passent après le masquage, sur toute l'archive : un élément relu avec son texte d'origine
@@ -603,8 +696,9 @@ def importer_conseils(
     nouveaux |= retires
     archive = {**archive, **retires}
 
-    etat = ImportConseils(version=1, genere=genere, conseils=imports)
+    etat = ImportConseils(version=1, genere=genere, conseils=imports, premiers=premiers, rattrapages=rattrapages)
     documents: dict[str, Enveloppe] = {chemin_element(cle, e): e for cle, e in nouveaux.items()}
+    documents |= {chemin_membres(cle): liste for cle, liste in membres.items()}
     documents |= lecture(archive, sources, genere)
     documents[FICHIER_IMPORT] = etat
     ecrire(depot, documents, genere)
@@ -636,9 +730,12 @@ def main(argv: list[str] | None = None) -> None:
         changes = reconstruire(args.depot.resolve(), lire_sources(args.sources), horloge)
         print(f"Fichiers de lecture reconstruits : {len(changes)} écrit(s) ou supprimé(s)")
         return
+    sources = lire_sources(args.sources)
     with httpx.Client() as http:
         opd = OpenParlData(http, horloge)
-        importer_conseils(args.depot.resolve(), lire_sources(args.sources), opd, horloge, args.depuis)
+        # Un import lancé à la main est un passage ordinaire : réseaux ralentis et plafond de 60 requêtes par commune.
+        robot = robot_des_sources(http, sources, horloge)
+        importer_conseils(args.depot.resolve(), sources, opd, horloge, args.depuis, robot=robot)
 
 
 if __name__ == "__main__":

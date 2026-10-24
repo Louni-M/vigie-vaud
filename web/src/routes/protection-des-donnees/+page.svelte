@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { AUDIENCE } from '#lib/audience.js';
-	import { COURRIEL } from '#lib/config.js';
+	import { COURRIEL, DEPOT_DONNEES } from '#lib/config.js';
 	import { canonique } from '#lib/indexation.js';
 
 	// Deux parties (#16) : ce que le site publie sur des personnes (ADR 0007), puis la déclaration exigée par
@@ -38,11 +38,40 @@
 		parti, puisque ce sont des élu·e·s. Les autres noms de personnes qui apparaissent dans les titres des objets et
 		dans les ordres du jour des séances sont remplacés par « [particulier] » avant publication, lors de l’import
 		quotidien, et leurs coordonnées (adresse, téléphone, courriel) par « [coordonnées] » : ils n’atteignent jamais
-		le dépôt de données public. Les pétitions n’affichent pas leurs
-		auteur·e·s. Si un nom est passé à travers, écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>, par courriel et
-		jamais dans une issue publique, qui publierait le nom : il est retiré dans les 7 jours, historique du dépôt de
-		données public compris, et ne revient pas aux imports suivants. Le texte d’origine reste chez OpenParlData et
-		sur le site du conseil.
+		le dépôt de données public. Les pétitions n’affichent pas leurs auteur·e·s.
+	</p>
+
+	<h3>La liste des élu·e·s connu·e·s</h3>
+	<p>
+		Pour savoir quels noms laisser lisibles, le cron tient pour chaque conseil la liste de ses élu·e·s connu·e·s :
+		les auteur·e·s de ses Objets (sauf les pétitions) et, pour un conseil lu sur le site de sa commune, les membres
+		que nomme sa page des membres. Cette liste est publique, en clair, sans limite de durée, dans le
+		<a href={DEPOT_DONNEES} target="_blank" rel="noopener">dépôt de données public</a> : pour un conseil lu sur le
+		site de sa commune, dans le fichier <code>conseils/&lt;n° OFS&gt;/membres.json</code> ; pour les autres, ce
+		sont les auteur·e·s des Objets de l’archive.
+	</p>
+	<p>
+		Elle ne se vide pas : une personne vue un jour comme membre ou comme auteur·e reste connue, pour qu’un·e
+		ancien·ne élu·e reste lisible dans les titres de son mandat. À la fin du mandat, les mentions faites dans
+		l’exercice du mandat restent ; toute autre mention de la personne passe par le retrait décrit plus bas.
+	</p>
+
+	<h3>Élu·e·s masqué·e·s par défaut</h3>
+	<p>
+		Un conseil dont le site ne publie pas de page des membres est lu quand même : ses élu·e·s nommé·e·s après une
+		civilité (« M. », « Mme ») y sont alors masqué·e·s, comme un·e élu·e que la liste ne connaît pas encore. C’est
+		voulu : en cas de doute, le site masque. Vigie Vaud ne démasque personne sur demande et ne tient aucune liste à
+		la main ; la seule voie est la page des membres du conseil, sur le site de la commune.
+	</p>
+
+	<h3 id="retrait">Retrait d’un nom</h3>
+	<p>
+		Si le nom d’une personne est passé à travers le masquage, écrivez à
+		<a href="mailto:{COURRIEL}">{COURRIEL}</a>, jamais par une issue, qui publierait le nom. Il est retiré dans les
+		7 jours, historique du dépôt de données public compris. Comme le cron relit les sources chaque jour, le dépôt
+		de données garde une correction pour cet élément (son texte corrigé, sans le nom), appliquée à chaque import et
+		à chaque rattrapage ; quand le cas révèle une règle, le masquage est corrigé aussi. Le texte d’origine reste à
+		la source : chez OpenParlData ou sur le site de la commune.
 	</p>
 
 	<h2>Ce que votre visite transmet</h2>

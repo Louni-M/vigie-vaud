@@ -5,9 +5,72 @@ import type {
 	IndexConseils,
 	LigneObjet,
 	Objet,
+	RaisonNonCouvert,
 	RattachementsCommune,
-	Seance
+	Seance,
+	Source
 } from '#lib/schema.js';
+
+/**
+ * La source d'une commune scrapée, déclarée comme le seront celles des communes i-web dans `sources.json` : par
+ * défaut Préverenges, en séances seulement, sa page de liste des Séances et la page de son conseil.
+ */
+export function sourceSite(champs: Partial<Source> = {}): Source {
+	return {
+		id: 'site-5643',
+		nom: 'Conseil communal de Préverenges (site de la commune)',
+		nom_court: 'Site de Préverenges',
+		attribution: {
+			texte: 'Commune de Préverenges',
+			lien: 'https://www.preverenges.ch/conseil',
+			licence: 'Actes officiels (art. 5 LDA) : métadonnées et liens seulement'
+		},
+		voie_acces: 'cron',
+		fraicheur: 'import',
+		couverture: { communes: [5643], mode: 'scrape' },
+		conseil: { body_key: '5643', donne: ['seances'] },
+		site: { plateforme: 'i-web', variante: 'seances', seances: 'https://www.preverenges.ch/sitzung' },
+		...champs
+	};
+}
+
+/**
+ * Les `sources` (en général les sources réelles, qui déclarent déjà Préverenges et Sainte-Croix) où chaque source
+ * fabriquée remplace celle de même identifiant, à sa place, ou s'ajoute à la fin.
+ */
+export function avecSources(sources: readonly Source[], ...fabriquees: Source[]): Source[] {
+	const parId = new Map(fabriquees.map((s) => [s.id, s]));
+	const ids = new Set(sources.map((s) => s.id));
+	return [...sources.map((s) => parId.get(s.id) ?? s), ...fabriquees.filter((s) => !ids.has(s.id))];
+}
+
+/**
+ * Une commune i-web non couverte, déclarée dans `sources.json` avec sa raison : sa plateforme et son attribution
+ * (le lien vers la page du conseil), mais ni conseil ni sonde. Par défaut Sainte-Croix, qui ne publie que des préavis.
+ */
+export function sourceNonCouverte(
+	raison: RaisonNonCouvert = 'preavis_seuls',
+	{ bfs, nom, site }: { bfs: number; nom: string; site: string } = {
+		bfs: 5568,
+		nom: 'Sainte-Croix',
+		site: 'https://www.sainte-croix.ch'
+	}
+): Source {
+	return {
+		id: `site-${bfs}`,
+		nom: `Conseil communal de ${nom} (site de la commune)`,
+		nom_court: `Site de ${nom}`,
+		attribution: {
+			texte: `Commune de ${nom}`,
+			lien: `${site}/conseil-communal`,
+			licence: 'Actes officiels (art. 5 LDA) : métadonnées et liens seulement'
+		},
+		voie_acces: 'cron',
+		fraicheur: 'import',
+		couverture: { communes: [bfs], mode: 'non_couvert', raison },
+		site: { plateforme: 'i-web' }
+	};
+}
 
 /**
  * Faux dépôt de données des conseils, pour les tests : des fabriques de fichiers de lecture et d'archive, typées par

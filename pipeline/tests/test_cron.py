@@ -79,6 +79,21 @@ class IssuesFactices:
     def retour(self, source, panne, etat):
         self.signalements.append(("retour", source.id, panne.depuis.isoformat(), etat.depuis.isoformat()))
 
+    def plateformes_signalees(self, sorte, plateformes):
+        return None
+
+    def plateforme_touchee(self, sorte, plateforme, communes):
+        listees = [(s.id, detail) for s, detail in communes]
+        self.signalements.append(("plateforme_touchee", sorte.etiquette, plateforme.id, listees))
+
+    def liste_plateforme(self, sorte, plateforme, communes, revenues):
+        listees = [(s.id, detail) for s, detail in communes]
+        revenues = [s.id for s in revenues]
+        self.signalements.append(("liste_plateforme", sorte.etiquette, plateforme.id, listees, revenues))
+
+    def retour_plateforme(self, sorte, plateforme, revenues):
+        self.signalements.append(("retour_plateforme", sorte.etiquette, plateforme.id, [s.id for s in revenues]))
+
     def imports_signales(self, conseils):
         return None
 
@@ -400,6 +415,7 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
         "schema/index-conseils.schema.json",
         "schema/liste-objets.schema.json",
         "schema/liste-seances.schema.json",
+        "schema/membres-conseil.schema.json",
         "schema/objet.schema.json",
         "schema/rattachements-commune.schema.json",
         "schema/retraits.schema.json",
@@ -462,7 +478,7 @@ class GitHubFactice:
                 issue["commentaires"].append(corps["body"])
                 return httpx.Response(201, json={"body": corps["body"]})
             if url == f"{API}/{issue['number']}" and requete.method == "PATCH":
-                issue["state"] = corps["state"]
+                issue.update({k: corps[k] for k in ("state", "body") if k in corps})
                 return httpx.Response(200, json=issue)
         return httpx.Response(404, json={"message": "Not Found"})
 

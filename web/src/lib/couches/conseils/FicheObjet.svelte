@@ -3,6 +3,8 @@
 	 * Fiche d'un Objet : en tête, son type, son numéro et son conseil, puis son titre ; un tableau (déposé le,
 	 * auteur·e·s avec leur parti, statut et sa date) ; ses étapes datées et ses documents ; « Voir sur lausanne.ch › »
 	 * et la source. Le type et le statut sont ceux que le conseil leur donne. Une pétition n'a aucun·e auteur·e.
+	 * Un Objet d'une commune scrapée sans statut ni auteur·e (un préavis) le dit en une mention : le site de la
+	 * commune ne les publie pas (`mentionNonPublies`).
 	 * Pour un Objet du Grand Conseil, après le tableau, les communes nommées (même aucune : une commune peut
 	 * manquer), avec « rattachement automatique · signaler une erreur », un courriel pré-rempli.
 	 */
@@ -12,6 +14,7 @@
 	import { COULEUR_CONSEILS } from './index.js';
 	import { dateCourte, dateLongue, siteDuLien } from './lignes.js';
 	import { communesNommees, signalement } from './rattachements.js';
+	import { mentionNonPublies } from './source.js';
 	import Source from './SourceElement.svelte';
 
 	let { cle, objet, communes = [] }: { cle: string; objet: Objet; communes?: readonly Commune[] } = $props();
@@ -20,6 +23,7 @@
 	const duGrandConseil = $derived(lireCle(cle)?.conseil === CLE_GRAND_CONSEIL);
 	const nommees = $derived(communesNommees(objet.communes, communes));
 	const auteurs = $derived(objet.contributeurs.map((a) => (a.parti ? `${a.nom} (${a.parti})` : a.nom)));
+	const nonPublies = $derived(mentionNonPublies(lireCle(cle)?.conseil ?? '', objet));
 </script>
 
 <article class="fiche" style:--c={COULEUR_CONSEILS}>
@@ -39,6 +43,7 @@
 			<dd>{objet.statut.libelle}{objet.statut.date ? `, ${dateLongue(objet.statut.date)}` : ''}</dd>
 		{/if}
 	</dl>
+	{#if nonPublies}<p class="mention">{nonPublies}</p>{/if}
 
 	{#if duGrandConseil}
 		<div class="communes">
@@ -73,7 +78,7 @@
 	{#if objet.lien}
 		<p class="externe"><a href={objet.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(objet.lien)} ›</a></p>
 	{/if}
-	<Source />
+	<Source conseil={lireCle(cle)?.conseil ?? ''} />
 </article>
 
 <style>
@@ -132,6 +137,11 @@
 	}
 	.aide {
 		font-size: 12px;
+		color: var(--muted);
+	}
+	.mention {
+		margin: 0;
+		font-size: 14px;
 		color: var(--muted);
 	}
 	h4 {

@@ -15,7 +15,8 @@ RACINE = Path(__file__).resolve().parents[2]
 def test_sources_json_declare_les_sources_de_j0_la_dgmr_et_les_trois_conseils():
     fichier = lire_sources(RACINE / "sources.json")
 
-    assert [s.id for s in fichier.sources] == [
+    # Les sources communales (`site-<n° OFS>`, bloc `site`) suivent : voir `test_declarations_sources.py`.
+    assert [s.id for s in fichier.sources if s.site is None] == [
         "camac-permis",
         "dgmr-restrictions",
         "swisstopo-fond",
@@ -35,7 +36,7 @@ def test_sources_json_declare_les_sources_de_j0_la_dgmr_et_les_trois_conseils():
 def test_la_camac_et_la_dgmr_couvrent_le_canton_et_chaque_conseil_communal_sa_commune():
     fichier = lire_sources(RACINE / "sources.json")
 
-    couvertures = {s.id: s.couverture for s in fichier.sources if s.couverture is not None}
+    couvertures = {s.id: s.couverture for s in fichier.sources if s.couverture is not None and s.site is None}
     assert {id: (c.communes, c.mode) for id, c in couvertures.items()} == {
         "camac-permis": ("canton", "api"),
         "dgmr-restrictions": ("canton", "api"),
@@ -47,7 +48,7 @@ def test_la_camac_et_la_dgmr_couvrent_le_canton_et_chaque_conseil_communal_sa_co
 def test_les_trois_conseils_passent_par_le_cron_avec_l_attribution_d_openparldata():
     fichier = lire_sources(RACINE / "sources.json")
 
-    conseils = {s.id: s for s in fichier.sources if s.conseil is not None}
+    conseils = {s.id: s for s in fichier.sources if s.conseil is not None and s.site is None}
     assert {id: (s.nom, s.nom_court) for id, s in conseils.items()} == {
         "openparldata-vd": ("Grand Conseil (OpenParlData)", "Grand Conseil"),
         "openparldata-5586": ("Conseil communal de Lausanne (OpenParlData)", "Conseil de Lausanne"),
@@ -61,17 +62,22 @@ def test_les_trois_conseils_passent_par_le_cron_avec_l_attribution_d_openparldat
             "lien": "https://openparldata.ch",
             "licence": "CC BY 4.0",
         }
-    assert {id: s.conseil.model_dump() for id, s in conseils.items()} == {
+    assert {id: s.conseil.model_dump(exclude_none=True) for id, s in conseils.items()} == {
         "openparldata-vd": {"body_key": "VD", "donne": ["objets", "seances"], "groupe": 1965},
-        "openparldata-5586": {"body_key": "5586", "donne": ["objets", "seances"], "groupe": None},
-        "openparldata-5938": {"body_key": "5938", "donne": ["seances"], "groupe": None},
+        "openparldata-5586": {"body_key": "5586", "donne": ["objets", "seances"]},
+        # Yverdon ne donne que ses Séances : sa note de niveau renvoie à la page du conseil sur le site de la ville.
+        "openparldata-5938": {
+            "body_key": "5938",
+            "donne": ["seances"],
+            "page": "https://www.yverdon-les-bains.ch/vie-politique/conseil-communal",
+        },
     }
 
 
-def test_chaque_conseil_a_une_sonde_legere_sur_openparldata_qui_lit_data():
+def test_chaque_conseil_d_openparldata_a_une_sonde_legere_qui_lit_data():
     fichier = lire_sources(RACINE / "sources.json")
 
-    sondes = {s.id: s.sonde for s in fichier.sources if s.conseil is not None}
+    sondes = {s.id: s.sonde for s in fichier.sources if s.conseil is not None and s.site is None}
     assert {id: (str(s.url), s.champs) for id, s in sondes.items()} == {
         "openparldata-vd": (
             "https://api.openparldata.ch/v1/affairs/?body_key=VD&limit=1&fields=id,number,title&client=vigie-vaud",
@@ -161,6 +167,21 @@ def _source(**modifs):
     return source | modifs
 
 
+_COUVERTE = {"communes": [5555], "mode": "scrape"}
+
+
+def _non_couverte(**modifs):
+    """Une commune d'une plateforme retenue, non couverte : son site (la plateforme seule) et son attribution."""
+    return _source(
+        id="site-5555",
+        voie_acces="cron",
+        fraicheur="import",
+        attribution={"texte": "Commune d'Exemple", "lien": "https://www.exemple-vd.ch/conseil", "licence": "LDA"},
+        couverture={"communes": [5555], "mode": "non_couvert", "raison": "preavis_seuls"},
+        site={"plateforme": "i-web"},
+    ) | modifs
+
+
 def _ecrire(tmp_path, sources):
     chemin = tmp_path / "sources.json"
     chemin.write_text(json.dumps({"$schema": "./schema/sources.schema.json", "sources": sources}))
@@ -185,6 +206,18 @@ def test_une_source_sans_couverture_qui_donne_un_conseil_est_lue(tmp_path):
 
 
 @pytest.mark.parametrize(
+    "raison", ["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site"]
+)
+def test_une_commune_non_couverte_a_sa_raison_et_ni_conseil_ni_sonde(tmp_path, raison):
+    declaree = _non_couverte(couverture={"communes": [5555], "mode": "non_couvert", "raison": raison})
+
+    (source,) = lire_sources(_ecrire(tmp_path, [declaree])).sources
+
+    assert (source.couverture.mode, source.couverture.raison) == ("non_couvert", raison)
+    assert (source.conseil, source.sonde, source.site.plateforme) == (None, None, "i-web")
+
+
+@pytest.mark.parametrize(
     "sources",
     [
         pytest.param([_source(id="Camac_Permis")], id="id hors kebab-case"),
@@ -201,11 +234,53 @@ def test_une_source_sans_couverture_qui_donne_un_conseil_est_lue(tmp_path):
         pytest.param([_source(conseil={"body_key": "VD", "donne": ["votes"]})], id="conseil qui donne l'inconnu"),
         pytest.param([_source(conseil={"donne": ["objets"]})], id="conseil sans body_key"),
         pytest.param([_source(limites="")], id="limites vides"),
+        pytest.param([_source(couverture={"communes": [5555], "mode": "non_couvert"})], id="non couverte sans raison"),
+        pytest.param(
+            [_source(couverture={"communes": [5555], "mode": "scrape", "raison": "rien_en_ligne"})],
+            id="raison d'une commune couverte",
+        ),
+        pytest.param(
+            [_source(couverture={"communes": [5555], "mode": "non_couvert", "raison": "pas_envie"})],
+            id="raison hors de la liste",
+        ),
+        pytest.param([_non_couverte(conseil={"body_key": "5555", "donne": ["seances"]})], id="non couverte avec conseil"),
+        pytest.param([_non_couverte(sonde={"url": "https://www.exemple-vd.ch", "delai": 10})], id="non couverte sondée"),
+        pytest.param(
+            [_non_couverte(conseil={"body_key": "5555", "donne": ["seances"]}, couverture=_COUVERTE)],
+            id="conseil scrapé sans variante ni page des Séances",
+        ),
     ],
 )
 def test_une_declaration_invalide_est_refusee(tmp_path, sources):
     with pytest.raises(ValidationError):
         lire_sources(_ecrire(tmp_path, sources))
+
+
+def _avec_reseaux(tmp_path, reseaux):
+    chemin = tmp_path / "sources.json"
+    chemin.write_text(json.dumps({"reseaux": reseaux, "sources": [_source()]}))
+    return chemin
+
+
+def test_un_reseau_ralenti_a_la_main_est_un_24_et_son_intervalle(tmp_path):
+    fichier = lire_sources(_avec_reseaux(tmp_path, [{"reseau": "195.65.10.0/24", "intervalle": 15}]))
+
+    assert [(r.reseau, r.intervalle) for r in fichier.reseaux] == [("195.65.10.0/24", 15)]
+    assert lire_sources(_ecrire(tmp_path, [_source()])).reseaux == []
+
+
+@pytest.mark.parametrize(
+    "reseaux",
+    [
+        pytest.param([{"reseau": "195.65.10.20/24", "intervalle": 15}], id="adresse au lieu du réseau"),
+        pytest.param([{"reseau": "195.65.0.0/16", "intervalle": 15}], id="pas un /24"),
+        pytest.param([{"reseau": "195.65.10.0/24", "intervalle": 5}], id="pas plus lent que 5 s"),
+        pytest.param([{"reseau": "195.65.10.0/24", "intervalle": 15}] * 2, id="réseau en double"),
+    ],
+)
+def test_un_reseau_ralenti_invalide_est_refuse(tmp_path, reseaux):
+    with pytest.raises(ValidationError):
+        lire_sources(_avec_reseaux(tmp_path, reseaux))
 
 
 @pytest.mark.parametrize(

@@ -19,11 +19,13 @@ Usage : `uv run python schema.py` écrit les JSON Schema dans `schema/`.
 from __future__ import annotations
 
 import datetime as dt
+import ipaddress
 import json
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NamedTuple
+from zoneinfo import ZoneInfo
 
 from pydantic import (
     AfterValidator,
@@ -40,6 +42,8 @@ from typing_extensions import TypeAliasType
 
 RACINE = Path(__file__).resolve().parent.parent
 DOSSIER_SCHEMA = RACINE / "schema"
+# L'heure de Lausanne : le jour d'un passage, sa fenêtre, le 7 h des imports, les jours des fichiers de lecture.
+FUSEAU = ZoneInfo("Europe/Zurich")
 
 
 class Modele(BaseModel):
@@ -76,7 +80,10 @@ class Enveloppe(Modele):
 IdSource = TypeAliasType("IdSource", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")])
 VoieAcces = TypeAliasType("VoieAcces", Literal["direct", "cron", "worker", "preparee"])
 SorteFraicheur = TypeAliasType("SorteFraicheur", Literal["donnee", "requete", "millesime", "import"])
-ModeCouverture = TypeAliasType("ModeCouverture", Literal["api", "scrape"])
+ModeCouverture = TypeAliasType("ModeCouverture", Literal["api", "scrape", "non_couvert"])
+RaisonNonCouvert = TypeAliasType(
+    "RaisonNonCouvert", Literal["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site"]
+)
 
 
 class Attribution(Modele):
@@ -85,11 +92,33 @@ class Attribution(Modele):
     licence: str = Field(min_length=1)
 
 
+# Une raison en `non_couvert`, aucune ailleurs : la règle du validateur, pour le contrôle du site (Ajv).
+_RAISON_SI_NON_COUVERT = {
+    "if": {"properties": {"mode": {"const": "non_couvert"}}},
+    "then": {"required": ["raison"], "properties": {"raison": {"not": {"type": "null"}}}},
+    "else": {"properties": {"raison": {"type": "null"}}},
+}
+
+
 class CouvertureDeclaree(Modele):
+    model_config = ConfigDict(json_schema_extra=_RAISON_SI_NON_COUVERT)
+
     communes: Literal["canton"] | Annotated[list[NumeroOfs], Field(min_length=1)] = Field(
-        description="« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes."
+        description="« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes ; en `non_couvert`, "
+        "la commune d'une plateforme retenue que Vigie Vaud ne lit pas."
     )
     mode: ModeCouverture
+    raison: RaisonNonCouvert | None = Field(
+        default=None,
+        description="Pourquoi une commune d'une plateforme retenue n'est pas couverte : obligatoire en `non_couvert`, "
+        "interdite ailleurs. Les phrases de la Couverture et de l'onglet ne s'écrivent que côté site.",
+    )
+
+    @model_validator(mode="after")
+    def _raison_si_non_couvert(self) -> CouvertureDeclaree:
+        if (self.mode == "non_couvert") != (self.raison is not None):
+            raise ValueError("une raison en mode `non_couvert`, et seulement là")
+        return self
 
 
 class Sonde(Modele):
@@ -115,11 +144,33 @@ class Sonde(Modele):
     jamais_vide: bool = Field(default=False, description="Une réponse sans enregistrement compte comme un échec.")
 
 
-DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "seances"])
+DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "preavis", "seances"])
+
+
+class Niveau(NamedTuple):
+    """Un niveau (CONTEXT.md) : ce que donne un conseil scrapé, tel que `conseil.donne` l'écrit (ADR-0010)."""
+
+    donne: frozenset[str]
+    libelle: str  # « objets et séances »
+    objets: bool  # le conseil donne-t-il des Objets, tous ou ses préavis seulement ?
+
+
+# Les trois niveaux, du plus complet au moins complet : le seul endroit où un niveau s'interprète, côté pipeline.
+NIVEAUX = (
+    Niveau(frozenset({"objets", "seances"}), "objets et séances", True),
+    Niveau(frozenset({"preavis", "seances"}), "séances et préavis", True),
+    Niveau(frozenset({"seances"}), "séances seulement", False),
+)
+
+
+def niveau_de(donne: list[str] | tuple[str, ...]) -> Niveau | None:
+    """Le niveau de ce que donne un conseil, dans n'importe quel ordre ; `None` hors des trois."""
+    return next((n for n in NIVEAUX if n.donne == frozenset(donne)), None)
 
 
 class Conseil(Modele):
-    """Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc."""
+    """Un conseil importé par le cron : exposé par OpenParlData, ou lu sur le site de sa commune quand la source a un
+    bloc `site`. Le cron importe chaque source qui a ce bloc."""
 
     body_key: str = Field(
         pattern=r"^[A-Z0-9]+$",
@@ -127,7 +178,15 @@ class Conseil(Modele):
         "En minuscules, c'est la clé du conseil dans le dépôt de données.",
     )
     donne: Annotated[list[DonneeConseil], Field(min_length=1)] = Field(
-        description="Ce que le conseil donne : ses Objets, ses Séances, ou les deux."
+        description="Ce que le conseil donne : ses Objets, ses Séances, ou les deux ; `preavis` : ses préavis seulement, "
+        "parmi ses Objets. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de "
+        "l'import : `objets` + `seances` (« objets et séances »), `preavis` + `seances` (« séances et préavis ») ou "
+        "`seances` (« séances seulement »)."
+    )
+    page: Lien | None = Field(
+        default=None,
+        description="Page du conseil sur le site de sa commune, vers laquelle renvoie la note de niveau d'un conseil "
+        "qui ne donne pas tout et n'a pas de bloc `site` (Yverdon) ; une commune scrapée renvoie à `site.seances`.",
     )
     groupe: int | None = Field(
         default=None,
@@ -152,7 +211,69 @@ def nom_du_conseil(nom_source: str) -> str:
     return re.sub(r"\s*\([^()]*\)$", "", nom_source).replace("'", "’")
 
 
+IdPlateforme = TypeAliasType("IdPlateforme", Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")])
+
+
+class Site(Modele):
+    """Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.
+    Une commune non couverte d'une plateforme retenue n'y déclare que sa plateforme."""
+
+    plateforme: IdPlateforme = Field(description="Identifiant de la plateforme, déclarée dans `plateformes`.")
+    variante: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Identifiant de la variante, déclarée dans sa plateforme ; obligatoire avec un bloc `conseil`.",
+    )
+    seances: Lien | None = Field(
+        default=None,
+        description="Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée. "
+        "Obligatoire avec un bloc `conseil`.",
+    )
+    objets: Lien | None = Field(default=None, description="Page de liste des Objets ou des préavis, selon la variante.")
+    membres: Lien | None = Field(
+        default=None, description="Page des membres du conseil, en HTML ; absente si le site n'en a pas."
+    )
+
+
+class Variante(Modele):
+    id: str = Field(min_length=1, description="Identifiant de la variante dans sa plateforme (`seances`).")
+    marqueur: str = Field(
+        min_length=1, description="Marqueur que la sonde cherche sur la page de liste des Séances d'une commune."
+    )
+    niveaux: Annotated[list[Annotated[list[DonneeConseil], Field(min_length=1)]], Field(min_length=1)] = Field(
+        description="Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette "
+        "variante peut déclarer (`[\"seances\"]` : séances seulement ; `[\"preavis\", \"seances\"]` : séances et "
+        "préavis)."
+    )
+
+
+class Plateforme(Modele):
+    """Une plateforme retenue : le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes."""
+
+    id: IdPlateforme = Field(description="Identifiant cité par le bloc `site` des sources (`i-web`).")
+    nom: str = Field(min_length=1, description="Nom affiché par la page Couverture et l'À propos.")
+    editeur: str = Field(min_length=1)
+    variantes: Annotated[list[Variante], Field(min_length=1)]
+
+    def variante(self, id_variante: str | None) -> Variante | None:
+        """La variante déclarée sous cet identifiant, ou `None`."""
+        return next((v for v in self.variantes if v.id == id_variante), None)
+
+
+# La règle du validateur de `Source` pour une commune non couverte, ni conseil ni sonde, reprise pour le contrôle de
+# `sources.json` à la construction du site (Ajv). Un seul `if` : un `allOf` ferait de `Source` un alias en TypeScript.
+_NON_COUVERTE_SANS_CONSEIL_NI_SONDE = {
+    "if": {
+        "properties": {"couverture": {"type": "object", "properties": {"mode": {"const": "non_couvert"}}}},
+        "required": ["couverture"],
+    },
+    "then": {"properties": {"conseil": {"type": "null"}, "sonde": {"type": "null"}}},
+}
+
+
 class Source(Modele):
+    model_config = ConfigDict(json_schema_extra=_NON_COUVERTE_SANS_CONSEIL_NI_SONDE)
+
     id: IdSource = Field(description="Identifiant stable, clé de la source dans l'état des sources.")
     nom: str = Field(min_length=1)
     nom_court: str = Field(min_length=1, description="Nom affiché dans le badge de fraîcheur (« · CAMAC »).")
@@ -173,13 +294,73 @@ class Source(Modele):
     )
     sonde: Sonde | None = Field(default=None, description="Sans sonde, la source n'est pas surveillée.")
     conseil: Conseil | None = Field(default=None, description="Le conseil que donne la source, importé par le cron.")
+    site: Site | None = Field(
+        default=None,
+        description="Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu "
+        "d'OpenParlData. Une commune non couverte d'une plateforme retenue y déclare sa plateforme.",
+    )
+
+    @model_validator(mode="after")
+    def _non_couverte_sans_conseil_ni_sonde(self) -> Source:
+        if self.couverture is not None and self.couverture.mode == "non_couvert":
+            if self.conseil is not None or self.sonde is not None:
+                raise ValueError(f"{self.id} : une commune non couverte n'a ni conseil ni sonde")
+        if self.conseil is not None and self.site is not None:
+            if self.site.variante is None or self.site.seances is None:
+                raise ValueError(f"{self.id} : un conseil scrapé déclare sa variante et sa page des Séances")
+        return self
+
+
+def _reseau_canonique(reseau: str) -> str:
+    """Un /24 IPv4 ou un /64 IPv6, écrit comme le robot communal l'écrit (« 195.65.10.0/24 »)."""
+    try:
+        lu = ipaddress.ip_network(reseau)
+    except ValueError as e:
+        raise ValueError(f"réseau illisible : {reseau}") from e
+    if lu.prefixlen != (24 if lu.version == 4 else 64) or str(lu) != reseau:
+        raise ValueError(f"{reseau} : un /24 IPv4 ou un /64 IPv6, écrit « 195.65.10.0/24 »")
+    return reseau
+
+
+Reseau = TypeAliasType(
+    "Reseau",
+    Annotated[
+        str, StringConstraints(pattern=r"^[0-9a-f.:]+/(24|64)$"), AfterValidator(_reseau_canonique)
+    ],
+)
+
+
+class ReseauRalenti(Modele):
+    """Un réseau que le robot communal lit plus lentement que 5 s par requête : un ralentissement décidé à la main,
+    après un blocage. Rien ne s'adapte tout seul."""
+
+    reseau: Reseau = Field(description="Le /24 (IPv6 : /64) des sites concernés, « 195.65.10.0/24 ».")
+    intervalle: Annotated[float, Field(gt=5)] = Field(
+        description="Secondes, au moins, entre deux requêtes vers ce réseau (5 s ailleurs, ou le `Crawl-delay` d'un "
+        "site s'il est plus grand)."
+    )
 
 
 class FichierSources(Modele):
     """`sources.json` : chaque source y est déclarée une seule fois, pour le site et pour le cron."""
 
     schema_: str | None = Field(default=None, alias="$schema")
+    plateformes: list[Plateforme] = Field(
+        default=[], description="Les plateformes retenues, que citent les blocs `site` des sources communales."
+    )
+    reseaux: list[ReseauRalenti] = Field(
+        default=[], description="Les réseaux ralentis à la main pour le robot communal."
+    )
     sources: list[Source]
+
+    def plateforme(self, id_plateforme: str) -> Plateforme | None:
+        """La plateforme déclarée sous cet identifiant, ou `None`."""
+        return next((p for p in self.plateformes if p.id == id_plateforme), None)
+
+    def variante_de(self, site: Site) -> Variante | None:
+        """La variante du site d'une commune, ou `None` si sa plateforme ou sa variante n'est pas déclarée."""
+        plateforme = self.plateforme(site.plateforme)
+        return plateforme.variante(site.variante) if plateforme else None
 
     @model_validator(mode="after")
     def _ids_uniques(self) -> FichierSources:
@@ -188,6 +369,9 @@ class FichierSources(Modele):
             if s.id in vus:
                 raise ValueError(f"identifiant de source en double : {s.id}")
             vus.add(s.id)
+        reseaux = [r.reseau for r in self.reseaux]
+        if len(set(reseaux)) != len(reseaux):
+            raise ValueError("réseau ralenti déclaré deux fois")
         return self
 
 
@@ -214,14 +398,36 @@ class EtatSource(Modele):
     derniere_sonde: Horodatage
     dernier_succes: Horodatage | None = Field(description="`null` tant qu'aucune sonde n'a réussi.")
     echecs_consecutifs: Annotated[int, Field(ge=0)] = Field(description="La source passe en panne à 2.")
-    motif: str | None = Field(description="Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…).")
+    motif: str | None = Field(
+        description="Cause courte du dernier échec (« HTTP 503 », « délai dépassé », « marqueur absent »…)."
+    )
+
+
+class EtatReseau(Modele):
+    """Un réseau que le robot communal a cessé de lire après une 429, une 503, une connexion refusée ou un délai
+    dépassé. Au passage suivant (ou après `jusqu_a`), une seule sonde le teste avant les autres."""
+
+    depuis: Horodatage = Field(description="Heure du blocage.")
+    jusqu_a: Horodatage | None = Field(
+        description="Fin du blocage demandée par `Retry-After` ; `null` : la fin du passage du blocage."
+    )
+    motif: str = Field(description="Ce qui a bloqué le réseau (« HTTP 429 », « délai dépassé »…).")
 
 
 class EtatSources(Enveloppe):
     """`etat-sources.json` : l'état de chaque source sondée, indexé par identifiant de source."""
 
     version: Literal[1] = Field(description="Version 1. Le cron repart de zéro devant une autre version.")
-    sources: dict[IdSource, EtatSource] = Field(description="Seules les sources qui ont un bloc `sonde` y figurent.")
+    sources: dict[IdSource, EtatSource] = Field(
+        description="Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), "
+        "qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import."
+    )
+    reseaux: dict[Reseau, EtatReseau] = Field(
+        default={},
+        exclude_if=lambda reseaux: not reseaux,
+        description="Les réseaux (/24) bloqués pour le robot communal et pas encore testés de nouveau ; absent "
+        "quand il n'y en a aucun.",
+    )
 
 
 # --- Import des conseils (conseils/import.json, dépôt de données) ----------------------------------------------
@@ -237,6 +443,33 @@ class ImportConseils(Enveloppe):
     conseils: dict[CleConseil, Horodatage] = Field(
         description="Par clé de conseil (`body_key` en minuscules : `vd`, `5586`…), l'heure du dernier import "
         "réussi. Un conseil jamais importé n'y figure pas."
+    )
+    premiers: dict[CleConseil, Horodatage] = Field(
+        default={},
+        exclude_if=lambda premiers: not premiers,
+        description="Par clé de conseil scrapé, l'heure de son premier import réussi : l'issue `a-verifier` compte "
+        "9 mois depuis ce jour tant que l'archive du conseil n'a aucune Séance. Absent quand il n'y en a pas : les "
+        "conseils d'OpenParlData n'y figurent pas.",
+    )
+    rattrapages: dict[CleConseil, Horodatage] = Field(
+        default={},
+        exclude_if=lambda rattrapages: not rattrapages,
+        description="Par clé de conseil, l'heure de son dernier rattrapage réussi (relecture de tout l'historique, "
+        "lancée à la main : rattrapage ciblé d'une plateforme ou d'une commune scrapée, ou rattrapage "
+        "d'OpenParlData). Un conseil jamais rattrapé n'y figure pas ; absent quand il n'y en a aucun.",
+    )
+
+
+class MembresConseil(Enveloppe):
+    """`conseils/<conseil>/membres.json` : les élu·e·s connu·e·s d'un conseil scrapé, que le masquage épargne
+    (ADR 0007) : vu·e·s sur la page des membres du conseil ou comme contributeur·rice·s d'un Objet autre qu'une
+    pétition. La liste ne fait que s'allonger : un nom qui disparaît de la page y reste. Publique, en clair, sans
+    limite de durée. Les conseils d'OpenParlData n'en ont pas : leurs élu·e·s connu·e·s sont tiré·e·s de l'archive."""
+
+    version: Literal[1] = Field(description="Version 1.")
+    conseil: CleConseil = Field(description="Le conseil (`body_key` en minuscules : le n° OFS de la commune).")
+    membres: list[str] = Field(
+        description="Noms complets, « Prénom Nom », triés sans tenir compte des accents ni de la casse."
     )
 
 
@@ -289,7 +522,7 @@ class Objet(Enveloppe):
     `<conseil>/<numéro>`, la barre oblique du numéro devenant `-` (`vd/26_INT_140`, `5586/POS25-115`)."""
 
     version: Literal[1] = Field(description="Version 1.")
-    id: int = Field(description="Identifiant de l'Objet dans OpenParlData.")
+    id: int | None = Field(description="Identifiant de l'Objet dans OpenParlData ; `null` pour un Objet scrapé.")
     numero: str = Field(min_length=1, description="Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).")
     type: str = Field(description="Type brut de la source (`type_name`).")
     statut: Statut | None
@@ -323,11 +556,17 @@ class Seance(Enveloppe):
     """`conseils/<conseil>/seances/<AAAA-MM-JJ>.json` : une Séance d'un conseil. Sa clé est `<conseil>/<jour>`."""
 
     version: Literal[1] = Field(description="Version 1.")
-    id: int = Field(description="Identifiant de la Séance dans OpenParlData.")
+    id: int | None = Field(description="Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée.")
     date: DateSeance = Field(description="Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).")
     nom: str = Field(description="Nom brut de la source ; le site affiche un nom composé à partir de la date.")
     lien: Lien | None
     ordre_du_jour: list[PointOrdreDuJour]
+    documents: list[DocumentObjet] = Field(
+        default=[],
+        exclude_if=lambda documents: not documents,
+        description="Documents de la Séance (ordre du jour, procès-verbal…), titres masqués. Absent quand il n'y en "
+        "a pas : Lausanne et Yverdon n'en ont pas.",
+    )
 
 
 class Correction(Modele):
@@ -416,6 +655,12 @@ class LigneSeance(Modele):
     cle: CleElement = Field(description="`<conseil>/<jour>` : le fichier d'archive de la Séance.")
     date: DateSeance
     points: Annotated[int, Field(ge=0)] = Field(description="Nombre de points de l'ordre du jour.")
+    documents: list[DocumentObjet] = Field(
+        default=[],
+        exclude_if=lambda documents: not documents,
+        description="Les documents d'une Séance sans points, que sa ligne montre à la place du nombre de points. "
+        "Absent pour une Séance avec points ou sans documents.",
+    )
 
 
 class ListeSeances(Enveloppe):
@@ -509,6 +754,7 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "enveloppe": Enveloppe,
     "etat-sources": EtatSources,
     "import-conseils": ImportConseils,
+    "membres-conseil": MembresConseil,
     "objet": Objet,
     "seance": Seance,
     "liste-objets": ListeObjets,

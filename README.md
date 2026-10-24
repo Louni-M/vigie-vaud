@@ -153,14 +153,25 @@ Le même passage importe les conseils (ADR 0015) : chacun une fois par jour, au 
 depuis le jour de son dernier import réussi (`conseils/import.json`), et de nouveau au passage suivant si l'import a
 échoué. Quand aucun import d'un conseil n'a réussi depuis plus de 24 h (ou dès le premier échec d'un conseil qui n'a
 jamais été importé), une issue `import-conseils` « Import en échec : <nom de la source> » s'ouvre, puis est commentée et fermée au premier import réussi ; la source n'est pas
-mise en panne pour autant, seules les sondes en décident. Le rattrapage de tout l'historique suit le même chemin
-avec `--rattrapage`, en local sans rien pousser :
+mise en panne pour autant, seules les sondes en décident. Le rattrapage de tout l'historique d'OpenParlData suit le
+même chemin avec `--rattrapage`, sans toucher aux sites des communes ; le rattrapage ciblé des sites communaux, avec
+`--rattrapage-cible` suivi d'une plateforme (`i-web`) ou du n° OFS d'une commune scrapée, rouvre toutes leurs pages,
+sans plafond de requêtes, au même débit, sans relire OpenParlData ni les autres communes, et note son heure dans
+`conseils/import.json` (`rattrapages`). En local sans rien pousser :
 
 ```bash
 cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push --rattrapage
+cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-push --rattrapage-cible i-web
 ```
 
-ou dans le dépôt de données, par un lancement manuel du workflow « Cron » avec la case `rattrapage` cochée.
+ou dans le dépôt de données, par un lancement manuel du workflow « Cron » avec la case `rattrapage` cochée ou le
+champ `rattrapage_cible` rempli. Rattrapages et passages ordinaires partagent le même groupe `concurrency` : ils ne
+tournent jamais en même temps. Mais ce groupe ne garde qu'**une seule exécution en attente** : un rattrapage lancé
+pendant un passage attend sa fin, et si le passage planifié suivant (à :17 ou :47) arrive avant, il prend sa place
+dans la file et le rattrapage est annulé, sans autre trace que dans l'onglet Actions. On lance donc un rattrapage
+quand aucun passage ne tourne : quelques minutes après :17 ou :47, une fois le passage fini (hors du premier passage
+après 7 h à Lausanne, qui importe les sites et dure jusqu'à 45 minutes), puis on vérifie dans Actions qu'il a démarré
+et on le relance s'il a été annulé. Une fois lancé, c'est lui qui retient les passages planifiés jusqu'à sa fin.
 
 Les fichiers de lecture (`conseils/index.json`, `fil.json`, les listes par conseil et par commune) se reconstruisent
 seuls depuis l'archive, sans aucune requête à OpenParlData, après un changement de leur forme ou une réécriture à la

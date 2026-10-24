@@ -1,5 +1,6 @@
 // Badge de fraîcheur : de quand datent les données d'une source, ou pourquoi elles manquent. Un badge par source,
-// sans agrégat, sous le nom de chaque onglet et dans le volet de la couche (décisions de #2).
+// sans agrégat, sous le nom de chaque onglet et dans le volet de la couche (décisions de #2), sauf les sites des
+// communes, regroupés par plateforme dans le volet.
 import { SvelteMap } from 'svelte/reactivity';
 import { dateHeure, type EtatCouverture } from './couverture.js';
 import type { SorteFraicheur, Source } from './schema';
@@ -68,6 +69,22 @@ export function libelleBadge(
 		quand = `${PREFIXES[source.fraicheur]}${age(date, maintenant)}`;
 	}
 	return `${quand} · ${source.nom_court}`;
+}
+
+/**
+ * Libellé du badge des sites d'une plateforme, dans le volet de la couche : un seul badge pour toutes ses communes
+ * couvertes, qui donne le plus ancien de leurs derniers imports réussis (« importés il y a 45 min · 19 sites
+ * i-web »), ou combien ont déjà été importées (« importé il y a 45 min · 1 sur 19 sites i-web »). Le badge de chaque
+ * site reste sous l'onglet Conseil de sa commune.
+ */
+export function libelleBadgeSites(plateforme: string, imports: readonly (Date | null)[], maintenant: Date): string {
+	const total = imports.length;
+	const sites = `${total} site${total > 1 ? 's' : ''} ${plateforme}`;
+	const dates = imports.filter((d): d is Date => d != null);
+	if (dates.length === 0) return `dernier import inconnu · ${sites}`;
+	const plusAncien = new Date(Math.min(...dates.map((d) => d.getTime())));
+	const quand = `importé${dates.length > 1 ? 's' : ''} ${age(plusAncien, maintenant)}`;
+	return dates.length === total ? `${quand} · ${sites}` : `${quand} · ${dates.length} sur ${sites}`;
 }
 
 /** La cause d'un échec, dans le message d'échec. */

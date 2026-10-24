@@ -1,5 +1,5 @@
 import type { Couche } from '#lib/registre/types.js';
-import { SOURCES, listerConseils } from '#lib/sources.js';
+import { SOURCES } from '#lib/sources.js';
 import {
 	FICHE_GRAND_CONSEIL,
 	TYPE_OBJETS,
@@ -10,6 +10,7 @@ import {
 } from './cles.js';
 import { reconnaitreNumero } from './numeros.js';
 import { resumeConseils } from './resume.js';
+import { nonCouvertConseils, sourcesDeLaCouche } from './source.js';
 
 /** Sarcelle : la couleur de la couche, de son marqueur et des pastilles de ses Objets et Séances. */
 export const COULEUR_CONSEILS = '#0b7285';
@@ -27,8 +28,7 @@ export const coucheConseils: Couche<undefined> = {
 	id: 'conseils',
 	nom: 'Conseils',
 	nomOnglet: 'Conseil',
-	// Toutes les sources qui ont un bloc `conseil` : ajouter un conseil, c'est ajouter son entrée à `sources.json`.
-	sources: listerConseils(SOURCES).map((c) => c.source.id),
+	sources: sourcesDeLaCouche(),
 	permanente: false,
 	activeParDefaut: true,
 	icone: { signe: 'C', couleur: COULEUR_CONSEILS },
@@ -57,11 +57,11 @@ export const coucheConseils: Couche<undefined> = {
 			element: cle,
 			libelle: `Objet ${numero} · ${nom}`
 		})),
-	introuvable: messageIntrouvable,
+	introuvable: (cle) => messageIntrouvable(cle),
 	titre: titreElement,
 	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
-	nonCouvert: (commune) => `OpenParlData ne donne pas le conseil communal de ${commune.nom}.`,
+	nonCouvert: (commune) => nonCouvertConseils(commune),
 	// Les Objets déposés et les Séances, lus dans le seul `conseils/fil.json` ; sans position, une entrée est dans
 	// la zone par les hôtels de ville de ses communes, et sans commune elle s'ouvre dans la fiche du Grand Conseil.
 	fil: {

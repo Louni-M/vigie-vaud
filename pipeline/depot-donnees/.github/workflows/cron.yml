@@ -9,16 +9,24 @@ on:
     # Toutes les 30 minutes, en UTC, à des minutes décalées du début de l'heure. Les conseils ne s'importent qu'au
     # premier passage après 7 h à Lausanne.
     - cron: '17,47 * * * *'
-  # Un lancement manuel fait un passage ordinaire, ou, avec `rattrapage`, importe tous les conseils depuis tout
-  # l'historique.
+  # Un lancement manuel fait un passage ordinaire ; avec `rattrapage`, il importe tous les conseils d'OpenParlData
+  # depuis tout l'historique, sans toucher aux sites des communes ; avec `rattrapage_cible`, il relit tout le site des
+  # communes d'une plateforme (`i-web`) ou d'une seule commune scrapée (son n° OFS), sans relire OpenParlData.
   workflow_dispatch:
     inputs:
       rattrapage:
-        description: Rattrapage de tout l'historique des conseils
+        description: Rattrapage de tout l'historique des conseils d'OpenParlData
         type: boolean
         default: false
+      rattrapage_cible:
+        description: Rattrapage ciblé des sites communaux, plateforme (i-web) ou n° OFS ; vide sinon
+        type: string
+        default: ''
 
-# Un passage attend la fin du précédent, sans l'annuler (un rattrapage retient donc les passages planifiés).
+# Un passage attend la fin du précédent, sans l'annuler : rattrapages et passages ordinaires, dans le même groupe, ne
+# tournent jamais en même temps (un rattrapage retient donc les passages planifiés). Le groupe ne garde qu'une
+# exécution en attente : un rattrapage lancé pendant un passage peut être remplacé par le passage planifié suivant
+# (voir « Cron et dépôt de données » dans la README du dépôt principal, pour savoir quand le lancer).
 concurrency:
   group: cron
   cancel-in-progress: false
@@ -35,3 +43,5 @@ jobs:
     with:
       # `inputs.rattrapage` est vide pour un passage planifié, qui n'est donc pas un rattrapage.
       rattrapage: ${{ inputs.rattrapage == true }}
+      # Vide aussi pour un passage planifié.
+      rattrapage_cible: ${{ inputs.rattrapage_cible || '' }}

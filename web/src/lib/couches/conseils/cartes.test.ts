@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carteConseil, noteAutresCommunes } from './cartes.js';
+import { carteConseil, lignesConseils, noteAutresCommunes } from './cartes.js';
 import { commune } from '#tests/faux-canton.js';
 import { conseilLausanne, conseilYverdon, grandConseil, ligneObjet } from '#tests/faux-conseils.js';
 
@@ -36,6 +36,11 @@ describe('carte d’un conseil couvert, dans le volet Conseils', () => {
 		});
 	});
 
+	it('compte les préavis récents d’une commune scrapée en séances et préavis', () => {
+		const conseil = conseilLausanne({ donne: ['preavis', 'seances'], recents: [ligneObjet()] });
+		expect(carteConseil(conseil, COMMUNES)).toMatchObject({ donne: 'séances et préavis', recents: '1 objet récent' });
+	});
+
 	it('dit l’absence d’Objet récent et de Séance connue', () => {
 		const conseil = conseilLausanne({ recents: [], prochaine_seance: null, derniere_seance: null });
 		expect(carteConseil(conseil, COMMUNES)).toMatchObject({ recents: 'aucun objet récent', seance: null });
@@ -54,5 +59,31 @@ describe('phrase sur les communes grisées, sous les cartes', () => {
 		expect(noteAutresCommunes(298, true)).toBe(
 			'Les 298 autres communes : pas de conseil couvert, grisées sur la carte par « Voir sur la carte ». Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
 		);
+	});
+});
+
+describe('lignes des conseils communaux, dans le volet Conseils', () => {
+	const conseils = [grandConseil(), conseilYverdon(), conseilLausanne()];
+
+	it('donne une ligne par conseil communal, par nom de commune, sans le Grand Conseil', () => {
+		expect(lignesConseils(conseils, COMMUNES, null)).toEqual([
+			{
+				cle: conseilLausanne().cle,
+				commune: 'Lausanne',
+				slug: 'lausanne',
+				detail: 'objets et séances · prochaine séance mar. 20 oct.'
+			},
+			{
+				cle: conseilYverdon().cle,
+				commune: 'Yverdon-les-Bains',
+				slug: 'yverdon-les-bains',
+				detail: 'séances seulement · dernière séance jeu. 1 oct.'
+			}
+		]);
+	});
+
+	it('ne garde que les communes dont l’hôtel de ville est dans la zone affichée', () => {
+		const autourDeLausanne: [number, number, number, number] = [6.5, 46.45, 6.8, 46.65];
+		expect(lignesConseils(conseils, COMMUNES, autourDeLausanne).map((l) => l.commune)).toEqual(['Lausanne']);
 	});
 });

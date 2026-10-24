@@ -10,6 +10,7 @@ export type DocumentCommun =
 	| IndexConseils
 	| ListeObjets
 	| ListeSeances
+	| MembresConseil
 	| Objet
 	| RattachementsCommune
 	| Retraits
@@ -26,7 +27,7 @@ export type Horodatage = string;
 export type CleElement = string;
 export type CleConseil = string;
 export type SorteElement = 'objet' | 'seance';
-export type DonneeConseil = 'objets' | 'seances';
+export type DonneeConseil = 'objets' | 'preavis' | 'seances';
 export type DateSeance = string;
 export type SorteContributeur = 'personne' | 'groupe';
 export type Lien = string;
@@ -38,7 +39,8 @@ export type Lien = string;
 export type Retraits = Retrait[];
 export type VoieAcces = 'direct' | 'cron' | 'worker' | 'preparee';
 export type SorteFraicheur = 'donnee' | 'requete' | 'millesime' | 'import';
-export type ModeCouverture = 'api' | 'scrape';
+export type ModeCouverture = 'api' | 'scrape' | 'non_couvert';
+export type RaisonNonCouvert = 'preavis_seuls' | 'rien_en_ligne' | 'demande_commune' | 'refus_robots' | 'nouveau_site';
 
 /**
  * Une correction de rattachement écrite à la main dans `corrections.json` (ADR 0016).
@@ -87,10 +89,16 @@ export interface EtatSources {
 	 */
 	genere: string;
 	/**
-	 * Seules les sources qui ont un bloc `sonde` y figurent.
+	 * Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import.
 	 */
 	sources: {
 		[k: string]: EtatSource;
+	};
+	/**
+	 * Les réseaux (/24) bloqués pour le robot communal et pas encore testés de nouveau ; absent quand il n'y en a aucun.
+	 */
+	reseaux?: {
+		[k: string]: EtatReseau;
 	};
 }
 /**
@@ -114,9 +122,27 @@ export interface EtatSource {
 	 */
 	echecs_consecutifs: number;
 	/**
-	 * Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…).
+	 * Cause courte du dernier échec (« HTTP 503 », « délai dépassé », « marqueur absent »…).
 	 */
 	motif: string | null;
+}
+/**
+ * Un réseau que le robot communal a cessé de lire après une 429, une 503, une connexion refusée ou un délai
+ * dépassé. Au passage suivant (ou après `jusqu_a`), une seule sonde le teste avant les autres.
+ */
+export interface EtatReseau {
+	/**
+	 * Heure du blocage.
+	 */
+	depuis: string;
+	/**
+	 * Fin du blocage demandée par `Retry-After` ; `null` : la fin du passage du blocage.
+	 */
+	jusqu_a: Horodatage | null;
+	/**
+	 * Ce qui a bloqué le réseau (« HTTP 429 », « délai dépassé »…).
+	 */
+	motif: string;
 }
 /**
  * `conseils/fil.json` : les Objets et les Séances de tous les conseils datés des 21 derniers jours (heure de
@@ -179,6 +205,18 @@ export interface ImportConseils {
 	 * Par clé de conseil (`body_key` en minuscules : `vd`, `5586`…), l'heure du dernier import réussi. Un conseil jamais importé n'y figure pas.
 	 */
 	conseils: {
+		[k: string]: Horodatage;
+	};
+	/**
+	 * Par clé de conseil scrapé, l'heure de son premier import réussi : l'issue `a-verifier` compte 9 mois depuis ce jour tant que l'archive du conseil n'a aucune Séance. Absent quand il n'y en a pas : les conseils d'OpenParlData n'y figurent pas.
+	 */
+	premiers?: {
+		[k: string]: Horodatage;
+	};
+	/**
+	 * Par clé de conseil, l'heure de son dernier rattrapage réussi (relecture de tout l'historique, lancée à la main : rattrapage ciblé d'une plateforme ou d'une commune scrapée, ou rattrapage d'OpenParlData). Un conseil jamais rattrapé n'y figure pas ; absent quand il n'y en a aucun.
+	 */
+	rattrapages?: {
 		[k: string]: Horodatage;
 	};
 }
@@ -349,6 +387,45 @@ export interface LigneSeance {
 	 * Nombre de points de l'ordre du jour.
 	 */
 	points: number;
+	/**
+	 * Les documents d'une Séance sans points, que sa ligne montre à la place du nombre de points. Absent pour une Séance avec points ou sans documents.
+	 */
+	documents?: DocumentObjet[];
+}
+export interface DocumentObjet {
+	/**
+	 * Nom du document, sinon sa catégorie.
+	 */
+	titre: string | null;
+	date: string | null;
+	/**
+	 * Le document chez la source (PDF, page ou vidéo).
+	 */
+	lien: string;
+}
+/**
+ * `conseils/<conseil>/membres.json` : les élu·e·s connu·e·s d'un conseil scrapé, que le masquage épargne
+ * (ADR 0007) : vu·e·s sur la page des membres du conseil ou comme contributeur·rice·s d'un Objet autre qu'une
+ * pétition. La liste ne fait que s'allonger : un nom qui disparaît de la page y reste. Publique, en clair, sans
+ * limite de durée. Les conseils d'OpenParlData n'en ont pas : leurs élu·e·s connu·e·s sont tiré·e·s de l'archive.
+ */
+export interface MembresConseil {
+	/**
+	 * Version 1.
+	 */
+	version: 1;
+	/**
+	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
+	 */
+	genere: string;
+	/**
+	 * Le conseil (`body_key` en minuscules : le n° OFS de la commune).
+	 */
+	conseil: string;
+	/**
+	 * Noms complets, « Prénom Nom », triés sans tenir compte des accents ni de la casse.
+	 */
+	membres: string[];
 }
 /**
  * `conseils/<conseil>/objets/<numéro>.json` : un Objet d'un conseil, normalisé depuis OpenParlData. Sa clé est
@@ -364,9 +441,9 @@ export interface Objet {
 	 */
 	genere: string;
 	/**
-	 * Identifiant de l'Objet dans OpenParlData.
+	 * Identifiant de l'Objet dans OpenParlData ; `null` pour un Objet scrapé.
 	 */
-	id: number;
+	id: number | null;
 	/**
 	 * Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).
 	 */
@@ -421,17 +498,6 @@ export interface Etape {
 	 */
 	libelle: string;
 }
-export interface DocumentObjet {
-	/**
-	 * Nom du document, sinon sa catégorie.
-	 */
-	titre: string | null;
-	date: string | null;
-	/**
-	 * Le document chez la source (PDF, page ou vidéo).
-	 */
-	lien: string;
-}
 /**
  * `conseils/communes/<ofs>.json` (« Au Grand Conseil ») : les Objets du Grand Conseil rattachés à la commune,
  * par date de dernière étape décroissante. Écrit seulement s'il y en a au moins un.
@@ -484,9 +550,9 @@ export interface Seance {
 	 */
 	genere: string;
 	/**
-	 * Identifiant de la Séance dans OpenParlData.
+	 * Identifiant de la Séance dans OpenParlData ; `null` pour une Séance scrapée.
 	 */
-	id: number;
+	id: number | null;
 	/**
 	 * Jour, heure locale comprise quand la source la donne (`2026-10-01T20:00`).
 	 */
@@ -497,6 +563,10 @@ export interface Seance {
 	nom: string;
 	lien: Lien | null;
 	ordre_du_jour: PointOrdreDuJour[];
+	/**
+	 * Documents de la Séance (ordre du jour, procès-verbal…), titres masqués. Absent quand il n'y en a pas : Lausanne et Yverdon n'en ont pas.
+	 */
+	documents?: DocumentObjet[];
 }
 export interface PointOrdreDuJour {
 	/**
@@ -522,7 +592,63 @@ export interface PointOrdreDuJour {
  */
 export interface FichierSources {
 	$schema?: string | null;
+	/**
+	 * Les plateformes retenues, que citent les blocs `site` des sources communales.
+	 */
+	plateformes?: Plateforme[];
+	/**
+	 * Les réseaux ralentis à la main pour le robot communal.
+	 */
+	reseaux?: ReseauRalenti[];
 	sources: Source[];
+}
+/**
+ * Une plateforme retenue : le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes.
+ */
+export interface Plateforme {
+	/**
+	 * Identifiant cité par le bloc `site` des sources (`i-web`).
+	 */
+	id: string;
+	/**
+	 * Nom affiché par la page Couverture et l'À propos.
+	 */
+	nom: string;
+	editeur: string;
+	/**
+	 * @minItems 1
+	 */
+	variantes: [Variante, ...Variante[]];
+}
+export interface Variante {
+	/**
+	 * Identifiant de la variante dans sa plateforme (`seances`).
+	 */
+	id: string;
+	/**
+	 * Marqueur que la sonde cherche sur la page de liste des Séances d'une commune.
+	 */
+	marqueur: string;
+	/**
+	 * Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`["seances"]` : séances seulement ; `["preavis", "seances"]` : séances et préavis).
+	 *
+	 * @minItems 1
+	 */
+	niveaux: [[DonneeConseil, ...DonneeConseil[]], ...[DonneeConseil, ...DonneeConseil[]][]];
+}
+/**
+ * Un réseau que le robot communal lit plus lentement que 5 s par requête : un ralentissement décidé à la main,
+ * après un blocage. Rien ne s'adapte tout seul.
+ */
+export interface ReseauRalenti {
+	/**
+	 * Le /24 (IPv6 : /64) des sites concernés, « 195.65.10.0/24 ».
+	 */
+	reseau: string;
+	/**
+	 * Secondes, au moins, entre deux requêtes vers ce réseau (5 s ailleurs, ou le `Crawl-delay` d'un site s'il est plus grand).
+	 */
+	intervalle: number;
 }
 export interface Source {
 	/**
@@ -553,6 +679,10 @@ export interface Source {
 	 * Le conseil que donne la source, importé par le cron.
 	 */
 	conseil?: Conseil | null;
+	/**
+	 * Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData. Une commune non couverte d'une plateforme retenue y déclare sa plateforme.
+	 */
+	site?: Site | null;
 }
 export interface Attribution {
 	/**
@@ -564,10 +694,14 @@ export interface Attribution {
 }
 export interface CouvertureDeclaree {
 	/**
-	 * « canton » (les 300 communes) ou la liste des n° OFS des communes couvertes.
+	 * « canton » (les 300 communes) ou la liste des n° OFS des communes couvertes ; en `non_couvert`, la commune d'une plateforme retenue que Vigie Vaud ne lit pas.
 	 */
 	communes: 'canton' | [NumeroOfs, ...NumeroOfs[]];
 	mode: ModeCouverture;
+	/**
+	 * Pourquoi une commune d'une plateforme retenue n'est pas couverte : obligatoire en `non_couvert`, interdite ailleurs. Les phrases de la Couverture et de l'onglet ne s'écrivent que côté site.
+	 */
+	raison?: RaisonNonCouvert | null;
 }
 /**
  * Requête de vérification envoyée par le cron, sans conserver de données.
@@ -595,7 +729,8 @@ export interface Sonde {
 	jamais_vide?: boolean;
 }
 /**
- * Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc.
+ * Un conseil importé par le cron : exposé par OpenParlData, ou lu sur le site de sa commune quand la source a un
+ * bloc `site`. Le cron importe chaque source qui a ce bloc.
  */
 export interface Conseil {
 	/**
@@ -603,13 +738,43 @@ export interface Conseil {
 	 */
 	body_key: string;
 	/**
-	 * Ce que le conseil donne : ses Objets, ses Séances, ou les deux.
+	 * Ce que le conseil donne : ses Objets, ses Séances, ou les deux ; `preavis` : ses préavis seulement, parmi ses Objets. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import : `objets` + `seances` (« objets et séances »), `preavis` + `seances` (« séances et préavis ») ou `seances` (« séances seulement »).
 	 *
 	 * @minItems 1
 	 */
 	donne: [DonneeConseil, ...DonneeConseil[]];
 	/**
+	 * Page du conseil sur le site de sa commune, vers laquelle renvoie la note de niveau d'un conseil qui ne donne pas tout et n'a pas de bloc `site` (Yverdon) ; une commune scrapée renvoie à `site.seances`.
+	 */
+	page?: Lien | null;
+	/**
 	 * `group_id` des Séances à importer : celui du Grand Conseil écarte les Séances du Conseil d'État.
 	 */
 	groupe?: number | null;
+}
+/**
+ * Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.
+ * Une commune non couverte d'une plateforme retenue n'y déclare que sa plateforme.
+ */
+export interface Site {
+	/**
+	 * Identifiant de la plateforme, déclarée dans `plateformes`.
+	 */
+	plateforme: string;
+	/**
+	 * Identifiant de la variante, déclarée dans sa plateforme ; obligatoire avec un bloc `conseil`.
+	 */
+	variante?: string | null;
+	/**
+	 * Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée. Obligatoire avec un bloc `conseil`.
+	 */
+	seances?: Lien | null;
+	/**
+	 * Page de liste des Objets ou des préavis, selon la variante.
+	 */
+	objets?: Lien | null;
+	/**
+	 * Page des membres du conseil, en HTML ; absente si le site n'en a pas.
+	 */
+	membres?: Lien | null;
 }

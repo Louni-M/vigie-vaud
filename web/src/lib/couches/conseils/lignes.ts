@@ -1,7 +1,7 @@
 // Ce que montrent les lignes d'Objet et de Séance et l'en-tête de séance de l'onglet Conseil, tiré des fichiers de
 // lecture sans autre requête. Les dates des conseils sont des jours (et heures) de Lausanne, sans fuseau : elles
 // sont formatées telles quelles, en UTC, pour ne jamais glisser d'un jour.
-import type { ConseilIndexe, LigneObjet, LigneSeance, PointOrdreDuJour } from '#lib/schema.js';
+import type { ConseilIndexe, DocumentObjet, LigneObjet, LigneSeance, PointOrdreDuJour, Seance } from '#lib/schema.js';
 
 const jourLong = new Intl.DateTimeFormat('fr-CH', {
 	weekday: 'long',
@@ -77,6 +77,40 @@ export function teteSeance(conseil: ConseilIndexe): { cle: string; prochaine: bo
 	if (conseil.prochaine_seance) return { cle: conseil.prochaine_seance, prochaine: true };
 	if (conseil.derniere_seance) return { cle: conseil.derniere_seance, prochaine: false };
 	return null;
+}
+
+/** Un document en lien : son titre, sinon « Document » (comme dans la fiche d'un Objet). */
+export interface LienDocument {
+	texte: string;
+	lien: string;
+}
+
+const enLiens = (documents: readonly DocumentObjet[]): LienDocument[] =>
+	documents.map((d) => ({ texte: d.titre ?? 'Document', lien: d.lien }));
+
+/**
+ * Ce que la ligne d'une Séance montre après sa date : son nombre de points (« 1 point », « 12 points »), ou, pour
+ * une Séance sans points qui a des documents (« ordre du jour, procès-verbal »), ces documents en lien à la place.
+ */
+export function detailSeance(ligne: LigneSeance): { points: string } | { documents: LienDocument[] } {
+	if (ligne.points === 0 && ligne.documents?.length) return { documents: enLiens(ligne.documents) };
+	return { points: ligne.points === 1 ? '1 point' : `${ligne.points} points` };
+}
+
+/** Points de l'ordre du jour montrés dans l'en-tête de séance. */
+export const POINTS_TETE = 5;
+
+/**
+ * Ce que l'en-tête de séance montre de la Séance : les 5 premiers points de son ordre du jour et leur nombre ;
+ * sans points, ses documents en lien ; `null` sans l'un ni l'autre (l'ordre du jour n'est pas encore publié).
+ */
+export function contenuTete(
+	seance: Seance
+): { points: PointOrdreDuJour[]; total: number } | { documents: LienDocument[] } | null {
+	if (seance.ordre_du_jour.length) {
+		return { points: seance.ordre_du_jour.slice(0, POINTS_TETE), total: seance.ordre_du_jour.length };
+	}
+	return seance.documents?.length ? { documents: enLiens(seance.documents) } : null;
 }
 
 /** Les Séances d'avant `aujourdhui` (AAAA-MM-JJ, à Lausanne), dans l'ordre de la liste : la plus récente d'abord. */

@@ -6,6 +6,9 @@ import type { Source } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
 import type { CoucheInscrite } from './types.js';
 import { commune } from '#tests/faux-canton.js';
+import { avecSources, sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
+import { libelleBadge } from '#lib/fraicheur.js';
+import { dernierImport } from '#lib/imports-conseils.js';
 
 const LAUSANNE = commune(5586, 'Lausanne', [6.58, 46.5, 6.72, 46.6]);
 const BUSSIGNY = commune(5624, 'Bussigny', [6.53, 46.54, 6.57, 46.57]);
@@ -41,6 +44,27 @@ describe('badges sous le nom d’un onglet', () => {
 		expect(noms(couche, 5586, sources)).toEqual(['b']);
 	});
 
+	it('dans une commune scrapée, le site de la commune, importé comme un conseil d’OpenParlData', () => {
+		const site = sourceSite();
+		const sources = avecSources(SOURCES, site);
+		const couche = { ...coucheConseils, sources: [...new Set([...coucheConseils.sources, site.id])] };
+		const imports = { version: 1 as const, genere: '2026-10-23T05:17:00Z', conseils: { '5643': '2026-10-23T05:17:00Z' } };
+		const maintenant = new Date('2026-10-23T11:30:00Z');
+
+		const badges = sourcesDeLOnglet(couche, sources, 5643).map((s) =>
+			libelleBadge(s, { derniere: dernierImport(imports, s), erreur: null }, maintenant)
+		);
+
+		expect(badges).toEqual(['importé il y a 6 h · Site de Préverenges', 'dernier import inconnu · Grand Conseil']);
+	});
+
+	it('dans une commune non couverte, pas de badge pour la source qui la déclare non couverte', () => {
+		const nonCouverte = sourceNonCouverte();
+		const couche = { ...coucheConseils, sources: [...new Set([...coucheConseils.sources, nonCouverte.id])] };
+
+		expect(noms(couche, 5568, avecSources(SOURCES, nonCouverte))).toEqual(['Grand Conseil']);
+	});
+
 	it('dans une fiche propre, seulement les sources qui portent sur tout le canton', () => {
 		expect(noms(coucheConseils, null)).toEqual(['Grand Conseil']);
 		expect(noms(couchePermis, null)).toEqual(['CAMAC']);
@@ -48,14 +72,31 @@ describe('badges sous le nom d’un onglet', () => {
 });
 
 describe('« Non couvert » en tête de l’onglet', () => {
-	it('dit ce qui manque, dans les mots de la couche', () => {
-		expect(messageNonCouvert(coucheConseils, BUSSIGNY)).toBe(
-			'OpenParlData ne donne pas le conseil communal de Bussigny.'
-		);
+	it('dit ce qui manque, dans les mots de la couche, sans lien', () => {
+		const couche = { ...couchePermis, nonCouvert: () => 'la commune ne publie pas ses permis.' };
+
+		expect(messageNonCouvert(couche, BUSSIGNY)).toEqual({ texte: 'la commune ne publie pas ses permis.' });
+	});
+
+	it('avec un lien, quand la couche en donne un', () => {
+		const couche = {
+			...couchePermis,
+			nonCouvert: () => ({
+				texte: 'la commune publie ses permis sur son site.',
+				lien: { texte: 'Les permis sur le site de la commune ›', url: 'https://www.exemple-vd.ch/permis' }
+			})
+		};
+
+		expect(messageNonCouvert(couche, BUSSIGNY)).toEqual({
+			texte: 'la commune publie ses permis sur son site.',
+			lien: { texte: 'Les permis sur le site de la commune ›', url: 'https://www.exemple-vd.ch/permis' }
+		});
 	});
 
 	it('sinon, que la couche n’a pas de source pour la commune', () => {
-		expect(messageNonCouvert(couchePermis, BUSSIGNY)).toBe('la couche Permis n’a pas de source pour Bussigny.');
+		expect(messageNonCouvert(couchePermis, BUSSIGNY)).toEqual({
+			texte: 'la couche Permis n’a pas de source pour Bussigny.'
+		});
 	});
 });
 

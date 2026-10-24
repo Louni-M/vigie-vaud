@@ -187,8 +187,15 @@
       "description": "Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z)."
     },
     "id": {
-      "description": "Identifiant de l'Objet dans OpenParlData.",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Identifiant de l'Objet dans OpenParlData ; `null` pour un Objet scrapé."
     },
     "numero": {
       "description": "Numéro que lui donne le conseil (`26_INT_140`, `POS25/115`).",

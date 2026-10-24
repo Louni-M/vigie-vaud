@@ -1,8 +1,8 @@
 // Couverture déduite (décisions de #10) : il n'existe pas de fichier Couverture. Le site la déduit de la
 // Couverture déclarée dans `sources.json`, de l'état des sources écrit par le cron et de l'heure courante.
 import type { CoucheInscrite } from './registre/types.js';
-import type { EtatSource, EtatSources, Source } from './schema.js';
-import { libelleDonne } from './sources.js';
+import type { EtatSource, EtatSources, Plateforme, RaisonNonCouvert, Source } from './schema.js';
+import { libelleDonne, niveauDe, nomDePlateforme } from './sources.js';
 
 /** Mode d'une paire (source, commune), connu à la construction. */
 export type Mode = 'api' | 'scrape' | 'non_couvert';
@@ -16,13 +16,15 @@ export interface EntreeCouverture {
 	couches: readonly CoucheInscrite[];
 	/** Les communes actuelles (n° OFS). */
 	communes: readonly { bfs: number }[];
+	/** Les plateformes retenues (section `plateformes` de `sources.json`) : l'ordre et le nom de leurs fiches. */
+	plateformes?: readonly Plateforme[];
 	maintenant: Date;
 }
 
 /**
  * État d'une source, qui vaut pour toutes les communes qu'elle couvre :
  * - `surveillance_interrompue` : le cron n'est pas passé depuis plus de 2 h, l'état lu est périmé ;
- * - `non_surveillee` : la source n'a pas de bloc `sonde` ;
+ * - `non_surveillee` : la source n'est pas sondée (ni bloc `sonde`, ni site de commune avec son conseil) ;
  * - `inconnu` : l'état des sources est inaccessible, d'une version inconnue, ou ne cite pas la source.
  */
 export type EtatCouverture =
@@ -51,6 +53,32 @@ export interface SourceCouverte {
 	sonde: EtatSource | null;
 }
 
+/** Une commune d'une plateforme, dans la liste dépliable de sa fiche. */
+export interface CommunePlateforme {
+	/** Sa source communale (`site-<n° OFS>`) : le conseil, le niveau et le lien vers le site (attribution). */
+	source: Source;
+	bfs: number;
+	/** `scrape` avec l'état de sa sonde, ou `non_couvert` (sans état) pour une commune non couverte. */
+	paire: Paire;
+	/** Ce que sa sonde a mesuré, s'il est lisible ; `null` pour une commune non couverte, qui n'est pas sondée. */
+	sonde: EtatSource | null;
+}
+
+/**
+ * La fiche d'une plateforme sur la page `/couverture` (« i-web : 26 communes couvertes, 1 en panne ») : elle tient
+ * lieu d'encart aux sources communales, une par commune, qui n'en ont pas.
+ */
+export interface FichePlateforme {
+	id: string;
+	nom: string;
+	/** Ses communes, dans l'ordre de `sources.json`, couvertes ou non. */
+	communes: CommunePlateforme[];
+	couvertes: number;
+	/** Communes couvertes en panne d'après l'état des sources (aucune tant qu'il est inconnu ou périmé). */
+	enPanne: number;
+	nonCouvertes: number;
+}
+
 /** Une colonne du tableau de la page `/couverture` : une couche qui a une Couverture. */
 export interface ColonneCouverture {
 	id: string;
@@ -66,13 +94,22 @@ export interface Couvrante {
 export interface Couverture {
 	/** Les couches qui ont une Couverture, dans l'ordre du registre : les colonnes du tableau des communes. */
 	colonnes: ColonneCouverture[];
-	/** Les sources de la couche qui couvrent la commune, dans l'ordre de la couche ; aucune : « Non couvert ». */
+	/**
+	 * Les sources de la couche qui couvrent la commune, dans l'ordre de la couche. Aucune : celles qui la déclarent
+	 * non couverte, avec leur raison (« Non couvert · préavis seuls »), sinon rien (« Non couvert »).
+	 */
 	cellule(couche: string, bfs: number): Couvrante[];
 	/**
 	 * Les sources des couches qui ont une Couverture, dans l'ordre du registre, chacune une fois, y compris celles
-	 * qui n'en ont pas elles-mêmes (le Grand Conseil, qui porte sur le canton).
+	 * qui n'en ont pas elles-mêmes (le Grand Conseil, qui porte sur le canton), sauf les sources communales : leurs
+	 * communes sont dans la fiche de leur plateforme.
 	 */
 	sources: SourceCouverte[];
+	/**
+	 * Une fiche par plateforme qui a au moins une commune déclarée, dans l'ordre de la section `plateformes` ; une
+	 * plateforme citée sans y être déclarée vient ensuite, sous son identifiant.
+	 */
+	plateformes: FichePlateforme[];
 	mode(source: string, bfs: number): Mode;
 	etat(source: string): EtatCouverture;
 	paire(source: string, bfs: number): Paire;
@@ -88,7 +125,30 @@ export interface Couverture {
 	grisees(volet: string | null): number[];
 }
 
-export function deduireCouverture({ sources, etat, couches, communes, maintenant }: EntreeCouverture): Couverture {
+/**
+ * La source déclare-t-elle la commune non couverte (mode `non_couvert`, avec sa raison) ? La Couverture et le message
+ * de non-couverture de la couche Conseils en dépendent.
+ */
+export const declareNonCouverte = (source: Pick<Source, 'couverture'> | undefined, bfs: number): boolean => {
+	const c = source?.couverture;
+	return c?.mode === 'non_couvert' && c.communes !== 'canton' && c.communes.includes(bfs);
+};
+
+/**
+ * Une source est sondée par le cron si elle a un bloc `sonde`, ou si c'est le site d'une commune qui a un conseil :
+ * sa sonde se déduit de sa page de liste et du marqueur de sa variante (une commune non couverte n'en a pas).
+ */
+export const estSondee = (source: Pick<Source, 'sonde' | 'site' | 'conseil'>): boolean =>
+	Boolean(source.sonde || (source.site && source.conseil));
+
+export function deduireCouverture({
+	sources,
+	etat,
+	couches,
+	communes,
+	plateformes = [],
+	maintenant
+}: EntreeCouverture): Couverture {
 	const parId = new Map(sources.map((s) => [s.id, s]));
 	const mode = (id: string, bfs: number): Mode => {
 		// Une source sans Couverture (le Grand Conseil, qui porte sur le canton) ne couvre aucune commune.
@@ -99,7 +159,8 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 	};
 	const interrompue = etat !== null && maintenant.getTime() - Date.parse(etat.genere) > INTERRUPTION;
 	const etatCouverture = (id: string): EtatCouverture => {
-		if (!parId.get(id)?.sonde) return { etat: 'non_surveillee' };
+		const source = parId.get(id);
+		if (!source || !estSondee(source)) return { etat: 'non_surveillee' };
 		if (!etat) return { etat: 'inconnu' };
 		if (interrompue) return { etat: 'surveillance_interrompue' };
 		const lu = etat.sources[id];
@@ -119,25 +180,61 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 		const m = mode(id, bfs);
 		return { mode: m, etat: m === 'non_couvert' ? null : etatCouverture(id) };
 	};
+	/** Ce que les sondes ont mesuré pour la source, s'il est lisible, même périmé. */
+	const lue = (source: Source) => (estSondee(source) && etat ? (etat.sources[source.id] ?? null) : null);
+	const fiches = (): FichePlateforme[] => {
+		const communales = sources.filter(
+			(s) => s.site && s.couverture && s.couverture.communes !== 'canton' && s.couverture.communes.length > 0
+		);
+		// Les plateformes déclarées, dans leur ordre, puis celles que citent des sources sans y être déclarées.
+		const ids = [...new Set([...plateformes.map((p) => p.id), ...communales.map((s) => s.site!.plateforme)])];
+		return ids.flatMap((id) => {
+			const nom = nomDePlateforme(id, plateformes);
+			const siennes = communales
+				.filter((s) => s.site!.plateforme === id)
+				.map((source) => {
+					const bfs = (source.couverture!.communes as number[])[0];
+					return { source, bfs, paire: paire(source.id, bfs), sonde: lue(source) };
+				});
+			if (siennes.length === 0) return [];
+			const couvertes = siennes.filter((c) => c.paire.mode !== 'non_couvert');
+			return [
+				{
+					id,
+					nom,
+					communes: siennes,
+					couvertes: couvertes.length,
+					enPanne: couvertes.filter((c) => c.paire.etat?.etat === 'en_panne').length,
+					nonCouvertes: siennes.length - couvertes.length
+				}
+			];
+		});
+	};
 	return {
 		colonnes: avecCouverture.map(({ id, nom }) => ({ id, nom })),
 		cellule(id, bfs) {
 			const couche = avecCouverture.find((c) => c.id === id);
-			return (couche ? couvrantes(couche) : [])
+			const sources = couche ? couvrantes(couche) : [];
+			const couvrent = sources
 				.map((s) => ({ source: parId.get(s)!, paire: paire(s, bfs) }))
 				.filter((c) => c.paire.mode !== 'non_couvert');
+			if (couvrent.length > 0) return couvrent;
+			return sources
+				.filter((s) => declareNonCouverte(parId.get(s), bfs))
+				.map((s) => ({ source: parId.get(s)!, paire: { mode: 'non_couvert' as const, etat: null } }));
 		},
-		sources: ids.map((id) => {
-			const source = parId.get(id)!;
-			const e = etatCouverture(id);
-			const lu = source.sonde && etat ? (etat.sources[id] ?? null) : null;
-			return {
+		// Une source communale est dans la fiche de sa plateforme, et une source qui ne déclare que des communes non
+		// couvertes ne couvre rien : ni l'une ni l'autre n'a d'encart.
+		sources: ids
+			.map((id) => parId.get(id)!)
+			.filter((source) => !source.site && source.couverture?.mode !== 'non_couvert')
+			.map((source) => ({
 				source,
-				communes: communes.filter((c) => mode(id, c.bfs) !== 'non_couvert').length,
-				etat: e,
-				sonde: lu
-			};
-		}),
+				communes: communes.filter((c) => mode(source.id, c.bfs) !== 'non_couvert').length,
+				etat: etatCouverture(source.id),
+				sonde: lue(source)
+			})),
+		plateformes: fiches(),
 		mode,
 		etat: etatCouverture,
 		paire,
@@ -147,6 +244,25 @@ export function deduireCouverture({ sources, etat, couches, communes, maintenant
 }
 
 const MODES: Record<Mode, string> = { api: 'API', scrape: 'Scrapé', non_couvert: 'Non couvert' };
+
+/**
+ * Les raisons d'une commune non couverte d'une plateforme retenue (`couverture.raison`), le seul endroit où leurs
+ * phrases s'écrivent : celle de la cellule de la Couverture (« Non couvert · préavis seuls ») et celle de l'onglet,
+ * qui suit « Non couvert : » (`de` : « de Sainte-Croix », « d’Aigle »).
+ */
+export const RAISONS: Record<RaisonNonCouvert, { cellule: string; onglet: (de: string) => string }> = {
+	preavis_seuls: { cellule: 'préavis seuls', onglet: (de) => `le site ${de} ne publie que des préavis.` },
+	rien_en_ligne: {
+		cellule: 'rien en ligne',
+		onglet: (de) => `le site ${de} ne publie pas les séances de son conseil.`
+	},
+	demande_commune: {
+		cellule: 'à la demande de la commune',
+		onglet: (de) => `la commune ${de} a demandé que son site ne soit plus lu.`
+	},
+	refus_robots: { cellule: 'le site refuse les robots', onglet: (de) => `le site ${de} refuse les robots.` },
+	nouveau_site: { cellule: 'nouveau site pas encore lu', onglet: (de) => `le nouveau site ${de} n’est pas encore lu.` }
+};
 
 const jour = new Intl.DateTimeFormat('fr-CH', { day: 'numeric', month: 'short', timeZone: 'Europe/Zurich' });
 const heure = new Intl.DateTimeFormat('fr-CH', { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Zurich' });
@@ -202,14 +318,34 @@ export function libelleLimites(source: Pick<Source, 'limites'>): string | null {
 
 /**
  * Libellé d'une cellule du tableau, une ligne par source qui couvre la commune : « API · disponible »,
- * « API · séances seulement · disponible » pour un conseil qui ne donne pas tout, ou « Non couvert ».
+ * « API · séances seulement · disponible » pour un conseil qui ne donne pas tout, « Non couvert · préavis seuls »
+ * pour une commune non couverte d'une plateforme retenue, ou « Non couvert ».
  * Tant que l'état des sources n'est pas chargé (`charge` faux), l'état est remplacé par « … ».
  */
 export function libelleCellule(couvrantes: readonly Couvrante[], charge = true): string[] {
 	if (couvrantes.length === 0) return [libelleMode('non_couvert')];
 	return couvrantes.map(({ source, paire }) => {
-		const donne = source.conseil ? libelleDonne(source.conseil) : null;
+		if (paire.mode === 'non_couvert') {
+			const raison = source.couverture?.raison;
+			return [libelleMode('non_couvert'), raison ? RAISONS[raison].cellule : null].filter(Boolean).join(' · ');
+		}
+		const complet = !source.conseil || niveauDe(source.conseil)?.complet;
+		const donne = source.conseil && !complet ? libelleDonne(source.conseil) : null;
 		const etat = paire.etat && (charge ? libelleEtat(paire.etat) : '…');
-		return [libelleMode(paire.mode), donne === 'objets et séances' ? null : donne, etat].filter(Boolean).join(' · ');
+		return [libelleMode(paire.mode), donne, etat].filter(Boolean).join(' · ');
 	});
+}
+
+const compte = (n: number, un: string, plusieurs: string) => `${n} ${n > 1 ? plusieurs : un}`;
+
+/**
+ * Le titre d'une fiche de plateforme : « i-web : 26 communes couvertes, 1 en panne », « aucune en panne », puis
+ * les communes non couvertes s'il y en a (« 2 non couvertes »). Tant que l'état des sources n'est pas chargé
+ * (`charge` faux), les pannes ne sont pas comptées.
+ */
+export function libellePlateforme(fiche: FichePlateforme, charge = true): string {
+	const parties = [compte(fiche.couvertes, 'commune couverte', 'communes couvertes')];
+	if (charge) parties.push(fiche.enPanne ? `${fiche.enPanne} en panne` : 'aucune en panne');
+	if (fiche.nonCouvertes) parties.push(compte(fiche.nonCouvertes, 'non couverte', 'non couvertes'));
+	return `${fiche.nom} : ${parties.join(', ')}`;
 }

@@ -27,7 +27,7 @@
     },
     "Conseil": {
       "additionalProperties": false,
-      "description": "Un conseil exposé par OpenParlData. Le cron importe chaque source qui a ce bloc.",
+      "description": "Un conseil importé par le cron : exposé par OpenParlData, ou lu sur le site de sa commune quand la source a un\nbloc `site`. Le cron importe chaque source qui a ce bloc.",
       "properties": {
         "body_key": {
           "description": "Clé du conseil dans OpenParlData : `VD` (Grand Conseil) ou le n° OFS de la commune. En minuscules, c'est la clé du conseil dans le dépôt de données.",
@@ -35,12 +35,24 @@
           "type": "string"
         },
         "donne": {
-          "description": "Ce que le conseil donne : ses Objets, ses Séances, ou les deux.",
+          "description": "Ce que le conseil donne : ses Objets, ses Séances, ou les deux ; `preavis` : ses préavis seulement, parmi ses Objets. Pour une commune scrapée, c'est son niveau, déclaré d'après sa variante, jamais déduit de l'import : `objets` + `seances` (« objets et séances »), `preavis` + `seances` (« séances et préavis ») ou `seances` (« séances seulement »).",
           "items": {
             "$ref": "#/$defs/DonneeConseil"
           },
           "minItems": 1,
           "type": "array"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page du conseil sur le site de sa commune, vers laquelle renvoie la note de niveau d'un conseil qui ne donne pas tout et n'a pas de bloc `site` (Yverdon) ; une commune scrapée renvoie à `site.seances`."
         },
         "groupe": {
           "anyOf": [
@@ -64,6 +76,20 @@
     },
     "CouvertureDeclaree": {
       "additionalProperties": false,
+      "else": {
+        "properties": {
+          "raison": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "non_couvert"
+          }
+        }
+      },
       "properties": {
         "communes": {
           "anyOf": [
@@ -79,24 +105,53 @@
               "type": "array"
             }
           ],
-          "description": "« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes."
+          "description": "« canton » (les 300 communes) ou la liste des n° OFS des communes couvertes ; en `non_couvert`, la commune d'une plateforme retenue que Vigie Vaud ne lit pas."
         },
         "mode": {
           "$ref": "#/$defs/ModeCouverture"
+        },
+        "raison": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RaisonNonCouvert"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pourquoi une commune d'une plateforme retenue n'est pas couverte : obligatoire en `non_couvert`, interdite ailleurs. Les phrases de la Couverture et de l'onglet ne s'écrivent que côté site."
         }
       },
       "required": [
         "communes",
         "mode"
       ],
+      "then": {
+        "properties": {
+          "raison": {
+            "not": {
+              "type": "null"
+            }
+          }
+        },
+        "required": [
+          "raison"
+        ]
+      },
       "title": "CouvertureDeclaree",
       "type": "object"
     },
     "DonneeConseil": {
       "enum": [
         "objets",
+        "preavis",
         "seances"
       ],
+      "type": "string"
+    },
+    "IdPlateforme": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "type": "string"
     },
     "IdSource": {
@@ -110,7 +165,8 @@
     "ModeCouverture": {
       "enum": [
         "api",
-        "scrape"
+        "scrape",
+        "non_couvert"
       ],
       "type": "string"
     },
@@ -118,6 +174,139 @@
       "maximum": 9999,
       "minimum": 1,
       "type": "integer"
+    },
+    "Plateforme": {
+      "additionalProperties": false,
+      "description": "Une plateforme retenue : le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/IdPlateforme",
+          "description": "Identifiant cité par le bloc `site` des sources (`i-web`)."
+        },
+        "nom": {
+          "description": "Nom affiché par la page Couverture et l'À propos.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "editeur": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "variantes": {
+          "items": {
+            "$ref": "#/$defs/Variante"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "nom",
+        "editeur",
+        "variantes"
+      ],
+      "title": "Plateforme",
+      "type": "object"
+    },
+    "RaisonNonCouvert": {
+      "enum": [
+        "preavis_seuls",
+        "rien_en_ligne",
+        "demande_commune",
+        "refus_robots",
+        "nouveau_site"
+      ],
+      "type": "string"
+    },
+    "Reseau": {
+      "pattern": "^[0-9a-f.:]+/(24|64)$",
+      "type": "string"
+    },
+    "ReseauRalenti": {
+      "additionalProperties": false,
+      "description": "Un réseau que le robot communal lit plus lentement que 5 s par requête : un ralentissement décidé à la main,\naprès un blocage. Rien ne s'adapte tout seul.",
+      "properties": {
+        "reseau": {
+          "$ref": "#/$defs/Reseau",
+          "description": "Le /24 (IPv6 : /64) des sites concernés, « 195.65.10.0/24 »."
+        },
+        "intervalle": {
+          "description": "Secondes, au moins, entre deux requêtes vers ce réseau (5 s ailleurs, ou le `Crawl-delay` d'un site s'il est plus grand).",
+          "exclusiveMinimum": 5,
+          "type": "number"
+        }
+      },
+      "required": [
+        "reseau",
+        "intervalle"
+      ],
+      "title": "ReseauRalenti",
+      "type": "object"
+    },
+    "Site": {
+      "additionalProperties": false,
+      "description": "Le site d'une commune scrapée : sa plateforme, sa variante et ses pages. Le cron le lit par le robot communal.\nUne commune non couverte d'une plateforme retenue n'y déclare que sa plateforme.",
+      "properties": {
+        "plateforme": {
+          "$ref": "#/$defs/IdPlateforme",
+          "description": "Identifiant de la plateforme, déclarée dans `plateformes`."
+        },
+        "variante": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Identifiant de la variante, déclarée dans sa plateforme ; obligatoire avec un bloc `conseil`."
+        },
+        "seances": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page de liste des Séances, relue en entier à chaque import ; c'est aussi la page sondée. Obligatoire avec un bloc `conseil`."
+        },
+        "objets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page de liste des Objets ou des préavis, selon la variante."
+        },
+        "membres": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Lien"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Page des membres du conseil, en HTML ; absente si le site n'en a pas."
+        }
+      },
+      "required": [
+        "plateforme"
+      ],
+      "title": "Site",
+      "type": "object"
     },
     "Sonde": {
       "additionalProperties": false,
@@ -170,6 +359,21 @@
     },
     "Source": {
       "additionalProperties": false,
+      "if": {
+        "properties": {
+          "couverture": {
+            "properties": {
+              "mode": {
+                "const": "non_couvert"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "couverture"
+        ]
+      },
       "properties": {
         "id": {
           "$ref": "#/$defs/IdSource",
@@ -241,6 +445,18 @@
           ],
           "default": null,
           "description": "Le conseil que donne la source, importé par le cron."
+        },
+        "site": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Site"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Le site d'une commune scrapée. Avec un bloc `conseil`, le cron lit le conseil sur ce site au lieu d'OpenParlData. Une commune non couverte d'une plateforme retenue y déclare sa plateforme."
         }
       },
       "required": [
@@ -251,7 +467,51 @@
         "voie_acces",
         "fraicheur"
       ],
+      "then": {
+        "properties": {
+          "conseil": {
+            "type": "null"
+          },
+          "sonde": {
+            "type": "null"
+          }
+        }
+      },
       "title": "Source",
+      "type": "object"
+    },
+    "Variante": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Identifiant de la variante dans sa plateforme (`seances`).",
+          "minLength": 1,
+          "type": "string"
+        },
+        "marqueur": {
+          "description": "Marqueur que la sonde cherche sur la page de liste des Séances d'une commune.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "niveaux": {
+          "description": "Les niveaux que la variante permet : chacun est un `conseil.donne` qu'une commune de cette variante peut déclarer (`[\"seances\"]` : séances seulement ; `[\"preavis\", \"seances\"]` : séances et préavis).",
+          "items": {
+            "items": {
+              "$ref": "#/$defs/DonneeConseil"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "marqueur",
+        "niveaux"
+      ],
+      "title": "Variante",
       "type": "object"
     },
     "VoieAcces": {
@@ -277,6 +537,22 @@
         }
       ],
       "default": null
+    },
+    "plateformes": {
+      "default": [],
+      "description": "Les plateformes retenues, que citent les blocs `site` des sources communales.",
+      "items": {
+        "$ref": "#/$defs/Plateforme"
+      },
+      "type": "array"
+    },
+    "reseaux": {
+      "default": [],
+      "description": "Les réseaux ralentis à la main pour le robot communal.",
+      "items": {
+        "$ref": "#/$defs/ReseauRalenti"
+      },
+      "type": "array"
     },
     "sources": {
       "items": {

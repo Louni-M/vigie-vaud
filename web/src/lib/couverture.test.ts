@@ -5,14 +5,16 @@ import {
 	libelleCommunes,
 	libelleEtat,
 	libelleLimites,
-	libellePaire
+	libellePaire,
+	libellePlateforme
 } from './couverture.js';
-import { chargerEtatSources, lienPannes, lireEtatSources } from './etat-sources.js';
+import { chargerEtatSources, lienIssuePlateforme, lienPannes, lireEtatSources } from './etat-sources.js';
 import type { CoucheInscrite } from './registre/types.js';
 import { COUCHES } from './registre/couches.js';
-import type { EtatSource, EtatSources, Source } from './schema.js';
-import { SOURCES } from './sources.js';
+import type { EtatSource, EtatSources, Plateforme, RaisonNonCouvert, Source } from './schema.js';
+import { PLATEFORMES, SOURCES } from './sources.js';
 import communesJ0 from '../../static/communes.json';
+import { avecSources, sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 
 const MAINTENANT = new Date('2026-10-12T14:30:00Z');
 const COMMUNES = [{ bfs: 5586 }, { bfs: 5590 }, { bfs: 5889 }];
@@ -237,7 +239,7 @@ describe('grisage de la carte', () => {
 		expect(c.grisees('conseils')).toEqual([5590]);
 	});
 
-	it('grise, avec les couches inscrites, toutes les communes sauf Lausanne et Yverdon au volet Conseils, et rien ailleurs', () => {
+	it('grise, avec les couches inscrites, toutes les communes sauf Lausanne, Yverdon et les 19 communes i-web couvertes au volet Conseils, et rien ailleurs', () => {
 		const c = deduireCouverture({
 			sources: SOURCES,
 			etat: etat({ 'camac-permis': panne, 'openparldata-5586': panne }),
@@ -247,9 +249,12 @@ describe('grisage de la carte', () => {
 		});
 		expect(communesJ0).toHaveLength(300);
 		const grisees = c.grisees('conseils');
-		expect(grisees).toHaveLength(298);
+		expect(grisees).toHaveLength(300 - 2 - 19);
 		expect(grisees).not.toContain(5586);
 		expect(grisees).not.toContain(5938);
+		expect(grisees).not.toContain(5643); // Préverenges, i-web
+		expect(grisees).toContain(5568); // Sainte-Croix, i-web non couverte
+		expect(grisees).toContain(5410); // Ormont-Dessous, i-web sans page des Séances
 		expect(grisees).toContain(5624); // Bussigny
 		expect(c.grisees('permis')).toEqual([]);
 		expect(c.grisees('routes')).toEqual([]);
@@ -279,12 +284,15 @@ describe('Couverture des conseils déclarés dans sources.json', () => {
 		expect(couvertes('openparldata-vd')).toEqual([]);
 	});
 
-	it('couvre Lausanne et Yverdon par une couche des trois conseils, et grise toutes les autres communes', () => {
-		expect(conseils.map((s) => s.id)).toEqual(['openparldata-vd', 'openparldata-5586', 'openparldata-5938']);
+	it('couvre Lausanne, Yverdon et les 19 communes i-web couvertes, et grise toutes les autres communes', () => {
+		expect(conseils.slice(0, 3).map((s) => s.id)).toEqual(['openparldata-vd', 'openparldata-5586', 'openparldata-5938']);
+		expect(conseils).toHaveLength(3 + 19);
 		expect(c.couvre('conseils', 5586)).toBe(true);
 		expect(c.couvre('conseils', 5938)).toBe(true);
+		expect(c.couvre('conseils', 5643)).toBe(true);
 		expect(c.couvre('conseils', 5590)).toBe(false);
-		expect(c.grisees('conseils')).toHaveLength(298);
+		expect(c.couvre('conseils', 5568)).toBe(false);
+		expect(c.grisees('conseils')).toHaveLength(300 - 2 - 19);
 	});
 });
 
@@ -307,6 +315,107 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 		expect(cellule('conseils', 5586)).toEqual(['API · disponible']);
 		expect(cellule('conseils', 5938)).toEqual(['API · séances seulement · disponible']);
 		expect(cellule('conseils', 5624)).toEqual(['Non couvert']);
+	});
+
+	describe('commune scrapée : son site est sondé par le cron, sans bloc sonde', () => {
+		const site = sourceSite();
+		const avecSite = (sources: Record<string, EtatSource>) =>
+			deduireCouverture({
+				sources: avecSources(SOURCES, site),
+				etat: etat(sources),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...new Set([...x.sources, site.id])] } : x)),
+				communes: communesJ0,
+				maintenant: MAINTENANT
+			});
+
+		it('donne « Scrapé · séances seulement · disponible » à une commune sondée avec succès', () => {
+			const d = avecSite({ ...tous, 'site-5643': disponible });
+			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual(['Scrapé · séances seulement · disponible']);
+		});
+
+		it('dit depuis quand une commune dont la sonde échoue est en panne', () => {
+			const panne: EtatSource = {
+				etat: 'en_panne',
+				depuis: '2026-10-12T05:17:00Z',
+				derniere_sonde: '2026-10-12T05:47:00Z',
+				dernier_succes: '2026-10-11T05:17:00Z',
+				echecs_consecutifs: 2,
+				motif: 'marqueur absent'
+			};
+			const d = avecSite({ ...tous, 'site-5643': panne });
+			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([
+				'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'
+			]);
+			// La fiche de sa plateforme, faute d'encart, dit ce que la sonde a mesuré.
+			expect(d.plateformes[0].communes.find((x) => x.source.id === 'site-5643')?.sonde).toEqual(panne);
+			// Une panne ne grise rien.
+			expect(d.couvre('conseils', 5643)).toBe(true);
+		});
+
+		it("dit l'état inconnu d'une commune pas encore sondée", () => {
+			const { 'site-5643': _, ...sansPreverenges } = tous;
+			expect(libelleCellule(avecSite(sansPreverenges).cellule('conseils', 5643))).toEqual([
+				'Scrapé · séances seulement · inconnu'
+			]);
+		});
+
+		it("ne surveille pas une source communale sans conseil (commune non couverte d'une plateforme retenue)", () => {
+			const d = deduireCouverture({
+				sources: [sourceSite({ conseil: null })],
+				etat: etat({}),
+				couches: [couche('conseils', ['site-5643'])],
+				communes: COMMUNES,
+				maintenant: MAINTENANT
+			});
+			expect(d.etat('site-5643')).toEqual({ etat: 'non_surveillee' });
+		});
+
+		it.each([
+			[['objets', 'seances'], 'Scrapé · disponible'],
+			[['preavis', 'seances'], 'Scrapé · séances et préavis · disponible']
+		] as const)('donne le niveau d’une commune scrapée seulement s’il manque quelque chose (%j)', (donne, cellule) => {
+			const niveau = sourceSite({ conseil: { body_key: '5643', donne: [...donne] } });
+			const d = deduireCouverture({
+				sources: avecSources(SOURCES, niveau),
+				etat: etat({ ...tous, 'site-5643': disponible }),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...new Set([...x.sources, niveau.id])] } : x)),
+				communes: communesJ0,
+				maintenant: MAINTENANT
+			});
+			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([cellule]);
+		});
+	});
+
+	describe('commune non couverte d’une plateforme retenue', () => {
+		const d = (raison: RaisonNonCouvert = 'preavis_seuls') => {
+			const nonCouverte = sourceNonCouverte(raison);
+			return deduireCouverture({
+				sources: avecSources(SOURCES, nonCouverte),
+				etat: etat(tous),
+				couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...new Set([...x.sources, nonCouverte.id])] } : x)),
+				communes: communesJ0,
+				maintenant: MAINTENANT
+			});
+		};
+
+		it.each([
+			['preavis_seuls', 'Non couvert · préavis seuls'],
+			['rien_en_ligne', 'Non couvert · rien en ligne'],
+			['demande_commune', 'Non couvert · à la demande de la commune'],
+			['refus_robots', 'Non couvert · le site refuse les robots'],
+			['nouveau_site', 'Non couvert · nouveau site pas encore lu']
+		] as const)('donne sa raison dans la cellule (%s), les autres restent « Non couvert »', (raison, libelle) => {
+			expect(libelleCellule(d(raison).cellule('conseils', 5568))).toEqual([libelle]);
+			expect(libelleCellule(d(raison).cellule('conseils', 5624))).toEqual(['Non couvert']);
+		});
+
+		it('ne couvre pas sa commune : elle est grisée au volet Conseils, et sans encart de source', () => {
+			const c = d();
+			expect(c.couvre('conseils', 5568)).toBe(false);
+			expect(c.grisees('conseils')).toContain(5568);
+			expect(c.grisees('conseils')).toHaveLength(300 - 2 - 19);
+			expect(c.sources.map((s) => s.source.id)).not.toContain('site-5568');
+		});
 	});
 
 	it('donne pour Permis la paire de la CAMAC partout', () => {
@@ -338,12 +447,27 @@ describe('encarts de la page Couverture : un par source', () => {
 	const encart = (id: string) => c.sources.find((s) => s.source.id === id)!;
 
 	it('a un encart par source des couches Permis, Conseils et Routes, Grand Conseil compris', () => {
+		// Les communes scrapées n'ont pas d'encart : elles sont dans la fiche de leur plateforme.
 		expect(c.sources.map((s) => s.source.id)).toEqual([
 			'camac-permis',
 			'openparldata-vd',
 			'openparldata-5586',
 			'openparldata-5938',
 			'dgmr-restrictions'
+		]);
+	});
+
+	it('a la fiche i-web des communes déclarées dans sources.json, couvertes et non couvertes', () => {
+		const d = deduireCouverture({
+			sources: SOURCES,
+			etat: null,
+			couches: COUCHES,
+			communes: communesJ0,
+			plateformes: PLATEFORMES,
+			maintenant: MAINTENANT
+		});
+		expect(d.plateformes.map((p) => libellePlateforme(p, false))).toEqual([
+			'i-web : 19 communes couvertes, 9 non couvertes'
 		]);
 	});
 
@@ -405,6 +529,98 @@ describe('source DGMR déclarée dans sources.json', () => {
 	});
 });
 
+describe('fiche par plateforme de la page Couverture', () => {
+	const IWEB: Plateforme = {
+		id: 'i-web',
+		nom: 'i-web',
+		editeur: 'Innovative Web AG',
+		variantes: [{ id: 'seances', marqueur: 'icmsTablePastSitzungen', niveaux: [['seances']] }]
+	};
+	const QUICKSITE: Plateforme = { ...IWEB, id: 'quicksite', nom: 'Quicksite', editeur: 'Quicksite AG' };
+	const preverenges = sourceSite();
+	const blonay = sourceSite({
+		id: 'site-5892',
+		nom: 'Conseil communal de Blonay - Saint-Légier (site de la commune)',
+		nom_court: 'Site de Blonay - Saint-Légier',
+		attribution: { ...preverenges.attribution, lien: 'https://www.blonay-saint-legier.ch/conseil-communal' },
+		couverture: { communes: [5892], mode: 'scrape' },
+		conseil: { body_key: '5892', donne: ['preavis', 'seances'] }
+	});
+	const sainteCroix = sourceNonCouverte('preavis_seuls');
+	const aigle = sourceSite({
+		id: 'site-5401',
+		nom_court: 'Site d’Aigle',
+		couverture: { communes: [5401], mode: 'scrape' },
+		conseil: { body_key: '5401', donne: ['seances'] },
+		site: { plateforme: 'quicksite', variante: 'seances', seances: 'https://www.aigle.ch/conseil' }
+	});
+	const panne: EtatSource = {
+		etat: 'en_panne',
+		depuis: '2026-10-12T05:17:00Z',
+		derniere_sonde: '2026-10-12T05:47:00Z',
+		dernier_succes: '2026-10-11T05:17:00Z',
+		echecs_consecutifs: 2,
+		motif: 'marqueur absent'
+	};
+	// Les sources réelles sans leurs communes scrapées, pour que la fiche ne compte que celles du test.
+	const reelles = SOURCES.filter((x) => !x.site);
+	const communes = (...s: Source[]) =>
+		deduireCouverture({
+			sources: [...reelles, ...s],
+			etat: etat(Object.fromEntries([...reelles.map((x) => [x.id, disponible]), ['site-5643', panne], ['site-5892', disponible]])),
+			couches: COUCHES.map((x) => (x.id === 'conseils' ? { ...x, sources: [...x.sources, ...s.map((y) => y.id)] } : x)),
+			communes: communesJ0,
+			plateformes: [IWEB, QUICKSITE],
+			maintenant: MAINTENANT
+		});
+	const c = communes(preverenges, blonay, sainteCroix, aigle);
+	const iweb = c.plateformes.find((p) => p.id === 'i-web')!;
+
+	it('a une fiche par plateforme, dans l’ordre de la section plateformes', () => {
+		expect(c.plateformes.map((p) => p.nom)).toEqual(['i-web', 'Quicksite']);
+	});
+
+	it('compte les communes couvertes, en panne et non couvertes : « i-web : 2 communes couvertes, 1 en panne »', () => {
+		expect(libellePlateforme(iweb)).toBe('i-web : 2 communes couvertes, 1 en panne, 1 non couverte');
+		expect(libellePlateforme(c.plateformes[1])).toBe('Quicksite : 1 commune couverte, aucune en panne');
+		// Tant que l'état des sources n'est pas chargé, la fiche ne compte pas les pannes.
+		expect(libellePlateforme(iweb, false)).toBe('i-web : 2 communes couvertes, 1 non couverte');
+	});
+
+	it('liste ses communes avec leur paire, leur dernière sonde et le lien vers leur site', () => {
+		expect(iweb.communes.map((x) => [x.source.id, x.bfs, libelleCellule([x])[0]])).toEqual([
+			['site-5643', 5643, 'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'],
+			['site-5892', 5892, 'Scrapé · séances et préavis · disponible'],
+			['site-5568', 5568, 'Non couvert · préavis seuls']
+		]);
+		expect(iweb.communes[0].sonde).toEqual(panne);
+		expect(iweb.communes[2].sonde).toBeNull();
+		expect(iweb.communes[1].source.attribution.lien).toBe('https://www.blonay-saint-legier.ch/conseil-communal');
+	});
+
+	it('mène à l’issue panne-source de la plateforme, par son nom, quand une commune est en panne', () => {
+		const url = new URL(lienIssuePlateforme(iweb)!);
+		expect(url.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : i-web"');
+		expect(lienIssuePlateforme(c.plateformes[1])).toBeNull();
+		const quicksite = new URL(lienPannes(aigle, [IWEB, QUICKSITE]));
+		expect(quicksite.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : Quicksite"');
+	});
+
+	it('remplace l’encart de chaque commune scrapée ; les sources OpenParlData gardent le leur', () => {
+		expect(c.sources.map((s) => s.source.id)).toEqual([
+			'camac-permis',
+			'openparldata-vd',
+			'openparldata-5586',
+			'openparldata-5938',
+			'dgmr-restrictions'
+		]);
+	});
+
+	it('n’a aucune fiche sans commune déclarée sur une plateforme', () => {
+		expect(communes().plateformes).toEqual([]);
+	});
+});
+
 describe("libellé d'une paire (source, commune)", () => {
 	it('suit les formats « API · disponible », « Scrapé · en panne depuis le … » et « Non couvert »', () => {
 		expect(libellePaire({ mode: 'api', etat: { etat: 'disponible' } })).toBe('API · disponible');
@@ -439,6 +655,11 @@ describe("chargement de l'état des sources", () => {
 		const url = new URL(lienPannes(source('camac', { communes: 'canton', mode: 'api' })));
 		expect(url.origin + url.pathname).toBe('https://github.com/Louni-M/vigie-vaud-donnees/issues');
 		expect(url.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : Source camac"');
+	});
+
+	it("mène à l'issue panne-source de sa plateforme pour une commune scrapée", () => {
+		const url = new URL(lienPannes(sourceSite()));
+		expect(url.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : i-web"');
 	});
 
 	it('donne null si le fichier est absent, illisible ou injoignable', async () => {

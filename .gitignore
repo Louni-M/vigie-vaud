@@ -19,3 +19,6 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Brouillons du script de préparation des sources (pipeline/preparation_sources.py), relus avant la PR.
+brouillon-sources-*.json

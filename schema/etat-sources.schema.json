@@ -1,6 +1,38 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "EtatReseau": {
+      "additionalProperties": false,
+      "description": "Un réseau que le robot communal a cessé de lire après une 429, une 503, une connexion refusée ou un délai\ndépassé. Au passage suivant (ou après `jusqu_a`), une seule sonde le teste avant les autres.",
+      "properties": {
+        "depuis": {
+          "$ref": "#/$defs/Horodatage",
+          "description": "Heure du blocage."
+        },
+        "jusqu_a": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Horodatage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Fin du blocage demandée par `Retry-After` ; `null` : la fin du passage du blocage."
+        },
+        "motif": {
+          "description": "Ce qui a bloqué le réseau (« HTTP 429 », « délai dépassé »…).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "depuis",
+        "jusqu_a",
+        "motif"
+      ],
+      "title": "EtatReseau",
+      "type": "object"
+    },
     "EtatSonde": {
       "enum": [
         "disponible",
@@ -54,7 +86,7 @@
               "type": "null"
             }
           ],
-          "description": "Cause courte du dernier échec (« HTTP 503 », « délai dépassé »…)."
+          "description": "Cause courte du dernier échec (« HTTP 503 », « délai dépassé », « marqueur absent »…)."
         }
       },
       "required": [
@@ -75,6 +107,10 @@
     "IdSource": {
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "type": "string"
+    },
+    "Reseau": {
+      "pattern": "^[0-9a-f.:]+/(24|64)$",
+      "type": "string"
     }
   },
   "additionalProperties": false,
@@ -93,9 +129,20 @@
       "additionalProperties": {
         "$ref": "#/$defs/EtatSource"
       },
-      "description": "Seules les sources qui ont un bloc `sonde` y figurent.",
+      "description": "Les sources qui ont un bloc `sonde`, et les sources communales sondées (bloc `site` et conseil), qui y figurent dès leur première sonde, faite une fois par jour juste avant leur import.",
       "propertyNames": {
         "$ref": "#/$defs/IdSource"
+      },
+      "type": "object"
+    },
+    "reseaux": {
+      "additionalProperties": {
+        "$ref": "#/$defs/EtatReseau"
+      },
+      "default": {},
+      "description": "Les réseaux (/24) bloqués pour le robot communal et pas encore testés de nouveau ; absent quand il n'y en a aucun.",
+      "propertyNames": {
+        "$ref": "#/$defs/Reseau"
       },
       "type": "object"
     }

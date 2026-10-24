@@ -3,17 +3,14 @@
 	 * En-tête de séance, en tête de l’onglet Conseil et de la fiche du Grand Conseil : la prochaine
 	 * Séance si elle est annoncée, sinon la dernière, avec les 5 premiers points de son ordre du jour, lus dans son
 	 * fichier d'archive, et « Les N points ». Avec `ouvrir`, le nom et « Les N points » ouvrent la Séance, et un
-	 * point lié à un Objet ouvre cet Objet.
+	 * point lié à un Objet ouvre cet Objet. Une Séance sans points montre ses documents en lien à leur place.
 	 */
 	import type { ConseilIndexe } from '#lib/schema.js';
 	import { conseils } from './donnees.js';
 	import { COULEUR_CONSEILS } from './index.js';
-	import { nomSeance, teteSeance } from './lignes.js';
+	import { contenuTete, nomSeance, teteSeance } from './lignes.js';
 
 	let { conseil, ouvrir }: { conseil: ConseilIndexe; ouvrir?: (cle: string) => void } = $props();
-
-	/** Points de l'ordre du jour montrés dans l'en-tête. */
-	const POINTS = 5;
 
 	const tete = $derived(teteSeance(conseil));
 	let lecture = $derived(tete ? conseils.seance(tete.cle) : null);
@@ -34,9 +31,10 @@
 				{:else}
 					<p class="nom">{nom}</p>
 				{/if}
-				{#if seance.ordre_du_jour.length}
+				{@const contenu = contenuTete(seance)}
+				{#if contenu && 'points' in contenu}
 					<ol>
-						{#each seance.ordre_du_jour.slice(0, POINTS) as point, i (i)}
+						{#each contenu.points as point, i (i)}
 							<li>
 								{#if ouvrir && point.objet}
 									{@const objet = point.objet}
@@ -47,14 +45,20 @@
 							</li>
 						{/each}
 					</ol>
-					{#if seance.ordre_du_jour.length > POINTS}
-						{@const n = seance.ordre_du_jour.length}
+					{#if contenu.total > contenu.points.length}
+						{@const n = contenu.total}
 						{#if ouvrir}
 							<button type="button" class="plus" onclick={() => ouvrir(tete.cle)}>Les {n} points ›</button>
 						{:else}
 							<p class="plus">Les {n} points</p>
 						{/if}
 					{/if}
+				{:else if contenu}
+					<ul class="documents">
+						{#each contenu.documents as d, i (i)}
+							<li><a href={d.lien} target="_blank" rel="noopener">{d.texte}</a></li>
+						{/each}
+					</ul>
 				{:else}
 					<p class="note">Ordre du jour pas encore publié.</p>
 				{/if}
@@ -103,8 +107,17 @@
 		padding-left: 20px;
 		font-size: 13px;
 	}
-	ol li {
+	ol li,
+	.documents li {
 		margin: 2px 0;
+	}
+	.documents {
+		margin: 6px 0 0;
+		padding-left: 20px;
+		font-size: 13px;
+	}
+	.documents a {
+		color: var(--accent);
 	}
 	/* Un bouton est un bloc en ligne : sans `top`, le numéro du point s'aligne sur sa dernière ligne. */
 	.point {

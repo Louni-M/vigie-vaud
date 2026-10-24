@@ -14,8 +14,11 @@ import {
 	ligneObjet,
 	objet,
 	rattachementsCommune,
-	seance
+	avecSources,
+	seance,
+	sourceNonCouverte
 } from '#tests/faux-conseils.js';
+import { SOURCES } from '#lib/sources.js';
 import { LUTRY, PULLY, commune } from '#tests/faux-canton.js';
 
 describe('index des conseils', () => {
@@ -214,6 +217,19 @@ describe('localiser un Objet ou une Séance', () => {
 
 		expect(await conseils.localiser('5938/2026-10-01')).toEqual({ fiches: [{ commune: 'yverdon-les-bains' }] });
 		expect(depot.requetes).toEqual(['conseils/5938/seances/2026-10-01.json']);
+	});
+
+	it('ouvre une Séance archivée d’une commune passée non couverte dans la fiche de sa commune', async () => {
+		// Sainte-Croix a demandé l'arrêt du robot : son archive reste en ligne, sous son n° OFS.
+		const depot = fauxDepotConseils({ 'conseils/5568/seances/2026-09-10.json': seance({ date: '2026-09-10T20:00' }) });
+		const conseils = creerDonneesConseils({
+			fetch: depot.fetch,
+			donnees: DONNEES,
+			communes: async () => [commune(5568, 'Sainte-Croix', [6.45, 46.8, 6.55, 46.85])],
+			sources: avecSources(SOURCES, sourceNonCouverte('demande_commune'))
+		});
+
+		expect(await conseils.localiser('5568/2026-09-10')).toEqual({ fiches: [{ commune: 'sainte-croix' }] });
 	});
 
 	it('ouvre une Séance du Grand Conseil et un Objet sans commune dans la seule fiche du Grand Conseil', async () => {
