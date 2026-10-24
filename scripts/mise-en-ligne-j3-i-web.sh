@@ -200,13 +200,13 @@ finish() {
 ETAPES=(
   "prealables|Préalables : branche j3/i-web, outils, PR #160, retrait durable"
   "clone|Clone du dépôt de données à côté du dépôt"
-  "rattrapage|Facultatif : rattrapage local des communes i-web, jamais poussé (environ 1 h 30)"
+  "rattrapage|Facultatif : rattrapage local des communes i-web, jamais poussé (environ 3 h 30)"
   "comptes|Facultatif : Séances et Objets de chaque commune contre son site"
   "masquage|Facultatif : titres masqués et communes sans page des membres"
   "second_import|Facultatif : passage ordinaire, durée, requêtes, rien de neuf ; clone remis à zéro"
   "fusion|Fusionner la PR #160 et publier le site"
   "declencheur|Nouveau déclencheur du cron du dépôt de données"
-  "rattrapage_prod|Rattrapage ciblé d'i-web en production (environ 1 h 30)"
+  "rattrapage_prod|Rattrapage ciblé d'i-web en production (environ 3 h 30)"
   "suivi|Sondes, imports et issues du dépôt de données"
   "interface|Vérifier l'interface en ligne, sur bureau et sur téléphone"
   "fil|Remesurer le volume du fil et le consigner dans #144"
@@ -367,9 +367,9 @@ etape_clone() {
 etape_rattrapage() {
   say "Le passage du cron avec --rattrapage-cible i-web et sans push : la sonde de chaque commune i-web couverte,"
   say "puis tout son site, sans plafond, une requête à la fois et au moins 5 s par réseau. Les 19 communes sont"
-  say "sur le même réseau i-web : compter environ 1 h 30. Puis un commit dans le clone, jamais poussé : la"
-  say "production refait son propre rattrapage à l'étape 9. Déjà fait le 23 octobre (chiffres dans #159) : passer"
-  say "les étapes 3 à 6 avec scripts/mise-en-ligne-j3-i-web.sh 7, sauf pour revérifier."
+  say "sur le même réseau i-web : compter environ 3 h 30 (3 h 28 le 23 octobre). Puis un commit dans le clone,"
+  say "jamais poussé : la production refait son propre rattrapage à l'étape 9. Déjà fait le 23 octobre"
+  say "(chiffres dans #159) : passer les étapes 3 à 6 avec scripts/mise-en-ligne-j3-i-web.sh 7, sauf pour revérifier."
   step "Laisser ce terminal ouvert et la machine branchée (caffeinate la garde éveillée)."
   step "Si la session coupe : refaire cette étape (scripts/mise-en-ligne-j3-i-web.sh 3) ; rien n'est poussé."
   say ""
@@ -611,7 +611,8 @@ etape_declencheur() {
 etape_rattrapage_prod() {
   say "Le rattrapage ciblé d'i-web, lancé à la main sur le cron du dépôt de données : tout le site de chaque commune"
   say "i-web couverte, sans plafond, au même débit, puis commit, push et publication des Pages des données. Les"
-  say "passages planifiés attendent sa fin (même groupe de concurrence). Compter environ 1 h 30."
+  say "passages planifiés attendent sa fin (même groupe de concurrence). Compter environ 3 h 30, sous le délai de"
+  say "6 h du job."
   cron_actif || arreter "le cron de $REPO_DONNEES est désactivé : gh workflow enable cron.yml -R $REPO_DONNEES"
   gh run list -R "$REPO_DONNEES" --workflow cron.yml --limit 3 \
     --json status,conclusion,createdAt,event -q '.[] | "  \(.createdAt) · \(.event) · \(.status) \(.conclusion // "")"'
