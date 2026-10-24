@@ -3,7 +3,8 @@
 	 * Coquille de la carte, commune à `/` et à `/commune/<slug>` : elle garde la carte montée pendant la
 	 * navigation. Rail des couches à gauche, volet posé sur la carte (celui d'une couche, ou le fil cantonal, ouvert à
 	 * l'arrivée), recherche flottante en haut, et la fiche ouverte en colonne à droite : celle d'une commune, ou une
-	 * fiche propre (`/grand-conseil`).
+	 * fiche propre (`/grand-conseil`). Le volet sort en bulle de l'icône du rail qui l'ouvre, et recouvre le volet
+	 * précédent (`registre/bulle`).
 	 * Les pages du groupe ne portent que le <head>.
 	 *
 	 * Sur téléphone (requête `telephone`), une seule vue plein écran à la fois, choisie dans la barre Carte · Fil ·
@@ -16,6 +17,7 @@
 	 */
 	import { tick, untrack } from 'svelte';
 	import { fly } from 'svelte/transition';
+	import { bulleEntree, bulleSortie } from '#lib/registre/bulle.js';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -342,7 +344,8 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="volet"
-					transition:fly={{ x: -20, duration: 160 }}
+					in:bulleEntree={{ id: c.id }}
+					out:bulleSortie={{ id: c.id, ouvert: () => registre.volet }}
 					onkeydown={(e) => e.key === 'Escape' && fermerVolet()}
 				>
 					<Volet couche={c} {registre} onfermer={fermerVolet} />
@@ -355,7 +358,8 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="volet volet-fil"
-				transition:fly={{ x: -20, duration: 160 }}
+				in:bulleEntree={{ id: FIL }}
+				out:bulleSortie={{ id: FIL, ouvert: () => registre.volet }}
 				onkeydown={(e) => e.key === 'Escape' && fermerVolet()}
 			>
 				<Fil {registre} chargement={fil} communes={data.communes} onfermer={fermerVolet} />
@@ -492,6 +496,14 @@
 		/* Le volet est à la hauteur de son contenu, sans dépasser le bas de la carte. */
 		height: fit-content;
 		max-height: calc(100% - 100px);
+		/* Le volet descend au moins jusqu'à la dernière icône du rail (Hôtels de ville), pour que sa bulle sorte de
+		   son icône et non d'en dessous ; le contenu, un volet blanc, remplit cette hauteur. */
+		min-height: min(300px, calc(100% - 100px));
+		display: flex;
+		flex-direction: column;
+	}
+	.volet > :global(*) {
+		flex: 1 0 auto;
 	}
 	/* Le fil, un peu plus large qu'un volet. */
 	.volet-fil {
