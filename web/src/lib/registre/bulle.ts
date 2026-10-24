@@ -129,6 +129,10 @@ function poser(node: HTMLElement, { x, y }: Cercle, rayon: number, echelle: numb
 	node.style.transformOrigin = `${x}px ${y}px`;
 }
 
+/** Retire du volet ce que la bulle et le repli y ont posé. */
+const effacer = (node: HTMLElement) =>
+	Object.assign(node.style, { clipPath: '', transform: '', transformOrigin: '', zIndex: '' });
+
 /** Où en était une ouverture interrompue : la part du rayon final atteinte, et l'échelle. */
 interface Ouverture {
 	part: number;
@@ -148,9 +152,14 @@ function arreterOuverture(node: HTMLElement): Ouverture | null {
 	return arreter?.() ?? null;
 }
 
-/** Entrée : la bulle grandit depuis l'icône, au-dessus de tout volet encore affiché. */
+/**
+ * Entrée : la bulle grandit depuis l'icône, au-dessus de tout volet encore affiché (passé sous les volets par sa
+ * sortie), mais au niveau des volets : la recherche et ses résultats restent devant.
+ */
 export function bulleEntree(node: HTMLElement, { id }: { id: string }): TransitionConfig {
 	arreterOuverture(node);
+	// Une sortie interrompue (le volet rouvert) a pu le laisser replié, ou sous les autres volets.
+	effacer(node);
 	if (reduit()) return { duration: 120, css: fondu };
 	const pastille = pastilleDe(id);
 	// L'icône « pousse » la bulle : un petit battement.
@@ -159,28 +168,35 @@ export function bulleEntree(node: HTMLElement, { id }: { id: string }): Transiti
 		easing: 'ease-out'
 	});
 	// Le bord de la bulle : un disque de même rayon, ombré vers l'intérieur. Le clip-path coupe tout ce qui dépasse :
-	// il ne reste qu'un liseré juste à l'intérieur du cercle, visible là où il passe sur l'ancien volet.
+	// il ne reste qu'un liseré juste à l'intérieur du cercle, visible là où il passe sur l'ancien volet. Le disque est
+	// bien plus grand que le volet : un cadre à la taille de sa partie visible le coupe, sans quoi le volet, qui défile,
+	// prendrait des barres de défilement pendant l'ouverture.
+	const cadre = document.createElement('div');
+	Object.assign(cadre.style, {
+		position: 'absolute',
+		left: '0px',
+		overflow: 'hidden',
+		pointerEvents: 'none',
+		zIndex: '1'
+	});
 	const bord = document.createElement('div');
 	Object.assign(bord.style, {
 		position: 'absolute',
 		borderRadius: '50%',
-		boxShadow: 'inset 0 0 0 1.5px rgb(0 0 0 / 0.10), inset 0 0 22px 2px rgb(0 0 0 / 0.20)',
-		pointerEvents: 'none',
-		zIndex: '1'
+		boxShadow: 'inset 0 0 0 1.5px rgb(0 0 0 / 0.10), inset 0 0 22px 2px rgb(0 0 0 / 0.20)'
 	});
-	node.append(bord);
+	cadre.append(bord);
+	node.append(cadre);
 	// Avant la première image : le volet ne doit pas apparaître entier un instant.
 	const depart = cercleActuel(node, pastille);
 	poser(node, depart, depart.r0, 0.9);
-	node.style.zIndex = '5';
 	const avancement = avancementDeBulle();
 	let ouverture: Ouverture = { part: 0, echelle: 0.9 };
 	let arretee = false;
-	// La sortie reprend le cercle là où il en est ; elle ne passe plus devant le volet qui s'ouvre.
+	// La sortie reprend le cercle là où il en est.
 	ouvertures.set(node, () => {
 		arretee = true;
-		bord.remove();
-		node.style.zIndex = '';
+		cadre.remove();
 		return ouverture;
 	});
 	return {
@@ -192,15 +208,19 @@ export function bulleEntree(node: HTMLElement, { id }: { id: string }): Transiti
 			const r = rayonDeBulle(t, c);
 			ouverture = { part: c.r1 > c.r0 ? (r - c.r0) / (c.r1 - c.r0) : 1, echelle: 0.9 + 0.1 * backOut(t) };
 			poser(node, c, r, ouverture.echelle);
-			// Une sortie interrompue (le volet rouvert) a pu le repasser sous les autres.
-			node.style.zIndex = '5';
+			// Le cadre suit la partie visible du volet, qui a pu défiler (un volet rouvert garde son défilement).
+			Object.assign(cadre.style, {
+				top: `${node.scrollTop}px`,
+				width: `${node.clientWidth}px`,
+				height: `${node.clientHeight}px`
+			});
 			Object.assign(bord.style, { left: `${c.x - r}px`, top: `${c.y - r}px`, width: `${2 * r}px`, height: `${2 * r}px` });
 			// Le liseré s'efface sur la fin, quand le cercle a presque couvert le volet.
 			bord.style.opacity = String(Math.min(1, (1 - t) * 3));
 			if (t === 1) {
 				ouvertures.delete(node);
-				bord.remove();
-				Object.assign(node.style, { clipPath: '', transform: '', transformOrigin: '', zIndex: '' });
+				cadre.remove();
+				effacer(node);
 			}
 		}
 	};
@@ -221,6 +241,10 @@ export function voletNeuf(node: HTMLElement): HTMLElement | undefined {
  * ou si son ouverture n'était pas finie, il rentre dans son icône depuis là où il en est. En sortie, Svelte fait aller
  * `t` de 1 à 0. La configuration est rendue par une fonction : Svelte garde celle d'une sortie interrompue (le volet
  * rouvert) pour la sortie suivante, et une fonction est rappelée à chaque sortie, une fois le nouveau volet monté.
+ *
+ * Rouvert pendant sa sortie, le volet s'ouvre de nouveau, puis Svelte remet la sortie à son début (`reset`, un dernier
+ * appel à `t` = 1) : la sortie n'écrit plus rien dès que l'ouverture a repris, sans quoi le volet apparaîtrait entier,
+ * ou replié, le temps d'une image.
  */
 export function bulleSortie(
 	node: HTMLElement,
@@ -228,17 +252,18 @@ export function bulleSortie(
 ): () => TransitionConfig {
 	return () => {
 		const interrompue = arreterOuverture(node);
-		if (reduit()) {
-			node.style.zIndex = '2';
-			return { duration: 120, css: fondu };
-		}
-		if (ouvert() !== null && !interrompue) {
+		const remplace = ouvert() !== null;
+		// Sous le nouveau volet, qui reste au niveau des volets.
+		if (remplace) node.style.zIndex = '2';
+		if (reduit()) return { duration: 120, css: fondu };
+		const rouvert = () => ouvertures.has(node);
+		if (remplace && !interrompue) {
 			return {
 				duration: DUREE_BULLE,
 				tick: (t) => {
+					if (rouvert()) return;
 					const n = voletNeuf(node);
 					const { droite, bas } = repliSousLaBulle(1 - t, tailleDe(node), n ? tailleDe(n) : null);
-					node.style.zIndex = '2';
 					node.style.clipPath = `inset(0px ${droite}px ${bas}px 0px round 10px)`;
 				}
 			};
@@ -248,6 +273,7 @@ export function bulleSortie(
 		return {
 			duration: DUREE_FERMETURE,
 			tick: (t) => {
+				if (rouvert()) return;
 				const c = cercleActuel(node, pastille);
 				poser(node, c, c.r0 + (c.r1 - c.r0) * part * cubicIn(t), 0.92 + (echelle - 0.92) * t);
 			}

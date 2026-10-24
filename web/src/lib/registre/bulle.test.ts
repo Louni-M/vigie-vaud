@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { TransitionConfig } from 'svelte/transition';
 import {
 	avancementDeBulle,
@@ -75,17 +75,36 @@ describe('avancement de l’ouverture', () => {
 });
 
 /** Un élément réduit à ce que touchent les transitions : style, classe, enfants, taille fixe. */
-function element(classes: string[] = []) {
-	const el = {
+interface Faux {
+	style: Record<string, string>;
+	classList: { contains: (c: string) => boolean };
+	inert: boolean;
+	offsetWidth: number;
+	offsetHeight: number;
+	clientWidth: number;
+	clientHeight: number;
+	scrollTop: number;
+	getBoundingClientRect: () => { left: number; top: number; width: number; height: number };
+	children: Faux[];
+	parentElement: Faux | null;
+	append: (e: Faux) => void;
+	remove: Mock;
+	animate: Mock;
+}
+function element(classes: string[] = []): Faux {
+	const el: Faux = {
 		style: {} as Record<string, string>,
 		classList: { contains: (c: string) => classes.includes(c) },
 		inert: false,
 		offsetWidth: 360,
 		offsetHeight: 604,
+		clientWidth: 360,
+		clientHeight: 604,
+		scrollTop: 0,
 		getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 604 }),
-		children: [] as unknown[],
-		parentElement: null as unknown,
-		append(e: { parentElement: unknown }) {
+		children: [],
+		parentElement: null,
+		append(e) {
 			el.children.push(e);
 			e.parentElement = el;
 		},
@@ -94,26 +113,16 @@ function element(classes: string[] = []) {
 	};
 	return el;
 }
-type Faux = ReturnType<typeof element>;
 const entree = (node: Faux) => bulleEntree(node as unknown as HTMLElement, { id: 'permis' });
 const sortie = (node: Faux, ouvert: string | null) =>
 	bulleSortie(node as unknown as HTMLElement, { id: 'permis', ouvert: () => ouvert })();
 const tick = (config: TransitionConfig, t: number) => config.tick?.(t, 1 - t);
 
 describe('transitions d’un volet', () => {
-	let bords: Faux[];
 	let reduit: boolean;
 	beforeEach(() => {
-		bords = [];
 		reduit = false;
-		vi.stubGlobal('document', {
-			querySelector: () => null,
-			createElement: () => {
-				const bord = element();
-				bords.push(bord);
-				return bord;
-			}
-		});
+		vi.stubGlobal('document', { querySelector: () => null, createElement: () => element() });
 		vi.stubGlobal('matchMedia', () => ({ matches: reduit }));
 	});
 	afterEach(() => vi.unstubAllGlobals());
@@ -124,7 +133,7 @@ describe('transitions d’un volet', () => {
 		tick(ouverture, 0);
 		tick(ouverture, 0.3);
 		const fermeture = sortie(node, null);
-		expect(bords[0].remove).toHaveBeenCalled();
+		expect(node.children[0].remove).toHaveBeenCalled();
 		tick(fermeture, 0.5);
 		const pendant = { ...node.style };
 		// Svelte continue de faire avancer l'entrée, puis l'achève.
@@ -144,7 +153,7 @@ describe('transitions d’un volet', () => {
 		tick(fermeture, 1);
 		expect(node.style).toMatchObject({ clipPath: avant.clipPath, transform: avant.transform });
 		// Elle passe sous la nouvelle bulle.
-		expect(node.style.zIndex).toBe('');
+		expect(node.style.zIndex).toBe('2');
 	});
 
 	it('une ouverture finie se replie sous la nouvelle bulle', () => {
@@ -156,14 +165,55 @@ describe('transitions d’un volet', () => {
 		expect(repli.duration).toBe(DUREE_BULLE);
 		tick(repli, 0.5);
 		expect(node.style.clipPath).toMatch(/^inset\(/);
+		expect(node.style.zIndex).toBe('2');
 	});
 
 	it('une nouvelle entrée retire le liseré de celle qu’elle interrompt', () => {
 		const node = element(['volet']);
 		tick(entree(node), 0.3);
 		entree(node);
-		expect(bords[0].remove).toHaveBeenCalled();
-		expect(bords[1].remove).not.toHaveBeenCalled();
+		expect(node.children[0].remove).toHaveBeenCalled();
+		expect(node.children[1].remove).not.toHaveBeenCalled();
+	});
+
+	it('le liseré, coupé à la partie visible du volet, ne le fait pas défiler', () => {
+		const node = element(['volet']);
+		node.scrollTop = 120;
+		node.clientWidth = 345;
+		const ouverture = entree(node);
+		tick(ouverture, 0);
+		tick(ouverture, 0.5);
+		const cadre = node.children[0];
+		expect(cadre.style).toMatchObject({ overflow: 'hidden', top: '120px', width: '345px', height: '604px' });
+		// Le disque, bien plus grand que le volet, est dans le cadre.
+		expect(cadre.children[0].style.width).not.toBe('');
+	});
+
+	it('l’ouverture reste au niveau des volets, sous la recherche', () => {
+		const node = element(['volet']);
+		const ouverture = entree(node);
+		tick(ouverture, 0);
+		tick(ouverture, 0.5);
+		expect(node.style.zIndex).toBe('');
+	});
+
+	it.each([
+		['replié sous une autre couche', 'hotels'],
+		['en train de se fermer', null]
+	])('rouvert alors qu’il était %s, le volet n’est plus touché par la sortie que Svelte remet à son début', (_, ouvert) => {
+		const node = element(['volet']);
+		const ouverture = entree(node);
+		tick(ouverture, 0);
+		tick(ouverture, 1);
+		const fermeture = sortie(node, ouvert);
+		tick(fermeture, 0.5);
+		const reouverture = entree(node);
+		tick(reouverture, 0);
+		const avant = { ...node.style };
+		expect(avant.clipPath).toMatch(/^circle\(/);
+		expect(avant.zIndex).toBe('');
+		tick(fermeture, 1);
+		expect(node.style).toEqual(avant);
 	});
 
 	it('avec les mouvements réduits, l’ancien volet s’efface aussi en fondu quand une autre couche s’ouvre', () => {
@@ -171,6 +221,15 @@ describe('transitions d’un volet', () => {
 		const repli = sortie(element(['volet']), 'hotels');
 		expect(repli.tick).toBeUndefined();
 		expect(repli.css?.(0.5, 0.5)).toBe('opacity: 0.5');
+	});
+
+	it('avec les mouvements réduits, un volet rouvert pendant son fondu revient au niveau des volets', () => {
+		reduit = true;
+		const node = element(['volet']);
+		sortie(node, 'hotels');
+		expect(node.style.zIndex).toBe('2');
+		entree(node);
+		expect(node.style.zIndex).toBe('');
 	});
 });
 
