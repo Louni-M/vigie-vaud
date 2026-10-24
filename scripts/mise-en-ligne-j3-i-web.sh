@@ -280,7 +280,7 @@ echecs_du_journal() {
   ok "aucun import en échec, aucune panne"
 }
 # cron_actif : le workflow du cron du dépôt de données est activé.
-cron_actif() { [[ "$(gh workflow view cron.yml -R "$REPO_DONNEES" --json state -q .state 2>/dev/null)" == "active" ]]; }
+cron_actif() { [[ "$(gh api "repos/$REPO_DONNEES/actions/workflows/cron.yml" -q .state 2>/dev/null)" == "active" ]]; }
 
 # ── 1 ─────────────────────────────────────────────────────────────────────
 etape_prealables() {
@@ -541,7 +541,7 @@ PY
   suite
 }
 
-# ── 9 ─────────────────────────────────────────────────────────────────────
+# ── 7 ─────────────────────────────────────────────────────────────────────
 etape_fusion() {
   say "La PR #$PR fusionnée dans main, puis la publication du site (workflow « publier », lancé à la main) : $SITE"
   gh pr view "$PR" -R "$REPO_CODE" --json state,mergeStateStatus -q '"  \(.state) · \(.mergeStateStatus)"'
