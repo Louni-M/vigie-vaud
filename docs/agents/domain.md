@@ -14,7 +14,7 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 
 ## Language
 
-The product, the code and these docs are in French. Write new `GLOSSARY.md` entries, ADRs and `docs/sources.md` changes in French, translating the template keywords too: `_Avoid_` → `_À éviter_`, and the optional ADR sections → `## Statut`, `## Options envisagées`, `## Conséquences`.
+The product, the code and these docs are in French. Write new `GLOSSARY.md` entries, ADRs and `docs/sources.md` changes in French, translating the template keywords too: `## Language` → `## Langage`, `_Avoid_` → `_À éviter_`, and the optional ADR sections → `## Statut`, `## Options envisagées`, `## Conséquences`.
 
 ## File structure
 
