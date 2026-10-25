@@ -24,7 +24,7 @@ const VOIES: Record<VoieAcces, string> = { direct: 'Direct', cron: 'Cron', worke
 /** Libellé de la voie d'accès d'une source : « Direct », « Cron », « Worker » ou « Préparée ». */
 export const libelleVoie = (s: { voie_acces: VoieAcces }) => VOIES[s.voie_acces];
 
-/** Ce que veut dire chaque voie d'accès, pour le lecteur (glossaire de `CONTEXT.md`). */
+/** Ce que veut dire chaque voie d'accès, pour le lecteur (glossaire de `GLOSSARY.md`). */
 export const SENS_VOIES: Record<VoieAcces, string> = {
 	direct: 'votre navigateur interroge la source à chaque visite',
 	cron: 'la source est relevée par le cron et publiée dans le dépôt de données (les conseils : une fois par jour)',
