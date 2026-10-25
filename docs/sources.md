@@ -1,7 +1,7 @@
 # Sources de données
 
 Inventaire des sources de Vigie Vaud : celles qu'on utilise, celles qu'on a écartées et celles qu'on n'a pas
-trouvées. Les voies d'accès sont définies dans `CONTEXT.md` et justifiées par l'ADR-0004.
+trouvées. Les voies d'accès sont définies dans `GLOSSARY.md` et justifiées par l'ADR-0004.
 
 Vérification du 13 octobre 2026 : appels `curl` avec un en-tête `Origin`, lecture de
 `Access-Control-Allow-Origin`. Une source qui change se modifie ici.

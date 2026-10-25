@@ -10,4 +10,4 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 
 ### Domain docs
 
-Single-context, in French: one root `CONTEXT.md` + `docs/adr/`, with data sources in `docs/sources.md`. See `docs/agents/domain.md`.
+Single-context, in French: one root `GLOSSARY.md` + `docs/adr/`, with data sources in `docs/sources.md`. See `docs/agents/domain.md`.

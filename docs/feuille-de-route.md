@@ -2,7 +2,7 @@
 
 > Ce fichier est temporaire : il garde la planification jusqu'à sa migration vers GitHub, avec un milestone par
 > jalon et une issue par élément. Il sera supprimé une fois cette migration faite. Le vocabulaire est défini dans
-> `CONTEXT.md`, les décisions dans `docs/adr/` et les sources dans `docs/sources.md`.
+> `GLOSSARY.md`, les décisions dans `docs/adr/` et les sources dans `docs/sources.md`.
 
 ## Point de départ
 
