@@ -10,7 +10,7 @@ ouverte avec la première et fermée au retour de la dernière. Une erreur de l'
 passage : l'état est tout de même écrit et publié, et le passage suivant, qui compare de nouveau l'état aux issues
 ouvertes, refait ce qui a manqué.
 
-Les sondes des sources tournent à chaque passage (toutes les 30 minutes). Chaque conseil, lui, s'importe une fois
+Les sondes des sources tournent à chaque passage (planifié toutes les 30 minutes, lancé 5 à 8 fois par jour). Chaque conseil, lui, s'importe une fois
 par jour, au premier passage après 7 h à Lausanne, depuis le jour de son dernier import réussi ; un import en échec
 est refait au passage suivant. Le site d'une commune est sondé une fois par jour, juste avant son import : une sonde
 en échec saute l'import et est refaite au passage suivant. Quand aucun import d'un conseil n'a réussi depuis plus de

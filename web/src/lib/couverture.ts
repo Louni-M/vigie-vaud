@@ -23,7 +23,7 @@ export interface EntreeCouverture {
 
 /**
  * État d'une source, qui vaut pour toutes les communes qu'elle couvre :
- * - `surveillance_interrompue` : le cron n'est pas passé depuis plus de 2 h, l'état lu est périmé ;
+ * - `surveillance_interrompue` : le cron n'est pas passé depuis plus de 8 h, l'état lu est périmé ;
  * - `non_surveillee` : la source n'est pas sondée (ni bloc `sonde`, ni site de commune avec son conseil) ;
  * - `inconnu` : l'état des sources est inaccessible, d'une version inconnue, ou ne cite pas la source.
  */
@@ -34,8 +34,12 @@ export type EtatCouverture =
 	| { etat: 'non_surveillee' }
 	| { etat: 'inconnu' };
 
-/** Au-delà, le dernier passage du cron est trop ancien pour qu'on lise son état comme actuel. */
-const INTERRUPTION = 2 * 3600_000;
+/**
+ * Au-delà, le dernier passage du cron est trop ancien pour qu'on lise son état comme actuel. Le `schedule` demande un
+ * passage toutes les 30 minutes, mais GitHub n'en lance que 5 à 8 par jour (jusqu'à 7 h 48 d'écart, mesuré du 16
+ * octobre au 1er novembre 2026) : 8 h ne signale que l'absence d'un passage attendu.
+ */
+const INTERRUPTION = 8 * 3600_000;
 
 /** Les deux axes d'une paire (source, commune) ; l'état n'est donné que si la commune est couverte. */
 export interface Paire {

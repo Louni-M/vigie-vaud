@@ -11,7 +11,7 @@ import { PLATEFORMES, SOURCES } from './sources.js';
 let etat = $state.raw<EtatSources | null>(null);
 /** Vrai une fois l'état chargé, même illisible : `etat` vaut alors `null` (« inconnu »). */
 let charge = $state(false);
-/** Heure de lecture de l'état : au-delà de 2 h après le dernier passage du cron, il est périmé. */
+/** Heure de lecture de l'état : au-delà de 8 h après le dernier passage du cron, il est périmé. */
 let lu = $state.raw(new Date());
 let demande = false;
 
