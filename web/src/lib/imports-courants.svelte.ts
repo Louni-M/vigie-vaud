@@ -10,8 +10,9 @@ let imports = $state.raw<ImportConseils | null>(null);
 let charge = $state(false);
 let demande = false;
 
-/** Le contenu de `conseils/import.json`, une fois chargé et lisible ; `null` sinon. */
-export function importsCourants(): ImportConseils | null {
+// Les deux lectures déclenchent le chargement : une page qui ne lit le contenu qu'une fois le fichier chargé
+// (`importsCharges() ? … importsCourants() … : '…'`) le demande quand même.
+function demander() {
 	if (browser && !demande) {
 		demande = true;
 		chargerImports(fetch).then((i) => {
@@ -19,10 +20,16 @@ export function importsCourants(): ImportConseils | null {
 			charge = true;
 		});
 	}
+}
+
+/** Le contenu de `conseils/import.json`, une fois chargé et lisible ; `null` sinon. */
+export function importsCourants(): ImportConseils | null {
+	demander();
 	return imports;
 }
 
 /** Vrai une fois `conseils/import.json` chargé, lisible ou non. */
 export function importsCharges(): boolean {
+	demander();
 	return charge;
 }
