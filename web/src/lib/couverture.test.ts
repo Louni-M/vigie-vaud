@@ -96,10 +96,12 @@ describe('Couverture déduite', () => {
 		expect(deduire(etat({ camac: panne })).etat('camac')).toEqual({ etat: 'en_panne', depuis: '2026-10-12T12:17:00Z' });
 	});
 
-	it("dit la surveillance interrompue quand le dernier passage du cron date de plus de 2 h", () => {
+	it("dit la surveillance interrompue quand le dernier passage du cron date de plus de 8 h", () => {
 		const e = etat({ camac: disponible }, '2026-10-12T12:30:00Z');
-		expect(deduire(e, new Date('2026-10-12T14:30:00Z')).etat('camac')).toEqual({ etat: 'disponible' });
-		expect(deduire(e, new Date('2026-10-12T14:30:01Z')).etat('camac')).toEqual({ etat: 'surveillance_interrompue' });
+		// 7 h 48 sans passage, le plus long écart observé : l'état reste lu.
+		expect(deduire(e, new Date('2026-10-12T20:18:00Z')).etat('camac')).toEqual({ etat: 'disponible' });
+		expect(deduire(e, new Date('2026-10-12T20:30:00Z')).etat('camac')).toEqual({ etat: 'disponible' });
+		expect(deduire(e, new Date('2026-10-12T20:30:01Z')).etat('camac')).toEqual({ etat: 'surveillance_interrompue' });
 	});
 
 	it("dit non surveillée une source sans bloc sonde, même sans état lisible", () => {

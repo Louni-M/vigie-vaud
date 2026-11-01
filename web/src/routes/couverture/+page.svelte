@@ -57,7 +57,7 @@
 	<h1>Couverture</h1>
 	<p class="intro">
 		Pour chaque couche et chaque commune : le <strong>mode</strong> (les données viennent d’une API, sont scrapées,
-		ou la commune n’est pas couverte) et l’<strong>état</strong> de la source, vérifié toutes les 30 minutes par une
+		ou la commune n’est pas couverte) et l’<strong>état</strong> de la source, vérifié plusieurs fois par jour par une
 		sonde. Les conseils sont importés une fois par jour ; une sonde vérifie que leur source répond. Le site d’une
 		commune n’est sondé qu’une fois par jour, juste avant son import : ses communes sont regroupées par plateforme.
 	</p>

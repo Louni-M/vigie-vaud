@@ -24,3 +24,8 @@ mêmes PR.
 - Le dépôt de données est publié par GitHub Actions (`upload-pages-artifact`, `deploy-pages`) dans le même job, après
   le commit qui sert d'archive : ni limite de builds Pages, ni doute sur le déclenchement par un push du
   `GITHUB_TOKEN`.
+- GitHub ne lance un `schedule` qu'au mieux : celui du cron demande un passage toutes les 30 minutes, mais du 16
+  octobre au 1er novembre 2026 il n'en a lancé que 5 à 8 par jour, avec 4 h 18 d'écart en moyenne et jusqu'à 7 h 48.
+  Le site ne tient donc l'état des sources pour périmé (« surveillance interrompue ») qu'après 8 h sans passage, et
+  la page Couverture dit « plusieurs fois par jour ». Un déclenchement extérieur plus régulier demanderait un secret
+  et un service hors de GitHub (ADR-0004) : il n'en vaut pas la peine pour un état des sources.
