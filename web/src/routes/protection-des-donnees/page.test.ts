@@ -2,21 +2,56 @@ import { render } from 'svelte/server';
 import { describe, expect, it } from 'vitest';
 import Page from './+page.svelte';
 
-/** Le texte de la page, sans balises, commentaires ni espaces en trop. */
-const texte = render(Page)
-	.body.replace(/<!--[\s\S]*?-->/g, '')
-	.replace(/<[^>]+>/g, '')
-	.replace(/\s+/g, ' ');
+const html = render(Page).body;
+
+/** Le texte d'un fragment de la page, sans balises, commentaires ni espaces en trop. */
+const sansBalises = (s: string) =>
+	s
+		.replace(/<!--[\s\S]*?-->/g, '')
+		.replace(/<[^>]+>/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+
+/** Le texte de la page. */
+const texte = sansBalises(html);
 
 describe('Protection des données, destinataires', () => {
+	const ligneVaud = sansBalises(html.match(/<tr[^>]*data-destinataire="vd"[^>]*>([\s\S]*?)<\/tr>/)![1]);
+
 	it('dit que l’État de Vaud reçoit l’adresse IP pour les permis et les routes, la zone affichée pour les permis seulement', () => {
-		expect(texte).toContain(
-			'L’État de Vaud (ogc.vd.ch, Suisse), pour les permis de construire et les restrictions de circulation : votre adresse IP et, pour les permis, la zone affichée.'
+		expect(ligneVaud).toContain(
+			'L’État de Vaud (ogc.vd.ch), pour les permis de construire et les restrictions de circulation'
 		);
+		expect(ligneVaud).toContain('Suisse');
+		expect(ligneVaud).toContain('votre adresse IP et, pour les permis, la zone affichée');
 	});
 
 	it('ne nomme l’État de Vaud qu’une fois : les restrictions n’ajoutent aucun destinataire', () => {
 		expect(texte.match(/L’État de Vaud \(/g)).toHaveLength(1);
+	});
+});
+
+describe('Protection des données, sommaire et ancres', () => {
+	const ids = [...html.matchAll(/<h[23][^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
+
+	it('donne une ancre à chaque intertitre', () => {
+		const intertitres = html.match(/<h[23][\s>]/g) ?? [];
+		expect(ids).toHaveLength(intertitres.length);
+	});
+
+	it('ne renvoie qu’à des intertitres qui existent', () => {
+		const liens = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+		expect(liens.length).toBeGreaterThan(0);
+		for (const l of liens) expect(ids).toContain(l);
+	});
+});
+
+describe('Protection des données, vos droits', () => {
+	it('cite l’accès sous 30 jours, la rectification, l’effacement et l’interdiction', () => {
+		expect(texte).toContain('droit d’accès, art. 25 nLPD');
+		expect(texte).toContain('dans les 30 jours (art. 18 OPDo)');
+		expect(texte).toContain('faire rectifier une donnée inexacte (art. 32 al. 1 nLPD)');
+		expect(texte).toContain('faire effacer une donnée, ou interdire un traitement');
 	});
 });
 

@@ -16,6 +16,9 @@
 	 * telle qu'on l'a laissée.
 	 */
 	import { tick, untrack } from 'svelte';
+	// Essai (#165) : la carte dans le système Almanach, voir lib/almanach/carte.css.
+	import '#lib/almanach/almanach.css';
+	import '#lib/almanach/carte.css';
 	import { fly } from 'svelte/transition';
 	import { bulleEntree, bulleSortie } from '#lib/registre/bulle.js';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -276,6 +279,7 @@
 
 <div
 	class="app"
+	data-theme="almanach"
 	class:avec-fiche={registre.commune ?? registre.propre}
 	class:recherche-pleine={pleine}
 	data-affichage={affichage}

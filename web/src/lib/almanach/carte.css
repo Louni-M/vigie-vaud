@@ -1,0 +1,405 @@
+/* ESSAI (#165) : la carte dans le système Almanach, sans toucher aux composants. Cette feuille repeint la carte par-
+   dessus leurs styles : elle repart des jetons Almanach (almanach.css), remplace les couleurs de la carte par eux, puis
+   reprend le rail, la recherche, les volets, le fil et la fiche. Si l'essai est retenu, chaque règle rejoint le style
+   de son composant et cette feuille disparaît ; sinon, on retire son import et l'attribut `data-theme` de la carte.
+
+   Les règles partent de `.app[data-theme='almanach']`, plus précis que les styles des composants, qu'elles doivent
+   recouvrir. Sur la carte, un volet flotte sur l'image : la feuille claire et son filet d'encre en tête suffisent à
+   l'en détacher, sans ombre ni coins arrondis. */
+
+/* Les couleurs de la carte, reprises des jetons Almanach : le papier, la feuille, l'encre, les filets. */
+.app[data-theme='almanach'] {
+	--bg: var(--color-paper);
+	--surface: var(--color-sheet);
+	--surface-2: var(--color-paper-2);
+	--line: var(--color-rule);
+	--text: var(--color-ink);
+	--muted: var(--color-muted);
+	--accent: var(--color-rule-2);
+	--focus: var(--color-focus);
+	color: var(--color-ink-2);
+	font-family: var(--font-display);
+}
+.app[data-theme='almanach'] :focus-visible {
+	outline: var(--rule-bar) solid var(--color-focus);
+	outline-offset: var(--space-3xs);
+}
+.app[data-theme='almanach'] .bouton {
+	border-radius: var(--radius-pill);
+}
+.app[data-theme='almanach'] a {
+	text-decoration-color: var(--color-accent);
+	text-underline-offset: 0.18em;
+}
+
+/* Le rail des couches : du papier, un filet à droite ; la couche ouverte posée sur une feuille, marquée d'un trait
+   orange au bord, comme l'intertitre courant d'un sommaire. */
+.app[data-theme='almanach'] .rail {
+	background: var(--color-paper);
+	border-right: var(--rule-hair) solid var(--color-rule);
+}
+.app[data-theme='almanach'] .rail button {
+	border-radius: 0;
+	color: var(--color-ink-2);
+	transition: background-color var(--dur-short) var(--ease-out);
+}
+.app[data-theme='almanach'] .rail button:hover {
+	background: var(--color-paper-2);
+}
+.app[data-theme='almanach'] .rail button.ouvert {
+	background: var(--color-sheet);
+	box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] .rail .fil {
+	border-bottom-color: var(--color-rule-2);
+	border-radius: 0;
+}
+.app[data-theme='almanach'] .rail .icone-fil {
+	border-radius: var(--radius-pill);
+	background: var(--color-ink);
+}
+
+/* Les icônes des couches : des carrés à angle droit, comme le signe des entrées du fil et l'icône du Fil. La couleur de
+   la couche quand elle est affichée ; masquée, un cadre de sa couleur sur la feuille. */
+.app[data-theme='almanach'] .rail .icone {
+	border-radius: var(--radius-pill);
+	font-family: var(--font-display);
+	font-weight: 600;
+	transition:
+		background-color var(--dur-short) var(--ease-out),
+		color var(--dur-short) var(--ease-out),
+		transform var(--dur-short) var(--ease-out);
+}
+.app[data-theme='almanach'] .rail .icone.off {
+	background: var(--color-sheet);
+	box-shadow: inset 0 0 0 var(--rule-bar) var(--c);
+}
+.app[data-theme='almanach'] .rail button:active .icone {
+	transform: scale(0.94);
+}
+.app[data-theme='almanach'] .rail .nom {
+	font-size: 0.6875rem;
+	line-height: 1.2;
+}
+
+/* La recherche : une feuille, un filet d'encre dessous, comme le champ de la page Couverture. */
+.app[data-theme='almanach'] .recherche {
+	border-radius: 0;
+	box-shadow: none;
+}
+.app[data-theme='almanach'] .recherche .champ {
+	border: 0;
+	border-bottom: var(--rule-bar) solid var(--color-rule-2);
+	border-radius: 0;
+	background: var(--color-sheet);
+}
+.app[data-theme='almanach'] .recherche input {
+	border-radius: 0;
+	font-family: var(--font-body);
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] .recherche input::placeholder {
+	color: var(--color-muted);
+}
+.app[data-theme='almanach'] .recherche .autour {
+	border-left-color: var(--color-rule);
+	border-radius: 0;
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] .recherche :is(ul, .aucun) {
+	border: 0;
+	border-top: var(--rule-bar) solid var(--color-rule-2);
+	border-radius: 0;
+	box-shadow: none;
+}
+.app[data-theme='almanach'] .recherche li + li {
+	border-top: var(--rule-hair) solid var(--color-rule);
+}
+.app[data-theme='almanach'] .recherche li button {
+	border-radius: 0;
+}
+.app[data-theme='almanach'] .recherche .type {
+	font-family: var(--font-outlier);
+	font-size: var(--text-xs);
+}
+
+/* Les volets et le fil : la feuille posée sur la carte, un filet d'encre en tête, rien d'autre. */
+.app[data-theme='almanach'] .zone-carte > .volet,
+.app[data-theme='almanach'] section.volet,
+.app[data-theme='almanach'] section.fil {
+	border-radius: 0;
+	box-shadow: none;
+}
+.app[data-theme='almanach'] section.volet,
+.app[data-theme='almanach'] section.fil {
+	gap: var(--space-sm);
+	padding: var(--space-md) var(--space-md) var(--space-lg);
+	border-top: var(--rule-bar) solid var(--color-rule-2);
+	background: var(--color-sheet);
+}
+.app[data-theme='almanach'] section.volet h2,
+.app[data-theme='almanach'] section.fil h2 {
+	font-size: var(--text-lg);
+	font-weight: 600;
+	letter-spacing: var(--tracking-display);
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] :is(section.volet, section.fil) .fermer {
+	border-radius: 0;
+	transition: background-color var(--dur-micro) var(--ease-out);
+}
+.app[data-theme='almanach'] :is(section.volet, section.fil) .fermer:hover {
+	background: var(--color-paper);
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] section.volet .interrupteur input {
+	accent-color: var(--color-ink);
+}
+.app[data-theme='almanach'] section.volet :is(.badges, .attribution) {
+	font-size: var(--text-xs);
+}
+
+/* Les réglages d'une couche : des puces à angle droit, des listes déroulantes sans cadre arrondi. */
+.app[data-theme='almanach'] :is(section.volet, section.fil, section.fiche) .puce,
+.app[data-theme='almanach'] section.fil .puces button {
+	border-radius: var(--radius-pill);
+	font-family: var(--font-display);
+}
+.app[data-theme='almanach'] :is(section.volet, section.fiche) select {
+	min-height: 40px;
+	border: 0;
+	border-bottom: var(--rule-bar) solid var(--color-rule-2);
+	border-radius: 0;
+	background-color: var(--color-paper);
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] :is(section.volet, section.fiche) :is(.bascule, .annee) input {
+	accent-color: var(--color-ink);
+}
+.app[data-theme='almanach'] section.volet .zone {
+	margin-top: var(--space-2xs);
+	padding-top: var(--space-sm);
+	border-top: var(--rule-bar) solid var(--color-rule-2);
+}
+.app[data-theme='almanach'] section.volet p.compte {
+	color: var(--color-ink-2);
+}
+.app[data-theme='almanach'] section.volet p.compte strong {
+	font-family: var(--font-outlier);
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-ink);
+}
+
+/* La liste des dossiers : plus de cartes encadrées, une ligne réglée par dossier ; le dossier survolé ou ouvert est
+   posé sur le papier et marqué d'un trait orange. La description se lit en serif, comme un texte. */
+.app[data-theme='almanach'] .liste {
+	gap: 0;
+}
+.app[data-theme='almanach'] .liste > li + li {
+	border-top: var(--rule-hair) solid var(--color-rule);
+}
+.app[data-theme='almanach'] :is(a, button).carte,
+.app[data-theme='almanach'] .carte-attente {
+	padding: var(--space-sm) var(--space-xs) var(--space-sm) var(--space-sm);
+	border: 0;
+	border-radius: 0;
+	background: none;
+	transition: background-color var(--dur-short) var(--ease-out);
+}
+.app[data-theme='almanach'] :is(a, button).carte:hover,
+.app[data-theme='almanach'] :is(a, button).carte.actif {
+	border: 0;
+	background: var(--color-paper);
+	box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
+}
+.app[data-theme='almanach'] :is(a, button).carte .nature {
+	font-size: var(--text-md);
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] :is(a, button).carte .desc {
+	font-family: var(--font-body);
+	font-size: 0.9375rem;
+	line-height: 1.4;
+	color: var(--color-ink-2);
+}
+.app[data-theme='almanach'] :is(a, button).carte .bas .muted:last-child {
+	font-family: var(--font-outlier);
+	font-size: var(--text-xs);
+}
+.app[data-theme='almanach'] .barre-s {
+	border-radius: 0;
+}
+
+/* Les types du fil : une puce à angle droit ; choisie, elle prend un lavis de sa couleur et son filet, plutôt qu'un
+   aplat qui mettrait quatre couleurs vives en tête du volet. */
+.app[data-theme='almanach'] section.fil .puces button {
+	border-color: var(--color-rule);
+	color: var(--color-muted);
+	transition:
+		background-color var(--dur-short) var(--ease-out),
+		color var(--dur-short) var(--ease-out);
+}
+.app[data-theme='almanach'] section.fil .puces button[aria-pressed='true'] {
+	border-color: var(--c);
+	background: color-mix(in oklch, var(--c) 12%, var(--color-sheet));
+	color: var(--color-ink);
+	font-weight: 500;
+}
+
+/* Le fil cantonal : intertitres en casse de phrase, lignes réglées, l'entrée ouverte sur un lavis orange. */
+.app[data-theme='almanach'] section.fil h3 {
+	margin-top: var(--space-md);
+	padding-bottom: var(--space-2xs);
+	border-bottom: var(--rule-bar) solid var(--color-rule-2);
+	font-size: var(--text-xs);
+	font-weight: 600;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] section.fil .sans {
+	border: 0;
+	border-top: var(--rule-hair) solid var(--color-rule);
+	border-radius: 0;
+	background: var(--color-paper);
+}
+.app[data-theme='almanach'] section.fil li {
+	border-bottom-color: var(--color-rule);
+}
+.app[data-theme='almanach'] section.fil li.ouvert {
+	background: var(--color-accent-wash);
+	box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
+}
+.app[data-theme='almanach'] section.fil li > button {
+	padding-inline: var(--space-xs);
+	transition: background-color var(--dur-short) var(--ease-out);
+}
+.app[data-theme='almanach'] section.fil li > button:hover {
+	background: var(--color-paper);
+}
+.app[data-theme='almanach'] section.fil li.ouvert > button:hover {
+	background: none;
+}
+.app[data-theme='almanach'] section.fil .signe {
+	border-radius: var(--radius-pill);
+}
+.app[data-theme='almanach'] section.fil .titre {
+	font-family: var(--font-body);
+	font-size: 0.9375rem;
+	line-height: 1.35;
+	color: var(--color-ink);
+}
+
+/* La fiche ouverte, à droite : du papier, le titre en grand, l'onglet courant souligné d'orange. */
+.app[data-theme='almanach'] section.fiche {
+	background: var(--color-paper);
+	border-left: var(--rule-bar) solid var(--color-rule-2);
+}
+.app[data-theme='almanach'] section.fiche .entete h2 {
+	font-size: 1.75rem;
+	font-weight: 600;
+	letter-spacing: -0.03em;
+	line-height: 1.1;
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] section.fiche .fermer {
+	border-radius: 0;
+	background: none;
+}
+.app[data-theme='almanach'] section.fiche .fermer:hover {
+	background: var(--color-paper-2);
+}
+.app[data-theme='almanach'] section.fiche .onglets {
+	border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.app[data-theme='almanach'] section.fiche .onglets button {
+	border-bottom-width: var(--rule-bar);
+}
+.app[data-theme='almanach'] section.fiche .onglets button[aria-selected='true'] {
+	border-bottom-color: var(--color-accent);
+	color: var(--color-ink);
+}
+
+/* Un dossier ouvert : la description en serif, ses dates et numéros en lignes réglées, l'encadré de consultation en
+   creux, l'orange en tête, comme l'encadré d'action de Protection des données. */
+.app[data-theme='almanach'] article.fiche .titre {
+	font-size: var(--text-lg);
+	font-weight: 600;
+	letter-spacing: var(--tracking-display);
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] article.fiche .desc {
+	font-family: var(--font-body);
+	font-size: 1.0625rem;
+	line-height: 1.5;
+	color: var(--color-ink);
+}
+.app[data-theme='almanach'] article.fiche dl {
+	gap: 0 var(--space-md);
+}
+.app[data-theme='almanach'] article.fiche :is(dt, dd) {
+	padding-block: var(--space-2xs);
+	border-top: var(--rule-hair) solid var(--color-rule);
+}
+.app[data-theme='almanach'] article.fiche dt {
+	font-size: var(--text-xs);
+	padding-top: calc(var(--space-2xs) + 0.1em);
+}
+.app[data-theme='almanach'] article.fiche .note {
+	font-family: var(--font-body);
+	font-size: 0.9375rem;
+}
+.app[data-theme='almanach'] .encadre {
+	border: 0;
+	border-top: var(--rule-bar) solid var(--color-accent);
+	border-radius: 0;
+	padding: var(--space-md) var(--space-md) var(--space-lg);
+	background: var(--color-paper-2);
+	font-family: var(--font-body);
+	font-size: 0.9375rem;
+}
+.app[data-theme='almanach'] .encadre h4 {
+	font-family: var(--font-display);
+	color: var(--color-ink);
+}
+
+/* Le reste de la carte : liens du bas, avis, pastille de Couverture, boutons de zoom. */
+.app[data-theme='almanach'] .liens,
+.app[data-theme='almanach'] .avis,
+.app[data-theme='almanach'] .pastille-couverture,
+.app[data-theme='almanach'] .evitement {
+	border-radius: 0;
+	box-shadow: none;
+}
+.app[data-theme='almanach'] .liens {
+	background: oklch(99% 0.003 255 / 0.9);
+}
+.app[data-theme='almanach'] .pastille-couverture {
+	border-top: var(--rule-bar) solid var(--color-rule-2);
+}
+.app[data-theme='almanach'] .maplibregl-ctrl-group {
+	border-top: var(--rule-bar) solid var(--color-rule-2);
+	border-radius: 0;
+	box-shadow: none;
+}
+.app[data-theme='almanach'] .maplibregl-ctrl-group button {
+	border-radius: 0;
+}
+
+/* Téléphone : la barre des vues, à angle droit, la vue courante en encre. */
+.app[data-theme='almanach'] .barre-vues {
+	background: var(--color-sheet);
+	border-top: var(--rule-bar) solid var(--color-rule-2);
+}
+.app[data-theme='almanach'] .barre-vues button {
+	border-radius: var(--radius-pill);
+	border-color: var(--color-rule-2);
+	color: var(--color-ink);
+	font-family: var(--font-display);
+}
+.app[data-theme='almanach'] .barre-vues button[aria-pressed='true'] {
+	background: var(--color-ink);
+	color: var(--color-accent-ink);
+}

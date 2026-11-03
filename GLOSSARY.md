@@ -128,6 +128,12 @@ _À éviter_ : barre d'adresse, géocodeur
 Un service ou un site d'où provient une donnée : API, flux RSS ou site scrapé. C'est à la source, pas à la couche,
 que tiennent l'attribution, la voie d'accès, la fraîcheur et la Couverture.
 
+**Destinataire** :
+Un service qui reçoit des données de la visite d'un visiteur, au moins son adresse IP : l'hébergeur, les services
+que le navigateur interroge lui-même (swisstopo, l'État de Vaud) et la mesure d'audience. Ce n'est pas une source :
+une source lue par le cron n'est le destinataire de rien.
+_À éviter_ : tiers, sous-traitant, prestataire
+
 **Plateforme** :
 Le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes (i-web, Quicksite…). Les communes d'une
 plateforme se lisent de la même façon ; la source reste le site de chaque commune, qui porte l'attribution et la
@@ -161,6 +167,12 @@ rattachement n'a pas de fiche commune : il n'apparaît que dans le fil cantonal 
 la fiche du Grand Conseil.
 _À éviter_ : géolocalisation, affectation
 
+**Masquage** :
+Le remplacement, dans un élément publié, du nom d'un particulier par « [particulier] » et de ses coordonnées par
+« [coordonnées] ». Les élu·e·s connu·e·s, les entreprises et les collectivités n'en font pas l'objet ; en cas de
+doute, on masque.
+_À éviter_ : anonymisation, caviardage
+
 **Retrait** :
 La suppression, à la demande, d'un nom de personne d'un élément publié, historique du dépôt de données compris. Il
 tient face aux imports et aux rattrapages suivants. Une commune qui demande l'arrêt du robot n'obtient pas de
@@ -178,6 +190,11 @@ Un organe délibérant : le Grand Conseil, ou le conseil communal ou général d
 **Grand Conseil** :
 Le parlement cantonal vaudois. Il a son propre marqueur sur la carte, au Parlement (Cité, Lausanne), qui ouvre la
 fiche du Grand Conseil. Ses Objets sont rattachés aux communes qu'ils nomment ; ses Séances ne sont rattachées à aucune.
+
+**Élu·e connu·e** :
+Une personne qu'un conseil laisse lisible : auteur·e d'un de ses Objets (sauf une pétition) ou membre nommé·e par sa
+page des membres, un jour ou l'autre. On ne cesse pas d'être un·e élu·e connu·e à la fin de son mandat.
+_À éviter_ : élu·e (pour la personne que le masquage épargne), liste blanche
 
 **Objet** :
 Toute affaire qu'un conseil enregistre et suit (interpellation, motion, postulat, question, préavis, pétition,
