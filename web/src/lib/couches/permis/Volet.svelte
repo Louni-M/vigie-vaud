@@ -4,10 +4,9 @@
 	 * d'années, puis le compteur et la liste des dossiers de la zone visible, masqués quand la couche est
 	 * désactivée. Le registre a déjà rendu l'interrupteur et l'attribution au-dessus.
 	 */
-	import { resolve } from '$app/paths';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
 	import EchecSource from '#lib/components/EchecSource.svelte';
-	import { NATURES, STATUTS } from '#lib/labels.js';
+	import { NATURES, PROCEDURE_PERMIS, STATUTS } from '#lib/labels.js';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Dossier, PointHisto, Statut } from '#lib/types.js';
 	import { permis, visibles as dossiersVisibles, type Parametres } from './donnees.svelte.js';
@@ -181,7 +180,7 @@
 <p class="source">
 	Dossiers consultés en direct depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la
 	<a href="https://www.vd.ch/territoire-et-construction/permis-de-construire/faq/avis-denquete/publication-fao" target="_blank" rel="noopener">FAO</a>
-	fait foi. <a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>
+	fait foi. <a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique : ce que prévoit la loi</a>
 </p>
 
 <style>

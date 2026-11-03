@@ -13,6 +13,13 @@ export const STATUTS_ORDRE: Statut[] = ['enquete', 'procedure', 'delivre', 'real
 /** Statuts des dossiers en cours, proposés quand l'historique n'est pas affiché. */
 export const STATUTS_EN_COURS: Statut[] = ['enquete', 'procedure'];
 
+/**
+ * La page de l'État de Vaud sur les étapes de la procédure du permis de construire : mise à l'enquête, oppositions,
+ * décision et recours. Les liens « L’enquête publique : ce que prévoit la loi » y mènent.
+ */
+export const PROCEDURE_PERMIS =
+	'https://www.vd.ch/territoire-et-construction/permis-de-construire/les-differentes-etapes-de-la-procedure-du-permis-construire';
+
 export const NATURES: Record<string, string> = {
 	construction: 'Construction nouvelle',
 	transformation: 'Transformation',

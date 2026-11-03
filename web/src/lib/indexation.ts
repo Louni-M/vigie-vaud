@@ -15,7 +15,7 @@ export function adresseCanonique(site: string, chemin: string): string {
 export const canonique = (chemin: string) => adresseCanonique(SITE, chemin);
 
 /** Pages fixes indexées, dans l'ordre du sitemap. La 404 n'en fait pas partie (elle porte `noindex`). */
-export const PAGES_FIXES = ['/', '/couverture', '/a-propos', '/enquete-publique', '/protection-des-donnees'] as const;
+export const PAGES_FIXES = ['/', '/couverture', '/a-propos', '/protection-des-donnees'] as const;
 
 /** Chemin de la fiche d'une commune, relatif à la base du site (ADR 0012). */
 export const cheminCommune = (slug: string) => `/commune/${slug}`;

@@ -3,8 +3,7 @@
 	 * Fiche d'un dossier, affichée dans l'onglet Permis de sa commune (sous le fil rendu par le registre) : le titre
 	 * de la fiche commune est un h2, celui du dossier un h3.
 	 */
-	import { resolve } from '$app/paths';
-	import { STATUTS, natureLabel } from '#lib/labels.js';
+	import { natureLabel, PROCEDURE_PERMIS, STATUTS } from '#lib/labels.js';
 	import { dateLongue } from '#lib/dates.js';
 	import type { Dossier } from '#lib/types.js';
 	import Compte from './Compte.svelte';
@@ -59,7 +58,7 @@
 	{:else if d.statut === 'procedure'}
 		<p class="note">
 			L’enquête publique est terminée : la Municipalité statue sur la demande.
-			<a href={resolve('/enquete-publique')}>Comment se déroule la procédure</a>
+			<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">Comment se déroule la procédure</a>
 		</p>
 	{/if}
 	{#if d.statut === 'enquete' || d.statut === 'procedure'}

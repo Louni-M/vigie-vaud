@@ -31,7 +31,6 @@ describe('sitemap.xml', () => {
 <url><loc>https://louni-m.github.io/vigie-vaud/</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/couverture</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/a-propos</loc></url>
-<url><loc>https://louni-m.github.io/vigie-vaud/enquete-publique</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/protection-des-donnees</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/grand-conseil</loc></url>
 <url><loc>https://louni-m.github.io/vigie-vaud/commune/pully</loc></url>
@@ -41,10 +40,10 @@ describe('sitemap.xml', () => {
 		);
 	});
 
-	it('a 306 adresses pour les 300 communes et la fiche du Grand Conseil, sur l’adresse publique en configuration', () => {
+	it('a 305 adresses pour les 300 communes et la fiche du Grand Conseil, sur l’adresse publique en configuration', () => {
 		const slugs = Array.from({ length: 300 }, (_, i) => `commune-${i}`);
 		const adresses = sitemap('https://vigievaud.ch', slugs, ['/grand-conseil']).match(/<loc>https:\/\/vigievaud\.ch\//g);
-		expect(adresses).toHaveLength(306);
+		expect(adresses).toHaveLength(305);
 	});
 });
 

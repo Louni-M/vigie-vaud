@@ -5,9 +5,9 @@
 	 * plus souvent : le registre vient de la chercher pour trouver la commune du dossier).
 	 */
 	import { untrack } from 'svelte';
-	import { resolve } from '$app/paths';
 	import DossierFiche from '#lib/components/DossierFiche.svelte';
 	import { ErreurApi } from '#lib/api.js';
+	import { PROCEDURE_PERMIS } from '#lib/labels.js';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Dossier } from '#lib/types.js';
 	import { permis, SOURCE, type Parametres } from './donnees.svelte.js';
@@ -61,7 +61,7 @@
 <p class="source">
 	{SOURCE} depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la FAO fait foi.
 	L’emplacement est indicatif.
-	<a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>
+	<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique : ce que prévoit la loi</a>
 </p>
 
 <style>

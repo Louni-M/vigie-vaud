@@ -6,6 +6,7 @@
 	import { insecables } from '#lib/almanach/typographie.js';
 	import { COURRIEL, DEPOT, DEPOT_DONNEES } from '#lib/config.js';
 	import { canonique } from '#lib/indexation.js';
+	import { PROCEDURE_PERMIS } from '#lib/labels.js';
 	import { COUCHES } from '#lib/registre/couches.js';
 	import {
 		conseilsCouverts,
@@ -122,7 +123,7 @@
 						>InfoCamac</a
 					>. Les règles de l’enquête publique (consultation, observations, oppositions, recours) sont résumées sur la
 					page
-					<a href={resolve('/enquete-publique')}>L’enquête publique&nbsp;: ce que prévoit la loi</a>.
+					<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique&nbsp;: ce que prévoit la loi</a>.
 				</p>
 
 				<h3 id="hotels-de-ville">Hôtels de ville</h3>

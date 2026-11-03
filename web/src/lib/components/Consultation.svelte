@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
-	import { deCommune } from '#lib/labels.js';
+	import { deCommune, PROCEDURE_PERMIS } from '#lib/labels.js';
 
 	let { commune }: { commune: string } = $props();
 	const uid = $props.id();
 </script>
 
-<!-- Résumé neutre : le détail juridique, sourcé, est sur la page « L’enquête publique ». -->
+<!-- Résumé neutre : le détail est sur la page de l’État de Vaud sur la procédure (PROCEDURE_PERMIS). -->
 <aside class="encadre" aria-labelledby="{uid}-titre">
 	<h4 id="{uid}-titre">Consulter le dossier</h4>
 	<p>
@@ -17,7 +16,7 @@
 	<p>
 		La loi permet aussi de déposer par écrit, dans le délai d’enquête, des observations ou une opposition motivée.
 		Qui peut le faire, à quelles conditions et avec quelles conséquences :
-		<a href={resolve('/enquete-publique')}>L’enquête publique : ce que prévoit la loi</a>.
+		<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique : ce que prévoit la loi</a>.
 	</p>
 	<p class="muted">Informations générales, sans valeur de conseil juridique.</p>
 </aside>
