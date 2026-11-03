@@ -192,4 +192,10 @@
 		color: #fff;
 		font-weight: 600;
 	}
+	/* Une page imprimée n'a que faire de la navigation. */
+	@media print {
+		header {
+			display: none;
+		}
+	}
 </style>
