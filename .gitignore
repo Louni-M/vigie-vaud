@@ -22,3 +22,6 @@ __pycache__/
 
 # Brouillons du script de préparation des sources (pipeline/preparation_sources.py), relus avant la PR.
 brouillon-sources-*.json
+
+# Configuration locale de Claude Code (skills, worktrees, launch.json) : jamais versionnée.
+/.claude/
