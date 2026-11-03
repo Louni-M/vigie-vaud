@@ -1,4 +1,6 @@
 <script lang="ts">
+	import '#lib/almanach/almanach.css';
+	import Sommaire, { type Partie } from '#lib/almanach/Sommaire.svelte';
 	import { AUDIENCE } from '#lib/audience.js';
 	import { COURRIEL, DEPOT_DONNEES } from '#lib/config.js';
 	import { canonique } from '#lib/indexation.js';
@@ -20,7 +22,7 @@
 	const NLPD = 'https://www.fedlex.admin.ch/eli/cc/2022/491/fr';
 	const OPDO = 'https://www.fedlex.admin.ch/eli/cc/2022/568/fr';
 
-	const sommaire = [
+	const sommaire: Partie[] = [
 		{
 			id: 'personnes',
 			titre: 'Ce que le site publie sur des personnes',
@@ -42,39 +44,6 @@
 			]
 		}
 	];
-
-	// Le sommaire suit la lecture : l'intertitre passé en dernier au tiers haut de l'écran est marqué. Sans
-	// JavaScript, le sommaire reste une simple liste de liens.
-	const ancres = sommaire.flatMap((p) => [p.id, ...p.sous.map((s) => s.id)]);
-	let actif = $state<string | null>(null);
-	const partieActive = $derived(
-		sommaire.find((p) => p.id === actif || p.sous.some((s) => s.id === actif))?.id ?? null
-	);
-
-	function suitLaLecture(_: HTMLElement) {
-		let image = 0;
-		const lit = () => {
-			image = 0;
-			const seuil = innerHeight * 0.3;
-			let dernier: string | null = null;
-			for (const id of ancres) {
-				const titre = document.getElementById(id);
-				if (titre && titre.getBoundingClientRect().top <= seuil) dernier = id;
-			}
-			actif = dernier;
-		};
-		const auDefilement = () => {
-			if (!image) image = requestAnimationFrame(lit);
-		};
-		addEventListener('scroll', auDefilement, { passive: true });
-		lit();
-		return {
-			destroy() {
-				removeEventListener('scroll', auDefilement);
-				cancelAnimationFrame(image);
-			}
-		};
-	}
 </script>
 
 <svelte:head>
@@ -159,20 +128,7 @@
 			</ul>
 		</section>
 
-		<nav class="sommaire" aria-label="Sommaire" use:suitLaLecture>
-			{#each sommaire as partie, i (partie.id)}
-				<div class="partie-sommaire" class:active={partieActive === partie.id}>
-					<a class="partie-lien" class:actif={actif === partie.id} href="#{partie.id}"
-						><span class="numero">{i + 1}</span>{partie.titre}</a
-					>
-					<ul>
-						{#each partie.sous as s (s.id)}
-							<li><a href="#{s.id}" class:actif={actif === s.id}>{s.titre}</a></li>
-						{/each}
-					</ul>
-				</div>
-			{/each}
-		</nav>
+		<Sommaire parties={sommaire} />
 
 		<div class="corps">
 			<section class="partie personnes" aria-labelledby="personnes">
@@ -415,149 +371,7 @@
 	/* Hallmark · dismissed 19 · the dash is in the title tag, the site-wide pattern "<page> – Vigie Vaud" every route shares */
 	/* Hallmark · answered F-motion · the user asked for more and pleasanter motion than the theme's stillness: each diagram plays once on entry, never loops */
 
-	/* Almanac sur la marque de Vigie Vaud : l'encre est le marine du site, le signal son orange, le papier une ardoise
-	   pâle. Polices du système : une police web ferait un destinataire de plus. */
-	[data-theme='almanach'] {
-		--color-paper: oklch(95.5% 0.008 255);
-		--color-paper-2: oklch(92.5% 0.012 255);
-		--color-sheet: oklch(99% 0.003 255);
-		--color-ink: oklch(25% 0.045 257);
-		--color-ink-2: oklch(31% 0.03 257);
-		--color-muted: oklch(46% 0.025 257);
-		--color-rule: oklch(85% 0.014 255);
-		--color-rule-2: oklch(34.7% 0.073 257);
-		--color-accent: oklch(53.4% 0.168 38);
-		--color-accent-2: oklch(46% 0.15 38);
-		--color-accent-wash: oklch(94% 0.035 50);
-		--color-accent-ink: oklch(98.5% 0.006 60);
-		--color-focus: oklch(56.9% 0.202 260);
-		--font-display: system-ui, -apple-system, 'Segoe UI', sans-serif;
-		--font-body: 'Iowan Old Style', Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
-		--font-outlier: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
-		--radius-pill: 2px;
-		--rule-hair: 1px;
-		--rule-bar: 2px;
-		--tracking-display: -0.02em;
-		--space-3xs: 2px;
-		--space-2xs: 4px;
-		--space-xs: 8px;
-		--space-sm: 12px;
-		--space-md: 16px;
-		--space-lg: 24px;
-		--space-xl: 40px;
-		--space-2xl: 64px;
-		--space-3xl: 96px;
-		--text-xs: 0.8125rem;
-		--text-sm: 0.875rem;
-		--text-md: 1rem;
-		--text-lg: 1.25rem;
-		--text-body: 1.125rem;
-		--text-display: clamp(2.5rem, 4.5vw + 1rem, 4.75rem);
-		--text-section: clamp(1.875rem, 2vw + 1.1rem, 3rem);
-		--text-title: clamp(1.25rem, 0.6vw + 1rem, 1.5rem);
-		--text-lead: clamp(1.1875rem, 0.4vw + 1rem, 1.375rem);
-		--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-		--ease-in: cubic-bezier(0.7, 0, 0.84, 0);
-		--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-		--dur-micro: 120ms;
-		--dur-short: 220ms;
-		--container: 72rem;
-		--gutter: var(--space-2xl);
-		--rail: 13.5rem;
-	}
-	.almanach {
-		display: block;
-		background: var(--color-paper);
-		color: var(--color-ink-2);
-		font-family: var(--font-body);
-		font-size: var(--text-body);
-		line-height: 1.6;
-	}
-	:global(html:has(main.almanach)),
-	:global(body:has(main.almanach)) {
-		overflow-x: clip;
-	}
-	.almanach :focus-visible {
-		outline: var(--rule-bar) solid var(--color-focus);
-		outline-offset: var(--space-3xs);
-	}
-	.almanach ::selection {
-		background: var(--color-accent-wash);
-		color: var(--color-ink);
-	}
-	.cadre {
-		max-width: var(--container);
-		margin-inline: auto;
-		padding: var(--space-2xl) var(--gutter) var(--space-3xl);
-	}
-
-	h1,
-	h2,
-	h3 {
-		margin: 0;
-		font-family: var(--font-display);
-		font-weight: 600;
-		letter-spacing: var(--tracking-display);
-		color: var(--color-ink);
-		overflow-wrap: break-word;
-		min-width: 0;
-		text-wrap: balance;
-		scroll-margin-top: calc(var(--header-h) + var(--space-lg));
-	}
-	p {
-		margin: var(--space-md) 0 0;
-		max-width: 65ch;
-		text-wrap: pretty;
-	}
-	a {
-		color: var(--color-ink);
-		text-decoration-color: var(--color-accent);
-		text-decoration-thickness: var(--rule-hair);
-		text-underline-offset: 0.18em;
-		transition: text-decoration-thickness var(--dur-micro) var(--ease-out);
-	}
-	a:hover {
-		text-decoration-thickness: var(--rule-bar);
-	}
-	code {
-		font-family: var(--font-outlier);
-		font-size: 0.85em;
-		overflow-wrap: anywhere;
-	}
-	strong {
-		font-weight: 600;
-		color: var(--color-ink);
-	}
-	svg {
-		fill: none;
-		stroke: currentColor;
-		stroke-width: 1.8;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
-	.numero {
-		font-family: var(--font-outlier);
-		font-weight: 500;
-		font-variant-numeric: tabular-nums;
-		color: var(--color-accent);
-	}
-
-	/* L'en-tête : le titre et sa date, puis le filet d'encre sur toute la largeur. */
-	.tete {
-		padding-bottom: var(--space-lg);
-		border-bottom: var(--rule-bar) solid var(--color-rule-2);
-	}
-	h1 {
-		max-width: 16ch;
-		font-size: var(--text-display);
-		letter-spacing: -0.035em;
-		line-height: 0.98;
-	}
-	.date {
-		margin-top: var(--space-md);
-		font-size: var(--text-sm);
-		color: var(--color-muted);
-	}
+	/* Les jetons, la base, l'en-tête, les parties et le sommaire sont communs aux pages Almanach (#lib/almanach). */
 
 	/* En bref : la feuille du manuel, une ligne réglée par fait. */
 	.bref {
@@ -595,94 +409,6 @@
 	.bref .plein {
 		fill: currentColor;
 		stroke: none;
-	}
-
-	/* Le sommaire. Sur grand écran, il devient un rail qui reste à côté du texte, avec un filet qui se remplit à
-	   mesure de la lecture et l'intertitre courant marqué. */
-	.sommaire {
-		margin-top: var(--space-xl);
-		padding-top: var(--space-md);
-		border-top: var(--rule-bar) solid var(--color-rule-2);
-		font-family: var(--font-display);
-		font-size: var(--text-sm);
-		line-height: 1.35;
-	}
-	.partie-sommaire + .partie-sommaire {
-		margin-top: var(--space-lg);
-	}
-	.partie-lien {
-		display: flex;
-		gap: var(--space-xs);
-		font-weight: 600;
-		color: var(--color-ink);
-		text-decoration: none;
-	}
-	.sommaire ul {
-		list-style: none;
-		margin: var(--space-xs) 0 0;
-		padding: 0 0 0 var(--space-md);
-	}
-	.sommaire li a {
-		position: relative;
-		display: block;
-		padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm);
-		color: var(--color-muted);
-		text-decoration: none;
-		transition:
-			color var(--dur-short) var(--ease-out),
-			transform var(--dur-short) var(--ease-out);
-	}
-	/* La marque de l'intertitre courant : un trait orange qui se dresse. */
-	.sommaire li a::before {
-		content: '';
-		position: absolute;
-		left: 0;
-		top: var(--space-2xs);
-		bottom: var(--space-2xs);
-		border-left: var(--rule-bar) solid var(--color-accent);
-		transform: scaleY(0);
-		transition: transform var(--dur-short) var(--ease-out);
-	}
-	.sommaire li a:hover {
-		color: var(--color-ink);
-		transform: translateX(var(--space-3xs));
-	}
-	.sommaire li a.actif {
-		color: var(--color-ink);
-	}
-	.sommaire li a.actif::before {
-		transform: none;
-	}
-	.sommaire a:active {
-		color: var(--color-accent);
-	}
-
-	/* Les deux parties. */
-	.partie {
-		margin-top: var(--space-3xl);
-	}
-	.partie > h2 {
-		display: flex;
-		align-items: baseline;
-		gap: var(--space-sm);
-		padding-top: var(--space-md);
-		border-top: var(--rule-bar) solid var(--color-rule-2);
-		font-size: var(--text-section);
-		line-height: 1.05;
-	}
-	.chapeau {
-		margin-top: var(--space-lg);
-		font-size: var(--text-lead);
-		line-height: 1.5;
-		color: var(--color-ink);
-	}
-	h3 {
-		margin-top: var(--space-2xl);
-		font-size: var(--text-title);
-		line-height: 1.2;
-	}
-	h3 + p {
-		margin-top: var(--space-sm);
 	}
 
 	/* L'encadré d'action du retrait : un creux dans le papier, l'orange en tête. */
@@ -830,66 +556,11 @@
 		color: var(--color-ink);
 	}
 
-	/* Grand écran : le sommaire en rail à gauche, de « En bref » au bas de la page. */
-	@media (min-width: 60rem) {
-		.cadre {
-			display: grid;
-			grid-template-columns: var(--rail) minmax(0, 1fr);
-			column-gap: var(--space-2xl);
-		}
-		.tete {
-			grid-column: 1 / -1;
-		}
-		.bref,
-		.corps {
-			grid-column: 2;
-		}
-		.sommaire {
-			grid-column: 1;
-			grid-row: 2 / span 2;
-			align-self: start;
-			position: sticky;
-			top: calc(var(--header-h) + var(--space-lg));
-			margin-top: var(--space-xl);
-			padding: 0 0 0 var(--space-md);
-			border-top: 0;
-		}
-		/* Le filet de lecture, le long du rail. */
-		.sommaire::before,
-		.sommaire::after {
-			content: '';
-			position: absolute;
-			left: 0;
-			top: 0;
-			bottom: 0;
-			border-left: var(--rule-bar) solid var(--color-rule);
-		}
-		.sommaire::after {
-			border-left-color: var(--color-accent);
-			transform-origin: top;
-			transform: scaleY(0);
-		}
-	}
-	@media (max-width: 60rem) {
-		.almanach {
-			--gutter: var(--space-lg);
-		}
-	}
 	@media (max-width: 40rem) {
-		.almanach {
-			--gutter: var(--space-md);
-			--text-body: 1.0625rem;
-		}
-		.cadre {
-			padding-top: var(--space-xl);
-		}
 		.bref,
 		.action {
 			margin-inline: calc(-1 * var(--space-xs));
 			padding: var(--space-md) var(--space-sm);
-		}
-		.partie {
-			margin-top: var(--space-2xl);
 		}
 		.fiches {
 			grid-template-columns: minmax(0, 1fr);
@@ -937,19 +608,7 @@
 		}
 	}
 
-	/* Le mouvement : à l'écran seulement, et seulement si l'on n'a pas demandé de le réduire. Il part toujours d'un
-	   état visible ; sans lui, la page est la même, immobile. */
 	@media screen and (prefers-reduced-motion: no-preference) {
-		:global(html:has(main.almanach)) {
-			scroll-behavior: smooth;
-		}
-		h1,
-		.date {
-			animation: monte 0.8s var(--ease-out) both;
-		}
-		.date {
-			animation-delay: 0.12s;
-		}
 		.bref li {
 			animation: monte 0.6s var(--ease-out) calc(0.25s + var(--rang, 0) * 0.07s) both;
 		}
@@ -975,20 +634,6 @@
 		.bref svg > .plein {
 			stroke-dasharray: none;
 			animation-name: apparait;
-		}
-		/* Arrivé par le sommaire, l'intertitre se souligne une fois. */
-		:is(h2, h3):target {
-			background: linear-gradient(var(--color-accent-wash), var(--color-accent-wash)) no-repeat left bottom /
-				100% 0.45em;
-			animation: souligne 1.4s var(--ease-out) 0.3s both;
-		}
-	}
-	@supports (animation-timeline: scroll()) {
-		@media screen and (prefers-reduced-motion: no-preference) and (min-width: 60rem) {
-			.sommaire::after {
-				animation: remplit linear both;
-				animation-timeline: scroll(root);
-			}
 		}
 	}
 	@keyframes monte {
@@ -1017,33 +662,8 @@
 			opacity: 1;
 		}
 	}
-	@keyframes remplit {
-		from {
-			transform: scaleY(0);
-		}
-		to {
-			transform: none;
-		}
-	}
-	@keyframes souligne {
-		from {
-			background-size: 0 0.45em;
-		}
-		to {
-			background-size: 100% 0.45em;
-		}
-	}
 
 	@media print {
-		.almanach {
-			background: none;
-			font-size: 11pt;
-		}
-		.cadre {
-			display: block;
-			max-width: none;
-			padding: 0;
-		}
 		.bref,
 		.destinataires {
 			background: none;
@@ -1052,28 +672,11 @@
 			background: none;
 			padding-inline: 0;
 		}
-		.sommaire,
 		.courriel {
 			display: none;
 		}
-		.partie {
-			margin-top: var(--space-xl);
-		}
-		.partie > h2 {
-			break-after: avoid;
-		}
-		h3 {
-			break-after: avoid;
-		}
 		.destinataires tr {
 			break-inside: avoid;
-		}
-		/* Les adresses courriel se lisent déjà dans le texte du lien. */
-		a[href^='http']::after {
-			content: ' (' attr(href) ')';
-			font-size: 0.85em;
-			color: var(--color-muted);
-			overflow-wrap: anywhere;
 		}
 	}
 </style>

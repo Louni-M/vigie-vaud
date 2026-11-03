@@ -20,11 +20,14 @@ const texte = (morceau: string) =>
 		.replace(/\s+/g, ' ')
 		.trim();
 
+/** Le titre `<h3>` donné, avec ou sans ancre. */
+const titreH3 = (titre: string) => new RegExp(`<h3(?: id="[^"]+")?>${titre}</h3>`);
+
 /** Ce qui suit le titre `<h3>` donné, jusqu'au titre suivant. */
 const section = (morceau: string, titre: string) => {
-	const titreHtml = `<h3>${titre}</h3>`;
-	expect(morceau, `titre « ${titre} »`).toContain(titreHtml);
-	const suite = morceau.slice(morceau.indexOf(titreHtml) + titreHtml.length);
+	const trouve = morceau.match(titreH3(titre));
+	expect(trouve, `titre « ${titre} »`).not.toBeNull();
+	const suite = morceau.slice(trouve!.index! + trouve![0].length);
 	const fin = suite.search(/<h[23][ >]/);
 	return fin === -1 ? suite : suite.slice(0, fin);
 };
@@ -42,7 +45,7 @@ describe('À propos, section Routes', () => {
 	const routes = section(couches, 'Routes');
 
 	it('vient après Conseils et son rattachement, avant la liste Sources', () => {
-		expect(couches.indexOf('<h3>Routes</h3>')).toBeGreaterThan(couches.indexOf('id="rattachement"'));
+		expect(couches.search(titreH3('Routes'))).toBeGreaterThan(couches.indexOf('id="rattachement"'));
 	});
 
 	it('tient en quatre paragraphes courts', () => {

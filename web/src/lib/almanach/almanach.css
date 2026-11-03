@@ -1,0 +1,275 @@
+/* Le système Almanach (#165), commun aux pages Protection des données, Couverture et À propos : un manuel posé sur
+   une ardoise pâle. L'encre est le marine du site, le signal son orange, gardé rare. Polices du système : une police
+   web ferait un destinataire de plus de l'adresse IP des visiteurs.
+
+   Une page s'y inscrit avec `<main class="almanach" data-theme="almanach">` et un `<div class="cadre">` qui tient,
+   dans l'ordre, l'en-tête `.tete`, le sommaire, puis le reste de la page. Toutes les règles partent de `.almanach` :
+   la feuille reste chargée après une navigation vers une autre page, qu'elle ne doit pas toucher. Les règles sur les
+   éléments (titres, paragraphes, liens…) ne descendent pas dans les diagrammes (`.diagramme`), qui ont les leurs. */
+
+[data-theme='almanach'] {
+	--color-paper: oklch(95.5% 0.008 255);
+	--color-paper-2: oklch(92.5% 0.012 255);
+	--color-sheet: oklch(99% 0.003 255);
+	--color-ink: oklch(25% 0.045 257);
+	--color-ink-2: oklch(31% 0.03 257);
+	--color-muted: oklch(46% 0.025 257);
+	--color-rule: oklch(85% 0.014 255);
+	--color-rule-2: oklch(34.7% 0.073 257);
+	--color-accent: oklch(53.4% 0.168 38);
+	--color-accent-2: oklch(46% 0.15 38);
+	--color-accent-wash: oklch(94% 0.035 50);
+	--color-accent-ink: oklch(98.5% 0.006 60);
+	--color-focus: oklch(56.9% 0.202 260);
+	--font-display: system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-body: 'Iowan Old Style', Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+	--font-outlier: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+	--radius-pill: 2px;
+	--rule-hair: 1px;
+	--rule-bar: 2px;
+	--tracking-display: -0.02em;
+	--space-3xs: 2px;
+	--space-2xs: 4px;
+	--space-xs: 8px;
+	--space-sm: 12px;
+	--space-md: 16px;
+	--space-lg: 24px;
+	--space-xl: 40px;
+	--space-2xl: 64px;
+	--space-3xl: 96px;
+	--text-xs: 0.8125rem;
+	--text-sm: 0.875rem;
+	--text-md: 1rem;
+	--text-lg: 1.25rem;
+	--text-body: 1.125rem;
+	--text-display: clamp(2.5rem, 4.5vw + 1rem, 4.75rem);
+	--text-section: clamp(1.875rem, 2vw + 1.1rem, 3rem);
+	--text-title: clamp(1.25rem, 0.6vw + 1rem, 1.5rem);
+	--text-lead: clamp(1.1875rem, 0.4vw + 1rem, 1.375rem);
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+	--dur-micro: 120ms;
+	--dur-short: 220ms;
+	--container: 72rem;
+	--gutter: var(--space-2xl);
+	--rail: 13.5rem;
+}
+.almanach {
+	display: block;
+	background: var(--color-paper);
+	color: var(--color-ink-2);
+	font-family: var(--font-body);
+	font-size: var(--text-body);
+	line-height: 1.6;
+}
+html:has(main.almanach),
+body:has(main.almanach) {
+	overflow-x: clip;
+}
+.almanach :focus-visible {
+	outline: var(--rule-bar) solid var(--color-focus);
+	outline-offset: var(--space-3xs);
+}
+.almanach ::selection {
+	background: var(--color-accent-wash);
+	color: var(--color-ink);
+}
+.almanach .cadre {
+	max-width: var(--container);
+	margin-inline: auto;
+	padding: var(--space-2xl) var(--gutter) var(--space-3xl);
+}
+
+.almanach :is(h1, h2, h3):where(:not(.diagramme *)) {
+	margin: 0;
+	font-family: var(--font-display);
+	font-weight: 600;
+	letter-spacing: var(--tracking-display);
+	color: var(--color-ink);
+	overflow-wrap: break-word;
+	min-width: 0;
+	text-wrap: balance;
+	scroll-margin-top: calc(var(--header-h) + var(--space-lg));
+}
+.almanach p:where(:not(.diagramme *)) {
+	margin: var(--space-md) 0 0;
+	max-width: 65ch;
+	text-wrap: pretty;
+}
+.almanach a:where(:not(.diagramme *)) {
+	color: var(--color-ink);
+	text-decoration-color: var(--color-accent);
+	text-decoration-thickness: var(--rule-hair);
+	text-underline-offset: 0.18em;
+	transition: text-decoration-thickness var(--dur-micro) var(--ease-out);
+}
+.almanach a:where(:not(.diagramme *)):hover {
+	text-decoration-thickness: var(--rule-bar);
+}
+.almanach code:where(:not(.diagramme *)) {
+	font-family: var(--font-outlier);
+	font-size: 0.85em;
+	overflow-wrap: anywhere;
+}
+.almanach strong:where(:not(.diagramme *)) {
+	font-weight: 600;
+	color: var(--color-ink);
+}
+.almanach svg:where(:not(.diagramme *)) {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.8;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+.almanach .numero:where(:not(.diagramme *)) {
+	font-family: var(--font-outlier);
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-accent);
+}
+
+/* L'en-tête : le titre et sa date, puis le filet d'encre sur toute la largeur. */
+.almanach .cadre > .tete {
+	padding-bottom: var(--space-lg);
+	border-bottom: var(--rule-bar) solid var(--color-rule-2);
+}
+.almanach h1 {
+	max-width: 16ch;
+	font-size: var(--text-display);
+	letter-spacing: -0.035em;
+	line-height: 0.98;
+}
+.almanach .tete .date {
+	margin-top: var(--space-md);
+	font-size: var(--text-sm);
+	color: var(--color-muted);
+}
+
+/* Les parties, numérotées comme dans le sommaire. Les noms de classes de la page ne descendent pas non plus dans
+   les diagrammes, qui peuvent avoir les leurs. */
+.almanach .partie:where(:not(.diagramme *)) {
+	margin-top: var(--space-3xl);
+}
+.almanach .partie > h2 {
+	display: flex;
+	align-items: baseline;
+	gap: var(--space-sm);
+	padding-top: var(--space-md);
+	border-top: var(--rule-bar) solid var(--color-rule-2);
+	font-size: var(--text-section);
+	line-height: 1.05;
+}
+.almanach .chapeau:where(:not(.diagramme *)) {
+	margin-top: var(--space-lg);
+	font-size: var(--text-lead);
+	line-height: 1.5;
+	color: var(--color-ink);
+}
+.almanach h3 {
+	margin-top: var(--space-2xl);
+	font-size: var(--text-title);
+	line-height: 1.2;
+}
+.almanach h3 + p {
+	margin-top: var(--space-sm);
+}
+
+/* Grand écran : le sommaire, s'il y en a un, en rail à gauche, du bas de l'en-tête au bas de la page ; le reste dans
+   la colonne de lecture. */
+@media (min-width: 60rem) {
+	.almanach .cadre:has(> .sommaire) {
+		display: grid;
+		grid-template-columns: var(--rail) minmax(0, 1fr);
+		column-gap: var(--space-2xl);
+	}
+	.almanach .cadre > .tete {
+		grid-column: 1 / -1;
+	}
+	.almanach .cadre > :not(.tete, .sommaire) {
+		grid-column: 2;
+	}
+}
+@media (max-width: 60rem) {
+	.almanach {
+		--gutter: var(--space-lg);
+	}
+}
+@media (max-width: 40rem) {
+	.almanach {
+		--gutter: var(--space-md);
+		--text-body: 1.0625rem;
+	}
+	.almanach .cadre {
+		padding-top: var(--space-xl);
+	}
+	.almanach .partie {
+		margin-top: var(--space-2xl);
+	}
+}
+
+/* Le mouvement : à l'écran seulement, et seulement si l'on n'a pas demandé de le réduire. Il part toujours d'un état
+   visible ; sans lui, la page est la même, immobile. */
+@media screen and (prefers-reduced-motion: no-preference) {
+	html:has(main.almanach) {
+		scroll-behavior: smooth;
+	}
+	.almanach h1,
+	.almanach .tete .date {
+		animation: almanach-monte 0.8s var(--ease-out) both;
+	}
+	.almanach .tete .date {
+		animation-delay: 0.12s;
+	}
+	/* Arrivé par le sommaire, l'intertitre se souligne une fois. */
+	.almanach :is(h2, h3):target {
+		background: linear-gradient(var(--color-accent-wash), var(--color-accent-wash)) no-repeat left bottom / 100%
+			0.45em;
+		animation: almanach-souligne 1.4s var(--ease-out) 0.3s both;
+	}
+}
+@keyframes almanach-monte {
+	from {
+		opacity: 0;
+		transform: translateY(0.6rem);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes almanach-souligne {
+	from {
+		background-size: 0 0.45em;
+	}
+	to {
+		background-size: 100% 0.45em;
+	}
+}
+
+@media print {
+	.almanach {
+		background: none;
+		font-size: 11pt;
+	}
+	.almanach .cadre {
+		display: block;
+		max-width: none;
+		padding: 0;
+	}
+	.almanach .partie {
+		margin-top: var(--space-xl);
+	}
+	.almanach .partie > h2,
+	.almanach h3 {
+		break-after: avoid;
+	}
+	/* Les adresses courriel se lisent déjà dans le texte du lien. */
+	.almanach a[href^='http']::after {
+		content: ' (' attr(href) ')';
+		font-size: 0.85em;
+		color: var(--color-muted);
+		overflow-wrap: anywhere;
+	}
+}

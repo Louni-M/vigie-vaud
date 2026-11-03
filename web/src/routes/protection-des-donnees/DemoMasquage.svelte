@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { MASQUE } from '#lib/masquage.js';
-	import Diagramme from './Diagramme.svelte';
+	import Diagramme from '#lib/almanach/Diagramme.svelte';
 	import { CONSEIL, PERMIS, type Morceau } from './exemples.js';
 
 	// Le masquage en direct (#165) : la phrase de la source, puis celle du site. Pour chaque exemple, où le masquage

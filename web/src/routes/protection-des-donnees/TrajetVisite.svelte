@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { AUDIENCE } from '#lib/audience.js';
-	import Diagramme from './Diagramme.svelte';
+	import Diagramme from '#lib/almanach/Diagramme.svelte';
 
 	// Le trajet de votre visite (#165) : ce que l'appareil du visiteur envoie à chaque destinataire. Il reprend le
 	// tableau des destinataires de la page, à revoir avec lui ; GoatCounter n'y est que si la mesure d'audience est

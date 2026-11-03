@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Diagramme from './Diagramme.svelte';
+	import Diagramme from '#lib/almanach/Diagramme.svelte';
 
 	// Le retrait d'un nom en trois étapes (#165), tel que le décrit le texte de l'encadré : une frise de sept jours,
 	// du courriel au retrait.
