@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '#lib/almanach/almanach.css';
 	import favicon from '#lib/assets/favicon.svg';
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -50,8 +51,17 @@
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
-<header>
-	<a class="marque" href={resolve('/(carte)')}>Vigie <span>Vaud</span></a>
+<!-- L'en-tête du site, dans le système Almanach (#165) : un bandeau de papier clair sur un filet d'encre, la marque à
+	gauche, la page courante soulignée d'orange. -->
+<header data-theme="almanach">
+	<a class="marque" href={resolve('/(carte)')}>
+		<!-- Le repère de la vigie : un anneau d'encre et son point orange, qui sert aussi d'icône d'onglet. -->
+		<svg class="repere" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+			<circle cx="12" cy="12" r="9" />
+			<circle class="point" cx="12" cy="12" r="3.5" />
+		</svg>
+		<span>Vigie <span class="vaud">Vaud</span></span>
+	</a>
 	<nav>
 		{#each nav as l (l.href)}
 			<a href={l.href} aria-current={courant(l.groupe) ? 'page' : undefined}>{l.label}</a>
@@ -134,63 +144,109 @@
 		height: var(--header-h);
 		display: flex;
 		align-items: center;
-		gap: 16px;
-		padding: 0 16px;
-		background: var(--accent);
-		color: #fff;
+		gap: var(--space-md);
+		padding: 0 var(--space-md);
+		border-bottom: var(--rule-bar) solid var(--color-rule-2);
+		background: var(--color-sheet);
+		color: var(--color-ink);
+		font-family: var(--font-display);
 		position: sticky;
 		top: 0;
 		z-index: 10;
 	}
 	header :focus-visible {
-		outline-color: #fff;
+		outline: var(--rule-bar) solid var(--color-focus);
+		outline-offset: var(--space-3xs);
 	}
+	/* La marque : le repère, puis le nom, serré comme un titre, « Vaud » en orange. */
 	.marque {
-		/* Pas de flex ici : l'espace entre « Vigie » et « Vaud » serait supprimé. */
-		display: inline-block;
-		padding: 11px 0;
-		line-height: 22px;
-		color: #fff;
+		display: flex;
+		align-items: center;
+		gap: var(--space-xs);
+		min-height: 44px;
+		color: var(--color-ink);
 		text-decoration: none;
+		font-size: 1.1875rem;
 		font-weight: 700;
-		font-size: 18px;
+		letter-spacing: -0.03em;
 		white-space: nowrap;
 	}
-	.marque span {
-		color: #ffb38a;
+	.vaud {
+		color: var(--color-accent);
+	}
+	.repere {
+		flex: none;
+		fill: none;
+		stroke: var(--color-ink);
+		stroke-width: 2.25;
+	}
+	.repere .point {
+		fill: var(--color-accent);
+		stroke: none;
 	}
 	nav {
 		display: flex;
-		gap: 14px;
+		align-self: stretch;
+		gap: var(--space-lg);
 		margin-left: auto;
-		font-size: 14px;
+		font-size: var(--text-sm);
 	}
 	nav a {
-		/* Zone tactile d'au moins 44 px de haut. */
+		/* Zone tactile de toute la hauteur du bandeau. */
+		position: relative;
 		display: flex;
 		align-items: center;
 		min-height: 44px;
-		padding: 0 2px;
-		color: #dfe7f2;
+		padding: 0 var(--space-3xs);
+		color: var(--color-muted);
 		text-decoration: none;
 		white-space: nowrap;
+		transition: color var(--dur-short) var(--ease-out);
+	}
+	/* Le trait de la page courante, posé juste au-dessus du filet d'encre du bandeau ; au survol, un trait d'encre se
+	   déroule. */
+	nav a::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		border-top: var(--rule-bar) solid var(--color-rule-2);
+		transform: scaleX(0);
+		transform-origin: left;
+		transition: transform var(--dur-short) var(--ease-out);
+	}
+	nav a:hover {
+		color: var(--color-ink);
+	}
+	nav a:hover::after {
+		transform: none;
+	}
+	nav a[aria-current='page'] {
+		color: var(--color-ink);
+		font-weight: 600;
+	}
+	nav a[aria-current='page']::after {
+		border-top-color: var(--color-accent);
+		transform: none;
 	}
 	@media (max-width: 420px) {
 		header {
-			gap: 10px;
-			padding: 0 12px;
+			gap: var(--space-sm);
+			padding: 0 var(--space-sm);
 		}
 		.marque {
-			font-size: 16px;
+			gap: var(--space-2xs);
+			font-size: var(--text-md);
+		}
+		.repere {
+			width: 20px;
+			height: 20px;
 		}
 		nav {
-			gap: 10px;
-			font-size: 13px;
+			gap: var(--space-sm);
+			font-size: var(--text-xs);
 		}
-	}
-	nav a[aria-current='page'] {
-		color: #fff;
-		font-weight: 600;
 	}
 	/* Une page imprimée n'a que faire de la navigation. */
 	@media print {
