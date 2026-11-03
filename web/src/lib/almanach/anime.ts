@@ -9,12 +9,16 @@ export function anime(n: HTMLElement) {
 	n.dataset.jsEtat = 'attente';
 	const observateur = new IntersectionObserver(
 		(entrees) => {
-			if (!entrees.some((e) => e.isIntersecting)) return;
+			// Bien entré : 40 % de l'élément à l'écran, ou, pour un élément plus haut que l'écran, qui n'atteint jamais
+			// ces 40 %, 40 % de l'écran occupés par lui.
+			const entre = (e: IntersectionObserverEntry) =>
+				e.intersectionRatio >= 0.4 || e.intersectionRect.height >= (e.rootBounds?.height ?? innerHeight) * 0.4;
+			if (!entrees.some(entre)) return;
 			n.dataset.jsEtat = 'joue';
 			observateur.disconnect();
 		},
 		// L'élément joue quand il est bien entré, pas dès que son bord affleure en bas de l'écran.
-		{ threshold: 0.4, rootMargin: '0px 0px -12% 0px' }
+		{ threshold: [0.1, 0.2, 0.3, 0.4], rootMargin: '0px 0px -12% 0px' }
 	);
 	observateur.observe(n);
 	return { destroy: () => observateur.disconnect() };

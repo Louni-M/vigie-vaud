@@ -121,9 +121,9 @@
 					service gratuit&nbsp;:
 					<a href="https://www.vd.ch/prestation/sabonner-aux-avis-denquete" target="_blank" rel="noopener"
 						>InfoCamac</a
-					>. Les règles de l’enquête publique (consultation, observations, oppositions, recours) sont résumées sur la
-					page
-					<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique&nbsp;: ce que prévoit la loi</a>.
+					>. Les règles de l’enquête publique (consultation, observations, oppositions, recours) sont décrites sur la
+					page de l’État de Vaud
+					<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">Les étapes de la procédure du permis de construire</a>.
 				</p>
 
 				<h3 id="hotels-de-ville">Hôtels de ville</h3>
@@ -392,11 +392,6 @@ Crawl-delay: 30</code></pre>
 </main>
 
 <style>
-	/* Hallmark · shape: Long Document, the sticky contents rail of Protection des données beside one reading column · theme: Almanac, shared (#lib/almanach) · redesign: full
-	 * signature: a Grand Conseil title read name by name, each name kept or set aside by the attachment rules · imagery: none, two diagrams of the page's own facts */
-	/* Hallmark · waive 38iii · the part number in each h2 · the parts carry the same numbers in the sommaire rail */
-	/* Hallmark · answered F-motion · each diagram plays once on entry, never loops; the two ways to stop the robot show their delays once */
-
 	/* Les jetons, la base, l'en-tête, les parties et le sommaire sont communs aux pages Almanach (#lib/almanach). */
 
 	.intro {

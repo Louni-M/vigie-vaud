@@ -232,10 +232,6 @@
 </main>
 
 <style>
-	/* Hallmark · shape: a reference tool, the sources as sheets then one ruled table of the communes · theme: Almanac, shared with Protection des données (#lib/almanach) · redesign: full
-	 * signature: each state is a mark that lights up once when the probes' state arrives in the browser · imagery: none, one diagram of the page's own rhythm */
-	/* Hallmark · answered F-motion · motion only where it reads: the day of checks plays once on entry, each state lights up once when it loads */
-
 	/* Les jetons, la base et l'en-tête sont communs aux pages Almanach (#lib/almanach). */
 
 	/* L'état, partout sur la page : une marque devant son libellé. Disponible, un point d'encre ; en panne, un point
@@ -467,6 +463,8 @@
 		padding: var(--space-sm);
 		text-align: left;
 		vertical-align: top;
+		/* La page ne défile pas en largeur (almanach.css) : une colonne de trop se resserre plutôt que d'être coupée. */
+		overflow-wrap: anywhere;
 	}
 	/* L'en-tête de la table reste sous la barre du site pendant qu'on parcourt les 300 lignes. Son filet est dessiné
 	   par un fond, qui suit la cellule collée, quand une bordure resterait sur place. */
@@ -583,7 +581,7 @@
 		.etat[data-etat] {
 			animation: arrive 0.5s var(--ease-out) both;
 		}
-		[data-etat]::before {
+		.etat[data-etat]::before {
 			animation: allume 0.6s var(--ease-out) 0.1s both;
 		}
 	}

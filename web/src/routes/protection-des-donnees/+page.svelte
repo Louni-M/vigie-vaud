@@ -192,7 +192,7 @@
 				<div class="action">
 					<h3 id="retrait">Retrait d’un nom</h3>
 					<p class="appel">
-						Le nom d’une personne est passé à travers le masquage&nbsp;? Un courriel suffit&nbsp;: il est retiré sous 7 jours.
+						Le nom d’une personne est passé à travers le masquage&nbsp;? Un courriel suffit.
 					</p>
 					<a class="bouton courriel" href="mailto:{COURRIEL}">
 						<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -204,8 +204,8 @@
 					</a>
 					<EtapesRetrait />
 					<p>
-						Si le nom d’une personne est passé à travers le masquage, écrivez à
-						<a href="mailto:{COURRIEL}">{COURRIEL}</a>, jamais par une issue, qui publierait le nom. Il est retiré dans
+						Écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>, jamais par une issue, qui publierait le nom. Il est
+						retiré dans
 						les 7 jours, historique du dépôt de données public compris. Comme le cron relit les sources chaque jour,
 						le dépôt de données garde une correction pour cet élément (son texte corrigé, sans le nom), appliquée à
 						chaque import et à chaque rattrapage&nbsp;; quand le cas révèle une règle, le masquage est corrigé aussi. Le
@@ -360,17 +360,6 @@
 </main>
 
 <style>
-	/* Hallmark · shape: Long Document, a sticky contents rail beside one reading column · genre: editorial · theme: Almanac (deal 2/3, seed publique-protection-des-donn-ad7e·cdea8084·2026-11-03·r0) · redesign: full
-	 * hero: kept, the title and its date over a 2px ink rule · nav: kept (site header) · footer: kept (none) · imagery: none, three diagrams of the page's own facts · signature: the name crossed out and replaced by [particulier], live, in the source's own sentence
-	 * axes: light/grotesk-sans/warm · posture: restrained · contrast: pass · fold: pass · v2.0.0 */
-	/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: P, a legal page argues little; the diagrams carry the argument that the site shows what it hides and how */
-	/* Hallmark · waive 1 · system-ui display, a serif and a mono from the system · a web font would add one more recipient of the visitor's IP address to the very page that lists them */
-	/* Hallmark · waive 38iii · the part number in each h2 · the two parts of the page carry the same numbers in the sommaire rail */
-	/* Hallmark · dismissed 63 · the middle dots are French inclusive writing (élu·e·s), the site's glossary spelling */
-	/* Hallmark · dismissed 67 · {COURRIEL} is a constant holding the contact address in lower case, not text in capitals */
-	/* Hallmark · dismissed 19 · the dash is in the title tag, the site-wide pattern "<page> – Vigie Vaud" every route shares */
-	/* Hallmark · answered F-motion · the user asked for more and pleasanter motion than the theme's stillness: each diagram plays once on entry, never loops */
-
 	/* Les jetons, la base, l'en-tête, les parties et le sommaire sont communs aux pages Almanach (#lib/almanach). */
 
 	/* En bref : la feuille du manuel, une ligne réglée par fait. */

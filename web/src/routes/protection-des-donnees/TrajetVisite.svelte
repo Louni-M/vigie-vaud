@@ -15,7 +15,7 @@
 		},
 		{ nom: 'État de Vaud', pays: 'Suisse', role: 'permis, routes', envoi: ['adresse IP', 'zone affichée'] },
 		...(AUDIENCE
-			? [{ nom: 'GoatCounter', pays: 'Irlande', role: 'mesure d’audience', envoi: ['chemin de la page', 'navigateur'] }]
+			? [{ nom: 'GoatCounter', pays: 'Irlande', role: 'mesure d’audience', envoi: ['adresse IP', 'chemin de la page', 'navigateur'] }]
 			: [])
 	];
 </script>

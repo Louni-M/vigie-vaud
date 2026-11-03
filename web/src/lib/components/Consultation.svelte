@@ -15,7 +15,7 @@
 	</p>
 	<p>
 		La loi permet aussi de déposer par écrit, dans le délai d’enquête, des observations ou une opposition motivée.
-		Qui peut le faire, à quelles conditions et avec quelles conséquences :
+		Les étapes de la procédure, des oppositions au recours, sur la page de l’État de Vaud :
 		<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique : ce que prévoit la loi</a>.
 	</p>
 	<p class="muted">Informations générales, sans valeur de conseil juridique.</p>
