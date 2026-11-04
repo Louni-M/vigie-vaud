@@ -171,7 +171,9 @@
 					'NavigationControl.ZoomOut': 'Zoom arrière',
 					'AttributionControl.ToggleAttribution': 'Afficher ou masquer les sources'
 				},
-				maxBounds: [4.5, 45.5, 8.5, 47.6]
+				// SWISSIMAGE s'arrête à l'ouest entre 4,57° et 4,68° E (blanc au-delà) : la limite ouest reste en deçà, et
+				// la largeur des limites ne change pas, pour garder le même dézoom maximal.
+				maxBounds: [4.7, 45.5, 8.7, 47.6]
 			});
 			if (interactive) m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
