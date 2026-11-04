@@ -200,7 +200,8 @@
 .app[data-theme='almanach'] .liste > li + li {
 	border-top: var(--rule-hair) solid var(--color-rule);
 }
-.app[data-theme='almanach'] :is(a, button).carte,
+/* Seulement dans les listes : l'aperçu du téléphone flotte sur la carte, sa carte de dossier garde son fond. */
+.app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte,
 .app[data-theme='almanach'] .carte-attente {
 	padding: var(--space-sm) var(--space-xs) var(--space-sm) var(--space-sm);
 	border: 0;
@@ -208,8 +209,8 @@
 	background: none;
 	transition: background-color var(--dur-short) var(--ease-out);
 }
-.app[data-theme='almanach'] :is(a, button).carte:hover,
-.app[data-theme='almanach'] :is(a, button).carte.actif {
+.app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte:hover,
+.app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte.actif {
 	border: 0;
 	background: var(--color-paper);
 	box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
