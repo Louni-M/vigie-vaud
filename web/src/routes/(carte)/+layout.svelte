@@ -361,7 +361,7 @@
 		{#if registre.volet === FIL && !telephone.current}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="volet volet-fil"
+				class="volet"
 				in:bulleEntree={{ id: FIL }}
 				out:bulleSortie={{ id: FIL, ouvert: () => registre.volet }}
 				onkeydown={(e) => e.key === 'Escape' && fermerVolet()}
@@ -488,30 +488,31 @@
 		color: var(--muted);
 		cursor: pointer;
 	}
+	/*
+	 * Le volet pend sous la recherche, à sa largeur : son filet de tête passe sous celui du champ (46 px de haut, filet
+	 * de 2 px compris). Ni écart ni débord où la carte devrait se voir : un vieux navigateur Windows y laissait le fond
+	 * de la page, en gris, au-dessus du fil.
+	 */
 	.volet {
 		position: absolute;
 		z-index: 3;
-		top: 66px;
+		top: 54px;
 		left: 10px;
 		bottom: 34px;
-		width: min(360px, calc(100% - 20px));
+		width: min(360px, calc(100% - 70px));
 		overflow-y: auto;
 		border-radius: 10px;
 		/* Le volet est à la hauteur de son contenu, sans dépasser le bas de la carte. */
 		height: fit-content;
-		max-height: calc(100% - 100px);
+		max-height: calc(100% - 88px);
 		/* Le volet descend au moins jusqu'à la dernière icône du rail (Hôtels de ville), pour que sa bulle sorte de
 		   son icône et non d'en dessous ; le contenu, un volet blanc, remplit cette hauteur. */
-		min-height: min(300px, calc(100% - 100px));
+		min-height: min(300px, calc(100% - 88px));
 		display: flex;
 		flex-direction: column;
 	}
 	.volet > :global(*) {
 		flex: 1 0 auto;
-	}
-	/* Le fil, un peu plus large qu'un volet. */
-	.volet-fil {
-		width: min(380px, calc(100% - 20px));
 	}
 	.liens {
 		position: absolute;

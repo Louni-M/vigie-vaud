@@ -97,6 +97,18 @@ body:has(main.almanach) {
 	max-width: 65ch;
 	text-wrap: pretty;
 }
+/* Les paragraphes du texte courant, justifiés, avec césure. Pas ceux des cartes, encarts et listes, trop étroits, ni
+   sur téléphone : une colonne d'une quarantaine de signes s'y creuserait de blancs. */
+@media (min-width: 40rem) {
+	.almanach :is(.intro, .corps, .partie, .action) > p:where(:not(.diagramme *)) {
+		text-align: justify;
+		hyphens: auto;
+	}
+	/* Un trait d'union ajouté fausserait une adresse ou un nom de fichier. */
+	.almanach :is(.intro, .corps, .partie, .action) > p :is(a, code) {
+		hyphens: manual;
+	}
+}
 .almanach a:where(:not(.diagramme *)) {
 	color: var(--color-ink);
 	text-decoration-color: var(--color-accent);
