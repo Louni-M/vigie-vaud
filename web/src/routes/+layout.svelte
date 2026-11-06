@@ -53,6 +53,9 @@
 
 <!-- L'en-tête du site, dans le système Almanach (#165) : un bandeau de papier clair sur un filet d'encre, la marque à
 	gauche, la page courante soulignée d'orange. -->
+<!-- Lien d'évitement : chaque page porte son contenu dans <main id="contenu">. -->
+<a class="evitement-contenu" href="#contenu">Aller au contenu</a>
+
 <header data-theme="almanach">
 	<a class="marque" href={resolve('/(carte)')}>
 		<!-- Le repère de la vigie : un anneau d'encre et son point orange, qui sert aussi d'icône d'onglet. -->
@@ -60,9 +63,9 @@
 			<circle cx="12" cy="12" r="9" />
 			<circle class="point" cx="12" cy="12" r="3.5" />
 		</svg>
-		<span>Vigie <span class="vaud">Vaud</span></span>
+		<span translate="no">Vigie <span class="vaud">Vaud</span></span>
 	</a>
-	<nav>
+	<nav aria-label="Navigation principale">
 		{#each nav as l (l.href)}
 			<a href={l.href} aria-current={courant(l.groupe) ? 'page' : undefined}>{l.label}</a>
 		{/each}
@@ -90,6 +93,15 @@
 	}
 	:global(*) {
 		box-sizing: border-box;
+	}
+	/* L'en-tête collant ne recouvre jamais l'élément qui reçoit le focus ou l'ancre visée. */
+	:global(html) {
+		scroll-padding-top: calc(var(--header-h) + 8px);
+	}
+	/* Pas de délai de double-toucher sur les commandes, et un retour de toucher choisi : celui de l'état :active. */
+	:global(:is(a, button, input, select, label, summary, [role='tab'])) {
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
 	}
 	:global(html, body) {
 		margin: 0;
@@ -120,6 +132,15 @@
 		font-size: 14px;
 		border: 0;
 		cursor: pointer;
+		transition:
+			background-color var(--dur-micro, 120ms) ease-out,
+			box-shadow var(--dur-micro, 120ms) ease-out;
+	}
+	:global(.bouton:hover) {
+		background: color-mix(in oklab, var(--accent), black 22%);
+	}
+	:global(.bouton:active) {
+		background: color-mix(in oklab, var(--accent), black 35%);
 	}
 	@media (pointer: coarse) {
 		:global(.bouton) {
@@ -130,6 +151,49 @@
 		background: var(--surface);
 		color: var(--accent);
 		box-shadow: inset 0 0 0 1px var(--accent);
+	}
+	:global(.bouton.secondaire:hover) {
+		background: color-mix(in oklab, var(--accent), white 90%);
+		box-shadow: inset 0 0 0 2px var(--accent);
+	}
+	:global(.bouton.secondaire:active) {
+		background: color-mix(in oklab, var(--accent), white 80%);
+	}
+	/* Texte lu par les lecteurs d'écran seulement (chargement, nom d'un signe, en-têtes d'un tableau replié). */
+	:global(.lecteur-seul) {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
+	}
+	/* Hors de l'écran tant qu'il n'a pas le focus clavier. */
+	.evitement-contenu {
+		position: absolute;
+		top: 8px;
+		left: 8px;
+		z-index: 30;
+		padding: 10px 14px;
+		background: var(--color-sheet, #fff);
+		color: var(--color-ink, #1d2330);
+		font-weight: 600;
+		box-shadow: 0 0 0 2px var(--color-ink, #1d2330);
+	}
+	.evitement-contenu:not(:focus) {
+		clip-path: inset(50%);
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		white-space: nowrap;
+		padding: 0;
+	}
+	/* Le <main> visé par l'évitement prend le focus sans anneau : c'est un point d'arrivée, pas une commande. */
+	:global(#contenu:focus) {
+		outline: none;
 	}
 	:global(.page) {
 		max-width: 860px;
@@ -145,7 +209,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-md);
-		padding: 0 var(--space-md);
+		padding: 0 max(var(--space-md), env(safe-area-inset-right)) 0 max(var(--space-md), env(safe-area-inset-left));
 		border-bottom: var(--rule-bar) solid var(--color-rule-2);
 		background: var(--color-sheet);
 		color: var(--color-ink);
@@ -216,6 +280,11 @@
 		transform-origin: left;
 		transition: transform var(--dur-short) var(--ease-out);
 	}
+	@media (prefers-reduced-motion: reduce) {
+		nav a::after {
+			transition: none;
+		}
+	}
 	nav a:hover {
 		color: var(--color-ink);
 	}
@@ -233,7 +302,7 @@
 	@media (max-width: 420px) {
 		header {
 			gap: var(--space-sm);
-			padding: 0 var(--space-sm);
+			padding: 0 max(var(--space-sm), env(safe-area-inset-right)) 0 max(var(--space-sm), env(safe-area-inset-left));
 		}
 		.marque {
 			gap: var(--space-2xs);
