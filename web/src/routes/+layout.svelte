@@ -235,6 +235,10 @@
 	.vaud {
 		color: var(--color-accent);
 	}
+	/* Au survol, le point du repère grossit : la marque mène à la carte. */
+	.marque:hover .repere .point {
+		transform: scale(1.35);
+	}
 	.repere {
 		flex: none;
 		fill: none;
@@ -244,6 +248,9 @@
 	.repere .point {
 		fill: var(--color-accent);
 		stroke: none;
+		transform-box: fill-box;
+		transform-origin: center;
+		transition: transform var(--dur-short) var(--ease-out);
 	}
 	nav {
 		display: flex;
@@ -277,7 +284,8 @@
 		transition: transform var(--dur-short) var(--ease-out);
 	}
 	@media (prefers-reduced-motion: reduce) {
-		nav a::after {
+		nav a::after,
+		.repere .point {
 			transition: none;
 		}
 	}
@@ -294,6 +302,11 @@
 	nav a[aria-current='page']::after {
 		border-top-color: var(--color-accent);
 		transform: none;
+	}
+	/* La page courante, survolée : son trait s'épaissit. */
+	nav a[aria-current='page']:hover::after {
+		transform: scaleY(2);
+		transform-origin: bottom;
 	}
 	@media (max-width: 420px) {
 		header {
