@@ -10,7 +10,7 @@
 	import type { LigneObjet } from '#lib/schema.js';
 	import type { Commune } from '#lib/types.js';
 	import { typographier } from '#lib/almanach/typographie.js';
-	import { lienElement } from '#lib/registre/liens.js';
+	import { clicSimple, lienElement } from '#lib/registre/liens.js';
 	import { COULEUR_CONSEILS, coucheConseils } from './index.js';
 	import { auteursObjet, dateObjet } from './lignes.js';
 	import { communesNommees } from './rattachements.js';
@@ -33,7 +33,7 @@
 
 	/** Un clic simple ouvre l'Objet par `ouvrir` ; avec une touche ou un autre bouton, le navigateur suit le lien. */
 	function clic(e: MouseEvent) {
-		if (!ouvrir || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+		if (!ouvrir || !clicSimple(e)) return;
 		e.preventDefault();
 		ouvrir(objet.cle);
 	}

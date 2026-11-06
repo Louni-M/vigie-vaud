@@ -6,7 +6,7 @@
 	 * Grand Conseil ouvre la sienne. Ce sont des liens vers leur page : un clic simple ouvre la fiche par le registre,
 	 * Cmd/Ctrl-clic ou le clic du milieu l'ouvrent dans un nouvel onglet.
 	 */
-	import { lienCommune, lienFiche } from '#lib/registre/liens.js';
+	import { clicSimple, lienCommune, lienFiche } from '#lib/registre/liens.js';
 	import type { Cible, Contexte } from '#lib/registre/types.js';
 	import { listerConseils, SOURCES } from '#lib/sources.js';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -32,7 +32,7 @@
 
 	/** Un clic simple ouvre la cible par le registre ; avec une touche ou un autre bouton, le navigateur suit le lien. */
 	function ouvrirAuClic(e: MouseEvent, cible: Cible) {
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+		if (!clicSimple(e)) return;
 		e.preventDefault();
 		ctx.ouvrir(cible);
 	}

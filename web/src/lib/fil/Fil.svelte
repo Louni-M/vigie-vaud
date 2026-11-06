@@ -9,7 +9,7 @@
 	import { onMount } from 'svelte';
 	import type { GeoJSONSource, GeoJSONSourceSpecification } from 'maplibre-gl';
 	import { typographier } from '#lib/almanach/typographie.js';
-	import { lienElement } from '#lib/registre/liens.js';
+	import { clicSimple, lienElement } from '#lib/registre/liens.js';
 	import type { Registre } from '#lib/registre/registre.svelte.js';
 	import type { Commune } from '#lib/types.js';
 	import type { ChargementFil } from './chargement.svelte.js';
@@ -51,7 +51,7 @@
 
 	/** Clic simple : le registre ouvre l'entrée sur place ; avec une touche ou un autre bouton, le navigateur suit le lien. */
 	function ouvrir(e: MouseEvent, l: LigneFil) {
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+		if (!clicSimple(e)) return;
 		e.preventDefault();
 		registre.ouvrir({ couche: l.couche, element: l.element, position: l.position });
 	}
@@ -344,9 +344,6 @@
 	}
 	li {
 		border-bottom: 1px solid var(--line);
-		/* Quatorze jours d'entrées : celles hors de l'écran ne sont ni mises en page ni dessinées. */
-		content-visibility: auto;
-		contain-intrinsic-size: auto 64px;
 	}
 	li.ouvert {
 		background: #fff6d6;
@@ -360,6 +357,12 @@
 		color: inherit;
 		text-decoration: none;
 		text-align: left;
+		/*
+		 * Quatorze jours d'entrées : celles hors de l'écran ne sont ni mises en page ni dessinées. Sur le lien et non
+		 * sur le `li`, dont le confinement couperait l'anneau du focus.
+		 */
+		content-visibility: auto;
+		contain-intrinsic-size: auto 64px;
 	}
 	li > a:hover {
 		background: var(--bg);

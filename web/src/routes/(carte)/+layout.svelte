@@ -278,7 +278,8 @@
 	class:recherche-pleine={pleine}
 	data-affichage={affichage}
 >
-	<!-- Le rail, dans son propre repère de page : sans boîte à lui (display: contents), la grille de .app reste la même. -->
+	<!-- Le rail, dans son propre repère de page : le repère prend la première colonne de .app, et le rail le remplit. Pas
+		de display: contents, qui retire le repère de l'arbre d'accessibilité dans WebKit. -->
 	<aside class="cote-rail" aria-label="Couches de la carte">
 		<Rail {registre} />
 	</aside>
@@ -612,7 +613,7 @@
 		.contenu {
 			grid-area: 1 / 1;
 		}
-		.app > .cote-rail > :global(.rail) {
+		.app > .cote-rail {
 			display: none;
 		}
 		/* Les volets du bureau, rendus à la pré-génération, ne s'affichent pas avant que la requête ne les retire. */
@@ -709,7 +710,8 @@
 		.recherche-pleine .zone-carte,
 		.recherche-pleine .barre-vues,
 		.recherche-pleine .evitement,
-		:global(header:has(~ .app.recherche-pleine)) {
+		:global(header:has(~ .app.recherche-pleine)),
+		:global(.evitement-contenu:has(~ .app.recherche-pleine)) {
 			visibility: hidden;
 		}
 		.recherche-pleine .zone-carte :global(.maplibregl-control-container),
@@ -719,7 +721,14 @@
 		}
 	}
 	.cote-rail {
-		display: contents;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		min-height: 0;
+	}
+	.cote-rail > :global(.rail) {
+		flex: 1;
+		min-height: 0;
 	}
 	.evitement {
 		position: absolute;

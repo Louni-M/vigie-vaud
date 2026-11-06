@@ -1,14 +1,10 @@
-<script lang="ts" module>
-	/** Nombres affichés à la suisse romande (séparateur de milliers). */
-	const nombre = new Intl.NumberFormat('fr-CH');
-</script>
-
 <script lang="ts">
 	/*
 	 * Volet de la couche Permis : puces de statut (qui servent de légende), nature, tri, historique et curseur
 	 * d'années, puis le compteur et la liste des dossiers de la zone visible, masqués quand la couche est
 	 * désactivée. Le registre a déjà rendu l'interrupteur et l'attribution au-dessus.
 	 */
+	import { nombre } from '#lib/almanach/typographie.js';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import { NATURES, PROCEDURE_PERMIS, STATUTS } from '#lib/labels.js';

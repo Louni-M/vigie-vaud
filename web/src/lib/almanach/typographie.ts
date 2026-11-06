@@ -6,6 +6,9 @@
 export const insecables = (texte: string): string =>
 	texte.replace(/ (?=[;:?!»])/g, ' ').replace(/« /g, '« ');
 
+/** Les nombres affichés à la suisse romande (séparateur de milliers) : « 1 234 ». */
+export const nombre = new Intl.NumberFormat('fr-CH');
+
 /** Unités qu'un nombre ne quitte pas en fin de ligne (« 180 m », « 14 jours »). */
 const UNITES = 'km|m|cm|mm|mètres?|kg|t|ha|%|min|jours?|semaines?|mois|ans?';
 

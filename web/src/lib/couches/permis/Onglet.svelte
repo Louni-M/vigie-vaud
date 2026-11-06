@@ -1,8 +1,3 @@
-<script lang="ts" module>
-	/** Nombres affichés à la suisse romande (séparateur de milliers). */
-	const nombre = new Intl.NumberFormat('fr-CH');
-</script>
-
 <script lang="ts">
 	/*
 	 * Onglet Permis de la fiche commune : chiffres par statut, dossiers à l'enquête et en attente de décision,
@@ -10,6 +5,7 @@
 	 * d'onglets ; il remonte l'onglet quand on change de commune. Tout est lu en direct sur le service du canton.
 	 */
 	import { untrack } from 'svelte';
+	import { nombre } from '#lib/almanach/typographie.js';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import { PROCEDURE_PERMIS, STATUTS, STATUTS_ORDRE } from '#lib/labels.js';

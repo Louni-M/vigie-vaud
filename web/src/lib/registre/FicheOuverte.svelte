@@ -29,6 +29,7 @@
 	import { deNom } from './elision.js';
 	import { enteteFiche } from './entete.js';
 	import type { FicheDeCouche } from './fiches.js';
+	import { clicSimple } from './liens.js';
 	import { messageNonCouvert, nomOnglet, sourcesDeLOnglet } from './onglet.js';
 	import type { Registre } from './registre.svelte.js';
 
@@ -57,8 +58,8 @@
 	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === registre.onglet) ?? onglets[0]);
 	const element = $derived(avecFiche === courant ? registre.ouvert : null);
 	const couvert = $derived(!courant || !commune || couvertureCourante().couvre(courant.id, commune.bfs));
-	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil, retour du navigateur) y ramène,
-	// même quand on est arrivé par un lien.
+	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil d'Ariane, croix) y ramène, même quand
+	// on est arrivé par un lien. Le retour du navigateur rend l'onglet de l'entrée où il ramène.
 	$effect(() => {
 		if (avecFiche) registre.onglet = avecFiche.id;
 	});
@@ -98,7 +99,7 @@
 
 	/** Le fil d'Ariane : un clic simple ferme l'élément sur place ; avec une touche, le navigateur suit le lien. */
 	function retourOnglet(e: MouseEvent) {
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+		if (!clicSimple(e)) return;
 		e.preventDefault();
 		registre.fermer();
 	}

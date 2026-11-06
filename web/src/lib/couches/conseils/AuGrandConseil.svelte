@@ -9,6 +9,7 @@
 	 */
 	import { tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { nombre } from '#lib/almanach/typographie.js';
 	import type { LigneObjet as Ligne } from '#lib/schema.js';
 	import type { Commune } from '#lib/types.js';
 	import { conseils } from './donnees.js';
@@ -39,7 +40,6 @@
 	untrack(charger);
 
 	const montres = $derived(objets && !tous ? objets.slice(0, PREMIERS) : (objets ?? []));
-	const nombre = new Intl.NumberFormat('fr-CH');
 
 	let liste = $state<HTMLElement>();
 

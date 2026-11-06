@@ -13,7 +13,7 @@
 	import { ErreurApi } from '#lib/api.js';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { jourDe } from '#lib/fil/fil.js';
-	import { lienCommune, lienElement } from '#lib/registre/liens.js';
+	import { clicSimple, lienCommune, lienElement } from '#lib/registre/liens.js';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Filtres } from './volet.js';
 	import { source } from '#lib/sources.js';
@@ -32,7 +32,7 @@
 
 	/** Un clic simple fait `action` ; avec une touche ou un autre bouton, le navigateur suit le lien. */
 	function auClic(e: MouseEvent, action: () => void) {
-		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+		if (!clicSimple(e)) return;
 		e.preventDefault();
 		action();
 	}

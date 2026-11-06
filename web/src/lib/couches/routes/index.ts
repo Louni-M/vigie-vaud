@@ -1,7 +1,8 @@
 import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
-import { ETATS, type EtatRestriction } from './etats.js';
-import { SORTES, type Sorte } from './sortes.js';
-import type { Filtres } from './volet.js';
+import { SORTES } from './sortes.js';
+import { FILTRES_INITIAUX, type Filtres } from './volet.js';
+
+export { FILTRES_INITIAUX };
 
 /** Ce que le fil d'Ariane et le titre disent d'une restriction ouverte : jamais son `OBJECTID`, que l'on ne voit pas. */
 const RESTRICTION = 'Restriction de circulation';
@@ -11,12 +12,6 @@ const idRestriction = (element: string) => (/^\d+$/.test(element) ? Number(eleme
 
 /** Pastille du rail, reprise par la puce du fil. */
 const ICONE = { signe: 'R', couleur: SORTES.fermeture.couleur };
-
-/** Toutes les puces allumées : les puces du volet à l'arrivée, quand l'adresse n'en dit rien. */
-export const FILTRES_INITIAUX: Filtres = {
-	sortes: Object.keys(SORTES) as Sorte[],
-	etats: Object.keys(ETATS) as EtatRestriction[]
-};
 
 /** Les valeurs de `toutes` que nomme la liste `texte` (« fermeture,feux »), dans l'ordre de `toutes` ; sans liste, toutes. */
 function choisies<T extends string>(texte: string | null, toutes: readonly T[]): T[] {

@@ -133,10 +133,11 @@
 		border: 0;
 		cursor: pointer;
 	}
-	:global(.bouton:hover) {
+	/* Survol et appui : seulement sur un bouton actif, qu'un bouton grisé ne fasse pas croire qu'il répond. */
+	:global(.bouton:not(:disabled):hover) {
 		background: color-mix(in oklab, var(--accent), black 22%);
 	}
-	:global(.bouton:active) {
+	:global(.bouton:not(:disabled):active) {
 		background: color-mix(in oklab, var(--accent), black 35%);
 	}
 	@media (pointer: coarse) {
@@ -149,11 +150,11 @@
 		color: var(--accent);
 		box-shadow: inset 0 0 0 1px var(--accent);
 	}
-	:global(.bouton.secondaire:hover) {
+	:global(.bouton.secondaire:not(:disabled):hover) {
 		background: color-mix(in oklab, var(--accent), white 90%);
 		box-shadow: inset 0 0 0 2px var(--accent);
 	}
-	:global(.bouton.secondaire:active) {
+	:global(.bouton.secondaire:not(:disabled):active) {
 		background: color-mix(in oklab, var(--accent), white 80%);
 	}
 	/* Texte lu par les lecteurs d'écran seulement (chargement, nom d'un signe, en-têtes d'un tableau replié). */

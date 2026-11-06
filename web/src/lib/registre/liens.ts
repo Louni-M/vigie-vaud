@@ -10,6 +10,12 @@ import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
  */
 
 /**
+ * Un clic simple sur un lien de la carte, que l'application ouvre sur place (l'appelant fait alors `preventDefault`) ;
+ * avec une touche (Cmd, Ctrl, Maj, Alt) ou un autre bouton, le navigateur suit le lien, dans un autre onglet.
+ */
+export const clicSimple = (e: MouseEvent) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0);
+
+/**
  * La fiche d'une commune ; `onglet` : ouverte sur l'onglet de cette couche (`?onglet=conseils`), comme le fait un
  * clic simple qui l'ouvre par le registre.
  */

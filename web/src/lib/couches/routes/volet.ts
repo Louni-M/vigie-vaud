@@ -1,7 +1,7 @@
 import type { Zone } from '#lib/types.js';
 import { ordreListe } from './cartes.js';
 import type { Restriction } from './donnees.svelte.js';
-import type { EtatRestriction } from './etats.js';
+import { ETATS, type EtatRestriction } from './etats.js';
 import { SORTES, type Sorte } from './sortes.js';
 import type { Point } from './trace.js';
 
@@ -19,8 +19,11 @@ export interface Filtres {
 	etats: readonly EtatRestriction[];
 }
 
-/** Toutes les puces allumées, déclarées avec le codec dans la description de la couche. */
-export { FILTRES_INITIAUX } from './index.js';
+/** Toutes les puces allumées : les puces du volet à l'arrivée, quand l'adresse n'en dit rien (`codecRoutes`). */
+export const FILTRES_INITIAUX: Filtres = {
+	sortes: Object.keys(SORTES) as Sorte[],
+	etats: Object.keys(ETATS) as EtatRestriction[]
+};
 
 /** La liste avec `x` allumé s'il était éteint, éteint s'il était allumé : le clic sur une puce. */
 export const basculer = <T>(liste: readonly T[], x: T): T[] =>

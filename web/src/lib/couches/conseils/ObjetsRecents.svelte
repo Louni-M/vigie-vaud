@@ -9,6 +9,7 @@
 	 * zone `aria-live` toujours présente.
 	 */
 	import { tick, untrack } from 'svelte';
+	import { nombre } from '#lib/almanach/typographie.js';
 	import type { ConseilIndexe } from '#lib/schema.js';
 	import type { Commune } from '#lib/types.js';
 	import { conseils, OBJETS_RECENTS, type PageObjets } from './donnees.js';
@@ -36,8 +37,6 @@
 		/** Niveau du titre « Objets récents » : 3 dans la fiche du Grand Conseil, où aucun h3 ne le précède. */
 		niveau?: 3 | 4;
 	} = $props();
-
-	const nombre = new Intl.NumberFormat('fr-CH');
 
 	let section = $state<HTMLElement>();
 	let liste = $state<HTMLElement>();

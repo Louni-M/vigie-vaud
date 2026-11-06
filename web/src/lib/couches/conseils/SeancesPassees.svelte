@@ -6,6 +6,7 @@
 	 */
 	import { tick, untrack } from 'svelte';
 	import { jourDe } from '#lib/fil/fil.js';
+	import { nombre } from '#lib/almanach/typographie.js';
 	import type { ConseilIndexe, LigneSeance } from '#lib/schema.js';
 	import { conseils } from './donnees.js';
 	import { focaliserLigne } from './focus.js';
@@ -38,8 +39,6 @@
 		);
 	}
 	untrack(charger);
-
-	const nombre = new Intl.NumberFormat('fr-CH');
 
 	let liste = $state<HTMLElement>();
 

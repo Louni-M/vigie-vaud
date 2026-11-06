@@ -6,6 +6,7 @@
 	 * `?etats=`) ; enfin le compte et la liste des restrictions de la zone visible, en cartes de restriction qui
 	 * ouvrent la leur, masqués quand la couche est désactivée. La couche ne grise aucune commune.
 	 */
+	import { nombre } from '#lib/almanach/typographie.js';
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { routes } from './donnees.svelte.js';
@@ -20,7 +21,6 @@
 	/** Restrictions listées au plus : au-delà, on invite à zoomer. */
 	const LISTE_MAX = 150;
 	const etats = Object.keys(ETATS) as EtatRestriction[];
-	const nombre = new Intl.NumberFormat('fr-CH');
 
 	const f = $derived(ctx.parametres);
 	const sortes = $derived(sortesDesPuces(routes.restrictions));

@@ -153,11 +153,14 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		for (const id of e.actives) montees.add(id);
 		parametres = e.parametres;
 		ouvert = e.ouvert;
-		volet = e.volet;
-		affichage = affichageDeLAdresse(e.affichage, ouvertureDe(fiche, e.ouvert));
+		// Un élément fermé par `fermer` garde le volet, la vue et l'onglet qu'on avait : l'entrée où l'on revient
+		// ne les connaît pas.
+		const g = garde;
+		garde = null;
+		volet = g ? g.volet : e.volet;
+		affichage = g ? g.affichage : affichageDeLAdresse(e.affichage, ouvertureDe(fiche, e.ouvert));
 		// Sur la carte seule ou une fiche propre, l'onglet de la fiche commune reste celui d'avant.
-		if (fiche && 'commune' in fiche) onglet = ongletVoulu ?? e.onglet;
-		ongletVoulu = null;
+		if (fiche && 'commune' in fiche) onglet = g ? g.onglet : e.onglet;
 	}
 
 	/* ---- Composants, importés une seule fois chacun, à la demande ---- */
@@ -181,7 +184,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	/**
 	 * La prochaine écriture de l'adresse crée une entrée d'historique, avec cet état, au lieu de remplacer la courante :
-	 * `element` pour un élément ouvert (`fermeture`), rien pour un volet ou une vue du téléphone.
+	 * `element` pour un élément ouvert (`fermeture`), `pardessus()` pour un volet ou une vue du téléphone.
 	 */
 	let nouvelleEntree: App.PageState | null = null;
 	/**
@@ -189,8 +192,24 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	 * localisé, pour n'écrire qu'une entrée d'historique.
 	 */
 	let retenue = $state(false);
-	/** Onglet choisi en fermant un élément par le retour arrière : il l'emporte sur celui de l'entrée où l'on revient. */
-	let ongletVoulu: string | null = null;
+	/** Volet, vue et onglet au moment où `fermer` remonte l'historique : ils l'emportent sur ceux de l'entrée où l'on revient. */
+	let garde: { volet: string | null; affichage: Affichage; onglet: string | null } | null = null;
+
+	/**
+	 * L'état d'une entrée poussée par-dessus la courante (volet, vue du téléphone) : un élément que l'application a
+	 * ouvert reste refermable par le retour arrière, d'une entrée de plus.
+	 */
+	const pardessus = (): App.PageState => {
+		const el = page.state.element;
+		return el ? { element: { ...el, pas: (el.pas ?? 1) + 1 } } : {};
+	};
+
+	/** Change la vue du téléphone, dans une nouvelle entrée d'historique. */
+	function montrer(a: Affichage) {
+		if (a === affichage) return;
+		affichage = a;
+		nouvelleEntree = pardessus();
+	}
 
 	function activer(id: string, oui: boolean) {
 		const c = couches.find((c) => c.id === id);
@@ -300,10 +319,15 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		const o: Ouvert = { couche: cible.couche, element: cible.element };
 		avis = null;
 		if (cible.position) carteSocle()?.voler(cible.position[0], cible.position[1], ZOOM_ELEMENT);
-		if (memeElement(ouvert, o)) return;
+		// Téléphone : depuis la vue Fil ou Couches, la carte tout de suite, pour l'aperçu.
+		const quitte = telephone() && affichageOuverture(affichage) !== affichage;
+		if (memeElement(ouvert, o)) {
+			if (quitte) montrer(affichageOuverture(affichage));
+			return;
+		}
 		demande = o;
-		// Téléphone : depuis la vue Fil ou Couches, la carte tout de suite, pour l'aperçu ; l'adresse attend l'élément.
-		if (telephone() && affichageOuverture(affichage) !== affichage) {
+		// L'adresse attend l'élément, pour n'écrire qu'une entrée.
+		if (quitte) {
 			affichage = affichageOuverture(affichage);
 			retenue = true;
 		}
@@ -316,8 +340,9 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		if (k === 'retirer') return introuvable(o);
 		if (!cible.position) montrerElement(lieu!, k ?? fiche!, false);
 		if (k === null) {
-			// Même fiche : l'adresse suit l'état (entrée poussée si rien n'était ouvert).
-			nouvelleEntree = ouvert === null ? { element: { depuis: fiche } } : null;
+			// Même fiche : l'adresse suit l'état (entrée poussée si rien n'était ouvert, ou si l'on a quitté la vue Fil ou
+			// Couches du téléphone, que le retour arrière doit retrouver).
+			nouvelleEntree = ouvert === null ? { element: { depuis: fiche } } : quitte ? pardessus() : null;
 			ouvert = o;
 			return;
 		}
@@ -376,23 +401,21 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 
 	/**
 	 * Fermer l'élément ramène à l'onglet de sa couche, sans bouger la carte : retour en arrière si l'application a
-	 * poussé l'entrée depuis la même fiche, sinon l'adresse est remplacée par le chemin de la fiche.
+	 * poussé l'entrée depuis la même fiche (d'autant d'entrées qu'on en a poussé par-dessus, en gardant le volet, la
+	 * vue et l'onglet), sinon l'adresse est remplacée par le chemin de la fiche.
 	 */
 	function fermer() {
 		if (!ouvert) return;
-		if (fermeture(page.state, fiche) === 'retour') history.back();
-		else ouvert = null;
+		if (fermeture(page.state, fiche) === 'retour') {
+			garde = { volet, affichage, onglet };
+			history.go(-(page.state.element?.pas ?? 1));
+		} else ouvert = null;
 	}
 
-	/**
-	 * Choisit un onglet de la fiche commune ; `fermerElement` : il ferme aussi l'élément ouvert, et l'emporte sur
-	 * l'onglet de l'entrée où ramène le retour arrière.
-	 */
+	/** Choisit un onglet de la fiche commune ; `fermerElement` : il ferme aussi l'élément ouvert, sur cet onglet. */
 	function choisirOnglet(id: string, fermerElement: boolean) {
 		onglet = id;
-		if (!fermerElement || !ouvert) return;
-		if (fermeture(page.state, fiche) === 'retour') ongletVoulu = id;
-		fermer();
+		if (fermerElement) fermer();
 	}
 
 	/** Contexte passé aux composants d'une couche ; ses valeurs suivent l'état du registre. */
@@ -507,12 +530,21 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			suivre(new URLSearchParams(location.search), true);
 		});
 
+		/**
+		 * Une écriture de l'adresse n'a pas encore abouti (`goto` résout l'adresse avant de l'écrire) : la suivante
+		 * l'attend, puis `ecrites` relance l'effet avec l'état le plus récent.
+		 */
+		let enVol = false;
+		let ecrites = $state(0);
+
 		// État → adresse. Les déplacements, les réglages et l'onglet remplacent l'entrée courante ; l'ouverture d'un
 		// élément, d'un volet ou d'une vue du téléphone en pousse une.
 		$effect(() => {
 			const q = requete;
+			void ecrites;
 			if (retenue) return;
 			untrack(() => {
+				if (enVol) return;
 				const push = nouvelleEntree;
 				nouvelleEntree = null;
 				if (synchro === null || navigations.enCours || q === location.search) return;
@@ -522,10 +554,14 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 				if (location.pathname + location.search !== synchro) return;
 				synchro = location.pathname + q;
 				suivi = { fiche, ouvert };
+				enVol = true;
 				goto(`${location.pathname}${q}`, {
 					shallow: true,
 					replace: !push,
 					state: push ?? page.state
+				}).finally(() => {
+					enVol = false;
+					ecrites++;
 				});
 			});
 		});
@@ -592,16 +628,14 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		set volet(id: string | null) {
 			if (id === volet) return;
 			volet = id;
-			nouvelleEntree = {};
+			nouvelleEntree = pardessus();
 		},
 		/** Vue plein écran du téléphone ; en changer crée une entrée d'historique. */
 		get affichage() {
 			return affichage;
 		},
 		set affichage(a: Affichage) {
-			if (a === affichage) return;
-			affichage = a;
-			nouvelleEntree = {};
+			montrer(a);
 		},
 		/** Onglet choisi dans la fiche commune ; `null` : le premier. En changer remplace l'adresse. */
 		get onglet() {
