@@ -471,6 +471,10 @@
 		width: min(360px, calc(100% - 70px));
 		border-radius: 10px;
 		box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+		/* Un filtre neutre donne à la recherche son propre calque. Sans lui, Chromium en rendu logiciel (sans
+		   accélération graphique) laissait un trou de sa taille dans la carte, retourné en bas à gauche : le fond
+		   de la page y paraissait en blanc, alors que la carte elle-même y était bien dessinée. */
+		filter: opacity(1);
 	}
 	/* Pendant la saisie, les résultats passent devant l'aperçu (téléphone). */
 	.recherche:focus-within {
