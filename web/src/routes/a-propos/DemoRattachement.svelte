@@ -4,17 +4,19 @@
 	// Le rattachement en direct (#165) : le titre d'un Objet du Grand Conseil, lu nom après nom, comme le décrivent
 	// les règles de la section. Le titre est inventé ; passé par `rattacher` (pipeline/rattachement.py), il ne
 	// rattache que Yverdon-les-Bains : Gressy y mène, Chavannes et l'avenue de Morges sont écartés.
+	// Les espaces insécables devant « : » et « ? » sont écrites `\u00a0` : un caractère littéral ne se voit pas
+	// à la relecture.
 
 	type Morceau = { texte: string; verdict?: { retenu: boolean; detail: string } };
 
 	const morceaux: Morceau[] = [
-		{ texte: 'Interpellation : où en sont les pistes cyclables à ' },
+		{ texte: 'Interpellation\u00a0: où en sont les pistes cyclables à ' },
 		{ texte: 'Gressy', verdict: { retenu: true, detail: 'ancienne commune, mène à Yverdon-les-Bains' } },
 		{ texte: ', à ' },
 		{ texte: 'Chavannes', verdict: { retenu: false, detail: 'écarté, plusieurs communes portent ce nom' } },
 		{ texte: ' et le long de l’' },
 		{ texte: 'avenue de Morges', verdict: { retenu: false, detail: 'écarté, c’est une rue' } },
-		{ texte: ' ?' }
+		{ texte: '\u00a0?' }
 	];
 
 	/** Où tombe le milieu de chaque morceau dans le titre, de 0 à 1 : la lecture l'atteint à ce moment-là. */
