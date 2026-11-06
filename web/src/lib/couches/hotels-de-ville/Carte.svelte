@@ -2,7 +2,8 @@
 	/*
 	 * Carte de la couche Hôtels de ville : un marqueur par commune actuelle (les anciennes communes n'en ont pas),
 	 * celui de la commune ouverte plus grand. Au survol, une bulle donne le nom et l'adresse (sans adresse pour
-	 * une position approximative) ; un clic ouvre la fiche de la commune.
+	 * une position approximative), construite une fois par marqueur survolé, et non à chaque mouvement de la souris ;
+	 * un clic ouvre la fiche de la commune.
 	 */
 	import { onMount, untrack } from 'svelte';
 	import type {
@@ -67,11 +68,16 @@
 	onMount(() => {
 		let detruit = false;
 		let bulle: Popup | undefined;
+		/** Slug du marqueur dont la bulle est affichée, ou `null`. */
+		let survole: string | null = null;
 
 		function survol(e: MapLayerMouseEvent) {
 			const f = e.features?.[0];
 			if (!f || !bulle) return;
-			const { nom, adresse } = f.properties as { nom: string; adresse: string };
+			const { slug, nom, adresse } = f.properties as { slug: string; nom: string; adresse: string };
+			// La souris bouge sur le même marqueur : la bulle est déjà la bonne.
+			if (slug === survole) return;
+			survole = slug;
 			const contenu = document.createElement('div');
 			contenu.className = 'bulle-hotel';
 			const titre = document.createElement('strong');
@@ -90,6 +96,7 @@
 		}
 
 		function quitter() {
+			survole = null;
 			map.getCanvas().style.cursor = '';
 			bulle?.remove();
 		}

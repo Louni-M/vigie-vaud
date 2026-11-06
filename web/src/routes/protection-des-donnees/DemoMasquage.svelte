@@ -47,13 +47,13 @@
 					{#each e.morceaux as m, i (i)}
 						{#if m.role === 'masque'}
 							<span class="nom" style:--t={t[i]}
-								><span class="avant">{m.texte}</span><span class="apres">{MASQUE}</span></span
+								><span class="avant" data-texte={m.texte}>{m.texte}</span><span class="apres">{MASQUE}</span></span
 							>
 						{:else if m.role === 'elu'}
 							<span class="elu" style:--t={t[i]}>
 								{m.texte}
 								<span class="badge">
-									<svg aria-hidden="true" viewBox="0 0 12 12" width="11" height="11"><path d="M2.5 6.5 5 9l4.5-6" pathLength="1" /></svg>
+									<svg aria-hidden="true" viewBox="0 0 12 12" width="11" height="11"><path d="M2.5 6.5 5 9l4.5-6" /></svg>
 									élue connue
 								</span>
 							</span>
@@ -70,9 +70,9 @@
 		display: grid;
 	}
 	.exemple {
-		/* Le second exemple attend que le premier ait fini. */
-		--depart: calc(0.25s + var(--n) * 2.6s);
-		--balayage: 1.3s;
+		/* Le second exemple part quand le premier a fini (vers 2,5 s) ; le tout s'achève vers 4,7 s, avant 5 s. */
+		--depart: calc(0.25s + var(--n) * 2.25s);
+		--balayage: 1.1s;
 		padding-block: var(--space-md);
 	}
 	.exemple + .exemple {
@@ -194,6 +194,14 @@
 		:global([data-js-etat]) .avant {
 			display: inline-block;
 		}
+		/* Le nom repéré : sa copie orange, posée sur lui, qui arrive en fondu. */
+		.avant::before {
+			content: attr(data-texte);
+			position: absolute;
+			inset: 0;
+			color: var(--color-accent);
+			opacity: 0;
+		}
 		/* Le trait qui raye le nom avant qu'il ne parte. */
 		.avant::after {
 			content: '';
@@ -215,22 +223,24 @@
 		}
 		:global([data-js-etat='joue']) .avant {
 			--quand: calc(var(--depart) + var(--t) * var(--balayage));
-			animation:
-				repere 0.3s var(--ease-out) var(--quand) forwards,
-				part 0.5s var(--ease-in) calc(var(--quand) + 0.55s) forwards;
+			animation: part 0.45s var(--ease-in) calc(var(--quand) + 0.5s) forwards;
+		}
+		:global([data-js-etat='joue']) .avant::before {
+			animation: repere 0.3s var(--ease-out) calc(var(--depart) + var(--t) * var(--balayage)) forwards;
 		}
 		:global([data-js-etat='joue']) .avant::after {
 			animation: raye 0.35s var(--ease-out) calc(var(--depart) + var(--t) * var(--balayage) + 0.15s) both;
 		}
 		:global([data-js-etat='joue']) .apres {
-			animation: arrive 0.6s var(--ease-out) calc(var(--depart) + var(--t) * var(--balayage) + 0.85s) both;
+			animation: arrive 0.5s var(--ease-out) calc(var(--depart) + var(--t) * var(--balayage) + 0.75s) both;
 		}
 		:global([data-js-etat='joue']) .badge {
 			animation: arrive 0.55s var(--ease-out) calc(var(--depart) + var(--t) * var(--balayage) + 0.1s) both;
 		}
-		:global([data-js-etat='joue']) .badge path {
-			stroke-dasharray: 1;
-			animation: trace 0.4s var(--ease-out) calc(var(--depart) + var(--t) * var(--balayage) + 0.35s) both;
+		/* La coche du badge se déplie de gauche à droite, dans le sens où elle se trace. */
+		:global([data-js-etat='joue']) .badge svg {
+			transform-origin: left center;
+			animation: deplie 0.4s var(--ease-out) calc(var(--depart) + var(--t) * var(--balayage) + 0.35s) both;
 		}
 	}
 	@keyframes balaie {
@@ -249,7 +259,7 @@
 	}
 	@keyframes repere {
 		to {
-			color: var(--color-accent);
+			opacity: 1;
 		}
 	}
 	@keyframes raye {
@@ -257,14 +267,11 @@
 			transform: none;
 		}
 	}
+	/* Le nom rayé s'en va : il monte et s'efface, avec sa copie orange et son trait. */
 	@keyframes part {
-		from {
-			color: var(--color-accent);
-		}
 		to {
 			opacity: 0;
-			transform: translateY(-0.5em);
-			filter: blur(3px);
+			transform: translateY(-0.5em) scale(0.96);
 		}
 	}
 	@keyframes arrive {
@@ -277,12 +284,14 @@
 			transform: none;
 		}
 	}
-	@keyframes trace {
+	@keyframes deplie {
 		from {
-			stroke-dashoffset: 1;
+			opacity: 0;
+			transform: scaleX(0);
 		}
 		to {
-			stroke-dashoffset: 0;
+			opacity: 1;
+			transform: none;
 		}
 	}
 </style>

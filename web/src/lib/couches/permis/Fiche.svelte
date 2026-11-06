@@ -31,7 +31,7 @@
 				etat = 'erreur';
 				message =
 					e instanceof ErreurApi && e.hors_ligne
-						? 'Vous semblez hors ligne : les dossiers sont lus en direct sur le service du canton.'
+						? 'Vous semblez hors ligne : les dossiers sont lus en direct sur le service du canton.'
 						: `${e instanceof ErreurApi ? e.message : 'Le dossier n’a pas pu être chargé.'} Réessayez dans un instant.`;
 			}
 		);
@@ -43,14 +43,14 @@
 	<DossierFiche {d} />
 {:else if etat === 'chargement'}
 	<div class="squelette" aria-busy="true">
-		<p class="muted">Chargement du dossier n° {id} auprès du service du canton…</p>
+		<p class="muted">Chargement du dossier n°&nbsp;{id} auprès du service du canton…</p>
 		<span style:width="35%"></span>
 		<span style:width="70%" class="grand"></span>
 		<span style:width="95%"></span>
 		<span style:width="60%"></span>
 	</div>
 {:else if etat === 'absent'}
-	<p>Aucun dossier n° {id} dans la couche du canton (les n° CAMAC ont 5 ou 6 chiffres).</p>
+	<p>Aucun dossier n°&nbsp;{id} dans la couche du canton (les n°&nbsp;CAMAC ont 5 ou 6 chiffres).</p>
 {:else}
 	<p class="erreur" role="alert">
 		{message}
@@ -59,9 +59,9 @@
 {/if}
 
 <p class="source">
-	{SOURCE} depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la FAO fait foi.
+	{SOURCE} depuis votre navigateur&nbsp;; ce site ne les stocke pas. Sans foi publique&nbsp;: seule la FAO fait foi.
 	L’emplacement est indicatif.
-	<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique : ce que prévoit la loi</a>
+	<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique&nbsp;: ce que prévoit la loi</a>
 </p>
 
 <style>

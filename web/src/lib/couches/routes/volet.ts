@@ -1,7 +1,7 @@
 import type { Zone } from '#lib/types.js';
 import { ordreListe } from './cartes.js';
 import type { Restriction } from './donnees.svelte.js';
-import { ETATS, type EtatRestriction } from './etats.js';
+import type { EtatRestriction } from './etats.js';
 import { SORTES, type Sorte } from './sortes.js';
 import type { Point } from './trace.js';
 
@@ -10,17 +10,21 @@ import type { Point } from './trace.js';
  * zone visible. Fonctions pures.
  */
 
-/** Les puces allumées du volet : les sortes et les états montrés. Elles ne vont pas dans l'adresse. */
+/**
+ * Les puces allumées du volet : les sortes et les états montrés. Ce sont les réglages de la couche, dans l'adresse
+ * (`codecRoutes`), que partagent le volet (la liste) et la carte (ses filtres).
+ */
 export interface Filtres {
 	sortes: readonly Sorte[];
 	etats: readonly EtatRestriction[];
 }
 
-/** Toutes les puces allumées. */
-export const FILTRES_INITIAUX: Filtres = {
-	sortes: Object.keys(SORTES) as Sorte[],
-	etats: Object.keys(ETATS) as EtatRestriction[]
-};
+/** Toutes les puces allumées, déclarées avec le codec dans la description de la couche. */
+export { FILTRES_INITIAUX } from './index.js';
+
+/** La liste avec `x` allumé s'il était éteint, éteint s'il était allumé : le clic sur une puce. */
+export const basculer = <T>(liste: readonly T[], x: T): T[] =>
+	liste.includes(x) ? liste.filter((y) => y !== x) : [...liste, x];
 
 /**
  * Les puces des sortes, qui servent aussi de légende, dans l'ordre de la légende. « Autres » (une sorte que la DGMR

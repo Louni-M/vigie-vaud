@@ -42,14 +42,14 @@
 		<h4>Évolution suivie</h4>
 		<ul class="histo">
 			{#each d.historique as e (e.date)}
-				<li>{dateLongue(e.date)} : {e.statut ? STATUTS[e.statut].court : ''}{e.decision ? ` (${e.decision})` : ''}</li>
+				<li>{dateLongue(e.date)}&nbsp;: {e.statut ? STATUTS[e.statut].court : ''}{e.decision ? ` (${e.decision})` : ''}</li>
 			{/each}
 		</ul>
 	{/if}
 
 	<p class="actions">
 		{#if d.url}
-			<a class="bouton" href={d.url} target="_blank" rel="noopener">Voir l’avis d’enquête officiel ↗</a>
+			<a class="bouton" href={d.url} target="_blank" rel="noopener">Voir l’avis d’enquête officiel&nbsp;<span aria-hidden="true">↗</span></a>
 		{/if}
 	</p>
 
@@ -57,15 +57,15 @@
 		<Consultation commune={d.commune} />
 	{:else if d.statut === 'procedure'}
 		<p class="note">
-			L’enquête publique est terminée : la Municipalité statue sur la demande.
+			L’enquête publique est terminée&nbsp;: la Municipalité statue sur la demande.
 			<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">Comment se déroule la procédure</a>
 		</p>
 	{/if}
 	{#if d.statut === 'enquete' || d.statut === 'procedure'}
 		<p class="note">
 			L’État de Vaud propose un abonnement gratuit par courriel aux avis d’enquête publiés dans la FAO, autour
-			d’une adresse ou pour une commune :
-			<a href="https://www.vd.ch/prestation/sabonner-aux-avis-denquete" target="_blank" rel="noopener">InfoCamac ↗</a>
+			d’une adresse ou pour une commune&nbsp;:
+			<a href="https://www.vd.ch/prestation/sabonner-aux-avis-denquete" target="_blank" rel="noopener">InfoCamac&nbsp;<span aria-hidden="true">↗</span></a>
 		</p>
 	{/if}
 </article>
@@ -93,6 +93,7 @@
 		margin: 0;
 		font-size: 20px;
 		line-height: 1.25;
+		text-wrap: balance;
 	}
 	h4 {
 		margin: 4px 0 0;

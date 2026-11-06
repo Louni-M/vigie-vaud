@@ -1,3 +1,8 @@
+<script lang="ts" module>
+	/** Nombres affichés à la suisse romande (séparateur de milliers). */
+	const nombre = new Intl.NumberFormat('fr-CH');
+</script>
+
 <script lang="ts">
 	/*
 	 * Onglet Permis de la fiche commune : chiffres par statut, dossiers à l'enquête et en attente de décision,
@@ -71,7 +76,7 @@
 
 	const annees = $derived(Object.entries(chiffres?.parAnnee ?? {}).sort().slice(-12));
 	const maxAnnee = $derived(Math.max(1, ...annees.map(([, n]) => n)));
-	const resumeAnnees = $derived(annees.map(([a, n]) => `${a} : ${n}`).join(', '));
+	const resumeAnnees = $derived(annees.map(([a, n]) => `${a} : ${nombre.format(n)}`).join(', '));
 	const totalHisto = $derived(chiffres?.historique.length ?? 0);
 
 	/** Un dossier choisi s'ouvre par le registre, ici même sous le fil ; la carte vole vers lui. */
@@ -87,16 +92,16 @@
 		<div style:--c={STATUTS[s].couleur}>
 			<strong>
 				<!-- En cours : comptés sur les listes ci-dessous (dossiers rattachés à la commune, procédures récentes). -->
-				{#if s === 'enquete'}{actifs ? enquetes.length : '…'}
-				{:else if s === 'procedure'}{actifs ? attente.length : '…'}
-				{:else}{chiffres ? chiffres.statuts[s] : '…'}{/if}
+				{#if s === 'enquete'}{actifs ? nombre.format(enquetes.length) : '…'}
+				{:else if s === 'procedure'}{actifs ? nombre.format(attente.length) : '…'}
+				{:else}{chiffres ? nombre.format(chiffres.statuts[s]) : '…'}{/if}
 			</strong>
 			<span>{STATUTS[s].court}</span>
 		</div>
 	{/each}
 </div>
 
-<h3>À l’enquête en ce moment{actifs ? ` (${enquetes.length})` : ''}</h3>
+<h3>À l’enquête en ce moment{actifs ? ` (${nombre.format(enquetes.length)})` : ''}</h3>
 {#if !actifs}
 	<ul class="grille" aria-busy="true"><li class="attente"></li><li class="attente"></li></ul>
 {:else if enquetes.length}
@@ -108,7 +113,7 @@
 {/if}
 
 {#if attente.length}
-	<h3>Enquête terminée, décision attendue ({attente.length})</h3>
+	<h3>Enquête terminée, décision attendue ({nombre.format(attente.length)})</h3>
 	<ul class="grille">
 		{#each attente as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
@@ -118,7 +123,7 @@
 {#if chiffres}
 	<div class="barres" role="img" aria-label="Demandes de permis par année – {resumeAnnees}">
 		{#each annees as [annee, n] (annee)}
-			<div class="barre" title="{n} demandes en {annee}">
+			<div class="barre" title="{nombre.format(n)} demande{n > 1 ? 's' : ''} en {annee}">
 				<span style:height="{(n / maxAnnee) * 100}%"></span>
 				<small>{annee.slice(2)}</small>
 			</div>
@@ -130,7 +135,7 @@
 
 <h3>Historique</h3>
 {#if tout}
-	<p class="muted">{tout.length} dossier{tout.length > 1 ? 's' : ''} depuis 1999, hors dossiers en cours listés plus haut.</p>
+	<p class="muted">{nombre.format(tout.length)} dossier{tout.length > 1 ? 's' : ''} depuis 1999, hors dossiers en cours listés plus haut.</p>
 	<ul class="grille">
 		{#each tout as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
@@ -148,7 +153,7 @@
 	{#if totalHisto > recents.length}
 		<p>
 			<button class="bouton secondaire" type="button" onclick={chargerTout} disabled={chargement}>
-				{chargement ? 'Chargement…' : `Tout charger (${totalHisto} dossiers depuis 1999)`}
+				{chargement ? 'Chargement…' : `Tout charger (${nombre.format(totalHisto)} dossiers depuis 1999)`}
 			</button>
 		</p>
 		{#if echecTout}
@@ -158,15 +163,16 @@
 {/if}
 
 <p class="source">
-	{SOURCE} depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la FAO fait foi.
+	{SOURCE} depuis votre navigateur&nbsp;; ce site ne les stocke pas. Sans foi publique&nbsp;: seule la FAO fait foi.
 	Rattachement aux communes actuelles (limites swisstopo).
-	<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique : ce que prévoit la loi</a>
+	<a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique&nbsp;: ce que prévoit la loi</a>
 </p>
 
 <style>
 	h3 {
 		font-size: 16px;
 		margin: 22px 0 8px;
+		text-wrap: balance;
 	}
 	.chiffres {
 		display: grid;
@@ -183,6 +189,7 @@
 	}
 	.chiffres strong {
 		font-size: 19px;
+		font-variant-numeric: tabular-nums;
 	}
 	.chiffres span {
 		font-size: 12.5px;
@@ -194,6 +201,15 @@
 		margin: 0;
 		display: grid;
 		gap: 8px;
+	}
+	/*
+	 * L'historique complet peut compter des centaines de cartes : le navigateur ne rend que celles à l'écran. Le
+	 * confinement est posé sur la carte et non sur l'élément de liste : il rogne ce qui déborde des descendants, pas
+	 * l'anneau de focus ni le contour de survol que la carte trace elle-même hors de sa boîte.
+	 */
+	.grille > li > :global(*) {
+		content-visibility: auto;
+		contain-intrinsic-size: auto 120px;
 	}
 	.barres {
 		display: flex;

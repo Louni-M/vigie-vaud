@@ -59,7 +59,7 @@
 	{/if}
 
 	{#if seance.lien}
-		<p class="externe"><a href={seance.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(seance.lien)} ›</a></p>
+		<p class="externe"><a href={seance.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(seance.lien)}&nbsp;<span aria-hidden="true">›</span></a></p>
 	{/if}
 	<Source conseil={lireCle(cle)?.conseil ?? ''} />
 </article>
@@ -128,6 +128,10 @@
 		text-align: left;
 		text-decoration: underline;
 		cursor: pointer;
+	}
+	.point:hover {
+		text-decoration-thickness: 2px;
+		color: color-mix(in oklab, var(--accent), black 25%);
 	}
 	.resultat {
 		font-size: 12px;

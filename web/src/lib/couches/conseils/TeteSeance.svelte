@@ -27,7 +27,9 @@
 			{#if seance}
 				{@const nom = nomSeance(seance.date)}
 				{#if ouvrir}
-					<button type="button" class="nom lien" onclick={() => ouvrir(tete.cle)}>{nom} ›</button>
+					<button type="button" class="nom lien" onclick={() => ouvrir(tete.cle)}
+							>{nom}&nbsp;<span aria-hidden="true">›</span></button
+						>
 				{:else}
 					<p class="nom">{nom}</p>
 				{/if}
@@ -48,7 +50,9 @@
 					{#if contenu.total > contenu.points.length}
 						{@const n = contenu.total}
 						{#if ouvrir}
-							<button type="button" class="plus" onclick={() => ouvrir(tete.cle)}>Les {n} points ›</button>
+							<button type="button" class="plus" onclick={() => ouvrir(tete.cle)}
+								>Les {n} points&nbsp;<span aria-hidden="true">›</span></button
+							>
 						{:else}
 							<p class="plus">Les {n} points</p>
 						{/if}
@@ -65,7 +69,7 @@
 			{/if}
 		{:catch}
 			<p class="nom">{nomSeance(tete.cle.split('/')[1])}</p>
-			<p class="note">
+			<p class="note" role="alert">
 				L’ordre du jour n’a pas pu être chargé.
 				<button type="button" class="point" onclick={reessayer}>Réessayer</button>
 			</p>
@@ -102,6 +106,10 @@
 	.lien {
 		cursor: pointer;
 	}
+	.nom.lien:hover {
+		color: var(--c);
+		text-decoration: underline;
+	}
 	ol {
 		margin: 6px 0 0;
 		padding-left: 20px;
@@ -131,6 +139,10 @@
 		text-decoration: underline;
 		cursor: pointer;
 	}
+	.point:hover {
+		text-decoration-thickness: 2px;
+		color: color-mix(in oklab, var(--accent), black 25%);
+	}
 	.note {
 		margin: 4px 0 0;
 		font-size: 12px;
@@ -147,5 +159,8 @@
 	}
 	button.plus {
 		cursor: pointer;
+	}
+	button.plus:hover {
+		text-decoration: underline;
 	}
 </style>

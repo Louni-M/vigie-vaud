@@ -1,4 +1,8 @@
 <script lang="ts">
+	/*
+	 * Carte d'un dossier dans une liste : un lien quand elle a une adresse, sinon un bouton. Chacun porte son rôle
+	 * natif ; le contenu, commun, est un extrait.
+	 */
 	import { STATUTS, natureLabel } from '#lib/labels.js';
 	import { dateCourte } from '#lib/dates.js';
 	import type { Dossier } from '#lib/types.js';
@@ -12,15 +16,7 @@
 	}: { d: Dossier; actif?: boolean; href?: string; onclick?: () => void } = $props();
 </script>
 
-<svelte:element
-	this={href ? 'a' : 'button'}
-	{href}
-	type={href ? undefined : 'button'}
-	role={href ? 'link' : 'button'}
-	class="carte"
-	class:actif
-	{onclick}
->
+{#snippet contenu()}
 	<span class="haut">
 		<span class="pastille" style:background={STATUTS[d.statut].couleur}></span>
 		<span class="statut">{STATUTS[d.statut].court}</span>
@@ -34,9 +30,15 @@
 		{:else}
 			<span class="muted">Enquête du {dateCourte(d.debut)}</span>
 		{/if}
-		<span class="muted">n° {d.id}</span>
+		<span class="muted">n°&nbsp;{d.id}</span>
 	</span>
-</svelte:element>
+{/snippet}
+
+{#if href}
+	<a {href} class="carte" class:actif {onclick}>{@render contenu()}</a>
+{:else}
+	<button type="button" class="carte" class:actif {onclick}>{@render contenu()}</button>
+{/if}
 
 <style>
 	.carte {

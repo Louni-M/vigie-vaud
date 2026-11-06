@@ -53,11 +53,11 @@
 	<meta name="robots" content="noindex" />
 </svelte:head>
 
-<main class="page">
+<main class="page" id="contenu" tabindex="-1">
 	<h1>{titre}</h1>
 	{#if ancienne}
 		<p class="ancienne">
-			{ancienne.phrase} : <a href={lienCommune(ancienne.commune.slug)}>voir la fiche de {ancienne.commune.nom}</a>.
+			{ancienne.phrase}&nbsp;: <a href={lienCommune(ancienne.commune.slug)}>voir la fiche de {ancienne.commune.nom}</a>.
 		</p>
 	{:else if introuvable}
 		<p>Cette adresse ne correspond à aucune page du site.</p>

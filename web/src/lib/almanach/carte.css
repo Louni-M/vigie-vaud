@@ -404,3 +404,19 @@
 	background: var(--color-ink);
 	color: var(--color-accent-ink);
 }
+
+/* Les fondus de fond au survol (rail, liste des dossiers, fil) restent des transitions de background-color : les rendre
+   par opacity demanderait un calque de plus sous le texte de chaque bouton, que cette feuille, posée par-dessus les
+   composants, ne peut pas ajouter sans eux. Ils ne déplacent rien et ne durent qu'un instant. Sans mouvement, toutes
+   les transitions de la feuille sont coupées : les états changent d'un coup. */
+@media (prefers-reduced-motion: reduce) {
+	.app[data-theme='almanach'] .rail button,
+	.app[data-theme='almanach'] .rail .icone,
+	.app[data-theme='almanach'] :is(section.volet, section.fil) .fermer,
+	.app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte,
+	.app[data-theme='almanach'] .carte-attente,
+	.app[data-theme='almanach'] section.fil .puces button,
+	.app[data-theme='almanach'] section.fil li > button {
+		transition: none;
+	}
+}

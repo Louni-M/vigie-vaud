@@ -76,7 +76,7 @@
 	{/if}
 
 	{#if objet.lien}
-		<p class="externe"><a href={objet.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(objet.lien)} ›</a></p>
+		<p class="externe"><a href={objet.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(objet.lien)}&nbsp;<span aria-hidden="true">›</span></a></p>
 	{/if}
 	<Source conseil={lireCle(cle)?.conseil ?? ''} />
 </article>
@@ -106,6 +106,7 @@
 		margin: 0;
 		font-size: 18px;
 		line-height: 1.3;
+		text-wrap: balance;
 	}
 	dl {
 		display: grid;

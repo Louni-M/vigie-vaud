@@ -5,13 +5,14 @@
 	 * ligne dit comment l'Objet est rattaché à la commune (« nommée dans le titre », « citée dans un document »).
 	 * Sous le titre, toujours, la mention du rattachement automatique, vers la méthode dans l'À propos. Une commune
 	 * qu'aucun Objet ne nomme le dit d'après l'index seul (`auGrandConseil`) : une absence ne passe pas pour une
-	 * panne.
+	 * panne. « Tous (n) » disparaît au clic : le focus va à la première ligne nouvellement affichée.
 	 */
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { resolve } from '$app/paths';
 	import type { LigneObjet as Ligne } from '#lib/schema.js';
 	import type { Commune } from '#lib/types.js';
 	import { conseils } from './donnees.js';
+	import { focaliserLigne } from './focus.js';
 	import LigneObjet from './LigneObjet.svelte';
 	import { origineDans } from './rattachements.js';
 
@@ -38,13 +39,22 @@
 	untrack(charger);
 
 	const montres = $derived(objets && !tous ? objets.slice(0, PREMIERS) : (objets ?? []));
+	const nombre = new Intl.NumberFormat('fr-CH');
+
+	let liste = $state<HTMLElement>();
+
+	async function toutMontrer() {
+		tous = true;
+		await tick();
+		focaliserLigne(liste, PREMIERS);
+	}
 </script>
 
 <section aria-labelledby="au-grand-conseil">
 	<h3 id="au-grand-conseil">Au Grand Conseil</h3>
 	<p class="mention">
-		Rattachés automatiquement par le nom de la commune : des erreurs sont possibles.
-		<a href="{resolve('/a-propos')}#rattachement">En savoir plus ›</a>
+		Rattachés automatiquement par le nom de la commune&nbsp;: des erreurs sont possibles.
+		<a href="{resolve('/a-propos')}#rattachement">En savoir plus&nbsp;<span aria-hidden="true">›</span></a>
 	</p>
 	{#if echec}
 		<p class="erreur" role="alert">
@@ -56,13 +66,13 @@
 	{:else if objets.length === 0}
 		<p class="note">Aucun objet du Grand Conseil ne nomme {commune.nom}.</p>
 	{:else}
-		<ul>
+		<ul bind:this={liste}>
 			{#each montres as objet (objet.cle)}
 				<LigneObjet {objet} {ouvrir} {communes} origine={origineDans(objet, commune.bfs)} />
 			{/each}
 		</ul>
 		{#if !tous && objets.length > PREMIERS}
-			<button class="plus" type="button" onclick={() => (tous = true)}>Tous ({objets.length})</button>
+			<button class="plus" type="button" onclick={toutMontrer}>Tous ({nombre.format(objets.length)})</button>
 		{/if}
 	{/if}
 </section>
@@ -100,6 +110,9 @@
 		font-size: 13px;
 		color: var(--accent);
 		cursor: pointer;
+	}
+	.plus:hover {
+		text-decoration: underline;
 	}
 	@media (pointer: coarse) {
 		.plus,

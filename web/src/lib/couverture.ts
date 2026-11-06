@@ -271,11 +271,14 @@ export const RAISONS: Record<RaisonNonCouvert, { cellule: string; onglet: (de: s
 const jour = new Intl.DateTimeFormat('fr-CH', { day: 'numeric', month: 'short', timeZone: 'Europe/Zurich' });
 const heure = new Intl.DateTimeFormat('fr-CH', { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Zurich' });
 
-/** Un instant à l'heure de Lausanne, à la minute : « 12 oct., 14 h », « 1 déc., 8 h 47 ». */
+/**
+ * Un instant à l'heure de Lausanne, à la minute : « 12 oct., 14 h », « 1 déc., 8 h 47 ». L'heure ne se coupe pas en fin
+ * de ligne : ses espaces sont insécables (U+00A0).
+ */
 export function dateHeure(iso: string): string {
 	const d = new Date(iso);
 	const [h, m] = heure.format(d).split(':').map(Number);
-	return `${jour.format(d)}, ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
+	return `${jour.format(d)}, ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
 }
 
 /** Libellé du mode : « API », « Scrapé » ou « Non couvert ». */

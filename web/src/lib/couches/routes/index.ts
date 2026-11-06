@@ -1,5 +1,7 @@
-import type { Contexte, Couche, Ouvert } from '#lib/registre/types.js';
-import { SORTES } from './sortes.js';
+import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
+import { ETATS, type EtatRestriction } from './etats.js';
+import { SORTES, type Sorte } from './sortes.js';
+import type { Filtres } from './volet.js';
 
 /** Ce que le fil d'Ariane et le titre disent d'une restriction ouverte : jamais son `OBJECTID`, que l'on ne voit pas. */
 const RESTRICTION = 'Restriction de circulation';
@@ -10,12 +12,51 @@ const idRestriction = (element: string) => (/^\d+$/.test(element) ? Number(eleme
 /** Pastille du rail, reprise par la puce du fil. */
 const ICONE = { signe: 'R', couleur: SORTES.fermeture.couleur };
 
+/** Toutes les puces allumées : les puces du volet à l'arrivée, quand l'adresse n'en dit rien. */
+export const FILTRES_INITIAUX: Filtres = {
+	sortes: Object.keys(SORTES) as Sorte[],
+	etats: Object.keys(ETATS) as EtatRestriction[]
+};
+
+/** Les valeurs de `toutes` que nomme la liste `texte` (« fermeture,feux »), dans l'ordre de `toutes` ; sans liste, toutes. */
+function choisies<T extends string>(texte: string | null, toutes: readonly T[]): T[] {
+	const noms = texte?.split(',');
+	return noms ? toutes.filter((x) => noms.includes(x)) : [...toutes];
+}
+
+/** La liste à écrire pour `choisies`, dans l'ordre de `toutes`, ou `null` si elles y sont toutes (la valeur par défaut). */
+function liste<T extends string>(choisies: readonly T[], toutes: readonly T[]): string | null {
+	return toutes.every((x) => choisies.includes(x)) ? null : toutes.filter((x) => choisies.includes(x)).join(',');
+}
+
+/**
+ * Codec des puces du volet Routes, qui filtrent la carte comme la liste : `sortes` (« fermeture,feux ») et `etats`
+ * (« a_venir »), chacune écrite seulement si une puce est éteinte ; vide (`sortes=`) quand toutes le sont. Une valeur
+ * inconnue est ignorée.
+ */
+export const codecRoutes: Codec<Filtres> = {
+	cles: ['sortes', 'etats'],
+	lire: (params) => ({
+		sortes: choisies(params.get('sortes'), FILTRES_INITIAUX.sortes),
+		etats: choisies(params.get('etats'), FILTRES_INITIAUX.etats)
+	}),
+	ecrire(p) {
+		const paires: [string, string][] = [];
+		const sortes = liste(p.sortes, FILTRES_INITIAUX.sortes);
+		const etats = liste(p.etats, FILTRES_INITIAUX.etats);
+		if (sortes !== null) paires.push(['sortes', sortes]);
+		if (etats !== null) paires.push(['etats', etats]);
+		return paires;
+	}
+};
+
 /**
  * La couche Routes : les restrictions de circulation de la DGMR, en cours et à venir, lues en direct sur le service
  * du canton pour tout le canton (sans emprise). Ses composants partagent le module de données `donnees.svelte.ts`,
- * que la description n'importe pas : elle reste légère.
+ * que la description n'importe pas : elle reste légère. Les puces du volet sont ses réglages, dans l'adresse
+ * (`codecRoutes`).
  */
-export const coucheRoutes: Couche<undefined> = {
+export const coucheRoutes: Couche<Filtres> = {
 	id: 'routes',
 	nom: 'Routes',
 	nomOnglet: 'Routes',
@@ -23,8 +64,9 @@ export const coucheRoutes: Couche<undefined> = {
 	permanente: false,
 	activeParDefaut: true,
 	icone: ICONE,
-	// `?r=<OBJECTID>` : seul l'élément ouvert va dans l'adresse, pas les puces du volet.
+	// `?r=<OBJECTID>` : l'élément ouvert, à côté des puces du volet (`?sortes=`, `?etats=`).
 	cleElement: 'r',
+	codec: codecRoutes,
 	// Le module de données n'est importé qu'à la première ouverture d'une restriction. Elle s'ouvre dans la commune
 	// où elle est la plus longue, sauf si la fiche du chemin est une de ses communes.
 	async localiser(element) {

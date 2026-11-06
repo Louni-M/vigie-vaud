@@ -32,7 +32,6 @@
 <svelte:element
 	this={onclick ? 'button' : 'div'}
 	type={onclick ? 'button' : undefined}
-	role={onclick ? 'button' : undefined}
 	class="carte"
 	class:ouvrable={!!onclick}
 	class:actif

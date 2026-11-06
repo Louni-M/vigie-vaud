@@ -6,10 +6,11 @@
 	 */
 	import { untrack } from 'svelte';
 	import type { Contexte } from '#lib/registre/types.js';
+	import type { Filtres } from './volet.js';
 	import { routes, type Restriction } from './donnees.svelte.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
 
-	let { ctx, voir }: { ctx: Contexte<undefined>; voir: () => void } = $props();
+	let { ctx, voir }: { ctx: Contexte<Filtres>; voir: () => void } = $props();
 
 	const id = Number(untrack(() => ctx.ouvert?.element));
 
@@ -23,12 +24,12 @@
 </script>
 
 {#if r}
-	<RestrictionCarte {r} onclick={voir}><span class="voir">Voir la fiche ›</span></RestrictionCarte>
+	<RestrictionCarte {r} onclick={voir}><span class="voir">Voir la fiche&nbsp;<span aria-hidden="true">›</span></span></RestrictionCarte>
 {:else}
 	<!-- Restriction pas encore chargée, ou que la DGMR n'a pas rendue : la fiche dira pourquoi. -->
 	<button class="attente" type="button" onclick={voir}>
 		<strong>Restriction de circulation</strong>
-		<span class="voir">Voir la fiche ›</span>
+		<span class="voir">Voir la fiche&nbsp;<span aria-hidden="true">›</span></span>
 	</button>
 {/if}
 

@@ -2,27 +2,27 @@
 	/*
 	 * Volet Routes : sous l'interrupteur, le badge et l'attribution du registre, l'échec de la DGMR s'il y en a un,
 	 * avec « Réessayer » ; puis les puces par sorte (qui servent de légende) et En cours / À venir, qui filtrent la
-	 * carte comme la liste sans aller dans l'adresse ; enfin le compte et la liste des restrictions de la zone
-	 * visible, en cartes de restriction qui ouvrent la leur, masqués quand la couche est désactivée. La couche ne
-	 * grise aucune commune.
+	 * carte comme la liste : ce sont les réglages de la couche (`ctx.parametres`), dans l'adresse (`?sortes=`,
+	 * `?etats=`) ; enfin le compte et la liste des restrictions de la zone visible, en cartes de restriction qui
+	 * ouvrent la leur, masqués quand la couche est désactivée. La couche ne grise aucune commune.
 	 */
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { routes } from './donnees.svelte.js';
 	import { ETATS, type EtatRestriction } from './etats.js';
 	import { ouvrirRestriction, restrictionOuverte } from './index.js';
-	import { puces } from './puces.svelte.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
 	import { enTirets, SORTES } from './sortes.js';
-	import { sortesDesPuces, visibles as restrictionsVisibles } from './volet.js';
+	import { basculer, sortesDesPuces, visibles as restrictionsVisibles, type Filtres } from './volet.js';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<Filtres> } = $props();
 
 	/** Restrictions listées au plus : au-delà, on invite à zoomer. */
 	const LISTE_MAX = 150;
 	const etats = Object.keys(ETATS) as EtatRestriction[];
+	const nombre = new Intl.NumberFormat('fr-CH');
 
-	const f = $derived(puces.filtres);
+	const f = $derived(ctx.parametres);
 	const sortes = $derived(sortesDesPuces(routes.restrictions));
 	const visibles = $derived(ctx.active ? restrictionsVisibles(routes.restrictions, f, ctx.zone) : []);
 	const ouverte = $derived(restrictionOuverte(ctx.ouvert));
@@ -50,7 +50,7 @@
 				class:tirets={enTirets(s)}
 				aria-pressed={f.sortes.includes(s)}
 				style:--c={SORTES[s].couleur}
-				onclick={() => puces.basculerSorte(s)}
+				onclick={() => ctx.regler({ sortes: basculer(f.sortes, s) })}
 			>
 				<span></span>{SORTES[s].nom}
 			</button>
@@ -64,7 +64,7 @@
 				class:off={!f.etats.includes(e)}
 				class:pale={e === 'a_venir'}
 				aria-pressed={f.etats.includes(e)}
-				onclick={() => puces.basculerEtat(e)}
+				onclick={() => ctx.regler({ etats: basculer(f.etats, e) })}
 			>
 				<span></span>{ETATS[e].nom}
 			</button>
@@ -82,7 +82,7 @@
 					Chargement des restrictions auprès de la DGMR…
 				{/if}
 			{:else}
-				<strong>{visibles.length}</strong> restriction{visibles.length > 1 ? 's' : ''} de circulation dans la zone affichée
+				<strong>{nombre.format(visibles.length)}</strong> restriction{visibles.length > 1 ? 's' : ''} de circulation dans la zone affichée
 				{#each enAttente as e (e)}
 					{#if routes.source.erreur}
 						<span class="erreur"> · les restrictions {ETATS[e].minuscules} n’ont pas pu être chargées</span>
@@ -95,7 +95,7 @@
 		{#if !visibles.length && (charges.length || !f.etats.length)}
 			<p class="muted vide">
 				{#if !f.sortes.length || !f.etats.length}
-					Allumez au moins une sorte, et « En cours » ou « À venir », pour afficher la liste.
+					Allumez au moins une sorte, et «&nbsp;En cours&nbsp;» ou «&nbsp;À venir&nbsp;», pour afficher la liste.
 				{:else}
 					Aucune restriction ne correspond à ces puces dans la zone affichée. Dézoomez la carte ou allumez d’autres puces.
 				{/if}
@@ -107,13 +107,13 @@
 			{/each}
 		</ul>
 		{#if visibles.length > LISTE_MAX}
-			<p class="muted">… et {visibles.length - LISTE_MAX} autres : zoomez pour affiner.</p>
+			<p class="muted">… et {nombre.format(visibles.length - LISTE_MAX)} autres&nbsp;: zoomez pour affiner.</p>
 		{/if}
 	</div>
 {/if}
 
 <p class="source">
-	Restrictions de circulation lues en direct auprès de la DGMR depuis votre navigateur ; ce site ne les conserve pas.
+	Restrictions de circulation lues en direct auprès de la DGMR depuis votre navigateur&nbsp;; ce site ne les conserve pas.
 	Surtout les routes cantonales. La signalisation sur place fait foi.
 </p>
 
@@ -142,6 +142,13 @@
 		font-size: 13px;
 		color: inherit;
 		cursor: pointer;
+	}
+	.puce:hover {
+		background: color-mix(in oklab, var(--c), white 88%);
+	}
+	.puce.off:hover {
+		border-color: var(--muted);
+		color: var(--text);
 	}
 	/* Le trait de la légende : la couleur de la sorte, en tirets pour une déviation, comme sur la carte. */
 	.puce span {
@@ -187,6 +194,14 @@
 		padding: 0;
 		display: grid;
 		gap: 8px;
+	}
+	/*
+	 * Jusqu'à 150 cartes : celles hors de l'écran ne sont pas mises en page. Sur la carte elle-même et non sur le
+	 * `li`, dont le confinement couperait le contour de la carte active et l'anneau du focus.
+	 */
+	.liste > li > :global(.carte) {
+		content-visibility: auto;
+		contain-intrinsic-size: auto 92px;
 	}
 	.muted {
 		color: var(--muted);

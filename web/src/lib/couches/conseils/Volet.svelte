@@ -3,18 +3,20 @@
 	 * Volet de la couche Conseils, sous l'interrupteur, les badges et l'attribution du registre : la légende, puis la
 	 * carte du Grand Conseil et une ligne par conseil communal de la zone affichée, lus dans `conseils/index.json`, et
 	 * la phrase sur les communes grisées. Un conseil communal ouvre la fiche de sa commune, sur l'onglet Conseil ; le
-	 * Grand Conseil ouvre la sienne.
+	 * Grand Conseil ouvre la sienne. Ce sont des liens vers leur page : un clic simple ouvre la fiche par le registre,
+	 * Cmd/Ctrl-clic ou le clic du milieu l'ouvrent dans un nouvel onglet.
 	 */
-	import type { Contexte } from '#lib/registre/types.js';
+	import { lienCommune, lienFiche } from '#lib/registre/liens.js';
+	import type { Cible, Contexte } from '#lib/registre/types.js';
 	import { listerConseils, SOURCES } from '#lib/sources.js';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { TELEPHONE } from '#lib/socle/telephone.js';
 	import { carteConseil, lignesConseils, noteAutresCommunes } from './cartes.js';
 	import { FICHE_GRAND_CONSEIL } from './cles.js';
 	import { conseils } from './donnees.js';
-	import { COULEUR_CONSEILS, coucheConseils } from './index.js';
+	import { COULEUR_CONSEILS, coucheConseils, type ParametresConseils } from './index.js';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<ParametresConseils> } = $props();
 
 	let lecture = $state(conseils.index());
 
@@ -27,10 +29,17 @@
 	const autres = $derived(ctx.communes.filter((c) => !couvertes.has(c.bfs)).length);
 	/** Sur téléphone, le grisage ne suit pas le volet mais « Voir sur la carte » : la phrase le dit. */
 	const telephone = new MediaQuery(TELEPHONE, false);
+
+	/** Un clic simple ouvre la cible par le registre ; avec une touche ou un autre bouton, le navigateur suit le lien. */
+	function ouvrirAuClic(e: MouseEvent, cible: Cible) {
+		if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+		e.preventDefault();
+		ctx.ouvrir(cible);
+	}
 </script>
 
 <ul class="legende" style:--c={COULEUR_CONSEILS}>
-	<li><span class="fronton" aria-hidden="true">GC</span> Le Grand Conseil, au Parlement : un clic ouvre sa fiche.</li>
+	<li><span class="fronton" aria-hidden="true">GC</span> Le Grand Conseil, au Parlement&nbsp;: un clic ouvre sa fiche.</li>
 	<li>
 		<span class="hotel" aria-hidden="true"></span> Les conseils communaux sont dans la fiche de leur commune, onglet
 		Conseil.
@@ -51,9 +60,13 @@
 		<ul class="conseils" style:--c={COULEUR_CONSEILS}>
 			{#each index.conseils.filter((c) => c.commune === null) as conseil (conseil.cle)}
 				<li>
-					<button type="button" class="carte" onclick={() => ctx.ouvrir({ fiche: FICHE_GRAND_CONSEIL })}>
+					<a
+						class="carte"
+						href={lienFiche(FICHE_GRAND_CONSEIL)}
+						onclick={(e) => ouvrirAuClic(e, { fiche: FICHE_GRAND_CONSEIL })}
+					>
 						{@render contenu(carteConseil(conseil, ctx.communes))}
-					</button>
+					</a>
 				</li>
 			{/each}
 		</ul>
@@ -66,20 +79,20 @@
 			<ul class="lignes" style:--c={COULEUR_CONSEILS}>
 				{#each lignes as ligne (ligne.cle)}
 					<li>
-						<button
-							type="button"
+						<a
 							class="ligne"
-							onclick={() => ctx.ouvrir({ commune: ligne.slug, onglet: coucheConseils.id })}
+							href={lienCommune(ligne.slug)}
+							onclick={(e) => ouvrirAuClic(e, { commune: ligne.slug, onglet: coucheConseils.id })}
 						>
 							<strong>{ligne.commune}</strong>
 							<span>{ligne.detail}</span>
-						</button>
+						</a>
 					</li>
 				{/each}
 			</ul>
 		{/if}
 	{:catch}
-		<p class="erreur">
+		<p class="erreur" role="alert">
 			Les conseils couverts n’ont pas pu être chargés.
 			<button class="bouton secondaire petit" type="button" onclick={() => (lecture = conseils.index())}>
 				Réessayer
@@ -193,13 +206,14 @@
 		font-size: 12px;
 		color: var(--muted);
 		text-align: left;
+		text-decoration: none;
 	}
-	button.carte {
-		cursor: pointer;
-	}
-	button.carte:hover,
-	button.carte:focus-visible {
+	a.carte:hover,
+	a.carte:focus-visible {
 		border-color: var(--c);
+	}
+	a.carte:hover {
+		background: var(--bg);
 	}
 	.carte strong {
 		font-size: 14px;
@@ -225,6 +239,7 @@
 		align-items: baseline;
 		gap: 0 8px;
 		width: 100%;
+		box-sizing: border-box;
 		padding: 6px 2px;
 		border: 0;
 		border-bottom: 1px solid var(--line);
@@ -233,7 +248,7 @@
 		font-size: 12px;
 		color: var(--muted);
 		text-align: left;
-		cursor: pointer;
+		text-decoration: none;
 	}
 	.ligne strong {
 		font-size: 13px;
@@ -242,6 +257,9 @@
 	.ligne:hover strong,
 	.ligne:focus-visible strong {
 		color: var(--c);
+	}
+	.ligne:hover strong {
+		text-decoration: underline;
 	}
 	@media (pointer: coarse) {
 		.petit,

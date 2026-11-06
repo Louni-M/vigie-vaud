@@ -119,6 +119,14 @@ body:has(main.almanach) {
 .almanach a:where(:not(.diagramme *)):hover {
 	text-decoration-thickness: var(--rule-bar);
 }
+/* L'épaississement reste une transition du soulignement lui-même : le rendre par transform ou opacity demanderait un
+   trait dessiné à part, qui ne suivrait pas un lien coupé sur deux lignes. Il ne déplace rien et ne dure qu'un instant ;
+   sans mouvement, il se fait d'un coup. */
+@media (prefers-reduced-motion: reduce) {
+	.almanach a:where(:not(.diagramme *)) {
+		transition: none;
+	}
+}
 .almanach code:where(:not(.diagramme *)) {
 	font-family: var(--font-outlier);
 	font-size: 0.85em;
