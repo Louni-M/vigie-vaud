@@ -29,7 +29,9 @@ describe('typographier', () => {
 	});
 
 	it('laisse les mots qui commencent comme une unité, et les nombres suivis d’un autre mot', () => {
-		expect(typographier('5 maisons, 3 hangars, 12 tonnes, 2 années')).toBe('5 maisons, 3 hangars, 12 tonnes, 2 années');
+		expect(typographier('5 maisons, 3 hangars, 12 tonnes, 2 années, 2 mâts')).toBe(
+			'5 maisons, 3 hangars, 12 tonnes, 2 années, 2 mâts'
+		);
 	});
 
 	it('ne change rien à un texte déjà soigné', () => {
