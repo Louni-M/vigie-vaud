@@ -4,6 +4,7 @@
 	 * avec le résultat de chaque point ; un point lié à un Objet ouvre cet Objet. Puis ses documents (« ordre du jour,
 	 * procès-verbal »), qui tiennent lieu d'ordre du jour à une Séance sans points, « Voir sur … › » et la source.
 	 */
+	import { typographier } from '#lib/almanach/typographie.js';
 	import type { Seance } from '#lib/schema.js';
 	import { lireCle, nomConseil } from './cles.js';
 	import { COULEUR_CONSEILS } from './index.js';
@@ -24,7 +25,7 @@
 	{#if groupes.length || !documents.length}<h4>Ordre du jour</h4>{/if}
 	{#if groupes.length}
 		{#each groupes as g, i (i)}
-			{#if g.categorie}<p class="categorie">{g.categorie}</p>{/if}
+			{#if g.categorie}<p class="categorie">{typographier(g.categorie)}</p>{/if}
 			<ol>
 				{#each g.points as p, j (j)}
 					<li>
@@ -32,11 +33,11 @@
 						<span>
 							{#if p.objet}
 								{@const objet = p.objet}
-								<button type="button" class="point" onclick={() => ouvrir(objet)}>{p.titre}</button>
+								<button type="button" class="point" onclick={() => ouvrir(objet)}>{typographier(p.titre)}</button>
 							{:else}
-								{p.titre}
+								{typographier(p.titre)}
 							{/if}
-							{#if p.resultat}<span class="resultat"> · {p.resultat}</span>{/if}
+							{#if p.resultat}<span class="resultat"> · {typographier(p.resultat)}</span>{/if}
 						</span>
 					</li>
 				{/each}
@@ -51,7 +52,7 @@
 		<ul class="documents">
 			{#each documents as d, i (i)}
 				<li>
-					<a href={d.lien} target="_blank" rel="noopener">{d.titre ?? 'Document'}</a>
+					<a href={d.lien} target="_blank" rel="noopener">{d.titre ? typographier(d.titre) : 'Document'}</a>
 					{#if d.date}<span class="date"> · {dateCourte(d.date)}</span>{/if}
 				</li>
 			{/each}
@@ -59,7 +60,7 @@
 	{/if}
 
 	{#if seance.lien}
-		<p class="externe"><a href={seance.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(seance.lien)} ›</a></p>
+		<p class="externe"><a href={seance.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(seance.lien)}&nbsp;<span aria-hidden="true">›</span></a></p>
 	{/if}
 	<Source conseil={lireCle(cle)?.conseil ?? ''} />
 </article>
@@ -128,6 +129,10 @@
 		text-align: left;
 		text-decoration: underline;
 		cursor: pointer;
+	}
+	.point:hover {
+		text-decoration-thickness: 2px;
+		color: color-mix(in oklab, var(--accent), black 25%);
 	}
 	.resultat {
 		font-size: 12px;

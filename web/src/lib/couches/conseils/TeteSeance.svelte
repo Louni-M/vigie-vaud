@@ -5,6 +5,7 @@
 	 * fichier d'archive, et « Les N points ». Avec `ouvrir`, le nom et « Les N points » ouvrent la Séance, et un
 	 * point lié à un Objet ouvre cet Objet. Une Séance sans points montre ses documents en lien à leur place.
 	 */
+	import { typographier } from '#lib/almanach/typographie.js';
 	import type { ConseilIndexe } from '#lib/schema.js';
 	import { conseils } from './donnees.js';
 	import { COULEUR_CONSEILS } from './index.js';
@@ -27,7 +28,9 @@
 			{#if seance}
 				{@const nom = nomSeance(seance.date)}
 				{#if ouvrir}
-					<button type="button" class="nom lien" onclick={() => ouvrir(tete.cle)}>{nom} ›</button>
+					<button type="button" class="nom lien" onclick={() => ouvrir(tete.cle)}
+							>{nom}&nbsp;<span aria-hidden="true">›</span></button
+						>
 				{:else}
 					<p class="nom">{nom}</p>
 				{/if}
@@ -38,9 +41,9 @@
 							<li>
 								{#if ouvrir && point.objet}
 									{@const objet = point.objet}
-									<button type="button" class="point" onclick={() => ouvrir(objet)}>{point.titre}</button>
+									<button type="button" class="point" onclick={() => ouvrir(objet)}>{typographier(point.titre)}</button>
 								{:else}
-									{point.titre}
+									{typographier(point.titre)}
 								{/if}
 							</li>
 						{/each}
@@ -48,15 +51,17 @@
 					{#if contenu.total > contenu.points.length}
 						{@const n = contenu.total}
 						{#if ouvrir}
-							<button type="button" class="plus" onclick={() => ouvrir(tete.cle)}>Les {n} points ›</button>
+							<button type="button" class="plus" onclick={() => ouvrir(tete.cle)}
+								>Les {n}&nbsp;points&nbsp;<span aria-hidden="true">›</span></button
+							>
 						{:else}
-							<p class="plus">Les {n} points</p>
+							<p class="plus">Les {n}&nbsp;points</p>
 						{/if}
 					{/if}
 				{:else if contenu}
 					<ul class="documents">
 						{#each contenu.documents as d, i (i)}
-							<li><a href={d.lien} target="_blank" rel="noopener">{d.texte}</a></li>
+							<li><a href={d.lien} target="_blank" rel="noopener">{typographier(d.texte)}</a></li>
 						{/each}
 					</ul>
 				{:else}
@@ -65,7 +70,7 @@
 			{/if}
 		{:catch}
 			<p class="nom">{nomSeance(tete.cle.split('/')[1])}</p>
-			<p class="note">
+			<p class="note" role="alert">
 				L’ordre du jour n’a pas pu être chargé.
 				<button type="button" class="point" onclick={reessayer}>Réessayer</button>
 			</p>
@@ -102,6 +107,10 @@
 	.lien {
 		cursor: pointer;
 	}
+	.nom.lien:hover {
+		color: var(--c);
+		text-decoration: underline;
+	}
 	ol {
 		margin: 6px 0 0;
 		padding-left: 20px;
@@ -131,6 +140,10 @@
 		text-decoration: underline;
 		cursor: pointer;
 	}
+	.point:hover {
+		text-decoration-thickness: 2px;
+		color: color-mix(in oklab, var(--accent), black 25%);
+	}
 	.note {
 		margin: 4px 0 0;
 		font-size: 12px;
@@ -147,5 +160,8 @@
 	}
 	button.plus {
 		cursor: pointer;
+	}
+	button.plus:hover {
+		text-decoration: underline;
 	}
 </style>

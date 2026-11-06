@@ -4,8 +4,8 @@
 	 * déviations en tirets plus fins, toujours visibles ; l'à venir plus pâle, et l'en cours dessiné au-dessus de lui.
 	 * Sous le zoom 11, un point par restriction au milieu de son tracé, sauf les déviations. Fondu à l'activation.
 	 * Un clic ouvre le tracé le plus contraignant sous le doigt (la carte vole vers lui tout de suite), et la
-	 * restriction ouverte est soulignée d'un contour noir, sous ses couleurs. Les puces du volet filtrent les calques :
-	 * un tracé masqué n'est ni dessiné ni cliquable.
+	 * restriction ouverte est soulignée d'un contour noir, sous ses couleurs. Les puces du volet, réglages de la
+	 * couche (`ctx.parametres`), filtrent les calques : un tracé masqué n'est ni dessiné ni cliquable.
 	 */
 	import { onMount, untrack } from 'svelte';
 	import type {
@@ -16,14 +16,14 @@
 		MapMouseEvent
 	} from 'maplibre-gl';
 	import type { Contexte } from '#lib/registre/types.js';
+	import type { Filtres } from './volet.js';
 	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import { routes, type Restriction } from './donnees.svelte.js';
 	import type { EtatRestriction } from './etats.js';
 	import { ouvrirRestriction, restrictionOuverte } from './index.js';
-	import { puces } from './puces.svelte.js';
 	import { plusContraignante, SORTES, type Sorte } from './sortes.js';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<Filtres> } = $props();
 
 	// La carte et le calque d'ancrage ne changent pas pendant la vie de la couche.
 	const map = untrack(() => ctx.map);
@@ -220,7 +220,7 @@
 	 * de la restriction ouverte reste, elle, toujours visible.
 	 */
 	$effect(() => {
-		const { sortes, etats } = puces.filtres;
+		const { sortes, etats } = ctx.parametres;
 		const montre = [
 			['in', ['get', 'sorte'], ['literal', [...sortes]]],
 			['in', ['get', 'etat'], ['literal', [...etats]]]

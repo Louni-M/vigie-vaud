@@ -3,6 +3,8 @@ import { commune } from '#tests/faux-canton.js';
 import { avecSources, sourceSite } from '#tests/faux-conseils.js';
 import { SOURCES } from '#lib/sources.js';
 import { messageIntrouvable } from './cles.js';
+import { COUCHES } from '#lib/registre/couches.js';
+import { clesEnDouble, ecrireUrl, lireUrl } from '#lib/registre/url.js';
 import { coucheConseils } from './index.js';
 
 describe('couche Conseils', () => {
@@ -14,6 +16,36 @@ describe('couche Conseils', () => {
 		['5938/2026-10-01', 'Yverdon-les-Bains', 'Séance du 1er octobre 2026 – Yverdon-les-Bains – Vigie Vaud']
 	])('titre l’élément %s, ouvert dans la fiche %s, par sa clé seule', (cle, fiche, attendu) => {
 		expect(coucheConseils.titre?.(cle, fiche)).toBe(attendu);
+	});
+});
+
+describe('puce des Objets du Grand Conseil dans l’adresse', () => {
+	const codec = coucheConseils.codec!;
+	const lire = (requete: string) => codec.lire(new URLSearchParams(requete));
+
+	it('montre tous les Objets sans rien écrire par défaut', () => {
+		expect(lire('')).toEqual({ objets: 'tous' });
+		expect(codec.ecrire({ objets: 'tous' })).toEqual([]);
+		expect(ecrireUrl(COUCHES, lireUrl(COUCHES, new URLSearchParams()))).toBe('');
+	});
+
+	it.each([
+		['avec', 'communes=avec'],
+		['sans', 'communes=sans']
+	] as const)('écrit et relit la puce « %s »', (objets, requete) => {
+		expect(new URLSearchParams(codec.ecrire({ objets })).toString()).toBe(requete);
+		expect(lire(requete)).toEqual({ objets });
+	});
+
+	it('ignore une valeur inconnue', () => {
+		expect(lire('communes=toutes')).toEqual({ objets: 'tous' });
+	});
+
+	it('garde la puce à côté de l’élément ouvert, et ne prend aucune clé déjà prise', () => {
+		const etat = lireUrl(COUCHES, new URLSearchParams('c=vd/26_INT_140&communes=sans'));
+		expect(etat.ouvert).toEqual({ couche: 'conseils', element: 'vd/26_INT_140' });
+		expect(ecrireUrl(COUCHES, etat)).toBe('?c=vd/26_INT_140&communes=sans');
+		expect(clesEnDouble(COUCHES)).toEqual([]);
 	});
 });
 

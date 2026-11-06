@@ -41,7 +41,8 @@ export function nomSeance(date: string): string {
 		.map(quantieme)
 		.join(' ');
 	const [h, m] = date.length > 10 ? date.slice(11, 16).split(':').map(Number) : [];
-	const heure = h === undefined ? '' : ` à ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
+	// L'heure ne se coupe pas : « 18 h 30 », insécables.
+	const heure = h === undefined ? '' : ` à ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
 	return `Séance du ${texte}${heure}`;
 }
 
@@ -94,7 +95,7 @@ const enLiens = (documents: readonly DocumentObjet[]): LienDocument[] =>
  */
 export function detailSeance(ligne: LigneSeance): { points: string } | { documents: LienDocument[] } {
 	if (ligne.points === 0 && ligne.documents?.length) return { documents: enLiens(ligne.documents) };
-	return { points: ligne.points === 1 ? '1 point' : `${ligne.points} points` };
+	return { points: ligne.points === 1 ? '1 point' : `${ligne.points} points` };
 }
 
 /** Points de l'ordre du jour montrés dans l'en-tête de séance. */

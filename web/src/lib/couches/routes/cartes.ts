@@ -36,15 +36,21 @@ export function sectionsDeLaCommune(
 	return { enCours: ici.filter((r) => r.etat === 'en_cours'), aVenir: ici.filter((r) => r.etat === 'a_venir') };
 }
 
-/** « 770 m » (à 10 m près), « 2,3 km ». */
-export const longueurTexte = (m: number) =>
-	m < 995 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+const metres = new Intl.NumberFormat('fr-CH', { style: 'unit', unit: 'meter', maximumFractionDigits: 1 });
+const kilometres = new Intl.NumberFormat('fr-CH', { style: 'unit', unit: 'kilometer', maximumFractionDigits: 1 });
 
-/** « Pully », « Lutry, Pully », « Lutry, Pully et 3 autres ». */
+/**
+ * « 770 m » (à 10 m près), « 2,3 km », « 1 km » : une espace insécable entre le nombre et l'unité, que les données
+ * de locale donnent fine (U+202F) ou pleine (U+00A0) ; une espace ordinaire y est remplacée par une insécable.
+ */
+export const longueurTexte = (m: number) =>
+	(m < 995 ? metres.format(Math.round(m / 10) * 10) : kilometres.format(m / 1000)).replace(/ /g, '\u00a0');
+
+/** « Pully », « Lutry, Pully », « Lutry, Pully et 3 autres » (le nombre et « autres » liés par une insécable). */
 export function communesTexte(passages: readonly Passage[], max = 2): string {
 	const noms = passages.slice(0, max).map((p) => p.commune.nom).join(', ');
 	const autres = passages.length - max;
-	return autres > 0 ? `${noms} et ${autres} ${autres > 1 ? 'autres' : 'autre'}` : noms;
+	return autres > 0 ? `${noms} et ${autres}\u00a0${autres > 1 ? 'autres' : 'autre'}` : noms;
 }
 
 /** Ce que montre la carte d'une restriction, après sa pastille. */
@@ -78,6 +84,6 @@ export function carteRestriction(r: Restriction, { aujourdhui, commune }: { aujo
 		echeance: echeance(r, aujourdhui),
 		plage: r.heureDebut && r.heureFin ? ligneHoraires(r) : null,
 		remarque: r.remarque,
-		dansLaCommune: ici ? `${longueurTexte(ici.metres)} dans la commune, sur ${r.communes!.length} communes` : null
+		dansLaCommune: ici ? `${longueurTexte(ici.metres)} dans la commune, sur ${r.communes!.length}\u00a0communes` : null
 	};
 }

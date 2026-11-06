@@ -7,8 +7,10 @@
 	 * dans cette fiche : la commune de l'onglet est l'une des siennes.
 	 */
 	import { untrack } from 'svelte';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import type { Contexte } from '#lib/registre/types.js';
+	import type { Filtres } from './volet.js';
 	import { source } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
 	import { encadreLimites, sectionsDeLaCommune } from './cartes.js';
@@ -17,7 +19,7 @@
 	import { ouvrirRestriction } from './index.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<Filtres> } = $props();
 
 	// Le registre ne monte l'onglet que pour une commune ouverte, et le remonte pour une autre.
 	const commune = untrack(() => ctx.commune) as Commune;
@@ -46,11 +48,11 @@
 
 <EchecSource source="dgmr-restrictions" message="Les restrictions de circulation n’ont pas pu être chargées" />
 
-{#if encadre}<p class="encadre">{encadre}</p>{/if}
+{#if encadre}<p class="encadre">{typographier(encadre)}</p>{/if}
 
 {#if echecLimites}
 	<p class="erreur" role="alert">
-		Les limites des communes n’ont pas pu être chargées : les restrictions ne peuvent pas être rattachées.
+		Les limites des communes n’ont pas pu être chargées&nbsp;: les restrictions ne peuvent pas être rattachées.
 		<button class="bouton secondaire petit" type="button" onclick={charger}>Réessayer</button>
 	</p>
 {/if}
@@ -70,12 +72,16 @@
 	{:else if routes.source.erreur && !routes.chargee(s.etat)}
 		<p class="muted">{s.echec}</p>
 	{:else if !echecLimites}
-		<ul class="grille" aria-busy="true"><li class="attente"></li></ul>
+		<!-- Le squelette d'une carte, pour les seuls yeux ; les lecteurs d'écran entendent « Chargement… ». -->
+		<div role="status">
+			<span class="lecteur-seul">Chargement des restrictions {ETATS[s.etat].minuscules}…</span>
+			<div class="attente" aria-hidden="true"></div>
+		</div>
 	{/if}
 {/each}
 
 <p class="source">
-	Restrictions de circulation lues en direct auprès de la DGMR depuis votre navigateur ; ce site ne les conserve pas.
+	Restrictions de circulation lues en direct auprès de la DGMR depuis votre navigateur&nbsp;; ce site ne les conserve pas.
 	La signalisation sur place fait foi. Chaque restriction est rattachée aux communes que son tracé parcourt (limites
 	swisstopo).
 </p>

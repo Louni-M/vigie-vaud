@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import '#lib/almanach/almanach.css';
 	import { insecables } from '#lib/almanach/typographie.js';
 	import {
@@ -31,9 +34,36 @@
 	const imports = $derived(importsCourants());
 	const importsCharge = $derived(importsCharges());
 
+	// La recherche, telle qu'on la tape, et le filtre de la table, qui la suit une fois la frappe arrêtée : les 300
+	// lignes ne sont pas refiltrées et redessinées à chaque touche. Le filtre est gardé dans l'adresse (`?q=`) pour
+	// qu'on puisse la partager ou y revenir ; la page est pré-générée sans paramètre, l'adresse n'est donc lue que dans
+	// le navigateur, au montage, et la page servie reste identique à celle qui s'hydrate.
+	const DELAI_FILTRE = 150;
 	let recherche = $state('');
+	let filtre = $state('');
+	let adresseLue = $state(false);
+
+	onMount(() => {
+		recherche = filtre = new URLSearchParams(location.search).get('q') ?? '';
+		adresseLue = true;
+	});
+
+	$effect(() => {
+		const q = recherche.trim();
+		if (!adresseLue) return;
+		const t = setTimeout(() => {
+			filtre = q;
+			const url = new URL(location.href);
+			if (q) url.searchParams.set('q', q);
+			else url.searchParams.delete('q');
+			// Remplace l'entrée d'historique sans naviguer : ni rechargement, ni défilement, ni perte du focus.
+			if (url.href !== location.href) replaceState(url, page.state);
+		}, DELAI_FILTRE);
+		return () => clearTimeout(t);
+	});
+
 	const lignes = $derived.by(() => {
-		const q = normaliser(recherche);
+		const q = normaliser(filtre);
 		return q ? data.communes.filter((c) => normaliser(c.nom).includes(q)) : data.communes;
 	});
 
@@ -56,7 +86,7 @@
 	<link rel="canonical" href={canonique('/couverture')} />
 </svelte:head>
 
-<main class="almanach" data-theme="almanach">
+<main class="almanach" data-theme="almanach" id="contenu" tabindex="-1">
 	<div class="cadre">
 		<header class="tete">
 			<h1>Couverture</h1>
@@ -137,7 +167,7 @@
 									<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
 										<path d="m6 3.5 4.5 4.5L6 12.5" />
 									</svg>
-									Ses {p.communes.length} communes
+									Ses {p.communes.length}&nbsp;communes
 								</summary>
 								<ul>
 									{#each communesTriees(p.communes) as c (c.source.id)}
@@ -165,7 +195,7 @@
 											{/if}
 											<p>
 												<a href={c.source.attribution.lien} target="_blank" rel="noopener">
-													Le conseil sur le site de la commune ›
+													Le conseil sur le site de la commune&nbsp;<span aria-hidden="true">›</span>
 												</a>
 											</p>
 										</li>
@@ -178,19 +208,26 @@
 			{/if}
 
 			<section class="partie communes" aria-labelledby="titre-communes">
-				<h2 id="titre-communes">Les {data.communes.length} communes</h2>
+				<h2 id="titre-communes">Les {data.communes.length}&nbsp;communes</h2>
 				<div class="outils">
 					<label class="recherche">
 						<span>Chercher une commune</span>
-						<input type="search" bind:value={recherche} placeholder="Pully, Yverdon…" autocomplete="off" />
+						<input
+							type="search"
+							name="q"
+							bind:value={recherche}
+							placeholder="Pully, Yverdon…"
+							autocomplete="off"
+							spellcheck="false"
+						/>
 					</label>
 					<p class="compte" aria-live="polite">
 						{lignes.length === data.communes.length
-							? `${lignes.length} communes`
-							: `${lignes.length} sur ${data.communes.length}`}
+							? `${lignes.length}\u00a0communes`
+							: `${lignes.length} sur\u00a0${data.communes.length}`}
 					</p>
 				</div>
-				<table class="tableau">
+				<table class="tableau" aria-labelledby="titre-communes">
 					<thead>
 						<tr>
 							<th scope="col">Commune</th>
@@ -483,7 +520,6 @@
 	.tableau tbody tr {
 		/* La ligne entière mène à la fiche : le lien du nom s'étend sur toute la ligne. */
 		position: relative;
-		transition: background-color var(--dur-short) var(--ease-out);
 	}
 	.tableau tbody tr + tr {
 		border-top: var(--rule-hair) solid var(--color-rule);
@@ -496,8 +532,12 @@
 		font-family: var(--font-display);
 		font-weight: 600;
 	}
+	/* Atteint au clavier, le nom de la commune s'arrête sous l'en-tête collant de la table, pas dessous : la marge
+	   reprend la hauteur de cet en-tête (une ligne et ses marges) et la marge du haut de la cellule ; la barre du site,
+	   elle, est comptée par html (scroll-padding-top). */
 	.tableau tbody th a {
 		text-decoration: none;
+		scroll-margin-top: calc(2 * var(--space-xs) + 1.45em + var(--space-sm));
 	}
 	.tableau tbody tr:hover th a {
 		text-decoration: underline var(--rule-hair) var(--color-accent);
@@ -548,8 +588,15 @@
 		.tableau thead {
 			display: none;
 		}
+		/* Une fiche par commune, 300 en tout : le navigateur ne dessine que celles à l'écran. */
 		.tableau tbody tr {
 			padding-block: var(--space-xs);
+			content-visibility: auto;
+			contain-intrinsic-size: auto 170px;
+		}
+		/* Sans en-tête de table sur téléphone, seule la barre du site est à éviter. */
+		.tableau tbody th a {
+			scroll-margin-top: 0;
 		}
 		.tableau tbody th,
 		.tableau td {

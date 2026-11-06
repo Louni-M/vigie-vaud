@@ -20,14 +20,24 @@ const couche = (id: string, champs: Partial<CoucheInscrite> = {}): CoucheInscrit
 	...champs
 });
 
-/** Registre factice : `a` active par défaut avec codec et éléments, `b` inactive, `h` permanente. */
+const onglet = () => Promise.reject(new Error('non chargé'));
+
+/** Registre factice : `a` active par défaut avec codec et éléments, `b` inactive avec un onglet, `h` permanente. */
 const COUCHES = [
 	couche('a', { activeParDefaut: true, codec: codecX, cleElement: 'd' }),
-	couche('b'),
+	couche('b', { composants: { Carte: onglet, Onglet: onglet } }),
 	couche('h', { permanente: true, activeParDefaut: true })
 ];
 
-const DEFAUTS: EtatUrl = { actives: ['a', 'h'], vue: null, ouvert: null, parametres: { a: { x: '' } } };
+const DEFAUTS: EtatUrl = {
+	actives: ['a', 'h'],
+	vue: null,
+	ouvert: null,
+	parametres: { a: { x: '' } },
+	volet: 'fil',
+	affichage: null,
+	onglet: null
+};
 
 const lire = (q: string) => lireUrl(COUCHES, new URLSearchParams(q));
 
@@ -42,7 +52,16 @@ describe('adresse du registre', () => {
 		['couche désactivée', { actives: ['h'] }, '?couches='],
 		['vue', { vue: { lat: 46.51965, lon: 6.63229, zoom: 14.5 } }, '?vue=46.51965,6.63229,14.50'],
 		['élément ouvert', { ouvert: { couche: 'a', element: '248845' } }, '?d=248845'],
-		['paramètres d’une couche', { parametres: { a: { x: 'oui' } } }, '?x=oui']
+		['paramètres d’une couche', { parametres: { a: { x: 'oui' } } }, '?x=oui'],
+		['volet d’une couche', { volet: 'b' }, '?volet=b'],
+		['aucun volet', { volet: null }, '?volet='],
+		['vue du téléphone', { affichage: 'couches' }, '?affichage=couches'],
+		['onglet de la fiche', { onglet: 'b' }, '?onglet=b'],
+		[
+			'élément, volet, vue et onglet ensemble',
+			{ ouvert: { couche: 'a', element: '7' }, volet: null, affichage: 'carte', onglet: 'b' },
+			'?d=7&volet=&affichage=carte&onglet=b'
+		]
 	])('aller-retour : %s', (_, changes, attendu) => {
 		const e = { ...DEFAUTS, ...changes };
 		expect(ecrireUrl(COUCHES, e)).toBe(attendu);
@@ -65,5 +84,19 @@ describe('adresse du registre', () => {
 
 	it('ignore les couches inconnues et une vue invalide', () => {
 		expect(lire('couches=b,zzz&vue=46.5,abc,12')).toEqual({ ...DEFAUTS, actives: ['b', 'h'] });
+	});
+
+	it('garde le fil ouvert pour un volet inconnu, et ignore une vue du téléphone ou un onglet inconnus', () => {
+		expect(lire('volet=zzz&affichage=plan&onglet=zzz')).toEqual(DEFAUTS);
+	});
+
+	it('n’accepte comme onglet qu’une couche qui en a un', () => {
+		expect(lire('onglet=a').onglet).toBeNull();
+		expect(lire('onglet=b').onglet).toBe('b');
+	});
+
+	it('accepte le fil comme volet sans l’écrire', () => {
+		expect(lire('volet=fil').volet).toBe('fil');
+		expect(ecrireUrl(COUCHES, { ...DEFAUTS, volet: 'fil' })).toBe('');
 	});
 });

@@ -84,7 +84,7 @@ describe('message d’échec d’une source Direct', () => {
 	const panne = { etat: 'en_panne', depuis: '2026-10-12T12:00:00Z' } as const;
 
 	it('dit la panne constatée par la surveillance, avec sa date', () => {
-		expect(messageEchec(PERMIS, 'indisponible', panne)).toBe('Source en panne depuis le 12 oct., 14 h.');
+		expect(messageEchec(PERMIS, 'indisponible', panne)).toBe('Source en panne depuis le 12 oct., 14 h.');
 		expect(messageEchec(PERMIS, 'indisponible', { etat: 'en_panne', depuis: null })).toBe('Source en panne.');
 	});
 

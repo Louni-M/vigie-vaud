@@ -161,7 +161,8 @@ export function conseilsCouverts(
  */
 export function phraseSitesLus(sites: SitesLus): string | null {
 	if (sites.communes === 0) return null;
-	const communes = `${sites.communes} commune${sites.communes > 1 ? 's' : ''}`;
+	// Le nombre et « communes » liés par une espace insécable : « 19 communes » ne se coupe pas en fin de ligne.
+	const communes = `${sites.communes}\u00a0commune${sites.communes > 1 ? 's' : ''}`;
 	const parPlateforme = sites.plateformes.map((p) => `${p.nom} (${p.communes})`).join(', ');
 	return `et ${communes} dont Vigie Vaud lit le site : ${parPlateforme}`;
 }

@@ -36,7 +36,7 @@ describe('élément introuvable', () => {
 	const LUTRY = { commune: 'lutry' };
 
 	it.each([
-		['permis', '999999', 'Aucun dossier n° 999999.'],
+		['permis', '999999', 'Aucun dossier n° 999999.'],
 		[
 			'conseils',
 			'5586/POS25-999',
@@ -45,7 +45,7 @@ describe('élément introuvable', () => {
 		[
 			'routes',
 			'5031',
-			'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.'
+			'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.'
 		]
 	])('ouvre la fiche commune du chemin sur l’onglet %s, avec le message de la couche', (couche, element, avis) => {
 		expect(avisIntrouvable(COUCHES, { couche, element }, LUTRY)).toEqual({ avis, onglet: couche });
@@ -53,14 +53,14 @@ describe('élément introuvable', () => {
 
 	it('sans fiche dans le chemin, il n’y a que le message', () => {
 		expect(avisIntrouvable(COUCHES, { couche: 'permis', element: '999999' }, null)).toEqual({
-			avis: 'Aucun dossier n° 999999.',
+			avis: 'Aucun dossier n° 999999.',
 			onglet: null
 		});
 	});
 
 	it('dans une fiche propre, qui n’a que l’onglet de sa couche, il n’y a que le message', () => {
 		expect(avisIntrouvable(COUCHES, { couche: 'permis', element: '999999' }, { fiche: 'grand-conseil' })).toEqual(
-			{ avis: 'Aucun dossier n° 999999.', onglet: null }
+			{ avis: 'Aucun dossier n° 999999.', onglet: null }
 		);
 	});
 

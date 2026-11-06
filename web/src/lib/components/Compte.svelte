@@ -9,7 +9,7 @@
 	onMount(() => (jours = joursRestants(fin)));
 
 	// Formulation neutre : le délai sert d'abord à consulter le dossier.
-	const reste = (j: number) => (j === 1 ? 'encore 1 jour' : `encore ${j} jours`);
+	const reste = (j: number) => (j === 1 ? 'encore 1 jour' : `encore ${j} jours`);
 </script>
 
 {#if fin}
@@ -19,14 +19,14 @@
 		<span class="compte fini">Enquête terminée le {dateLongue(fin)}</span>
 	{:else if compact}
 		<span class="compte">
-			{jours === 0 ? 'Fin d’enquête aujourd’hui' : jours === 1 ? 'Fin d’enquête demain' : `Fin d’enquête dans ${jours} jours`}
+			{jours === 0 ? 'Fin d’enquête aujourd’hui' : jours === 1 ? 'Fin d’enquête demain' : `Fin d’enquête dans ${jours} jours`}
 		</span>
 	{:else}
 		<span class="compte">
 			{#if jours === 0}
-				Dernier jour de l’enquête publique ({dateLongue(fin)}) : le dossier est consultable à la commune.
+				Dernier jour de l’enquête publique ({dateLongue(fin)})&nbsp;: le dossier est consultable à la commune.
 			{:else}
-				Enquête publique jusqu’au {dateLongue(fin)} ({reste(jours)}) : le dossier est consultable à la
+				Enquête publique jusqu’au {dateLongue(fin)} ({reste(jours)})&nbsp;: le dossier est consultable à la
 				commune pendant ce délai.
 			{/if}
 		</span>

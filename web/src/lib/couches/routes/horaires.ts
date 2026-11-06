@@ -26,10 +26,10 @@ export function instant(ms: number): Instant {
 	return { jour: iso.slice(0, 10), heure: heure === '00:00' ? null : heure };
 }
 
-/** « 07:30 » → « 7 h 30 », « 19:00 » → « 19 h ». */
+/** « 07:30 » → « 7 h 30 », « 19:00 » → « 19 h », avec des espaces insécables : l'heure ne se coupe pas en fin de ligne. */
 export function heureSuisse(hhmm: string): string {
 	const [h, m] = hhmm.split(':');
-	return m === '00' ? `${Number(h)} h` : `${Number(h)} h ${m}`;
+	return m === '00' ? `${Number(h)}\u00a0h` : `${Number(h)}\u00a0h\u00a0${m}`;
 }
 
 /** La plage quotidienne, quand `HEURE_DEBUT` et `HEURE_FIN` sont remplies toutes deux. */
@@ -77,13 +77,14 @@ const joursEntre = (de: string, a: string) => Math.round((midi(a) - midi(de)) / 
 
 /**
  * L'échéance, au jour près depuis `aujourdhui` (AAAA-MM-JJ, à Lausanne) : jusqu'à `DATE_FIN` pour l'en cours
- * (« encore 4 jours »), jusqu'à `DATE_DEBUT` pour l'à venir (« commence dans 10 jours »).
+ * (« encore 4 jours »), jusqu'à `DATE_DEBUT` pour l'à venir (« commence dans 10 jours »). Le nombre et « jours »
+ * sont liés par une espace insécable.
  */
 export function echeance(r: Pick<Dates, 'dateDebut' | 'dateFin'> & { etat: EtatRestriction }, aujourdhui: string): string {
 	if (r.etat === 'a_venir') {
 		const n = joursEntre(aujourdhui, instant(r.dateDebut).jour);
-		return n <= 0 ? 'commence aujourd’hui' : n === 1 ? 'commence demain' : `commence dans ${n} jours`;
+		return n <= 0 ? 'commence aujourd’hui' : n === 1 ? 'commence demain' : `commence dans ${n}\u00a0jours`;
 	}
 	const n = joursEntre(aujourdhui, instant(r.dateFin).jour);
-	return n <= 0 ? 'dernier jour' : n === 1 ? 'jusqu’à demain' : `encore ${n} jours`;
+	return n <= 0 ? 'dernier jour' : n === 1 ? 'jusqu’à demain' : `encore ${n}\u00a0jours`;
 }

@@ -3,6 +3,7 @@ import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fr
 import { getRattachement, type Rattachement } from '#lib/socle/communes.js';
 import { masquerNoms, nettoyer } from '#lib/masquage.js';
 import { source } from '#lib/sources.js';
+import { typographier } from '#lib/almanach/typographie.js';
 import type { Commune, Dossier, PointHisto, Statut, Zone } from '#lib/types.js';
 
 /**
@@ -13,7 +14,8 @@ import type { Commune, Dossier, PointHisto, Statut, Zone } from '#lib/types.js';
 
 type Fetch = typeof fetch;
 
-export const SOURCE = `Source : ${source('camac-permis').attribution.texte}, consultées en direct`;
+/** « Source : … », l'espace insécable devant les deux-points, le nom de la source (sources.json) typographié. */
+export const SOURCE = `Source\u00a0: ${typographier(source('camac-permis').attribution.texte)}, consultées en direct`;
 
 /* ---- Conversion CAMAC → Dossier (privée) ---- */
 

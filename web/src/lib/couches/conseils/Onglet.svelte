@@ -10,7 +10,8 @@
 	 * commune scrapée passée non couverte garde sous sa raison ce qui a déjà été importé, que l'index liste encore.
 	 *
 	 * Fiche du Grand Conseil : l'en-tête de séance, « Objets récents » avec les puces « Tous · Nomment une commune ·
-	 * Sans commune », « Séances passées », aux mêmes longueurs que dans l'onglet d'une commune.
+	 * Sans commune » (la puce choisie est un réglage de la couche, dans l'adresse), « Séances passées », aux mêmes
+	 * longueurs que dans l'onglet d'une commune.
 	 *
 	 * Une ligne d'Objet ou de Séance, et un point de l'en-tête lié à un Objet, ouvrent l'élément par le registre, dans
 	 * cet onglet (`?c=`).
@@ -21,14 +22,14 @@
 	import AuGrandConseil from './AuGrandConseil.svelte';
 	import { FICHE_GRAND_CONSEIL } from './cles.js';
 	import { conseils } from './donnees.js';
-	import { coucheConseils } from './index.js';
+	import { coucheConseils, type ParametresConseils } from './index.js';
 	import ObjetsRecents from './ObjetsRecents.svelte';
 	import { donneDesObjets, SOURCES } from '#lib/sources.js';
 	import SeancesPassees from './SeancesPassees.svelte';
 	import { noteDeNiveau } from './source.js';
 	import TeteSeance from './TeteSeance.svelte';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<ParametresConseils> } = $props();
 
 	// Le registre ne monte l'onglet que pour une fiche ouverte, et le remonte pour une autre.
 	const commune = untrack(() => ctx.commune);
@@ -52,8 +53,15 @@
 	{#if grandConseil}
 		{#if conseil}
 			<TeteSeance {conseil} {ouvrir} />
-			<ObjetsRecents {conseil} {ouvrir} puces communes={ctx.communes} />
-			<SeancesPassees {conseil} {ouvrir} />
+			<ObjetsRecents
+				{conseil}
+				{ouvrir}
+				puce={ctx.parametres.objets}
+				choisir={(objets) => ctx.regler({ objets })}
+				communes={ctx.communes}
+				niveau={3}
+			/>
+			<SeancesPassees {conseil} {ouvrir} niveau={3} />
 		{/if}
 	{:else}
 		{#if conseil}
@@ -62,7 +70,7 @@
 			<h3>{conseil.nom}</h3>
 			{#if note}
 				<p class="note">
-					{note.niveau} :
+					{note.niveau}&nbsp;:
 					{#if note.lien}<a href={note.lien} target="_blank" rel="noopener">{note.suite}</a>{:else}{note.suite}{/if}
 				</p>
 			{/if}

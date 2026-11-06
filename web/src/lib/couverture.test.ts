@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	dateHeure,
 	deduireCouverture,
 	libelleCellule,
 	libelleCommunes,
@@ -346,7 +347,7 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 			};
 			const d = avecSite({ ...tous, 'site-5643': panne });
 			expect(libelleCellule(d.cellule('conseils', 5643))).toEqual([
-				'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'
+				'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'
 			]);
 			// La fiche de sa plateforme, faute d'encart, dit ce que la sonde a mesuré.
 			expect(d.plateformes[0].communes.find((x) => x.source.id === 'site-5643')?.sonde).toEqual(panne);
@@ -469,12 +470,12 @@ describe('encarts de la page Couverture : un par source', () => {
 			maintenant: MAINTENANT
 		});
 		expect(d.plateformes.map((p) => libellePlateforme(p, false))).toEqual([
-			'i-web : 19 communes couvertes, 9 non couvertes'
+			'i-web : 19\u00a0communes couvertes, 9\u00a0non couvertes'
 		]);
 	});
 
 	it('donne à l’encart de la DGMR tout le canton et sa ligne Limites', () => {
-		expect(libelleCommunes(encart('dgmr-restrictions'), 300)).toBe('300 communes sur 300');
+		expect(libelleCommunes(encart('dgmr-restrictions'), 300)).toBe('300\u00a0communes sur\u00a0300');
 		expect(libelleLimites(encart('dgmr-restrictions').source)).toBe(
 			'Publie surtout les routes cantonales ; les routes communales n’y figurent pas toujours.'
 		);
@@ -482,8 +483,8 @@ describe('encarts de la page Couverture : un par source', () => {
 
 	it('dit « Porte sur le canton » pour une source sans Couverture, et le nombre de communes sinon', () => {
 		expect(libelleCommunes(encart('openparldata-vd'), 300)).toBe('Porte sur le canton');
-		expect(libelleCommunes(encart('openparldata-5586'), 300)).toBe('1 commune sur 300');
-		expect(libelleCommunes(encart('camac-permis'), 300)).toBe('300 communes sur 300');
+		expect(libelleCommunes(encart('openparldata-5586'), 300)).toBe('1\u00a0commune sur\u00a0300');
+		expect(libelleCommunes(encart('camac-permis'), 300)).toBe('300\u00a0communes sur\u00a0300');
 	});
 
 	it('donne une ligne Limites à une source qui en déclare, et aucune sinon', () => {
@@ -583,15 +584,15 @@ describe('fiche par plateforme de la page Couverture', () => {
 	});
 
 	it('compte les communes couvertes, en panne et non couvertes : « i-web : 2 communes couvertes, 1 en panne »', () => {
-		expect(libellePlateforme(iweb)).toBe('i-web : 2 communes couvertes, 1 en panne, 1 non couverte');
-		expect(libellePlateforme(c.plateformes[1])).toBe('Quicksite : 1 commune couverte, aucune en panne');
+		expect(libellePlateforme(iweb)).toBe('i-web : 2\u00a0communes couvertes, 1 en panne, 1\u00a0non couverte');
+		expect(libellePlateforme(c.plateformes[1])).toBe('Quicksite : 1\u00a0commune couverte, aucune en panne');
 		// Tant que l'état des sources n'est pas chargé, la fiche ne compte pas les pannes.
-		expect(libellePlateforme(iweb, false)).toBe('i-web : 2 communes couvertes, 1 non couverte');
+		expect(libellePlateforme(iweb, false)).toBe('i-web : 2\u00a0communes couvertes, 1\u00a0non couverte');
 	});
 
 	it('liste ses communes avec leur paire, leur dernière sonde et le lien vers leur site', () => {
 		expect(iweb.communes.map((x) => [x.source.id, x.bfs, libelleCellule([x])[0]])).toEqual([
-			['site-5643', 5643, 'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'],
+			['site-5643', 5643, 'Scrapé · séances seulement · en panne depuis le 12 oct., 7 h 17'],
 			['site-5892', 5892, 'Scrapé · séances et préavis · disponible'],
 			['site-5568', 5568, 'Non couvert · préavis seuls']
 		]);
@@ -628,17 +629,23 @@ describe("libellé d'une paire (source, commune)", () => {
 		expect(libellePaire({ mode: 'api', etat: { etat: 'disponible' } })).toBe('API · disponible');
 		// 12 h UTC = 14 h à Lausanne en octobre (heure d'été).
 		expect(libellePaire({ mode: 'scrape', etat: { etat: 'en_panne', depuis: '2026-10-12T12:00:00Z' } })).toBe(
-			'Scrapé · en panne depuis le 12 oct., 14 h'
+			'Scrapé · en panne depuis le 12 oct., 14 h'
 		);
 		expect(libellePaire({ mode: 'non_couvert', etat: null })).toBe('Non couvert');
 	});
 
 	it('nomme chacun des autres états, et donne les minutes de la panne quand il y en a', () => {
-		expect(libelleEtat({ etat: 'en_panne', depuis: '2026-12-01T07:47:00Z' })).toBe('en panne depuis le 1 déc., 8 h 47');
+		expect(libelleEtat({ etat: 'en_panne', depuis: '2026-12-01T07:47:00Z' })).toBe('en panne depuis le 1 déc., 8 h 47');
 		expect(libelleEtat({ etat: 'en_panne', depuis: null })).toBe('en panne');
 		expect(libelleEtat({ etat: 'surveillance_interrompue' })).toBe('surveillance interrompue');
 		expect(libelleEtat({ etat: 'non_surveillee' })).toBe('non surveillée');
 		expect(libelleEtat({ etat: 'inconnu' })).toBe('inconnu');
+	});
+
+	it('ne coupe pas l’heure en fin de ligne : espaces insécables autour du « h »', () => {
+		expect(dateHeure('2026-12-01T07:47:00Z')).toBe('1 déc., 8\u00a0h\u00a047');
+		expect(dateHeure('2026-10-12T12:05:00Z')).toBe('12 oct., 14\u00a0h\u00a005');
+		expect(dateHeure('2026-10-12T12:00:00Z')).toBe('12 oct., 14\u00a0h');
 	});
 });
 

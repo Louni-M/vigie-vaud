@@ -2,11 +2,14 @@
 	/*
 	 * Le fil cantonal, à la place des volets : il ne fait qu'afficher ce que calcule `calculerFil`. En tête, une ligne
 	 * par couche en panne, les puces des types et la portée ; puis « Sans commune (n) », « À venir » et les jours.
-	 * Une entrée s'ouvre par le registre, dans l'onglet de sa couche et la fiche de sa commune ; survolée, elle est
-	 * surlignée sur la carte.
+	 * Une entrée est un lien vers son élément sur la carte (`lienElement`) : un clic simple l'ouvre par le registre,
+	 * dans l'onglet de sa couche et la fiche de sa commune (sur téléphone, en aperçu sur la carte) ; Cmd, Ctrl ou le
+	 * bouton du milieu l'ouvrent dans un autre onglet. Survolée, elle est surlignée sur la carte.
 	 */
 	import { onMount } from 'svelte';
 	import type { GeoJSONSource, GeoJSONSourceSpecification } from 'maplibre-gl';
+	import { typographier } from '#lib/almanach/typographie.js';
+	import { clicSimple, lienElement } from '#lib/registre/liens.js';
 	import type { Registre } from '#lib/registre/registre.svelte.js';
 	import type { Commune } from '#lib/types.js';
 	import type { ChargementFil } from './chargement.svelte.js';
@@ -16,15 +19,12 @@
 		registre,
 		chargement,
 		communes,
-		onfermer,
-		onouvert
+		onfermer
 	}: {
 		registre: Registre;
 		chargement: ChargementFil;
 		communes: readonly Commune[];
 		onfermer?: () => void;
-		/** Une entrée vient d'être ouverte (téléphone : retour à la vue Carte, pour son aperçu). */
-		onouvert?: () => void;
 	} = $props();
 
 	const aujourdhui = jourDe(new Date());
@@ -49,9 +49,11 @@
 
 	const estOuverte = (l: LigneFil) => registre.ouvert?.couche === l.couche && registre.ouvert.element === l.element;
 
-	function ouvrir(l: LigneFil) {
+	/** Clic simple : le registre ouvre l'entrée sur place ; avec une touche ou un autre bouton, le navigateur suit le lien. */
+	function ouvrir(e: MouseEvent, l: LigneFil) {
+		if (!clicSimple(e)) return;
+		e.preventDefault();
 		registre.ouvrir({ couche: l.couche, element: l.element, position: l.position });
-		onouvert?.();
 	}
 
 	/* ---- Jours : « Aujourd’hui », « Hier », « Mardi 7 oct. » ---- */
@@ -67,11 +69,13 @@
 		return s[0].toUpperCase() + s.slice(1);
 	}
 
-	/** « Motion · Grand Conseil → Morges, Lausanne », avec la date courte hors des jours (« · 20 oct. »). */
-	function meta(l: LigneFil, date: boolean) {
-		const qui = l.nommees.length ? `${l.qui} → ${l.nommees.join(', ')}` : l.qui;
-		return [l.sorte, qui, ...(date ? [fmtCourt.format(midi(l.date))] : [])].join(' · ');
-	}
+	/*
+	 * La méta : « Motion · Grand Conseil → Morges, Lausanne », avec la date courte hors des jours (« · 20 oct. »).
+	 * La flèche n'est que vue ; le lecteur d'écran entend « Grand Conseil, communes nommées : Morges, Lausanne ».
+	 */
+	const avantFleche = (l: LigneFil) => typographier(`${l.sorte} · ${l.qui}`);
+	const apresFleche = (l: LigneFil, date: boolean) =>
+		typographier(l.nommees.join(', ')) + (date ? ` · ${fmtCourt.format(midi(l.date))}` : '');
 
 	/* ---- Survol : l'entrée est surlignée sur la carte, à sa position ou à l'hôtel de ville de ses communes ---- */
 
@@ -106,22 +110,28 @@
 
 {#snippet ligne(l: LigneFil, date = false)}
 	<li class:ouvert={estOuverte(l)}>
-		<button
-			type="button"
+		<a
+			href={lienElement(l.couche, l.element)}
 			aria-current={estOuverte(l) ? 'true' : undefined}
-			onclick={() => ouvrir(l)}
+			onclick={(e) => ouvrir(e, l)}
 			onmouseenter={() => surligner(l)}
 			onmouseleave={() => surligner(null)}
 			onfocus={() => surligner(l)}
 			onblur={() => surligner(null)}
 		>
-			<span class="signe" style:--c={l.couleur} title={l.nomType}>{l.signe}</span>
+			<!-- Le signe se lit par le nom de son type, avant la ligne. -->
+			<span class="signe" style:--c={l.couleur} title={l.nomType} aria-hidden="true">{l.signe}</span>
+			<span class="lecteur-seul">{l.nomType}&nbsp;:</span>
 			<span class="texte">
-				<span class="meta">{meta(l, date)}</span>
-				<span class="titre">{l.titre}</span>
+				<span class="meta"
+					>{avantFleche(l)}{#if l.nommees.length}<span aria-hidden="true">&nbsp;→ </span><span
+							class="lecteur-seul">, communes nommées&nbsp;: </span
+						>{/if}{apresFleche(l, date)}</span
+				>
+				<span class="titre">{typographier(l.titre)}</span>
 			</span>
 			<span class="fleche" aria-hidden="true">›</span>
-		</button>
+		</a>
 	</li>
 {/snippet}
 
@@ -135,7 +145,7 @@
 
 	{#each vue.pannes as p (p.couche)}
 		<p class="panne" role="alert">
-			{p.nom} : source indisponible,
+			{p.nom}&nbsp;: source indisponible,
 			<button type="button" onclick={() => chargement.reessayer(p.couche)}>réessayer</button>
 		</p>
 	{/each}
@@ -143,19 +153,20 @@
 	<div class="puces" role="group" aria-label="Types">
 		{#each vue.puces as p (p.cle)}
 			<button type="button" aria-pressed={p.active} style:--c={p.couleur} onclick={() => basculer(p.cle)}>
-				{p.signe}
+				<span aria-hidden="true">{p.signe}</span>
 				{p.nom}
 			</button>
 		{/each}
 	</div>
-	<div class="portee" role="radiogroup" aria-label="Portée">
+	<fieldset class="portee">
+		<legend class="lecteur-seul">Portée</legend>
 		<label>
 			<input type="radio" name="portee-fil" value="zone" bind:group={reglages.portee} /> Zone visible
 		</label>
 		<label>
 			<input type="radio" name="portee-fil" value="canton" bind:group={reglages.portee} /> Tout le canton
 		</label>
-	</div>
+	</fieldset>
 
 	{#if vue.aideSansCommune !== null}
 		<div class="sans">
@@ -198,7 +209,7 @@
 		{#if vue.chargement}
 			<p class="vide">Chargement…</p>
 		{:else if reglages.portee === 'zone'}
-			<p class="vide">Rien de nouveau ici. Dézoomez, ou passez à « Tout le canton ».</p>
+			<p class="vide">Rien de nouveau ici. Dézoomez, ou passez à «&nbsp;Tout le canton&nbsp;».</p>
 		{:else}
 			<p class="vide">Rien de nouveau ces 14 derniers jours.</p>
 		{/if}
@@ -270,10 +281,22 @@
 		background: var(--c);
 		color: #fff;
 	}
+	/* Au survol, la puce prend un lavis de sa couleur ; choisie, elle fonce d'un ton et se cerne d'encre. */
+	.puces button:not([aria-pressed='true']):hover {
+		background: color-mix(in oklch, var(--c) 8%, var(--surface));
+	}
+	.puces button[aria-pressed='true']:hover {
+		background: color-mix(in oklch, var(--c) 80%, #000);
+		box-shadow: 0 0 0 1px var(--c);
+	}
 	.portee {
 		display: flex;
 		gap: 14px;
-		margin-bottom: 8px;
+		/* Le cadre du <fieldset> n'est pas montré : la portée reste une ligne de réglage. */
+		min-width: 0;
+		margin: 0 0 8px;
+		padding: 0;
+		border: 0;
 		font-size: 13px;
 	}
 	.sans {
@@ -292,6 +315,9 @@
 		font-weight: 600;
 		text-align: left;
 		cursor: pointer;
+	}
+	.tete-sans:hover {
+		background: var(--color-paper-2, var(--surface));
 	}
 	.aide {
 		display: block;
@@ -322,23 +348,31 @@
 	li.ouvert {
 		background: #fff6d6;
 	}
-	li > button {
+	li > a {
 		display: flex;
 		align-items: flex-start;
 		gap: 8px;
 		width: 100%;
 		padding: 7px 2px;
-		border: 0;
-		background: none;
-		font: inherit;
+		color: inherit;
+		text-decoration: none;
 		text-align: left;
-		cursor: pointer;
+		/*
+		 * Quatorze jours d'entrées : celles hors de l'écran ne sont ni mises en page ni dessinées. Sur le lien et non
+		 * sur le `li`, dont le confinement couperait l'anneau du focus.
+		 */
+		content-visibility: auto;
+		contain-intrinsic-size: auto 64px;
 	}
-	li > button:hover {
+	li > a:hover {
 		background: var(--bg);
 	}
-	li.ouvert > button:hover {
+	/* Ouverte, l'entrée garde son fond jaune : au survol, il fonce et le titre se souligne. */
+	li.ouvert > a:hover {
 		background: #fdeeb5;
+	}
+	li.ouvert > a:hover .titre {
+		text-decoration: underline;
 	}
 	.signe {
 		display: grid;

@@ -12,7 +12,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('couche Permis', () => {
 	it('titre un dossier ouvert par son n° et le nom de la fiche où il est ouvert', () => {
-		expect(couchePermis.titre?.('248845', 'Lutry')).toBe('Dossier n° 248845 – Lutry – Vigie Vaud');
+		expect(couchePermis.titre?.('248845', 'Lutry')).toBe('Dossier n°\u00a0248845 – Lutry – Vigie Vaud');
 	});
 
 	it('localise un dossier dans la seule fiche de sa commune, à son point', async () => {
