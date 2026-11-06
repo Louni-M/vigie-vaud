@@ -520,7 +520,6 @@
 	.tableau tbody tr {
 		/* La ligne entière mène à la fiche : le lien du nom s'étend sur toute la ligne. */
 		position: relative;
-		transition: background-color var(--dur-short) var(--ease-out);
 	}
 	.tableau tbody tr + tr {
 		border-top: var(--rule-hair) solid var(--color-rule);

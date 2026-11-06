@@ -234,10 +234,22 @@ body:has(main.almanach) {
 	.almanach .tete .date {
 		animation-delay: 0.12s;
 	}
-	/* Arrivé par le sommaire, l'intertitre se souligne une fois. */
+	/* Arrivé par le sommaire, l'intertitre se souligne une fois : un lavis sous le texte, déroulé de gauche à droite
+	   par transform. */
 	.almanach :is(h2, h3):target {
-		background: linear-gradient(var(--color-accent-wash), var(--color-accent-wash)) no-repeat left bottom / 100%
-			0.45em;
+		position: relative;
+		isolation: isolate;
+	}
+	.almanach :is(h2, h3):target::after {
+		content: '';
+		position: absolute;
+		z-index: -1;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 0.45em;
+		background: var(--color-accent-wash);
+		transform-origin: left;
 		animation: almanach-souligne 1.4s var(--ease-out) 0.3s both;
 	}
 }
@@ -253,10 +265,10 @@ body:has(main.almanach) {
 }
 @keyframes almanach-souligne {
 	from {
-		background-size: 0 0.45em;
+		transform: scaleX(0);
 	}
 	to {
-		background-size: 100% 0.45em;
+		transform: none;
 	}
 }
 

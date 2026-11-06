@@ -431,9 +431,7 @@
 		font-size: var(--text-md);
 		font-weight: 600;
 		text-align: left;
-		transition:
-			background-color var(--dur-micro) var(--ease-out),
-			transform var(--dur-micro) var(--ease-out);
+		transition: transform var(--dur-micro) var(--ease-out);
 	}
 	.almanach .courriel:hover {
 		background: var(--color-accent-2);
@@ -502,9 +500,6 @@
 	}
 	.destinataires tbody strong {
 		font-family: var(--font-display);
-	}
-	.destinataires tbody tr {
-		transition: background-color var(--dur-short) var(--ease-out);
 	}
 	.destinataires tbody tr:hover {
 		background: var(--color-paper);

@@ -81,7 +81,7 @@
 					<li>
 						<a
 							class="ligne"
-							href={lienCommune(ligne.slug)}
+							href={lienCommune(ligne.slug, coucheConseils.id)}
 							onclick={(e) => ouvrirAuClic(e, { commune: ligne.slug, onglet: coucheConseils.id })}
 						>
 							<strong>{ligne.commune}</strong>

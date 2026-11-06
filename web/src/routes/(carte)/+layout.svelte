@@ -439,7 +439,7 @@
 <style>
 	.app {
 		display: grid;
-		grid-template-columns: 72px minmax(0, 1fr);
+		grid-template-columns: calc(72px + env(safe-area-inset-left, 0px)) minmax(0, 1fr);
 		grid-template-rows: minmax(0, 1fr);
 		height: calc(100dvh - var(--header-h));
 		position: relative;

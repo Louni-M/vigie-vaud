@@ -102,9 +102,7 @@
 		padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm);
 		color: var(--color-muted);
 		text-decoration: none;
-		transition:
-			color var(--dur-short) var(--ease-out),
-			transform var(--dur-short) var(--ease-out);
+		transition: transform var(--dur-short) var(--ease-out);
 	}
 	/* La marque de l'intertitre courant : un trait orange qui se dresse. */
 	.sommaire li a::before {

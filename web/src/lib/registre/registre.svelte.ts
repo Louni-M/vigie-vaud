@@ -516,6 +516,10 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 				const push = nouvelleEntree;
 				nouvelleEntree = null;
 				if (synchro === null || navigations.enCours || q === location.search) return;
+				// L'adresse a changé sous le registre (précédent, suivant) sans avoir encore été relue : l'adresse →
+				// état la suit d'abord. Sans cela, le changement de chemin, dont dépend `requete`, réécrirait l'état
+				// d'avant (l'élément qu'on vient de quitter) par-dessus l'adresse où l'on revient.
+				if (location.pathname + location.search !== synchro) return;
 				synchro = location.pathname + q;
 				suivi = { fiche, ouvert };
 				goto(`${location.pathname}${q}`, {

@@ -78,7 +78,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		padding: 8px 4px;
+		/* Téléphone à l'horizontale : le rail, au bord gauche, s'écarte de l'encoche. */
+		padding: 8px 4px 8px max(4px, env(safe-area-inset-left));
 		background: var(--surface);
 		border-right: 1px solid var(--line);
 		overflow-y: auto;
@@ -131,9 +132,6 @@
 		color: #fff;
 		font-weight: 700;
 		font-size: 15px;
-		transition:
-			background 0.2s,
-			color 0.2s;
 	}
 	.icone.off {
 		background: var(--surface);

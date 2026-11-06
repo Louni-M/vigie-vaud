@@ -94,7 +94,7 @@
 				<li>
 					<a
 						class="lien"
-						href={lienCommune(c.slug)}
+						href={lienCommune(c.slug, coucheRoutes.id)}
 						onclick={(e) => auClic(e, () => ctx.ouvrir({ commune: c.slug, onglet: coucheRoutes.id }))}>{c.nom}</a
 					>
 					<span class="muted">{c.longueur}</span>
