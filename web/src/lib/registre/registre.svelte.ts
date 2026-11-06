@@ -57,7 +57,7 @@ type NomComposant = keyof CoucheInscrite['composants'];
 type Etat = Omit<EtatUrl, 'affichage'> & { affichage: Affichage };
 
 /** Ce qui est ouvert, comme le décrit `telephone` (« commune:pully », « permis:248845 »). */
-export const ouvertureDe = (f: Fiche | null, o: Ouvert | null): Ouverture => ({
+const ouvertureDe = (f: Fiche | null, o: Ouvert | null): Ouverture => ({
 	fiche: !f ? null : 'commune' in f ? `commune:${f.commune}` : `fiche:${f.fiche}`,
 	element: o ? `${o.couche}:${o.element}` : null
 });
@@ -567,6 +567,10 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		/** Fiche propre ouverte et la couche qui la déclare. */
 		get propre() {
 			return propre;
+		},
+		/** Adresse de la fiche ouverte sans l'élément ouvert, sur l'onglet de sa couche (fil d'Ariane) ; `null` sans fiche. */
+		get adresseSansElement() {
+			return fiche && `${cheminFiche(couches, fiche)}${ecrireUrl(couches, adresse(fiche, { ouvert: null }))}`;
 		},
 		/** Titre du document quand une fiche est ouverte (`null` sinon). */
 		get titre() {

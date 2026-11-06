@@ -278,14 +278,17 @@
 	class:recherche-pleine={pleine}
 	data-affichage={affichage}
 >
-	<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
-
-	<Rail {registre} />
+	<!-- Le rail, dans son propre repère de page : sans boîte à lui (display: contents), la grille de .app reste la même. -->
+	<aside class="cote-rail" aria-label="Couches de la carte">
+		<Rail {registre} />
+	</aside>
 
 	<!-- Le contenu de la page, où mène « Aller au contenu » de l'en-tête : la carte, ses volets et la fiche ouverte. Le
-		rail et la barre des vues, des commandes d'affichage, restent autour. -->
+		rail et la barre des vues, des commandes d'affichage, restent autour. « Aller à la carte », premier arrêt du
+		contenu, passe la recherche et les volets pour mener au canevas. -->
 	<main class="contenu" id="contenu" tabindex="-1">
 		<h1 class="lecteur-seul">Vigie Vaud — carte du canton de Vaud</h1>
+		<a class="evitement" href="#carte" onclick={allerCarte}>Aller à la carte</a>
 		<div class="zone-carte" id="carte" bind:this={zoneCarte}>
 			<Map
 				bind:this={carte}
@@ -605,7 +608,7 @@
 		.contenu {
 			grid-area: 1 / 1;
 		}
-		.app > :global(.rail) {
+		.app > .cote-rail > :global(.rail) {
 			display: none;
 		}
 		/* Les volets du bureau, rendus à la pré-génération, ne s'affichent pas avant que la requête ne les retire. */
@@ -710,6 +713,9 @@
 		.recherche-pleine .pastille-couverture {
 			display: none;
 		}
+	}
+	.cote-rail {
+		display: contents;
 	}
 	.evitement {
 		position: absolute;

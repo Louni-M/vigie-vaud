@@ -132,9 +132,6 @@
 		font-size: 14px;
 		border: 0;
 		cursor: pointer;
-		transition:
-			background-color var(--dur-micro, 120ms) ease-out,
-			box-shadow var(--dur-micro, 120ms) ease-out;
 	}
 	:global(.bouton:hover) {
 		background: color-mix(in oklab, var(--accent), black 22%);
@@ -265,7 +262,6 @@
 		color: var(--color-muted);
 		text-decoration: none;
 		white-space: nowrap;
-		transition: color var(--dur-short) var(--ease-out);
 	}
 	/* Le trait de la page courante, posé juste au-dessus du filet d'encre du bandeau ; au survol, un trait d'encre se
 	   déroule. */

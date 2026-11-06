@@ -38,7 +38,7 @@
 	const attributions = $derived(
 		sources.filter((s, i) => sources.findIndex((t) => t.attribution.texte === s.attribution.texte) === i)
 	);
-	const titre = $derived(`volet-${couche.id}`);
+	const titre = $derived(`volet-${couche.id}-titre`);
 </script>
 
 <section class="volet" id="volet-{couche.id}" aria-labelledby={titre}>
@@ -79,7 +79,9 @@
 		{/each}
 		{#each plateformes as p, i (p.id)}
 			{#if attributions.length > 0 || i > 0}<span aria-hidden="true"> · </span>{/if}
-			<a href="{resolve('/couverture')}#plateforme-{p.id}">Sites de {p.sites.length} communes ({p.nom})</a>
+			<a href="{resolve('/couverture')}#plateforme-{p.id}"
+					>Sites de {p.sites.length}&nbsp;commune{p.sites.length > 1 ? 's' : ''} ({p.nom})</a
+				>
 		{/each}
 	</p>
 
