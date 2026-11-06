@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { source } from '#lib/sources.js';
 import { fauxDgmr, heureLocale, PIEGES, restriction, type RestrictionDgmr } from '#tests/faux-dgmr.js';
-import { carteRestriction, encadreLimites, sectionsDeLaCommune } from './cartes.js';
+import { carteRestriction, encadreLimites, longueurTexte, sectionsDeLaCommune } from './cartes.js';
 import { creerDonneesRoutes } from './donnees.svelte.js';
 
 // Le module de données refuse d'interroger la DGMR ailleurs que dans un navigateur.
@@ -25,6 +25,24 @@ describe('encadré de l’onglet Routes', () => {
 		const dgmr = source('dgmr-restrictions');
 		expect(encadreLimites({ ...dgmr, limites: 'seulement les ponts' })).toBe('La DGMR publie seulement les ponts.');
 		expect(encadreLimites({ ...dgmr, limites: null })).toBeNull();
+	});
+});
+
+describe('longueur d’une restriction', () => {
+	it.each([
+		[12, '10\u202fm'],
+		[766, '770\u202fm'],
+		[994, '990\u202fm'],
+		[995, '1\u202fkm'],
+		[1000, '1\u202fkm'],
+		[2345, '2,3\u202fkm'],
+		[12_349, '12,3\u202fkm']
+	])('écrit %d m « %s », à la française', (m, attendu) => {
+		expect(longueurTexte(m)).toBe(attendu);
+	});
+
+	it('ne coupe jamais le nombre de son unité', () => {
+		for (const m of [5, 770, 1500, 123_456]) expect(longueurTexte(m)).toMatch(/^[\d,\u202f\u00a0]+[\u202f\u00a0](m|km)$/);
 	});
 });
 
@@ -81,10 +99,10 @@ describe('carte d’une restriction', () => {
 			echeance: 'encore 12 jours',
 			plage: null,
 			remarque: null,
-			dansLaCommune: '770 m dans la commune, sur 2 communes'
+			dansLaCommune: '770\u202fm dans la commune, sur 2 communes'
 		});
 		expect(carteRestriction(deviation, { aujourdhui, commune: 'lutry' }).dansLaCommune).toBe(
-			'2,3 km dans la commune, sur 2 communes'
+			'2,3\u202fkm dans la commune, sur 2 communes'
 		);
 		expect(carteRestriction(deviation, { aujourdhui }).dansLaCommune).toBeNull();
 	});

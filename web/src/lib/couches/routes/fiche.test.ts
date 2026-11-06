@@ -56,10 +56,10 @@ describe('fiche d’une restriction', () => {
 			route: 'Route cantonale 701 (réseau de base, principale)',
 			travaux: 'Revêtement',
 			remarque: null,
-			longueur: '3,8 km',
+			longueur: '3,8\u202fkm',
 			communes: [
-				{ slug: 'pully', nom: 'Pully', longueur: '3,1 km' },
-				{ slug: 'lutry', nom: 'Lutry', longueur: '770 m' }
+				{ slug: 'pully', nom: 'Pully', longueur: '3,1\u202fkm' },
+				{ slug: 'lutry', nom: 'Lutry', longueur: '770\u202fm' }
 			]
 		});
 	});
@@ -72,7 +72,7 @@ describe('fiche d’une restriction', () => {
 			sorte: 'Déviation',
 			couleur: '#e8590c',
 			tirets: true,
-			detail: 'en cours · Lutry, Pully · 3,1 km'
+			detail: 'en cours · Lutry, Pully · 3,1\u202fkm'
 		});
 	});
 });

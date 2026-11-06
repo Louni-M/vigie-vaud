@@ -29,16 +29,23 @@
 	const c = $derived(carteRestriction(r, { aujourdhui: jourDe(new Date()), commune }));
 </script>
 
-<svelte:element
-	this={onclick ? 'button' : 'div'}
-	type={onclick ? 'button' : undefined}
-	class="carte"
-	class:ouvrable={!!onclick}
-	class:actif
-	class:avenir={c.aVenir}
-	style:--c={c.couleur}
-	{onclick}
->
+<!-- Un vrai bouton quand elle s'ouvre, sans rôle ARIA à ajouter ; sinon un simple bloc. -->
+{#if onclick}
+	<button
+		type="button"
+		class="carte ouvrable"
+		class:actif
+		class:avenir={c.aVenir}
+		style:--c={c.couleur}
+		{onclick}
+	>
+		{@render contenu()}
+	</button>
+{:else}
+	<div class="carte" class:actif class:avenir={c.aVenir} style:--c={c.couleur}>{@render contenu()}</div>
+{/if}
+
+{#snippet contenu()}
 	<span class="haut">
 		<span class="trait" class:tirets={c.tirets}></span>
 		<strong>{c.sorte}</strong>
@@ -56,7 +63,7 @@
 		<span class="source">{c.source}</span>
 	</span>
 	{@render children?.()}
-</svelte:element>
+{/snippet}
 
 <style>
 	.carte {

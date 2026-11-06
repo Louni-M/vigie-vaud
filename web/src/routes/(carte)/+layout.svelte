@@ -7,10 +7,13 @@
 	 * précédent (`registre/bulle`).
 	 * Les pages du groupe ne portent que le <head>.
 	 *
+	 * Le volet ouvert et la vue du téléphone sont dans l'adresse (`volet=conseils`, `affichage=fil`), tenus par le
+	 * registre : le précédent et le suivant du navigateur les rétablissent.
+	 *
 	 * Sur téléphone (requête `telephone`), une seule vue plein écran à la fois, choisie dans la barre Carte · Fil ·
 	 * Couches · Fiche : la vue Fil rend le fil cantonal, la vue Couches empile les volets de toutes les couches, et ce
 	 * qu'on ouvre depuis la carte ou le fil s'affiche d'abord en aperçu, en bas de la carte. L'arrivée sur une fiche
-	 * (`/commune/<slug>`, `/grand-conseil`) se fait dans la vue Fiche. Le grisage d'une couche n'y suit pas le volet
+	 * (`/commune/<slug>`, `/grand-conseil`) se fait dans la vue Fiche, sauf si l'adresse en nomme une autre. Le grisage d'une couche n'y suit pas le volet
 	 * ouvert : « Voir sur la carte », en tête de son volet, le montre sur la carte (`grisage-mobile`). Toucher la
 	 * recherche de la vue Carte ouvre la Recherche plein écran, qui masque tout le reste et se referme sur la carte
 	 * telle qu'on l'a laissée.
@@ -19,7 +22,7 @@
 	// Essai (#165) : la carte dans le système Almanach, voir lib/almanach/carte.css.
 	import '#lib/almanach/almanach.css';
 	import '#lib/almanach/carte.css';
-	import { fly } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
 	import { bulleEntree, bulleSortie } from '#lib/registre/bulle.js';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
@@ -43,14 +46,10 @@
 	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import {
 		TELEPHONE,
-		affichageApres,
-		affichageArrivee,
 		decalageAuDessus,
 		recherchePleine,
 		texteApresRecherche,
-		type Affichage,
-		type FinRecherche,
-		type Ouverture
+		type FinRecherche
 	} from '#lib/socle/telephone.js';
 	import { attributionHtml, source } from '#lib/sources.js';
 	import type { Resultat } from '#lib/types.js';
@@ -66,24 +65,15 @@
 	/* ---- Téléphone ---- */
 
 	const telephone = new MediaQuery(TELEPHONE, false);
-	const ouverture = $derived<Ouverture>({
-		fiche: !registre.fiche
-			? null
-			: 'commune' in registre.fiche
-				? `commune:${registre.fiche.commune}`
-				: `fiche:${registre.fiche.fiche}`,
-		element: registre.ouvert ? `${registre.ouvert.couche}:${registre.ouvert.element}` : null
-	});
-	/** Vue plein écran affichée sur téléphone ; n'entre pas dans l'adresse. */
-	let affichage = $state<Affichage>(affichageArrivee(untrack(() => ouverture)));
-	let ouvertureAvant: Ouverture = untrack(() => ouverture);
-	$effect(() => {
-		const apres = ouverture;
-		untrack(() => {
-			affichage = affichageApres(affichage, ouvertureAvant, apres);
-			ouvertureAvant = apres;
-		});
-	});
+	/**
+	 * Vue plein écran affichée sur téléphone, tenue par le registre : elle est dans l'adresse, et change avec ce qui
+	 * s'ouvre (`affichageApres`).
+	 */
+	const affichage = $derived(registre.affichage);
+	/** Mouvement réduit : les entrées de l'aperçu et de la colonne ne glissent pas, elles apparaissent en fondu court. */
+	const mouvementReduit = new MediaQuery('(prefers-reduced-motion: reduce)', false);
+	const entree = (node: Element, glisse: { x?: number; y?: number }) =>
+		mouvementReduit.current ? fade(node, { duration: 120 }) : fly(node, { ...glisse, duration: 200 });
 
 	let zoneCarte: HTMLElement | undefined = $state();
 	let recherche: HTMLElement | undefined = $state();
@@ -108,7 +98,10 @@
 		vueCanton: () => carte?.vueCanton(),
 		cadrer: (emprise, anime, parDefaut) => carte?.cadrer(emprise, anime, parDefaut)
 	};
-	registre.brancherAdresse(() => (carte ? vueCarte : undefined));
+	registre.brancherAdresse(
+		() => (carte ? vueCarte : undefined),
+		() => telephone.current
+	);
 	fournirRegistre(registre);
 
 	// Une couche activée ou désactivée depuis une autre vue (fondu) n'est redessinée qu'au retour sur la carte.
@@ -124,7 +117,7 @@
 
 	/** « Voir la fiche › » de l'aperçu : la vue Fiche, le focus sur le nom de la fiche. */
 	async function voirFiche() {
-		affichage = 'fiche';
+		registre.affichage = 'fiche';
 		await tick();
 		document.getElementById('fiche-titre')?.focus();
 	}
@@ -150,7 +143,7 @@
 	function voirCouverture(id: string) {
 		if (!registre.active(id)) registre.activer(id, true);
 		grisageMobile = grisageApres(grisageMobile, { voir: id });
-		affichage = 'carte';
+		registre.affichage = 'carte';
 	}
 
 	/** Le grisage suit la couche dont le volet est ouvert sur bureau, et « Voir sur la carte » sur téléphone. */
@@ -264,7 +257,8 @@
 	/** Lien d'évitement : le clavier n'a pas à traverser le rail et la recherche pour atteindre la carte. */
 	async function allerCarte(e: MouseEvent) {
 		e.preventDefault();
-		affichage = 'carte';
+		// Sur bureau, la carte est déjà là : la vue du téléphone n'entre pas dans l'adresse.
+		if (telephone.current) registre.affichage = 'carte';
 		await tick();
 		document.querySelector<HTMLElement>('#carte .maplibregl-canvas')?.focus();
 	}
@@ -288,6 +282,10 @@
 
 	<Rail {registre} />
 
+	<!-- Le contenu de la page, où mène « Aller au contenu » de l'en-tête : la carte, ses volets et la fiche ouverte. Le
+		rail et la barre des vues, des commandes d'affichage, restent autour. -->
+	<main class="contenu" id="contenu" tabindex="-1">
+	<h1 class="lecteur-seul">Vigie Vaud — carte du canton de Vaud</h1>
 	<div class="zone-carte" id="carte" bind:this={zoneCarte}>
 		<Map
 			bind:this={carte}
@@ -330,7 +328,7 @@
 			<!-- Téléphone : le grisage montré par « Voir sur la carte », jusqu'à la croix. -->
 			{#if telephone.current && nomGrisage}
 				<p class="pastille-couverture">
-					Couverture : {nomGrisage}
+					Couverture&nbsp;: {nomGrisage}
 					<button
 						type="button"
 						aria-label="Ne plus griser les communes que {nomGrisage} ne couvre pas"
@@ -377,7 +375,7 @@
 
 		<!-- Téléphone : ce qui est ouvert s'affiche d'abord en aperçu, en bas de la carte. -->
 		{#if telephone.current && (registre.commune ?? registre.propre)}
-			<div class="apercu" bind:this={apercu} in:fly={{ y: 30, duration: 200 }}>
+			<div class="apercu" bind:this={apercu} in:entree={{ y: 30 }}>
 				<Apercu {registre} nom={registre.commune?.nom ?? registre.propre!.fiche.nom} onvoir={voirFiche} />
 			</div>
 		{/if}
@@ -386,7 +384,7 @@
 	<!-- Téléphone : la vue Fil, montée à son premier passage ; toucher une entrée ramène à la carte, pour l'aperçu. -->
 	{#if telephone.current && filVu}
 		<div class="vue-fil">
-			<Fil {registre} chargement={fil} communes={data.communes} onouvert={() => (affichage = 'carte')} />
+			<Fil {registre} chargement={fil} communes={data.communes} />
 		</div>
 	{/if}
 
@@ -406,16 +404,19 @@
 	{#if registre.commune ?? registre.propre}
 		{@const ouverte = registre.commune ?? registre.propre!}
 		<!-- Une seule colonne, pour une commune ou une fiche propre : changer de fiche remplace son contenu sans la refermer. -->
-		<div class="colonne" in:fly={{ x: 40, duration: 200 }}>
+		<div class="colonne" in:entree={{ x: 40 }}>
 			<FicheOuverte {registre} {ouverte} />
 		</div>
 	{/if}
+	</main>
 
 	<!-- Masquée sur bureau par la feuille de style : sur téléphone, elle est là dès le premier rendu. -->
 	<nav class="barre-vues" aria-label="Affichage">
-		<button type="button" aria-pressed={affichage === 'carte'} onclick={() => (affichage = 'carte')}>Carte</button>
-		<button type="button" aria-pressed={affichage === 'fil'} onclick={() => (affichage = 'fil')}>Fil</button>
-		<button type="button" aria-pressed={affichage === 'couches'} onclick={() => (affichage = 'couches')}>
+		<button type="button" aria-pressed={affichage === 'carte'} onclick={() => (registre.affichage = 'carte')}>
+			Carte
+		</button>
+		<button type="button" aria-pressed={affichage === 'fil'} onclick={() => (registre.affichage = 'fil')}>Fil</button>
+		<button type="button" aria-pressed={affichage === 'couches'} onclick={() => (registre.affichage = 'couches')}>
 			Couches
 		</button>
 		<!-- « Fiche » reste inactif tant que rien n'est ouvert. -->
@@ -423,7 +424,7 @@
 			type="button"
 			aria-pressed={affichage === 'fiche'}
 			disabled={!registre.fiche}
-			onclick={() => (affichage = 'fiche')}
+			onclick={() => (registre.affichage = 'fiche')}
 		>
 			Fiche
 		</button>
