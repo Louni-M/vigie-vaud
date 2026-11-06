@@ -105,6 +105,11 @@
 	button.ouvert {
 		background: #e8edf5;
 	}
+	/* Ouvert, le bouton garde son fond bleuté : au survol, il fonce et se cerne d'un filet. */
+	button.ouvert:hover {
+		background: #d6deeb;
+		box-shadow: inset 0 0 0 1px var(--line);
+	}
 	.fil {
 		margin-bottom: 6px;
 		padding-bottom: 10px;

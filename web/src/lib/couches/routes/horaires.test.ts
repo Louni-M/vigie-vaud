@@ -35,12 +35,12 @@ describe('lecture des dates de la DGMR, telles qu’écrites', () => {
 
 describe('heures en notation suisse', () => {
 	it.each([
-		['07:00', '7 h'],
-		['07:30', '7 h 30'],
-		['19:30', '19 h 30'],
-		['05:05', '5 h 05'],
-		['00:30', '0 h 30'],
-		['12:00', '12 h']
+		['07:00', '7\u00a0h'],
+		['07:30', '7\u00a0h\u00a030'],
+		['19:30', '19\u00a0h\u00a030'],
+		['05:05', '5\u00a0h\u00a005'],
+		['00:30', '0\u00a0h\u00a030'],
+		['12:00', '12\u00a0h']
 	])('écrit %s « %s »', (hhmm, attendu) => {
 		expect(heureSuisse(hhmm)).toBe(attendu);
 	});
@@ -50,8 +50,8 @@ describe('période', () => {
 	it.each([
 		{ saison: 'été', d: dates('2026-07-13', '2026-07-24'), attendu: 'Du lun. 13 juil. au ven. 24 juil.' },
 		{ saison: 'hiver', d: dates('2026-01-12', '2026-01-23'), attendu: 'Du lun. 12 janv. au ven. 23 janv.' },
-		{ saison: 'été', d: dates('2026-07-13T07:30', '2026-07-24T17:00'), attendu: 'Du lun. 13 juil. à 7 h 30 au ven. 24 juil. à 17 h' },
-		{ saison: 'hiver', d: dates('2026-01-12T07:30', '2026-01-23T17:00'), attendu: 'Du lun. 12 janv. à 7 h 30 au ven. 23 janv. à 17 h' },
+		{ saison: 'été', d: dates('2026-07-13T07:30', '2026-07-24T17:00'), attendu: 'Du lun. 13 juil. à 7\u00a0h\u00a030 au ven. 24 juil. à 17\u00a0h' },
+		{ saison: 'hiver', d: dates('2026-01-12T07:30', '2026-01-23T17:00'), attendu: 'Du lun. 12 janv. à 7\u00a0h\u00a030 au ven. 23 janv. à 17\u00a0h' },
 		{ saison: 'été', d: dates('2026-07-14', '2026-07-14'), attendu: 'Le mar. 14 juil.' }
 	])('écrit les jours, et l’heure quand elle n’est pas 00:00 ($saison) : « $attendu »', ({ d, attendu }) => {
 		expect(periode(d)).toBe(attendu);
@@ -59,7 +59,7 @@ describe('période', () => {
 
 	it.each([
 		{ saison: 'été', d: dates('2026-07-13', '2026-07-24'), attendu: 'Du lundi 13 juillet 2026 au vendredi 24 juillet 2026' },
-		{ saison: 'hiver', d: dates('2026-01-12T07:00', '2026-01-23'), attendu: 'Du lundi 12 janvier 2026 à 7 h au vendredi 23 janvier 2026' }
+		{ saison: 'hiver', d: dates('2026-01-12T07:00', '2026-01-23'), attendu: 'Du lundi 12 janvier 2026 à 7\u00a0h au vendredi 23 janvier 2026' }
 	])('s’écrit en toutes lettres pour la fiche ($saison)', ({ d, attendu }) => {
 		expect(periode(d, 'longue')).toBe(attendu);
 	});
@@ -77,9 +77,9 @@ describe('ligne d’horaires', () => {
 	it.each([
 		{ saison: 'été', d: dates('2026-07-13', '2026-07-24'), attendu: 'Jour et nuit' },
 		{ saison: 'hiver', d: dates('2026-01-12T07:30', '2026-01-23T17:00'), attendu: 'Jour et nuit' },
-		{ saison: 'été', d: dates('2026-07-27T19:30', '2026-07-30T05:30', '19:30', '05:30'), attendu: 'La nuit seulement, de 19 h 30 à 5 h 30' },
-		{ saison: 'hiver', d: dates('2026-01-26T20:00', '2026-01-30T05:00', '20:00', '05:00'), attendu: 'La nuit seulement, de 20 h à 5 h' },
-		{ saison: 'été', d: dates('2026-07-13', '2026-07-24', '08:00', '17:00'), attendu: 'Le jour seulement, de 8 h à 17 h' },
+		{ saison: 'été', d: dates('2026-07-27T19:30', '2026-07-30T05:30', '19:30', '05:30'), attendu: 'La nuit seulement, de 19\u00a0h\u00a030 à 5\u00a0h\u00a030' },
+		{ saison: 'hiver', d: dates('2026-01-26T20:00', '2026-01-30T05:00', '20:00', '05:00'), attendu: 'La nuit seulement, de 20\u00a0h à 5\u00a0h' },
+		{ saison: 'été', d: dates('2026-07-13', '2026-07-24', '08:00', '17:00'), attendu: 'Le jour seulement, de 8\u00a0h à 17\u00a0h' },
 		{ saison: 'hiver', d: dates('2026-01-12', '2026-01-23', '19:30', null), attendu: 'Jour et nuit' }
 	])('« $attendu » ($saison)', ({ d, attendu }) => {
 		expect(ligneHoraires(d)).toBe(attendu);
@@ -89,7 +89,7 @@ describe('ligne d’horaires', () => {
 		{ saison: 'été', d: dates('2026-07-27T19:30', '2026-07-30T23:59', '19:30', '05:30') },
 		{ saison: 'hiver', d: dates('2026-01-26T19:30', '2026-01-29T23:59', '19:30', '05:30') }
 	])('prend la plage dans HEURE_* quand HEURE_FIN contredit l’heure de DATE_FIN ($saison)', ({ d }) => {
-		expect(ligneHoraires(d)).toBe('La nuit seulement, de 19 h 30 à 5 h 30');
+		expect(ligneHoraires(d)).toBe('La nuit seulement, de 19\u00a0h\u00a030 à 5\u00a0h\u00a030');
 	});
 });
 
@@ -105,8 +105,8 @@ describe('week-end', () => {
 
 describe('échéance', () => {
 	it.each([
-		{ saison: 'été', aujourdhui: '2026-07-20', fin: '2026-07-24', attendu: 'encore 4 jours' },
-		{ saison: 'hiver', aujourdhui: '2026-01-19', fin: '2026-01-23T17:00', attendu: 'encore 4 jours' },
+		{ saison: 'été', aujourdhui: '2026-07-20', fin: '2026-07-24', attendu: 'encore 4\u00a0jours' },
+		{ saison: 'hiver', aujourdhui: '2026-01-19', fin: '2026-01-23T17:00', attendu: 'encore 4\u00a0jours' },
 		{ saison: 'été', aujourdhui: '2026-07-23', fin: '2026-07-24', attendu: 'jusqu’à demain' },
 		{ saison: 'hiver', aujourdhui: '2026-01-23', fin: '2026-01-23', attendu: 'dernier jour' }
 	])('« $attendu » pour l’en cours, jusqu’à DATE_FIN ($saison)', ({ aujourdhui, fin, attendu }) => {
@@ -114,10 +114,10 @@ describe('échéance', () => {
 	});
 
 	it.each([
-		{ saison: 'été', aujourdhui: '2026-07-17', debut: '2026-07-27T19:30', attendu: 'commence dans 10 jours' },
-		{ saison: 'hiver', aujourdhui: '2026-01-16', debut: '2026-01-26', attendu: 'commence dans 10 jours' },
+		{ saison: 'été', aujourdhui: '2026-07-17', debut: '2026-07-27T19:30', attendu: 'commence dans 10\u00a0jours' },
+		{ saison: 'hiver', aujourdhui: '2026-01-16', debut: '2026-01-26', attendu: 'commence dans 10\u00a0jours' },
 		// Hiver à été : le passage à l'heure d'été ne décale pas le compte des jours.
-		{ saison: 'au passage à l’heure d’été', aujourdhui: '2026-03-25', debut: '2026-04-04', attendu: 'commence dans 10 jours' },
+		{ saison: 'au passage à l’heure d’été', aujourdhui: '2026-03-25', debut: '2026-04-04', attendu: 'commence dans 10\u00a0jours' },
 		{ saison: 'été', aujourdhui: '2026-07-26', debut: '2026-07-27T19:30', attendu: 'commence demain' },
 		{ saison: 'hiver', aujourdhui: '2026-01-26', debut: '2026-01-26T20:00', attendu: 'commence aujourd’hui' }
 	])('« $attendu » pour l’à venir, au jour près ($saison)', ({ aujourdhui, debut, attendu }) => {

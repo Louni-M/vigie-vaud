@@ -59,8 +59,9 @@
 				puce={ctx.parametres.objets}
 				choisir={(objets) => ctx.regler({ objets })}
 				communes={ctx.communes}
+				niveau={3}
 			/>
-			<SeancesPassees {conseil} {ouvrir} />
+			<SeancesPassees {conseil} {ouvrir} niveau={3} />
 		{/if}
 	{:else}
 		{#if conseil}

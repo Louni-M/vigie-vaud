@@ -3,6 +3,7 @@
 	 * Fiche d'un dossier, affichée dans l'onglet Permis de sa commune (sous le fil rendu par le registre) : le titre
 	 * de la fiche commune est un h2, celui du dossier un h3.
 	 */
+	import { typographier } from '#lib/almanach/typographie.js';
 	import { natureLabel, PROCEDURE_PERMIS, STATUTS } from '#lib/labels.js';
 	import { dateLongue } from '#lib/dates.js';
 	import type { Dossier } from '#lib/types.js';
@@ -16,8 +17,8 @@
 	<p class="statut" style:--c={STATUTS[d.statut].couleur}>
 		<span class="pastille"></span>{STATUTS[d.statut].label}
 	</p>
-	<h3 class="titre">{natureLabel(d.nature)} · {d.commune}</h3>
-	<p class="desc">{d.description ?? 'Sans description'}</p>
+	<h3 class="titre">{natureLabel(d.nature)} · {typographier(d.commune)}</h3>
+	<p class="desc">{d.description ? typographier(d.description) : 'Sans description'}</p>
 
 	{#if d.statut === 'enquete'}
 		<p><Compte fin={d.fin} /></p>
@@ -28,7 +29,7 @@
 		<dd>du {dateLongue(d.debut)} au {dateLongue(d.fin)}</dd>
 		{#if d.decision}
 			<dt>Décision communale</dt>
-			<dd>{d.decision}{d.date_decision ? ` le ${dateLongue(d.date_decision)}` : ''}</dd>
+			<dd>{typographier(d.decision)}{d.date_decision ? ` le ${dateLongue(d.date_decision)}` : ''}</dd>
 		{/if}
 		<dt>N° CAMAC</dt>
 		<dd>{d.id}</dd>
@@ -42,7 +43,7 @@
 		<h4>Évolution suivie</h4>
 		<ul class="histo">
 			{#each d.historique as e (e.date)}
-				<li>{dateLongue(e.date)}&nbsp;: {e.statut ? STATUTS[e.statut].court : ''}{e.decision ? ` (${e.decision})` : ''}</li>
+				<li>{dateLongue(e.date)}&nbsp;: {e.statut ? STATUTS[e.statut].court : ''}{e.decision ? ` (${typographier(e.decision)})` : ''}</li>
 			{/each}
 		</ul>
 	{/if}
@@ -137,5 +138,9 @@
 		font-size: 14px;
 		line-height: 1.45;
 		color: var(--muted);
+	}
+	/* Les liens soulignés : au survol, le soulignement s'épaissit. */
+	.note a:hover {
+		text-decoration-thickness: var(--rule-bar, 2px);
 	}
 </style>

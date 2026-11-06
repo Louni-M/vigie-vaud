@@ -167,7 +167,7 @@
 									<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
 										<path d="m6 3.5 4.5 4.5L6 12.5" />
 									</svg>
-									Ses {p.communes.length} communes
+									Ses {p.communes.length}&nbsp;communes
 								</summary>
 								<ul>
 									{#each communesTriees(p.communes) as c (c.source.id)}
@@ -208,7 +208,7 @@
 			{/if}
 
 			<section class="partie communes" aria-labelledby="titre-communes">
-				<h2 id="titre-communes">Les {data.communes.length} communes</h2>
+				<h2 id="titre-communes">Les {data.communes.length}&nbsp;communes</h2>
 				<div class="outils">
 					<label class="recherche">
 						<span>Chercher une commune</span>
@@ -223,8 +223,8 @@
 					</label>
 					<p class="compte" aria-live="polite">
 						{lignes.length === data.communes.length
-							? `${lignes.length} communes`
-							: `${lignes.length} sur ${data.communes.length}`}
+							? `${lignes.length}\u00a0communes`
+							: `${lignes.length} sur\u00a0${data.communes.length}`}
 					</p>
 				</div>
 				<table class="tableau" aria-labelledby="titre-communes">

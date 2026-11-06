@@ -9,6 +9,7 @@
 	 */
 	import type { LigneObjet } from '#lib/schema.js';
 	import type { Commune } from '#lib/types.js';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import { lienElement } from '#lib/registre/liens.js';
 	import { COULEUR_CONSEILS, coucheConseils } from './index.js';
 	import { auteursObjet, dateObjet } from './lignes.js';
@@ -48,17 +49,16 @@
 
 {#snippet contenu()}
 	<span class="meta"><span class="pastille" aria-hidden="true"></span>{objet.type} {objet.numero}{date ? ` · ${date}` : ''}</span>
-	<span class="titre">{objet.titre}</span>
+	<span class="titre">{typographier(objet.titre)}</span>
 	{#if auteurs || objet.statut}
 		<span class="sous">
-			{auteurs}{#if objet.statut}{auteurs ? ' · ' : ''}<em>{objet.statut.libelle}</em>{/if}
+			{typographier(auteurs)}{#if objet.statut}{auteurs ? ' · ' : ''}<em>{typographier(objet.statut.libelle)}</em
+				>{/if}
 		</span>
 	{/if}
 	{#if nommees.length}
 		<span class="sous"
-			><span aria-hidden="true">→&nbsp;</span><span class="lecteur-seul">Communes nommées&nbsp;: </span>{nommees.join(
-				', '
-			)}</span
+			><span aria-hidden="true">→&nbsp;</span><span class="lecteur-seul">Communes nommées&nbsp;: </span>{typographier(nommees.join(', '))}</span
 		>
 	{/if}
 	{#if origine}<span class="origine">{origine}</span>{/if}

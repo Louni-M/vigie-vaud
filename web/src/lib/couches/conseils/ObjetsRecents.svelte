@@ -22,7 +22,8 @@
 		ouvrir,
 		puce = 'tous',
 		choisir,
-		communes = []
+		communes = [],
+		niveau = 4
 	}: {
 		conseil: ConseilIndexe;
 		ouvrir?: (cle: string) => void;
@@ -32,6 +33,8 @@
 		choisir?: (puce: PuceObjets) => void;
 		/** L'index des communes, pour nommer celles que nomment les Objets du Grand Conseil. */
 		communes?: readonly Commune[];
+		/** Niveau du titre « Objets récents » : 3 dans la fiche du Grand Conseil, où aucun h3 ne le précède. */
+		niveau?: 3 | 4;
 	} = $props();
 
 	const nombre = new Intl.NumberFormat('fr-CH');
@@ -60,7 +63,7 @@
 	async function focaliserApres(i: number) {
 		await tick();
 		if (!focusLibre(section) || focaliserLigne(liste, i)) return;
-		(section?.querySelector<HTMLElement>('.plus') ?? section?.querySelector<HTMLElement>('h4'))?.focus();
+		(section?.querySelector<HTMLElement>('.plus') ?? section?.querySelector<HTMLElement>('.titre-section'))?.focus();
 	}
 
 	/** Lit l'année suivante ; avec `focus`, l'indice de la première ligne nouvelle, le focus y va une fois lue. */
@@ -95,7 +98,9 @@
 </script>
 
 <section aria-labelledby="objets-{conseil.cle}" style:--c={COULEUR_CONSEILS} bind:this={section}>
-	<h4 id="objets-{conseil.cle}" tabindex="-1">Objets récents</h4>
+	<svelte:element this={`h${niveau}`} class="titre-section" id="objets-{conseil.cle}" tabindex="-1"
+		>Objets récents</svelte:element
+	>
 	{#if choisir}
 		<div class="puces" role="group" aria-label="Communes nommées">
 			{#each PUCES_OBJETS as p (p.id)}
@@ -142,7 +147,7 @@
 </section>
 
 <style>
-	h4 {
+	.titre-section {
 		margin: 18px 0 2px;
 		font-size: 12px;
 		text-transform: uppercase;

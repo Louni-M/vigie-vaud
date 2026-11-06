@@ -6,6 +6,7 @@
 	 * restrictions y sont lues) : l'échéance est comptée depuis le jour du visiteur, à Lausanne.
 	 */
 	import type { Snippet } from 'svelte';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import { jourDe } from '#lib/fil/fil.js';
 	import { carteRestriction } from './cartes.js';
 	import type { Restriction } from './donnees.svelte.js';
@@ -50,14 +51,14 @@
 		<span class="trait" class:tirets={c.tirets}></span>
 		<strong>{c.sorte}</strong>
 		{#if c.aVenir}<span class="etiquette">À venir</span>{/if}
-		{#if c.communes}<span class="communes">{c.communes}</span>{/if}
+		{#if c.communes}<span class="communes">{typographier(c.communes)}</span>{/if}
 	</span>
 	<span class="quand">
 		<span>{c.periode}</span>
 		<span class="muted">· {c.echeance}</span>
 		{#if c.plage}<span class="plage">· {c.plage}</span>{/if}
 	</span>
-	{#if c.remarque}<span class="remarque" title={c.remarque}>{c.remarque}</span>{/if}
+	{#if c.remarque}<span class="remarque" title={typographier(c.remarque)}>{typographier(c.remarque)}</span>{/if}
 	<span class="bas">
 		{#if c.dansLaCommune}<span>{c.dansLaCommune}</span>{/if}
 		<span class="source">{c.source}</span>
@@ -90,6 +91,9 @@
 		border-color: var(--accent);
 		border-left-color: var(--c);
 		box-shadow: 0 0 0 1px var(--accent);
+	}
+	.actif:hover {
+		box-shadow: 0 0 0 2px var(--accent);
 	}
 	.avenir {
 		border-left-style: dashed;

@@ -2,7 +2,8 @@
 	import { untrack } from 'svelte';
 	import { normaliser } from '#lib/labels.js';
 	import type { Commune, Resultat } from '#lib/types.js';
-	import { avecAdresses, resultatsLocaux } from './recherche.js';
+	import { typographier } from '#lib/almanach/typographie.js';
+	import { ancienEtActuelle, avecAdresses, resultatsLocaux } from './recherche.js';
 
 	/*
 	 * Recherche flottante du socle : communes, résultats des couches (fiches propres et `chercher`), adresses et
@@ -327,10 +328,19 @@
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<ul bind:this={liste} aria-label="Résultats de recherche" onkeydown={clavierListe}>
 			{#each resultats as r, i (i)}
+				{@const ancien = ancienEtActuelle(r)}
 				<li>
 					<button type="button" onclick={() => choisir(r)}>
 						<span class="type">{r.type === 'commune' ? 'Commune' : r.type === 'adresse' ? r.categorie : r.nomCouche}</span>
-						<span>{r.libelle}</span>
+						{#if ancien}
+							<span
+								>{ancien[0]}<span aria-hidden="true">&nbsp;→ </span><span class="lecteur-seul"
+									>, aujourd’hui </span
+								>{ancien[1]}</span
+							>
+						{:else}
+							<span>{typographier(r.libelle)}</span>
+						{/if}
 					</button>
 				</li>
 			{/each}
@@ -338,7 +348,7 @@
 	{/if}
 	<p class="annonce" aria-live="polite">
 		{#if deroule && resultats.length}
-			{resultats.length} résultat{resultats.length > 1 ? 's' : ''}, flèche bas pour les parcourir.
+			{resultats.length}&nbsp;résultat{resultats.length > 1 ? 's' : ''}, flèche bas pour les parcourir.
 		{:else if deroule && vide}
 			Aucun résultat. Essayez un nom de commune, une adresse ou un n°&nbsp;de dossier.
 		{/if}

@@ -728,6 +728,10 @@
 		font-weight: 600;
 		box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
 	}
+	.evitement:hover {
+		background: var(--surface-2, var(--bg));
+		text-decoration-thickness: 2px;
+	}
 	/* Visible seulement au clavier, quand il reçoit le focus. */
 	.evitement:not(:focus) {
 		width: 1px;

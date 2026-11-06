@@ -77,7 +77,7 @@ export const coucheRoutes: Couche<Filtres> = {
 		return r && { fiches: (r.communes ?? []).map((p) => ({ commune: p.commune.slug })), position: r.milieu };
 	},
 	// Sans numéro : il n'est jamais affiché. Levée, retrait ou renumérotation ne se distinguent pas.
-	introuvable: () => 'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.',
+	introuvable: () => 'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.',
 	nonCherche: () => 'La restriction de circulation n’a pas pu être cherchée : vérifiez votre connexion, puis réessayez.',
 	libelle: () => RESTRICTION,
 	titre: (_, nomDeLaFiche) => `${RESTRICTION} – ${nomDeLaFiche} – Vigie Vaud`,

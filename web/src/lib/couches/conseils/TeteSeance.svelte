@@ -5,6 +5,7 @@
 	 * fichier d'archive, et « Les N points ». Avec `ouvrir`, le nom et « Les N points » ouvrent la Séance, et un
 	 * point lié à un Objet ouvre cet Objet. Une Séance sans points montre ses documents en lien à leur place.
 	 */
+	import { typographier } from '#lib/almanach/typographie.js';
 	import type { ConseilIndexe } from '#lib/schema.js';
 	import { conseils } from './donnees.js';
 	import { COULEUR_CONSEILS } from './index.js';
@@ -40,9 +41,9 @@
 							<li>
 								{#if ouvrir && point.objet}
 									{@const objet = point.objet}
-									<button type="button" class="point" onclick={() => ouvrir(objet)}>{point.titre}</button>
+									<button type="button" class="point" onclick={() => ouvrir(objet)}>{typographier(point.titre)}</button>
 								{:else}
-									{point.titre}
+									{typographier(point.titre)}
 								{/if}
 							</li>
 						{/each}
@@ -51,16 +52,16 @@
 						{@const n = contenu.total}
 						{#if ouvrir}
 							<button type="button" class="plus" onclick={() => ouvrir(tete.cle)}
-								>Les {n} points&nbsp;<span aria-hidden="true">›</span></button
+								>Les {n}&nbsp;points&nbsp;<span aria-hidden="true">›</span></button
 							>
 						{:else}
-							<p class="plus">Les {n} points</p>
+							<p class="plus">Les {n}&nbsp;points</p>
 						{/if}
 					{/if}
 				{:else if contenu}
 					<ul class="documents">
 						{#each contenu.documents as d, i (i)}
-							<li><a href={d.lien} target="_blank" rel="noopener">{d.texte}</a></li>
+							<li><a href={d.lien} target="_blank" rel="noopener">{typographier(d.texte)}</a></li>
 						{/each}
 					</ul>
 				{:else}

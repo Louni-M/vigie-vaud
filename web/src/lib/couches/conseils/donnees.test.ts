@@ -374,7 +374,7 @@ describe('entrées du fil cantonal', () => {
 				date: '2026-10-06',
 				sorte: 'Séance',
 				qui: 'Conseil communal de Lausanne',
-				titre: 'Séance du mardi 6 octobre 2026 à 18 h · 12 points',
+				titre: 'Séance du mardi 6 octobre 2026 à 18 h · 12 points',
 				communes: ['lausanne']
 			},
 			{
@@ -383,7 +383,7 @@ describe('entrées du fil cantonal', () => {
 				date: '2026-10-20',
 				sorte: 'Séance',
 				qui: 'Grand Conseil',
-				titre: 'Séance du mardi 20 octobre 2026 · 1 point',
+				titre: 'Séance du mardi 20 octobre 2026 · 1 point',
 				communes: []
 			},
 			{

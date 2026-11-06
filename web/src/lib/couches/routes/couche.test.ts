@@ -84,7 +84,7 @@ describe('puces du volet Routes dans l’adresse', () => {
 describe('messages et titres d’une restriction', () => {
 	it('dit qu’une restriction introuvable n’est plus publiée, sans son numéro', () => {
 		expect(coucheRoutes.introuvable?.('5031')).toBe(
-			'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.'
+			'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.'
 		);
 	});
 

@@ -157,10 +157,10 @@
 				{:else if !actifs.length}
 					Chargement des dossiers en cours auprès du canton…
 				{:else if p.historique}
-					<strong>{nombre.format(visibles.length)}</strong> dossier{visibles.length > 1 ? 's' : ''} dans la zone
+					<strong>{nombre.format(visibles.length)}</strong>&nbsp;dossier{visibles.length > 1 ? 's' : ''} dans la zone
 					affichée, historique depuis {p.depuis} compris
 				{:else}
-					<strong>{nombre.format(visibles.length)}</strong> dossier{visibles.length > 1 ? 's' : ''} en cours dans la
+					<strong>{nombre.format(visibles.length)}</strong>&nbsp;dossier{visibles.length > 1 ? 's' : ''} en cours dans la
 					zone affichée
 				{/if}
 			</p>
@@ -207,7 +207,7 @@
 			{/each}
 		</ul>
 		{#if visibles.length > LISTE_MAX}
-			<p class="muted">… et {nombre.format(visibles.length - LISTE_MAX)} autres&nbsp;: zoomez pour affiner.</p>
+			<p class="muted">… et {nombre.format(visibles.length - LISTE_MAX)}&nbsp;autres&nbsp;: zoomez pour affiner.</p>
 		{/if}
 	</div>
 {/if}
@@ -408,6 +408,10 @@
 	}
 	.source {
 		margin: 4px 0 0;
+	}
+	/* Les liens soulignés : au survol, le soulignement s'épaissit. */
+	.source a:hover {
+		text-decoration-thickness: var(--rule-bar, 2px);
 	}
 	@media (pointer: coarse) {
 		.petit,

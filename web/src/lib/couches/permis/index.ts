@@ -30,8 +30,8 @@ export const couchePermis: Couche<Parametres> = {
 		const d = await permis.fiche(Number(element));
 		return d ? { fiches: [{ commune: d.slug }], position: [d.lon, d.lat] } : null;
 	},
-	introuvable: (element) => `Aucun dossier n° ${element}.`,
-	titre: (element, nomDeLaFiche) => `Dossier n° ${element} – ${nomDeLaFiche} – Vigie Vaud`,
+	introuvable: (element) => `Aucun dossier n° ${element}.`,
+	titre: (element, nomDeLaFiche) => `Dossier n°\u00a0${element} – ${nomDeLaFiche} – Vigie Vaud`,
 	resume: 'les permis de construire à l’enquête, en direct depuis le canton',
 	// Les nouveaux dossiers sont lus dans les dossiers en cours, chargés une seule fois par visite et partagés
 	// avec la carte : un dossier reste « nouveau » même si son enquête est close. Une enquête qui ne commence que

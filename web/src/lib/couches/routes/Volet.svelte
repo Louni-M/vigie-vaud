@@ -82,7 +82,7 @@
 					Chargement des restrictions auprès de la DGMR…
 				{/if}
 			{:else}
-				<strong>{nombre.format(visibles.length)}</strong> restriction{visibles.length > 1 ? 's' : ''} de circulation dans la zone affichée
+				<strong>{nombre.format(visibles.length)}</strong>&nbsp;restriction{visibles.length > 1 ? 's' : ''} de circulation dans la zone affichée
 				{#each enAttente as e (e)}
 					{#if routes.source.erreur}
 						<span class="erreur"> · les restrictions {ETATS[e].minuscules} n’ont pas pu être chargées</span>
@@ -107,7 +107,7 @@
 			{/each}
 		</ul>
 		{#if visibles.length > LISTE_MAX}
-			<p class="muted">… et {nombre.format(visibles.length - LISTE_MAX)} autres&nbsp;: zoomez pour affiner.</p>
+			<p class="muted">… et {nombre.format(visibles.length - LISTE_MAX)}&nbsp;autres&nbsp;: zoomez pour affiner.</p>
 		{/if}
 	</div>
 {/if}

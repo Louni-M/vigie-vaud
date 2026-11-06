@@ -93,7 +93,7 @@ const communesDuSite = async () => (await import('#lib/socle/communes.js')).getC
 
 /** Le titre d'une Séance dans le fil : « Séance du mardi 6 octobre 2026 · 12 points », sans points s'il n'y en a pas. */
 const titreSeance = (date: string, points: number) =>
-	points > 0 ? `${nomSeance(date)} · ${points} point${points > 1 ? 's' : ''}` : nomSeance(date);
+	points > 0 ? `${nomSeance(date)} · ${points} point${points > 1 ? 's' : ''}` : nomSeance(date);
 
 /** Les années d'Objets d'un conseil, de la plus récente à la plus ancienne. */
 const annees = (conseil: ConseilIndexe) =>

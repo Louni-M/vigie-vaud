@@ -88,4 +88,8 @@
 	.source {
 		margin-top: 28px;
 	}
+	/* Les liens soulignés : au survol, le soulignement s'épaissit. */
+	.source a:hover {
+		text-decoration-thickness: var(--rule-bar, 2px);
+	}
 </style>

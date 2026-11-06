@@ -12,6 +12,9 @@ function correspondants<T>(elements: readonly T[], nom: (e: T) => string, nq: st
 		.map(({ e }) => e);
 }
 
+/** Entre l'ancien nom et la commune actuelle, dans le libellé d'un ancien nom. */
+const FLECHE = ' → ';
+
 /**
  * Communes qui correspondent à une saisie, pour la recherche flottante : d'abord les communes actuelles, puis les
  * anciennes communes et les anciens noms, qui mènent à la commune actuelle (« Cully → Bourg-en-Lavaux »).
@@ -28,8 +31,18 @@ export function chercherCommunes(communes: readonly Commune[], saisie: string): 
 	).slice(0, 3);
 	return [
 		...actuelles.map((c): ResultatCommune => ({ type: 'commune', libelle: c.nom, commune: c })),
-		...anciens.map(({ a, c }): ResultatCommune => ({ type: 'commune', libelle: `${a.nom} → ${c.nom}`, commune: c }))
+		...anciens.map(({ a, c }): ResultatCommune => ({ type: 'commune', libelle: `${a.nom}${FLECHE}${c.nom}`, commune: c }))
 	];
+}
+
+/**
+ * Le libellé d'un ancien nom, coupé autour de sa flèche (« Cully → Bourg-en-Lavaux » : `['Cully',
+ * 'Bourg-en-Lavaux']`), pour que la liste montre la flèche sans la faire lire ; `null` pour tout autre libellé.
+ */
+export function ancienEtActuelle(r: Resultat): [string, string] | null {
+	if (r.type !== 'commune') return null;
+	const i = r.libelle.indexOf(FLECHE);
+	return i < 0 ? null : [r.libelle.slice(0, i), r.libelle.slice(i + FLECHE.length)];
 }
 
 /**

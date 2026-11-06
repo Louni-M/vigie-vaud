@@ -12,6 +12,7 @@
 		MapLayerMouseEvent,
 		Popup
 	} from 'maplibre-gl';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import type { Commune } from '#lib/types.js';
@@ -81,11 +82,11 @@
 			const contenu = document.createElement('div');
 			contenu.className = 'bulle-hotel';
 			const titre = document.createElement('strong');
-			titre.textContent = nom;
+			titre.textContent = typographier(nom);
 			contenu.append(titre);
 			if (adresse) {
 				const ligne = document.createElement('span');
-				ligne.textContent = adresse;
+				ligne.textContent = typographier(adresse);
 				contenu.append(ligne);
 			}
 			map.getCanvas().style.cursor = 'pointer';

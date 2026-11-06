@@ -9,6 +9,7 @@
 	 * nouvel onglet.
 	 */
 	import { untrack } from 'svelte';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import { ErreurApi } from '#lib/api.js';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { jourDe } from '#lib/fil/fil.js';
@@ -72,7 +73,7 @@
 		<strong>{f.sorte}</strong>
 		<span class="muted">{f.etat} · {f.echeance}</span>
 	</p>
-	{#if f.nom}<h3 class="nom">{f.nom}</h3>{/if}
+	{#if f.nom}<h3 class="nom">{typographier(f.nom)}</h3>{/if}
 
 	<p class="periode">{f.periode}</p>
 	<p class="horaires">
@@ -80,9 +81,9 @@
 	</p>
 
 	<dl>
-		{#if f.route}<dt>Route</dt><dd>{f.route}</dd>{/if}
-		{#if f.travaux}<dt>Travaux</dt><dd>{f.travaux}</dd>{/if}
-		{#if f.remarque}<dt>Remarque</dt><dd>{f.remarque}</dd>{/if}
+		{#if f.route}<dt>Route</dt><dd>{typographier(f.route)}</dd>{/if}
+		{#if f.travaux}<dt>Travaux</dt><dd>{typographier(f.travaux)}</dd>{/if}
+		{#if f.remarque}<dt>Remarque</dt><dd>{typographier(f.remarque)}</dd>{/if}
 		<dt>Longueur</dt>
 		<dd>{f.longueur}</dd>
 	</dl>
@@ -95,7 +96,7 @@
 					<a
 						class="lien"
 						href={lienCommune(c.slug, coucheRoutes.id)}
-						onclick={(e) => auClic(e, () => ctx.ouvrir({ commune: c.slug, onglet: coucheRoutes.id }))}>{c.nom}</a
+						onclick={(e) => auClic(e, () => ctx.ouvrir({ commune: c.slug, onglet: coucheRoutes.id }))}>{typographier(c.nom)}</a
 					>
 					<span class="muted">{c.longueur}</span>
 				</li>
@@ -118,7 +119,7 @@
 							href={lienElement(coucheRoutes.id, String(x.id))}
 							onclick={(e) => auClic(e, () => ouvrirRestriction(ctx, x))}>{l.sorte}</a
 						>
-						<span class="muted">{l.detail}</span>
+						<span class="muted">{typographier(l.detail)}</span>
 					</span>
 				</li>
 			{/each}

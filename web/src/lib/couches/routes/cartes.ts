@@ -46,11 +46,11 @@ const kilometres = new Intl.NumberFormat('fr-CH', { style: 'unit', unit: 'kilome
 export const longueurTexte = (m: number) =>
 	(m < 995 ? metres.format(Math.round(m / 10) * 10) : kilometres.format(m / 1000)).replace(/ /g, '\u00a0');
 
-/** « Pully », « Lutry, Pully », « Lutry, Pully et 3 autres ». */
+/** « Pully », « Lutry, Pully », « Lutry, Pully et 3 autres » (le nombre et « autres » liés par une insécable). */
 export function communesTexte(passages: readonly Passage[], max = 2): string {
 	const noms = passages.slice(0, max).map((p) => p.commune.nom).join(', ');
 	const autres = passages.length - max;
-	return autres > 0 ? `${noms} et ${autres} ${autres > 1 ? 'autres' : 'autre'}` : noms;
+	return autres > 0 ? `${noms} et ${autres}\u00a0${autres > 1 ? 'autres' : 'autre'}` : noms;
 }
 
 /** Ce que montre la carte d'une restriction, après sa pastille. */
@@ -84,6 +84,6 @@ export function carteRestriction(r: Restriction, { aujourdhui, commune }: { aujo
 		echeance: echeance(r, aujourdhui),
 		plage: r.heureDebut && r.heureFin ? ligneHoraires(r) : null,
 		remarque: r.remarque,
-		dansLaCommune: ici ? `${longueurTexte(ici.metres)} dans la commune, sur ${r.communes!.length} communes` : null
+		dansLaCommune: ici ? `${longueurTexte(ici.metres)} dans la commune, sur ${r.communes!.length}\u00a0communes` : null
 	};
 }

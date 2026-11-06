@@ -8,6 +8,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import type { GeoJSONSource, GeoJSONSourceSpecification } from 'maplibre-gl';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import { lienElement } from '#lib/registre/liens.js';
 	import type { Registre } from '#lib/registre/registre.svelte.js';
 	import type { Commune } from '#lib/types.js';
@@ -68,11 +69,13 @@
 		return s[0].toUpperCase() + s.slice(1);
 	}
 
-	/** « Motion · Grand Conseil → Morges, Lausanne », avec la date courte hors des jours (« · 20 oct. »). */
-	function meta(l: LigneFil, date: boolean) {
-		const qui = l.nommees.length ? `${l.qui} → ${l.nommees.join(', ')}` : l.qui;
-		return [l.sorte, qui, ...(date ? [fmtCourt.format(midi(l.date))] : [])].join(' · ');
-	}
+	/*
+	 * La méta : « Motion · Grand Conseil → Morges, Lausanne », avec la date courte hors des jours (« · 20 oct. »).
+	 * La flèche n'est que vue ; le lecteur d'écran entend « Grand Conseil, communes nommées : Morges, Lausanne ».
+	 */
+	const avantFleche = (l: LigneFil) => typographier(`${l.sorte} · ${l.qui}`);
+	const apresFleche = (l: LigneFil, date: boolean) =>
+		typographier(l.nommees.join(', ')) + (date ? ` · ${fmtCourt.format(midi(l.date))}` : '');
 
 	/* ---- Survol : l'entrée est surlignée sur la carte, à sa position ou à l'hôtel de ville de ses communes ---- */
 
@@ -120,8 +123,12 @@
 			<span class="signe" style:--c={l.couleur} title={l.nomType} aria-hidden="true">{l.signe}</span>
 			<span class="lecteur-seul">{l.nomType}&nbsp;:</span>
 			<span class="texte">
-				<span class="meta">{meta(l, date)}</span>
-				<span class="titre">{l.titre}</span>
+				<span class="meta"
+					>{avantFleche(l)}{#if l.nommees.length}<span aria-hidden="true">&nbsp;→ </span><span
+							class="lecteur-seul">, communes nommées&nbsp;: </span
+						>{/if}{apresFleche(l, date)}</span
+				>
+				<span class="titre">{typographier(l.titre)}</span>
 			</span>
 			<span class="fleche" aria-hidden="true">›</span>
 		</a>
@@ -274,9 +281,13 @@
 		background: var(--c);
 		color: #fff;
 	}
-	/* Au survol, la puce prend un lavis de sa couleur ; choisie, elle garde le sien. */
+	/* Au survol, la puce prend un lavis de sa couleur ; choisie, elle fonce d'un ton et se cerne d'encre. */
 	.puces button:not([aria-pressed='true']):hover {
 		background: color-mix(in oklch, var(--c) 8%, var(--surface));
+	}
+	.puces button[aria-pressed='true']:hover {
+		background: color-mix(in oklch, var(--c) 80%, #000);
+		box-shadow: 0 0 0 1px var(--c);
 	}
 	.portee {
 		display: flex;
@@ -353,8 +364,12 @@
 	li > a:hover {
 		background: var(--bg);
 	}
+	/* Ouverte, l'entrée garde son fond jaune : au survol, il fonce et le titre se souligne. */
 	li.ouvert > a:hover {
 		background: #fdeeb5;
+	}
+	li.ouvert > a:hover .titre {
+		text-decoration: underline;
 	}
 	.signe {
 		display: grid;

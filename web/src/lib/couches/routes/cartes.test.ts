@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { source } from '#lib/sources.js';
 import { fauxDgmr, heureLocale, PIEGES, restriction, type RestrictionDgmr } from '#tests/faux-dgmr.js';
-import { carteRestriction, encadreLimites, longueurTexte, sectionsDeLaCommune } from './cartes.js';
+import { carteRestriction, communesTexte, encadreLimites, longueurTexte, sectionsDeLaCommune } from './cartes.js';
 import { creerDonneesRoutes } from './donnees.svelte.js';
+import type { Passage } from './rattachement.js';
 
 // Le module de données refuse d'interroger la DGMR ailleurs que dans un navigateur.
 vi.mock('$app/env', () => ({ browser: true }));
@@ -81,6 +82,18 @@ describe('sections de l’onglet Routes', () => {
 	});
 });
 
+describe('communes d’une restriction', () => {
+	const passage = (nom: string) => ({ commune: { nom } as Passage['commune'], metres: 100 });
+
+	it('nomme les deux premières, puis compte les autres, le nombre lié à « autre(s) » par une insécable', () => {
+		expect(communesTexte([passage('Pully')])).toBe('Pully');
+		expect(communesTexte(['Lutry', 'Pully', 'Paudex'].map(passage))).toBe('Lutry, Pully et 1\u00a0autre');
+		expect(communesTexte(['Lutry', 'Pully', 'Paudex', 'Belmont-sur-Lausanne'].map(passage))).toBe(
+			'Lutry, Pully et 2\u00a0autres'
+		);
+	});
+});
+
 describe('carte d’une restriction', () => {
 	const aujourdhui = '2026-10-18';
 
@@ -96,13 +109,13 @@ describe('carte d’une restriction', () => {
 			communes: 'Lutry, Pully',
 			source: 'DGMR',
 			periode: 'Du lun. 12 oct. au ven. 30 oct.',
-			echeance: 'encore 12 jours',
+			echeance: 'encore 12\u00a0jours',
 			plage: null,
 			remarque: null,
-			dansLaCommune: '770\u202fm dans la commune, sur 2 communes'
+			dansLaCommune: '770\u202fm dans la commune, sur 2\u00a0communes'
 		});
 		expect(carteRestriction(deviation, { aujourdhui, commune: 'lutry' }).dansLaCommune).toBe(
-			'2,3\u202fkm dans la commune, sur 2 communes'
+			'2,3\u202fkm dans la commune, sur 2\u00a0communes'
 		);
 		expect(carteRestriction(deviation, { aujourdhui }).dansLaCommune).toBeNull();
 	});
@@ -115,8 +128,8 @@ describe('carte d’une restriction', () => {
 			aVenir: true,
 			communes: 'Lutry',
 			periode: 'Du lun. 26 oct. au jeu. 29 oct.',
-			echeance: 'commence dans 8 jours',
-			plage: 'La nuit seulement, de 19 h 30 à 5 h 30',
+			echeance: 'commence dans 8\u00a0jours',
+			plage: 'La nuit seulement, de 19\u00a0h\u00a030 à 5\u00a0h\u00a030',
 			dansLaCommune: null
 		});
 	});

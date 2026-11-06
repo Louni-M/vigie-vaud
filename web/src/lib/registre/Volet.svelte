@@ -10,6 +10,7 @@
 	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import BadgeSites from '#lib/components/BadgeSites.svelte';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import type { Source } from '#lib/schema.js';
 	import { nomDePlateforme, source } from '#lib/sources.js';
 	import type { Registre } from './registre.svelte.js';
@@ -75,7 +76,7 @@
 	<p class="attribution">
 		{#each attributions as s, i (s.id)}
 			{#if i > 0}<span aria-hidden="true"> · </span>{/if}
-			<a href={s.attribution.lien} target="_blank" rel="noopener">{s.attribution.texte}</a>
+			<a href={s.attribution.lien} target="_blank" rel="noopener">{typographier(s.attribution.texte)}</a>
 		{/each}
 		{#each plateformes as p, i (p.id)}
 			{#if attributions.length > 0 || i > 0}<span aria-hidden="true"> · </span>{/if}
@@ -169,6 +170,12 @@
 	}
 	.attribution a {
 		color: inherit;
+	}
+	/* Au survol, le lien prend l'encre et son soulignement s'épaissit. */
+	.couverture:hover,
+	.attribution a:hover {
+		color: var(--text);
+		text-decoration-thickness: 2px;
 	}
 	.erreur {
 		margin: 0;

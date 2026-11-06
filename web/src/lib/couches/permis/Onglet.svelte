@@ -123,7 +123,7 @@
 {#if chiffres}
 	<div class="barres" role="img" aria-label="Demandes de permis par année – {resumeAnnees}">
 		{#each annees as [annee, n] (annee)}
-			<div class="barre" title="{nombre.format(n)} demande{n > 1 ? 's' : ''} en {annee}">
+			<div class="barre" title="{nombre.format(n)}&nbsp;demande{n > 1 ? 's' : ''} en {annee}">
 				<span style:height="{(n / maxAnnee) * 100}%"></span>
 				<small>{annee.slice(2)}</small>
 			</div>
@@ -135,7 +135,7 @@
 
 <h3>Historique</h3>
 {#if tout}
-	<p class="muted">{nombre.format(tout.length)} dossier{tout.length > 1 ? 's' : ''} depuis 1999, hors dossiers en cours listés plus haut.</p>
+	<p class="muted">{nombre.format(tout.length)}&nbsp;dossier{tout.length > 1 ? 's' : ''} depuis 1999, hors dossiers en cours listés plus haut.</p>
 	<ul class="grille">
 		{#each tout as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
@@ -153,7 +153,7 @@
 	{#if totalHisto > recents.length}
 		<p>
 			<button class="bouton secondaire" type="button" onclick={chargerTout} disabled={chargement}>
-				{chargement ? 'Chargement…' : `Tout charger (${nombre.format(totalHisto)} dossiers depuis 1999)`}
+				{chargement ? 'Chargement…' : `Tout charger (${nombre.format(totalHisto)}\u00a0dossiers depuis 1999)`}
 			</button>
 		</p>
 		{#if echecTout}
@@ -245,6 +245,10 @@
 	}
 	.source {
 		margin-top: 28px;
+	}
+	/* Les liens soulignés : au survol, le soulignement s'épaissit. */
+	.source a:hover {
+		text-decoration-thickness: var(--rule-bar, 2px);
 	}
 	.attente {
 		min-height: 92px;

@@ -7,6 +7,7 @@
 	 * dans cette fiche : la commune de l'onglet est l'une des siennes.
 	 */
 	import { untrack } from 'svelte';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Filtres } from './volet.js';
@@ -47,7 +48,7 @@
 
 <EchecSource source="dgmr-restrictions" message="Les restrictions de circulation n’ont pas pu être chargées" />
 
-{#if encadre}<p class="encadre">{encadre}</p>{/if}
+{#if encadre}<p class="encadre">{typographier(encadre)}</p>{/if}
 
 {#if echecLimites}
 	<p class="erreur" role="alert">

@@ -12,7 +12,16 @@
 	import LigneSeanceC from './LigneSeance.svelte';
 	import { seancesPassees } from './lignes.js';
 
-	let { conseil, ouvrir }: { conseil: ConseilIndexe; ouvrir?: (cle: string) => void } = $props();
+	let {
+		conseil,
+		ouvrir,
+		niveau = 4
+	}: {
+		conseil: ConseilIndexe;
+		ouvrir?: (cle: string) => void;
+		/** Niveau du titre « Séances passées » : 3 dans la fiche du Grand Conseil, où aucun h3 ne le précède. */
+		niveau?: 3 | 4;
+	} = $props();
 
 	/** Séances montrées d'emblée. */
 	const DERNIERES = 4;
@@ -42,7 +51,7 @@
 </script>
 
 <section aria-labelledby="seances-{conseil.cle}">
-	<h4 id="seances-{conseil.cle}">Séances passées</h4>
+	<svelte:element this={`h${niveau}`} class="titre-section" id="seances-{conseil.cle}">Séances passées</svelte:element>
 	{#if echec}
 		<p class="erreur" role="alert">
 			Les séances n’ont pas pu être chargées.
@@ -67,7 +76,7 @@
 </section>
 
 <style>
-	h4 {
+	.titre-section {
 		margin: 18px 0 2px;
 		font-size: 12px;
 		text-transform: uppercase;

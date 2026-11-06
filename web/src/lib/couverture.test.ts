@@ -470,12 +470,12 @@ describe('encarts de la page Couverture : un par source', () => {
 			maintenant: MAINTENANT
 		});
 		expect(d.plateformes.map((p) => libellePlateforme(p, false))).toEqual([
-			'i-web : 19 communes couvertes, 9 non couvertes'
+			'i-web : 19\u00a0communes couvertes, 9\u00a0non couvertes'
 		]);
 	});
 
 	it('donne à l’encart de la DGMR tout le canton et sa ligne Limites', () => {
-		expect(libelleCommunes(encart('dgmr-restrictions'), 300)).toBe('300 communes sur 300');
+		expect(libelleCommunes(encart('dgmr-restrictions'), 300)).toBe('300\u00a0communes sur\u00a0300');
 		expect(libelleLimites(encart('dgmr-restrictions').source)).toBe(
 			'Publie surtout les routes cantonales ; les routes communales n’y figurent pas toujours.'
 		);
@@ -483,8 +483,8 @@ describe('encarts de la page Couverture : un par source', () => {
 
 	it('dit « Porte sur le canton » pour une source sans Couverture, et le nombre de communes sinon', () => {
 		expect(libelleCommunes(encart('openparldata-vd'), 300)).toBe('Porte sur le canton');
-		expect(libelleCommunes(encart('openparldata-5586'), 300)).toBe('1 commune sur 300');
-		expect(libelleCommunes(encart('camac-permis'), 300)).toBe('300 communes sur 300');
+		expect(libelleCommunes(encart('openparldata-5586'), 300)).toBe('1\u00a0commune sur\u00a0300');
+		expect(libelleCommunes(encart('camac-permis'), 300)).toBe('300\u00a0communes sur\u00a0300');
 	});
 
 	it('donne une ligne Limites à une source qui en déclare, et aucune sinon', () => {
@@ -584,10 +584,10 @@ describe('fiche par plateforme de la page Couverture', () => {
 	});
 
 	it('compte les communes couvertes, en panne et non couvertes : « i-web : 2 communes couvertes, 1 en panne »', () => {
-		expect(libellePlateforme(iweb)).toBe('i-web : 2 communes couvertes, 1 en panne, 1 non couverte');
-		expect(libellePlateforme(c.plateformes[1])).toBe('Quicksite : 1 commune couverte, aucune en panne');
+		expect(libellePlateforme(iweb)).toBe('i-web : 2\u00a0communes couvertes, 1 en panne, 1\u00a0non couverte');
+		expect(libellePlateforme(c.plateformes[1])).toBe('Quicksite : 1\u00a0commune couverte, aucune en panne');
 		// Tant que l'état des sources n'est pas chargé, la fiche ne compte pas les pannes.
-		expect(libellePlateforme(iweb, false)).toBe('i-web : 2 communes couvertes, 1 non couverte');
+		expect(libellePlateforme(iweb, false)).toBe('i-web : 2\u00a0communes couvertes, 1\u00a0non couverte');
 	});
 
 	it('liste ses communes avec leur paire, leur dernière sonde et le lien vers leur site', () => {

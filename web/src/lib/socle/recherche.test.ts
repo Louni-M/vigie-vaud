@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avecAdresses, chercherCommunes, resultatsLocaux } from './recherche.js';
+import { ancienEtActuelle, avecAdresses, chercherCommunes, resultatsLocaux } from './recherche.js';
 import { commune } from '#tests/faux-canton.js';
 import { COUCHES } from '#lib/registre/couches.js';
 import { resultatsCouches } from '#lib/registre/recherche.js';
@@ -22,6 +22,13 @@ describe('recherche des communes', () => {
 		const [r] = chercherCommunes([PULLY, BEL], 'cully');
 		expect(r.libelle).toBe('Cully → Bourg-en-Lavaux');
 		expect(r.commune.slug).toBe('bourg-en-lavaux');
+	});
+
+	it('coupe le libellé d’un ancien nom autour de sa flèche, pour la montrer sans la faire lire', () => {
+		const [ancien, actuelle] = chercherCommunes([PULLY, BEL], 'cully').concat(chercherCommunes([PULLY], 'pully'));
+		expect(ancienEtActuelle(ancien)).toEqual(['Cully', 'Bourg-en-Lavaux']);
+		expect(ancienEtActuelle(actuelle)).toBeNull();
+		expect(ancienEtActuelle({ type: 'adresse', categorie: 'Adresse', libelle: 'A → B', lon: 6.6, lat: 46.5 })).toBeNull();
 	});
 
 	it('propose d’abord les communes actuelles qui correspondent, puis les anciennes communes', () => {

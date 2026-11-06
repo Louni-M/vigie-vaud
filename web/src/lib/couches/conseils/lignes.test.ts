@@ -20,8 +20,8 @@ describe('nom composé d’une Séance', () => {
 	});
 
 	it('donne l’heure quand elle est connue, et le premier du mois en toutes lettres', () => {
-		expect(nomSeance('2026-10-01T20:00')).toBe('Séance du jeudi 1er octobre 2026 à 20 h');
-		expect(nomSeance('2026-10-06T19:30')).toBe('Séance du mardi 6 octobre 2026 à 19 h 30');
+		expect(nomSeance('2026-10-01T20:00')).toBe('Séance du jeudi 1er octobre 2026 à 20 h');
+		expect(nomSeance('2026-10-06T19:30')).toBe('Séance du mardi 6 octobre 2026 à 19 h 30');
 	});
 });
 
@@ -71,8 +71,8 @@ describe('ligne d’une Séance', () => {
 	const pv = { titre: null, date: null, lien: 'https://www.bussigny.ch/pv.pdf' };
 
 	it('donne son nombre de points après sa date', () => {
-		expect(detailSeance({ cle: '5586/2026-10-06', date: '2026-10-06', points: 1 })).toEqual({ points: '1 point' });
-		expect(detailSeance({ cle: '5586/2026-10-06', date: '2026-10-06', points: 12 })).toEqual({ points: '12 points' });
+		expect(detailSeance({ cle: '5586/2026-10-06', date: '2026-10-06', points: 1 })).toEqual({ points: '1 point' });
+		expect(detailSeance({ cle: '5586/2026-10-06', date: '2026-10-06', points: 12 })).toEqual({ points: '12 points' });
 	});
 
 	it('sans points, montre ses documents en lien à la place du nombre de points', () => {
@@ -86,7 +86,7 @@ describe('ligne d’une Séance', () => {
 	});
 
 	it('sans points ni documents, reste à « 0 points »', () => {
-		expect(detailSeance({ cle: '5938/2026-10-01', date: '2026-10-01', points: 0 })).toEqual({ points: '0 points' });
+		expect(detailSeance({ cle: '5938/2026-10-01', date: '2026-10-01', points: 0 })).toEqual({ points: '0 points' });
 	});
 });
 
