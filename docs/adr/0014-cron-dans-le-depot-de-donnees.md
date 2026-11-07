@@ -23,7 +23,8 @@ mêmes PR.
   principal public : le cron n'est activé qu'au passage public de la fin de J0, et on le lance en local avant.
 - Le dépôt de données est publié par GitHub Actions (`upload-pages-artifact`, `deploy-pages`) dans le même job, après
   le commit qui sert d'archive : ni limite de builds Pages, ni doute sur le déclenchement par un push du
-  `GITHUB_TOKEN`.
+  `GITHUB_TOKEN`. Un déploiement bloqué côté Pages est abandonné après 5 minutes et relancé une fois avec un
+  artefact neuf, pour que le site ne reste pas jusqu'au passage suivant sans les données déjà poussées.
 - GitHub ne lance un `schedule` qu'au mieux : celui du cron demande un passage toutes les 30 minutes, mais du 16
   octobre au 1er novembre 2026 il n'en a lancé que 5 à 8 par jour, avec 4 h 18 d'écart en moyenne et jusqu'à 7 h 48.
   Le site ne tient donc l'état des sources pour périmé (« surveillance interrompue ») qu'après 8 h sans passage, et

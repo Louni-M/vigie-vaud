@@ -24,9 +24,10 @@ jobs:
   passage:
     runs-on: ubuntu-24.04
     # Un passage ordinaire sonde et importe au plus un jour de changements, sites des communes compris (environ
-    # 25 minutes à 5 s par requête) ; un rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à
-    # deux heures pour une plateforme). 360 minutes est le plus long délai d'un job hébergé par GitHub.
-    timeout-minutes: ${{ (inputs.rattrapage || inputs.rattrapage_cible != '') && 360 || 45 }}
+    # 25 minutes à 5 s par requête), et laisse jusqu'à 15 minutes aux deux essais de publication sur Pages ; un
+    # rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à deux heures pour une plateforme).
+    # 360 minutes est le plus long délai d'un job hébergé par GitHub.
+    timeout-minutes: ${{ (inputs.rattrapage || inputs.rattrapage_cible != '') && 360 || 50 }}
     permissions:
       contents: write
       issues: write
@@ -34,7 +35,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deploiement.outputs.page_url }}
+      url: ${{ steps.deploiement.outputs.page_url || steps.deploiement-2.outputs.page_url }}
     steps:
       - name: Cloner le dépôt de données
         uses: actions/checkout@v7
@@ -75,5 +76,23 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: donnees
+      # Un déploiement prend d'ordinaire quelques secondes, mais Pages en laisse parfois un bloqué sur
+      # `syncing_files` jusqu'au délai de `deploy-pages` (passages des 6 et 7 novembre 2026), alors que le suivant
+      # passe. Le premier essai abandonne donc après 5 minutes (et annule son déploiement), puis un second essai
+      # repart d'un artefact neuf avec le délai par défaut de 10 minutes : sans lui, le site attendrait le prochain
+      # passage planifié, parfois plusieurs heures, alors que le commit d'archive est déjà poussé.
       - id: deploiement
         uses: actions/deploy-pages@v5
+        continue-on-error: true
+        with:
+          timeout: 300000
+      - if: steps.deploiement.outcome == 'failure'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: donnees
+          name: github-pages-2
+      - id: deploiement-2
+        if: steps.deploiement.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-2
