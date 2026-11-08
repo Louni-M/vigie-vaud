@@ -15,10 +15,16 @@ contact. Pour les sites communaux, à partir de J3 Conseils communaux :
   et le site du conseil de Montreux) se partagent la même cadence. Les sondes comptent dans ce débit. Le rattrapage
   et le passage ordinaire ne tournent jamais en même temps. Écartés : une seule cadence pour tout le robot (environ
   une heure par passage au lieu de 25 minutes) ; des réseaux lus en parallèle.
-- **Blocage.** Une réponse 429 ou 503, une connexion refusée ou un délai dépassé arrête toute requête vers ce /24,
-  sondes comprises, jusqu'à la fin du passage, ou plus longtemps si `Retry-After` le demande. Les communes de ce
-  réseau que le robot n'a pas sondées sont en panne (« accès refusé »), dans l'issue `panne-source` de leur
-  plateforme. Au passage suivant, une seule sonde teste le réseau avant les autres. Un 403 ou un 404 sur une seule
+- **Blocage.** Une réponse 429 ou 503 ou une connexion refusée arrête toute requête vers ce /24, sondes comprises,
+  jusqu'à la fin du passage, ou plus longtemps si `Retry-After` le demande. Les communes de ce réseau que le robot
+  n'a pas sondées sont en panne (« accès refusé »), dans l'issue `panne-source` de leur plateforme. Un **délai
+  dépassé** n'arrête d'abord que les requêtes vers le site qui l'a eu, jusqu'à la fin du passage : sa commune est en
+  échec, ou en panne si c'était sa sonde. Le second délai dépassé du passage sur le même /24, ou le premier sur un
+  réseau que la sonde teste après un blocage, bloque tout le /24. *Amendé le 8 novembre 2026* : un seul délai
+  dépassé bloquait tout le /24, et les 19 communes d'i-web partagent le même ; depuis GitHub, une page lente
+  suffisait à faire perdre la plateforme presque à chaque passage, Corseaux et Blonay - Saint-Légier, sondées en
+  dernier, n'étant jamais importées. Un délai dépassé ne dit pas qu'un site refuse le robot, contrairement à une
+  429, une 503 ou un refus de connexion. Au passage suivant, une seule sonde teste le réseau avant les autres. Un 403 ou un 404 sur une seule
   page reste une panne de cette commune. Rien ne s'adapte tout seul : si un blocage revient, on ralentit ce réseau
   à la main.
 - **Plafond.** Le passage ordinaire envoie au plus 60 requêtes par commune. Au-delà, l'import de la commune est en

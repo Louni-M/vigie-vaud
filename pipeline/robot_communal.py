@@ -15,17 +15,19 @@ import socket
 import ssl
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
-from typing import Literal
+from typing import Literal, TypeVar
 
 import httpx
 
 from schema import RACINE, EtatReseau, FichierSources
 
 Role = Literal["sonde", "import"]
+T = TypeVar("T")
 INTERVALLE = 5.0  # secondes, au moins, entre deux requêtes vers un même /24
 DELAI = 30.0  # secondes, au plus, pour une requête
 REDIRECTIONS = 5  # redirections suivies, au plus, pour une page
@@ -116,6 +118,11 @@ class ReseauBloque(PageNonLue):
     `Retry-After`), ni, au passage suivant, avant qu'une sonde l'ait testé."""
 
 
+class SiteBloque(PageNonLue):
+    """Le site de la page a dépassé un délai plus tôt dans le passage : aucune requête ne lui est plus envoyée
+    jusqu'à la fin du passage. Son réseau, lui, reste ouvert aux autres communes, jusqu'à un second délai dépassé."""
+
+
 class PlafondAtteint(PageNonLue):
     """La commune a déjà envoyé toutes ses requêtes de ce passage ordinaire : la page n'a pas été demandée."""
 
@@ -133,8 +140,9 @@ def erreur_tls(erreur: BaseException | None) -> bool:
 
 
 def _bloquante(erreur: PageNonLue) -> bool:
-    """Une 429, une 503, une connexion refusée ou un délai dépassé : le réseau de la page est bloqué. Une erreur TLS
-    ne l'est pas : elle ne dit rien que du site qui l'a."""
+    """Une 429, une 503, une connexion refusée ou un délai dépassé : la lecture de la commune s'arrête, son réseau
+    ou, pour un premier délai dépassé, son site étant bloqué. Une erreur TLS ne bloque rien : elle ne dit rien que du
+    site qui l'a."""
     if isinstance(erreur, ErreurHttp):
         return erreur.statut in STATUTS_BLOQUANTS
     return isinstance(erreur, (DelaiDepasse, ConnexionRefusee))
@@ -168,12 +176,13 @@ class Robot:
     `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`). Un `Crawl-delay` est suivi
     jusqu'à `CRAWL_DELAY_MAX` ; au-delà, aucune page de l'hôte n'est demandée (`CrawlDelayTropLong`).
 
-    **Blocage** : une 429, une 503, une connexion refusée ou un délai dépassé (pas une erreur TLS) arrête toute
-    requête vers ce réseau
-    (`ReseauBloque`) pour la vie du robot, et au-delà si `Retry-After` le demande. Le robot reçoit les réseaux
-    bloqués aux passages précédents (`bloques`) et rend ceux qui le restent (`reseaux_bloques`) : un réseau dont le
-    blocage a pris fin est à tester, seule une requête de sonde peut le faire, et la première qui ne le bloque pas de
-    nouveau le rouvre. Une 403 ou une 404 ne bloque rien. Une requête en échec n'est pas refaite pour la vie du robot.
+    **Blocage** : une 429, une 503 ou une connexion refusée (pas une erreur TLS) arrête toute requête vers ce réseau
+    (`ReseauBloque`) pour la vie du robot, et au-delà si `Retry-After` le demande. Un délai dépassé n'arrête d'abord
+    que les requêtes vers son site (`SiteBloque`), pour la vie du robot : une page lente ce jour-là ne coûte pas toutes
+    les communes du /24. Le second délai dépassé sur un même réseau, ou le premier sur un réseau à tester, le bloque.
+    Le robot reçoit les réseaux bloqués aux passages précédents (`bloques`) et rend ceux qui le restent
+    (`reseaux_bloques`) : un réseau dont le blocage a pris fin est à tester, seule une requête de sonde peut le faire,
+    et la première qui ne le bloque pas de nouveau le rouvre. Une 403 ou une 404 ne bloque rien. Une requête en échec n'est pas refaite pour la vie du robot.
 
     **Plafond** : avec `plafond`, une commune n'envoie pas plus de `plafond` requêtes (`robots.txt`, sonde et import
     compris) par ses vues `pour(commune)`.
@@ -203,6 +212,7 @@ class Robot:
         self._robots: dict[str, Regles | PageInterdite] = {}  # hôte → ses règles, ou tout interdit
         self._dernieres: dict[str, datetime] = {}  # réseau → fin de sa dernière requête
         self._echecs: dict[str, PageNonLue] = {}  # URL demandée → son échec
+        self._sites_lents: set[str] = set()  # hôtes qui ont dépassé un délai, bloqués pour la vie du robot
         self._comptes: dict[str, int] = {}  # commune → ses requêtes
         self._bloques: dict[str, EtatReseau] = dict(bloques or {})  # réseau → son blocage, fermé ou à tester
         maintenant = horloge()
@@ -218,7 +228,7 @@ class Robot:
                 raise self._echecs[url]
             try:
                 return self._lire(url, role)
-            except (ReseauBloque, PlafondAtteint, CrawlDelayTropLong) as e:
+            except (ReseauBloque, SiteBloque, PlafondAtteint, CrawlDelayTropLong) as e:
                 self._interrompre(e)
                 raise
             except (ErreurHttp, DelaiDepasse, Injoignable, PageIllisible) as e:
@@ -280,21 +290,20 @@ class Robot:
     def _requete(self, url: str, role: Role) -> httpx.Response:
         hote = httpx.URL(url).host
         reseau = self._reseau(hote)
-        if reseau in self._fermes:
-            raise ReseauBloque(f"{url} : réseau {reseau} bloqué ({self._bloques[reseau].motif})")
-        if reseau in self._bloques and role != "sonde":
-            raise ReseauBloque(f"{url} : réseau {reseau} bloqué au passage précédent, pas encore testé par une sonde")
+        self._verifier_ouvert(url, reseau, hote, role)
         if self._commune is not None and self._plafond is not None:
             if self._comptes.get(self._commune, 0) >= self._plafond:
                 raise PlafondAtteint(f"{url} : plafond de {self._plafond} requêtes atteint ({self._commune})")
+        if self._patienter(reseau, hote):
+            self._verifier_ouvert(url, reseau, hote, role)  # un autre fil a pu bloquer le réseau pendant l'attente
+        if self._commune is not None and self._plafond is not None:
             self._comptes[self._commune] = self._comptes.get(self._commune, 0) + 1
-        self._patienter(reseau, hote)
         try:
             reponse = self._http.get(
                 url, headers={"User-Agent": user_agent(role)}, timeout=DELAI, follow_redirects=False
             )
         except httpx.TimeoutException as e:
-            self._bloquer(reseau, "délai dépassé")
+            self._delai_depasse(reseau, hote)
             raise DelaiDepasse(f"{url} : délai de {DELAI:.0f} s dépassé") from e
         except httpx.ConnectError as e:
             if erreur_tls(e):
@@ -312,6 +321,30 @@ class Robot:
         else:
             self._bloques.pop(reseau, None)  # le site répond : le réseau, s'il était à tester, est rouvert
         return reponse
+
+    def _verifier_ouvert(self, url: str, reseau: str, hote: str, role: Role) -> None:
+        if reseau in self._fermes:
+            raise ReseauBloque(f"{url} : réseau {reseau} bloqué ({self._bloques[reseau].motif})")
+        if reseau in self._bloques and role != "sonde":
+            raise ReseauBloque(f"{url} : réseau {reseau} bloqué au passage précédent, pas encore testé par une sonde")
+        if hote in self._sites_lents:
+            raise SiteBloque(f"{url} : site bloqué jusqu'à la fin du passage (délai dépassé)")
+
+    def reseau_de(self, url: str) -> str | None:
+        """Le réseau /24 (IPv6 : /64) de l'hôte de `url`, pour regrouper les communes par réseau ; `None` si l'hôte
+        ne se résout pas."""
+        with self._verrou:
+            try:
+                return self._reseau(httpx.URL(url).host)
+            except Injoignable:
+                return None
+
+    def _delai_depasse(self, reseau: str, hote: str) -> None:
+        """Un premier délai dépassé sur un réseau ne bloque que son site ; le second, venu d'un autre site du même
+        réseau, bloque le réseau, comme le premier sur un réseau bloqué au passage précédent et encore à tester."""
+        if reseau in self._bloques or any(self._reseaux[h] == reseau for h in self._sites_lents):
+            self._bloquer(reseau, "délai dépassé")
+        self._sites_lents.add(hote)
 
     def _bloquer(self, reseau: str, motif: str, retry_after: str | None = None) -> None:
         maintenant = self._horloge().astimezone(UTC).replace(microsecond=0)
@@ -362,18 +395,54 @@ class Robot:
             self._reseaux[hote] = str(ipaddress.ip_network(f"{adresse}/{prefixe}", strict=False))
         return self._reseaux[hote]
 
-    def _patienter(self, reseau: str, hote: str) -> None:
+    def _patienter(self, reseau: str, hote: str) -> bool:
         """Attend que l'intervalle du réseau soit passé depuis sa dernière requête : 5 s, ou plus si la section
-        `reseaux` ou le `Crawl-delay` de l'hôte le demandent."""
-        derniere = self._dernieres.get(reseau)
-        if derniere is None:
-            return
-        regles = self._robots.get(hote)
-        delai = regles.crawl_delay if isinstance(regles, Regles) and regles.crawl_delay else 0.0
-        intervalle = max(INTERVALLE, self._intervalles.get(reseau, 0.0), delai)
-        ecart = (self._horloge() - derniere).total_seconds()
-        if ecart < intervalle:
-            self._attendre(intervalle - ecart)
+        `reseaux` ou le `Crawl-delay` de l'hôte le demandent. Le verrou est rendu pendant l'attente : un autre fil lit
+        un autre réseau pendant ce temps (alternance), mais jamais deux requêtes ne partent à la fois. Rend `True` si
+        le robot a attendu."""
+        attendu = False
+        while True:
+            derniere = self._dernieres.get(reseau)
+            if derniere is None:
+                return attendu
+            regles = self._robots.get(hote)
+            delai = regles.crawl_delay if isinstance(regles, Regles) and regles.crawl_delay else 0.0
+            intervalle = max(INTERVALLE, self._intervalles.get(reseau, 0.0), delai)
+            ecart = (self._horloge() - derniere).total_seconds()
+            if ecart >= intervalle:
+                return attendu
+            attendu = True
+            self._verrou.release()
+            try:
+                self._attendre(intervalle - ecart)
+            finally:
+                self._verrou.acquire()
+            if self._dernieres.get(reseau) == derniere:
+                return attendu  # personne n'a lu ce réseau pendant l'attente : l'intervalle est passé
+
+
+Alternance = Callable[[Sequence[Sequence[Callable[[], object]]]], list[list[object]]]
+
+
+def alterner(groupes: Sequence[Sequence[Callable[[], object]]]) -> list[list[object]]:
+    """Fait les tâches de chaque groupe dans l'ordre, chaque groupe dans son fil, et rend leurs résultats, groupe par
+    groupe. Le cron fait un groupe par réseau /24 : le robot n'envoyant qu'une requête à la fois, un réseau lit
+    pendant que les autres attendent leurs 5 s. Une tâche ne doit pas lever : elle rend son erreur."""
+    if len(groupes) <= 1:
+        return [[tache() for tache in groupe] for groupe in groupes]
+    with ThreadPoolExecutor(max_workers=len(groupes), thread_name_prefix="reseau") as fils:
+        return list(fils.map(lambda groupe: [tache() for tache in groupe], groupes))
+
+
+def par_reseau(robot: Robot, elements: Sequence[T], url: Callable[[T], str | None]) -> list[list[T]]:
+    """Les `elements` groupés par le réseau de leur `url`, dans l'ordre de leur première apparition ; un élément sans
+    URL, ou dont l'hôte ne se résout pas, forme son propre groupe."""
+    groupes: dict[object, list[T]] = {}
+    for i, element in enumerate(elements):
+        adresse = url(element)
+        reseau = robot.reseau_de(adresse) if adresse else None
+        groupes.setdefault(reseau if reseau is not None else ("seul", i), []).append(element)
+    return list(groupes.values())
 
 
 def robot_des_sources(
