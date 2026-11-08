@@ -308,6 +308,41 @@ def test_un_preavis_sans_numero_n_est_pas_importe_et_un_document_illisible_est_s
     assert _lire(tmp_path, "conseils/import.json")["conseils"]["5717"] == "2026-10-23T05:17:05Z"
 
 
+def _document_par_type(n, titre, type_="", objet="", publie=""):
+    """Un document de la vue `documentconseil`, à la forme de ceux de La Rippe et de Mollens : sans Séance."""
+    filtres = f'<a href="javascript:;" data-filter-type="t" data-filter-value="x">{type_}</a>'
+    if objet:
+        filtres += f'<a href="javascript:;" data-filter-type="ext_id" data-filter-value="{objet}">{objet}</a>'
+    return (
+        f'<div class="qs-edit qs-edit-top qs-edit-out" data-qsedit data-qsedit-editnode="{n}"><div class="col">'
+        f'{filtres}<a href="{ROPRAZ}/n{n}"><h5>{titre}</h5></a></div>'
+        + (f'<div class="col-auto"><small>Publié le {publie}</small></div>' if publie else "")
+        + "</div>"
+    )
+
+
+def test_une_vue_sans_seances_donne_ses_preavis_par_objet_et_ses_seances_par_les_titres_des_proces_verbaux(
+    tmp_path, horloge
+):
+    reseau = _reseau(horloge)
+    reseau.pages[_recherche(reseau, ROPRAZ)] = Page(
+        '<div class="tplDocumentConseil"><div>1 à 3 sur 3 éléments trouvés</div>'
+        + _document_par_type(901, "Délégations de compétences", "", "Objet n° 05-2026", "6 octobre 2026")
+        + _document_par_type(902, "Comptes communaux 2025", "Préavis", "Objet n° 04-2026", "24 août 2026")
+        + _document_par_type(903, "Procès verbal de la séance du 23 juin 2026")
+        + "</div>"
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz()))
+
+    preavis = _lire(tmp_path, "conseils/5798/objets/05-2026.json")
+    assert (preavis["numero"], preavis["titre"], preavis["depose"]) == ("05-2026", "Délégations de compétences", "2026-10-06")
+    assert (tmp_path / "conseils/5798/objets/04-2026.json").exists()
+    seance = _lire(tmp_path, "conseils/5798/seances/2026-06-23.json")
+    assert (seance["nom"], [d["lien"] for d in seance["documents"]]) == ("Séance du 23 juin 2026", [f"{ROPRAZ}/n903"])
+    assert [s["cle"] for s in _lire(tmp_path, "conseils/5798/seances.json")["seances"]] == ["5798/2026-06-23"]
+
+
 def test_une_recherche_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):
     # Un conseil général qui n'a encore rien publié : « 0 éléments trouvés » n'est pas un échec.
     reseau = _reseau(horloge)

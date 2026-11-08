@@ -18,6 +18,29 @@
 					"niveaux": [["preavis", "seances"], ["seances"]]
 				}
 			]
+		},
+		{
+			"id": "quicksite",
+			"nom": "Quicksite",
+			"editeur": "eAdmin Solutions SA",
+			"variantes": [
+				{
+					"id": "ancienne",
+					"marqueur": "tplListDocumentSummary",
+					"niveaux": [["preavis", "seances"], ["seances"]]
+				},
+				{
+					"id": "coreapi",
+					"marqueur": "tplDeepsearch",
+					"niveaux": [["preavis", "seances"], ["seances"]]
+				},
+				{
+					"id": "conseil",
+					"marqueur": "tplCCIBPublicOrdreJour",
+					"niveaux": [["objets", "seances"], ["seances"]]
+				},
+				{ "id": "conseil-externe", "marqueur": "teaser-agenda", "niveaux": [["seances"]] }
+			]
 		}
 	],
 	"sources": [

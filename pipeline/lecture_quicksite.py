@@ -69,9 +69,9 @@ from datetime import date
 from urllib.parse import urlencode, urljoin, urlsplit
 
 from bruts import Bruts
-from mesure_sites import Mesure, PagesLues, RobotSansReseau, sans_journal
+from mesure_sites import Mesure, PagesLues, liens, sans_journal
 from pages_html import Noeud, arbre, espaces
-from robot_communal import PageNonLue, Robot
+from robot_communal import PageNonLue, Reponse, Robot
 from schema import Plateforme, Site, Source, niveau_de
 
 VARIANTES = ("ancienne", "coreapi", "conseil", "conseil-externe")
@@ -106,6 +106,18 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
 def _journal(nom: str, message: str) -> None:
     """Note dans le journal du passage un élément sauté du conseil `nom` (le nom de sa source)."""
     print(f"{nom} : élément sauté, {message}", file=sys.stderr)
+
+
+def _page_suivante(robot: Robot, source: Source, url: str, page: int) -> Reponse | None:
+    """La page `page` d'une liste paginée. La première doit se lire (sinon l'import est en échec) ; une suivante
+    qui ne se lit pas finit la liste, notée dans le journal (un réseau bloqué interrompt quand même l'import)."""
+    if page == 1:
+        return robot.lire(url, "import")
+    try:
+        return robot.lire(url, "import")
+    except PageNonLue as e:
+        _journal(source.nom, f"page {page} de la liste non lue ({e}), liste lue jusqu'à la page {page - 1}")
+        return None
 
 
 # --- Bibliothèque (ancienne génération) ----------------------------------------------------------------------------
@@ -145,7 +157,9 @@ def _documents_bibliotheque(robot: Robot, source: Source, depuis: date | None) -
     pieces: list[_Piece] = []
     vus: set[str] = set()
     for page in range(1, PAGES_MAX + 1):
-        reponse = robot.lire(url_de_page(site, page), "import")
+        reponse = _page_suivante(robot, source, url_de_page(site, page), page)
+        if reponse is None:
+            break
         lues = _page_de_bibliotheque(source.nom, reponse.texte, reponse.url)
         nouvelles = [p for p in lues if p.lien not in vus]
         if not nouvelles:
@@ -310,8 +324,8 @@ class _Document:
     lien: str  # lien stable `/n<id>`, absolu
     titre: str
     type: str | None  # le type du site (« Préavis », « Décisions »), s'il en donne un
-    seance: str  # le libellé de sa Séance, tel quel (« Séance du 1 janvier 2025 »)
-    jour: date  # le jour de sa Séance
+    seance: str | None  # le libellé de sa Séance, tel quel (« Séance du 1 janvier 2025 »), s'il en a une
+    jour: date | None  # le jour de sa Séance
     publie: date | None
     objet: str | None  # l'Objet que le document cite (« 005: Demande de crédit… »)
 
@@ -325,14 +339,21 @@ def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> lis
     assert site is not None
     documents: list[_Document] = []
     for page in range(1, PAGES_MAX + 1):
-        reponse = robot.lire(url_de_recherche(site, page), "import")
+        reponse = _page_suivante(robot, source, url_de_recherche(site, page), page)
+        if reponse is None:
+            break
         lus, fin, total = _page_de_resultats(source.nom, reponse.texte, reponse.url)
         documents += lus
         if not lus or fin >= total:
             break
-        if depuis is not None and all(d.jour < depuis for d in lus):
+        if depuis is not None and all(_quand(d) is not None and _quand(d) < depuis for d in lus):
             break
     return documents
+
+
+def _quand(d: _Document) -> date | None:
+    """Le jour d'un document : celui de sa Séance, sinon sa publication."""
+    return d.jour or d.publie
 
 
 def _page_de_resultats(nom: str, texte: str, url: str) -> tuple[list[_Document], int, int]:
@@ -389,9 +410,13 @@ def _document(noeud: Noeud, seance: str | None, url: str) -> _Document | str:
     type_ = espaces(filtres["t"].texte()) if "t" in filtres else ""
     if seance is None and "sortdate" in filtres:
         seance = espaces(filtres["sortdate"].texte())
+    if seance is None and (_SEANCE_PAR_LE_TYPE.search(type_) or _SEANCE_PAR_LE_TITRE.match(titre)):
+        # Une vue sans Séances (Mollens) : un procès-verbal ou un ordre du jour donne la sienne par son titre.
+        jour_du_titre = date_ecrite(titre)
+        seance = f"Séance du {jour_en_lettres(jour_du_titre)}" if jour_du_titre else None
     jour = date_ecrite(seance or "")
-    if seance is None or jour is None:
-        return f"sans Séance datée : {titre}"
+    if jour is None:
+        seance = None
     publie = re.search(r"Publié le\s+(.+)", espaces(noeud.texte()))
     objet = filtres["ext_id"].attr("data-filter-value") if "ext_id" in filtres else None
     return _Document(
@@ -404,6 +429,10 @@ def _document(noeud: Noeud, seance: str | None, url: str) -> _Document | str:
         objet=espaces(objet) if objet else None,
     )
 
+
+_SEANCE_PAR_LE_TYPE = re.compile(r"proc[èe]s|ordre|d[ée]cision", re.I)
+_SEANCE_PAR_LE_TITRE = re.compile(r"^(proc[èe]s[- ]verbal|ordre du jour|extraits? d|d[ée]cisions?\b|convocation)", re.I)
+_OBJET_NUMERO = re.compile(r"^Objet\s+n[°o]\.?\s*(?P<numero>\S*\d\S*)", re.I)
 
 # --- Séances et préavis -------------------------------------------------------------------------------------------
 
@@ -433,10 +462,11 @@ def _seances_et_preavis(
 ) -> tuple[list[dict], list[dict]]:
     """Les Séances (*meetings*) et les préavis (*affairs*) des documents, dans l'ordre du site, ceux de la fenêtre
     seulement."""
-    dans_la_fenetre = [d for d in documents if depuis is None or d.jour >= depuis]
+    dans_la_fenetre = [d for d in documents if depuis is None or _quand(d) is None or _quand(d) >= depuis]
     par_seance: dict[tuple[date, str], list[_Document]] = {}
     for d in dans_la_fenetre:
-        par_seance.setdefault((d.jour, d.seance), []).append(d)
+        if d.jour is not None and d.seance is not None:
+            par_seance.setdefault((d.jour, d.seance), []).append(d)
     seances = [
         {
             "id": None,
@@ -452,18 +482,22 @@ def _seances_et_preavis(
         return seances, []
     preavis: list[dict] = []
     for d in dans_la_fenetre:
-        if not d.titre.lower().startswith("préavis"):
+        par_l_objet = _OBJET_NUMERO.match(d.objet or "")
+        if d.titre.lower().startswith("préavis"):
+            numero = _numero(d.titre)
+        elif par_l_objet and not _SEANCE_PAR_LE_TYPE.search(d.type or ""):
+            # Le titre est le texte de l'Objet (La Rippe, Juriens) : son numéro est dans « Objet n° 05-2026 ».
+            numero = par_l_objet["numero"]
+        else:
             continue
-        numero = _numero(d.titre)
         if numero is None:
             _journal(nom, f"Objet sans numéro, non importé : {d.titre}")
             continue
         if any(p["number"] == numero for p in preavis):
             _journal(nom, f"Objet {numero} en double, le premier du site gardé : {d.titre}")
             continue
-        lies = [d] + [
-            x for x in par_seance[(d.jour, d.seance)] if x is not d and _ref(d) is not None and _ref(x) == _ref(d)
-        ]
+        voisins = par_seance[(d.jour, d.seance)] if d.jour is not None and d.seance is not None else dans_la_fenetre
+        lies = [d] + [x for x in voisins if x is not d and _ref(d) is not None and _ref(x) == _ref(d)]
         preavis.append(
             {
                 "id": None,
@@ -471,7 +505,7 @@ def _seances_et_preavis(
                 "title": {"fr": _titre_du_preavis(d, numero)},
                 "type_name": {"fr": TYPE_PREAVIS},
                 "state_name": None,
-                "begin_date": d.jour.isoformat(),
+                "begin_date": _quand(d).isoformat() if _quand(d) else None,
                 "url_external": None,
                 "contributors": {"data": []},
                 "docs": {"data": [_doc(x) for x in lies]},
@@ -482,7 +516,9 @@ def _seances_et_preavis(
 
 def _ref(d: _Document) -> str | None:
     """La référence de l'Objet qu'un document cite, sans son texte (« 072: Plans Port de Founex » donne « 072 »)."""
-    return d.objet.split(":", 1)[0].strip() or None if d.objet else None
+    if not d.objet:
+        return None
+    return re.sub(r"^Objet\s+n[°o]\.?\s*", "", d.objet, flags=re.I).split(":", 1)[0].strip() or None
 
 
 def _numero(titre: str) -> str | None:
@@ -496,10 +532,12 @@ def _numero(titre: str) -> str | None:
 def _titre_du_preavis(d: _Document, numero: str) -> str:
     """Le texte de l'Objet que le préavis cite (« 005: Demande de crédit… » donne « Demande de crédit… »), sinon la
     suite de son titre (« Préavis 04/2024 - Budget 2025 » donne « Budget 2025 »), sinon son titre."""
-    if d.objet:
+    if d.objet and ":" in d.objet:
         texte = re.sub(r"^\s*\S+\s*:\s*", "", d.objet)
         if texte:
             return texte
+    if not d.titre.lower().startswith("préavis"):
+        return d.titre  # le titre est déjà le texte de l'Objet
     suite = d.titre[d.titre.index(numero) + len(numero) :].strip(" -–—:")
     return suite or d.titre
 
@@ -510,16 +548,107 @@ def _doc(d: _Document) -> dict:
 
 # --- Mesure du site, pour le script de préparation des sources ------------------------------------------------------
 
+ESSAIS = 6  # liens du menu essayés au plus pour trouver la page des documents du conseil
+_TRACE = re.compile(r"quicksite|qsPortal|/coreapi/elasticsearch/|conseilcommunal/", re.I)
+# Les liens du menu qui mènent aux documents du conseil, par ordre de préférence : ses documents, puis ses préavis,
+# ses procès-verbaux, ses séances. Ni « Documents d'identité » ni les formulaires.
+_LIENS_DU_MENU = (
+    re.compile(r"documents?[ -](du|des|conseil)|documents-publics|/documents?$", re.I),
+    re.compile(r"pr[ée]avis", re.I),
+    re.compile(r"proc[èe]s[- ]verbaux|/pv\b", re.I),
+    re.compile(r"s[ée]ances?|ordres? du jour|assembl[ée]es", re.I),
+    re.compile(r"documents?", re.I),
+)
+_HORS_SUJET = re.compile(r"identit|passeport|formulaire|r[èe]glement|municipal(e|it)", re.I)
+_PROJET = re.compile(r"/coreapi/elasticsearch/projects/([\w-]+)/assets/js/elasticsearch\.js")
+VUES_DU_CONSEIL = ("documentconseil", "documentconseildates")
+
 
 def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
-    """Le site d'une commune mesuré pour le script de préparation des sources (#179)."""
-    raise NotImplementedError("mesure des sites Quicksite : #179")
+    """Le site d'une commune mesuré pour le script de préparation des sources, d'après sa page du conseil (déjà lue)
+    et ses pages déjà déclarées : une page sans trace de Quicksite l'écarte (« autre ») ; puis, parmi les pages
+    déclarées, la page du conseil et `ESSAIS` liens de son menu au plus, la première qui porte la liste d'une
+    variante : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers
+    le module (`conseil-externe`), la bibliothèque de l'ancienne génération (`ancienne`), ou la recherche `coreapi`
+    d'une vue du conseil (`coreapi`, avec ses paramètres) ; le fragment de la recherche est lu pour que `requetes`
+    rejoue la lecture. Le niveau et les requêtes du passage ordinaire sont l'affaire du script (`requetes`)."""
+    conseil = pages.texte(page_du_conseil) or ""
+    if not _TRACE.search(conseil):
+        return Mesure("autre", remarques=[f"aucune trace de Quicksite sur {page_du_conseil}"])
+    mesure = Mesure(plateforme.id)
+    tous = [(u, f"{u} {t}") for u, t in liens(conseil, page_du_conseil) if not _HORS_SUJET.search(t)]
+    menu = [u for motif in _LIENS_DU_MENU for u, texte in tous if motif.search(texte)]
+    module = [urljoin(page_du_conseil, h) for h in re.findall(r'href="([^"]*/conseilcommunal/public/ordredujour/)"', conseil)]
+    essais = [u for u in (declare.seances, *module, page_du_conseil) if u] + list(dict.fromkeys(menu))[:ESSAIS]
+    autres_vues = []
+    for url in dict.fromkeys(essais):
+        texte = pages.texte(url)
+        if texte is None:
+            continue
+        if "tplCCIBPublicOrdreJour" in texte:
+            mesure.variante, mesure.seances = "conseil", url
+            conseillers = urljoin(url, "../conseillers")
+            if pages.texte(conseillers) and "tplCCIBPublicConseillers" in (pages.texte(conseillers) or ""):
+                mesure.membres = conseillers
+            return mesure
+        if "teaser-agenda" in texte and _ID_DU_MODULE.search(texte):
+            mesure.variante, mesure.seances = "conseil-externe", url
+            return mesure
+        if "tplListDocumentSummary" in texte:
+            mesure.variante, mesure.seances = "ancienne", url
+            return mesure
+        coreapi = _parametres_coreapi(texte)
+        if coreapi is not None:
+            mesure.variante, mesure.seances, mesure.coreapi = "coreapi", url, coreapi
+            return mesure
+        vue = re.search(r'class="tplDeepsearch"[^>]*?data-elasticsearch-view="([^"]*)"', texte, re.S)
+        if vue:
+            autres_vues.append(f"{url} (vue {vue[1]})")
+    mesure.remarques.append("aucune page des documents du conseil Quicksite trouvée")
+    if autres_vues:
+        mesure.remarques.append(f"recherches d'une autre vue : {', '.join(autres_vues)}")
+    return mesure
+
+
+def _parametres_coreapi(texte: str) -> dict | None:
+    """Les paramètres de la recherche `coreapi` d'une page, si c'est une vue des documents du conseil."""
+    section = re.search(r'<section[^>]*class="tplDeepsearch"(.*?)>', texte, re.S)
+    projet = _PROJET.search(texte)
+    if section is None or projet is None:
+        return None
+    attrs = dict(re.findall(r'data-elasticsearch-([\w-]+)="([^"]*)"', section[1]))
+    if attrs.get("view") not in VUES_DU_CONSEIL or not attrs.get("node", "").isdigit():
+        return None
+    return {
+        "projet": projet[1],
+        "vue": attrs["view"],
+        "noeud": int(attrs["node"]),
+        "taille": int(attrs.get("pagesize") or 60),
+        "tri": attrs.get("sort") or "date_extid",
+    }
+
+
+class _RobotCompteur:
+    """Un robot qui lit par les pages du script de préparation (chaque page une fois par lancement) et compte les
+    requêtes que le passage ordinaire ferait : deux pour une page redirigée, une sinon."""
+
+    def __init__(self, pages: PagesLues) -> None:
+        self._pages = pages
+        self.requetes = 0
+
+    def lire(self, url: str, role: str) -> Reponse:
+        page = self._pages.lire(url)
+        self.requetes += 1 if isinstance(page, PageNonLue) or page.url == url else 2
+        if isinstance(page, PageNonLue):
+            raise page
+        return page
 
 
 def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | None:
     """Les requêtes que coûterait la lecture de `source` (`lire`) au passage ordinaire dont la fenêtre part de
-    `depuis`, rejouée sans réseau sur les pages déjà lues ; `None` si la lecture échoue."""
-    robot = RobotSansReseau(pages.pages, lambda url: 1)
+    `depuis`. Les pages qui manquent sont lues par le robot du script (une liste Quicksite en demande peu : pages de
+    résultats, ou Séances et fiches du module Conseil) ; `None` si la lecture échoue."""
+    robot = _RobotCompteur(pages)
     try:
         sans_journal(lambda: lire(robot, source, depuis))  # type: ignore[arg-type]
     except (ValueError, PageNonLue):

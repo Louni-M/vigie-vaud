@@ -53,6 +53,7 @@ class Mesure:
     seances: str | None = None
     objets: str | None = None
     membres: str | None = None
+    coreapi: dict | None = None  # paramètres de la recherche Quicksite (`site.coreapi`), pour la variante `coreapi`
     niveau: list[str] | None = None
     requetes: int | None = None
     remarques: list[str] = field(default_factory=list)
