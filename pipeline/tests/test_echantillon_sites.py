@@ -211,20 +211,44 @@ def test_un_bloc_ou_un_identifiant_absent_arrete_le_script_sans_rien_ecrire(tmp_
     assert not (tmp_path / "echantillon").exists()
 
 
-def test_l_echantillon_enregistre_est_declare_et_reduit_au_bloc_lu():
-    from echantillon_sites import DOSSIER, ECHANTILLONS
+# Le marqueur que la sonde cherche sur la page de liste de chaque échantillon (section `plateformes`).
+MARQUEURS = {
+    "i-web/seances": "icmsTablePastSitzungen",
+    "i-web/objets": "icmsTablePastSitzungen",
+    "i-web/pages": "icmsTablePastSitzungen",
+    "quicksite/ancienne": "tplListDocumentSummary",
+    "quicksite/coreapi": "tplDeepsearch",
+    "quicksite/coreapi-ropraz": "tplDeepsearch",
+    "quicksite/conseil": "tplCCIBPublicOrdreJour",
+    "quicksite/conseil-vevey": "teaser-agenda",
+}
 
+
+def test_l_echantillon_enregistre_est_declare_et_reduit_au_bloc_lu():
+    from echantillon_sites import DOSSIER, ECHANTILLONS, _charset
+
+    assert sorted(e.nom for e in ECHANTILLONS) == sorted(MARQUEURS)
     for echantillon in ECHANTILLONS:
-        dossier = DOSSIER / echantillon.plateforme / echantillon.variante
+        dossier = DOSSIER / echantillon.nom
         index = json.loads((dossier / "index.json").read_text(encoding="utf-8"))
         assert [p["sorte"] for p in index["pages"]] == [p.sorte for p in echantillon.pages]
         for page in index["pages"]:
-            texte = (dossier / page["fichier"]).read_text(encoding="utf-8")
+            # Chaque page est écrite dans l'encodage que le site a servi (ISO-8859-1 pour le module Conseil de Vevey).
+            texte = (dossier / page["fichier"]).read_text(encoding=_charset(page["entetes"]))
             provenance = f"<!--\n  Échantillon {echantillon.plateforme}, variante {echantillon.variante} : "
             assert texte.startswith(provenance)
             assert "<script" not in texte and "<nav" not in texte and "<footer" not in texte
             assert len(texte) < 20_000, page["fichier"]
-        assert "icmsTablePastSitzungen" in (dossier / "seances.html").read_text(encoding="utf-8")  # marqueur de sonde
+        seances = next(p for p in index["pages"] if p["sorte"] == "seances")
+        liste = (dossier / seances["fichier"]).read_text(encoding=_charset(seances["entetes"]))
+        assert MARQUEURS[echantillon.nom] in liste  # marqueur de sonde
+
+
+def test_le_module_conseil_de_vevey_est_enregistre_en_iso_8859_1():
+    from echantillon_sites import DOSSIER
+
+    page = (DOSSIER / "quicksite/conseil-vevey/seance.html").read_bytes()
+    assert "Préavis".encode("iso-8859-1") in page and "Préavis".encode("utf-8") not in page
 
 
 def _une_page(tmp_path, corps, page):
@@ -304,3 +328,31 @@ def test_une_page_en_iso_8859_1_est_ecrite_dans_son_encodage(tmp_path):
     octets = (tmp_path / "echantillon/quicksite/conseil/seances.html").read_bytes()
     assert "<td>Séance du 6 octobre</td>".encode("iso-8859-1") in octets
     assert "Échantillon quicksite".encode("iso-8859-1") in octets
+
+
+def test_les_lignes_quicksite_se_choisissent_par_un_parametre_du_lien_et_par_plusieurs_selecteurs(tmp_path):
+    # Quicksite nomme ses éléments par un paramètre : `?ID=<séance>`, `download.asp?d=<document>`,
+    # `Home.asp?N=<nœud>&DocAction=Download`. Un identifiant n'est pas pris pour le début d'un autre (`?ID=43120`).
+    corps = """<div id="liste">
+<div class="date-past"><a href="/ordredujour/?ID=4312">07 Octobre</a></div>
+<div class="date-past"><a href="/ordredujour/?ID=43120">08 Octobre</a></div>
+<div class="date-future"><a href="#">09 Décembre</a></div>
+<div class="table-row-body"><a href="/download.asp?d=8636">Ordre du jour</a></div>
+<div class="table-row-body"><a href="/qsPortal/Home.asp?N=20354&amp;DocAction=Download">PV</a></div>
+<div class="table-row-body"><a href="/download.asp?d=999">Lettre de M. Exemple</a></div>
+</div>"""
+    page = PageEchantillon(
+        "seances",
+        "https://www.exemple.ch/seances",
+        ("div#liste",),
+        ("4312", "8636", "20354"),
+        lignes="div.date-past, div.date-future, div.table-row-body",
+    )
+
+    assert _une_page(tmp_path, corps, page) == (
+        '<div id="liste">\n'
+        '<div class="date-past"><a href="/ordredujour/?ID=4312">07 Octobre</a></div>\n'
+        '<div class="table-row-body"><a href="/download.asp?d=8636">Ordre du jour</a></div>\n'
+        '<div class="table-row-body"><a href="/qsPortal/Home.asp?N=20354&amp;DocAction=Download">PV</a></div>\n'
+        "</div>\n"
+    )
