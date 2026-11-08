@@ -3,6 +3,17 @@ l'import, `lire`, qui lit le conseil d'une commune Quicksite par le robot commun
 d'OpenParlData ; et, pour le script de préparation des sources seulement, `mesurer` et `requetes`
 (`mesure_sites.py`).
 
+Variante **ancienne génération** (thème « Powered by quicksite v 5.5.3 », Aigle) : la page des documents
+(`site.seances`) est une bibliothèque rendue côté serveur, 20 documents par page (`?Page_0=<n>`), du plus récent au
+plus ancien par mise en ligne. Chaque document (`div.tplDocumentSummaryItem`) donne son titre, son type
+(`#doctype` : Préavis, Annexes aux préavis, Ordre du jour, PV du conseil, Décision…), la référence de son Objet s'il
+en a une (`strBusinessID`, « 2026-14: »), une description, son lien stable (`Home.asp?N=<id>&DocAction=Download`) et
+sa mise en ligne (« 04.11.2026 07:22:22 »). Les Séances n'ont pas de liste : un ordre du jour, un procès-verbal ou
+une décision donne la sienne par la date de son titre ou de sa description (« Ordre du jour du Conseil Communal du
+29 octobre 2026 », « Séance du Conseil du 1er octobre 2026 ») ; un tel document sans date est sauté. Un préavis
+est un document de type « Préavis » ; il est daté de sa mise en ligne, et ses documents sont ceux qui citent son
+numéro (annexe, extrait de décision, rapport de commission).
+
 Variante **`coreapi`** (nouvelle génération, thème eAdmin de 2023) : la page des documents du conseil
 (`site.seances`, celle que la sonde lit) est vide ; le navigateur la remplit par la recherche `coreapi`, dont les
 paramètres sont déclarés (`site.coreapi`). Le cron demande ce fragment HTML page par page (`&page=<n>`), du plus
@@ -38,7 +49,7 @@ import re
 import sys
 from dataclasses import dataclass
 from datetime import date
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode, urljoin, urlsplit
 
 from bruts import Bruts
 from mesure_sites import Mesure, PagesLues, RobotSansReseau, sans_journal
@@ -46,7 +57,7 @@ from pages_html import Noeud, arbre, espaces
 from robot_communal import PageNonLue, Robot
 from schema import Plateforme, Site, Source, niveau_de
 
-VARIANTES = ("coreapi",)
+VARIANTES = ("ancienne", "coreapi")
 TYPE_PREAVIS = "Préavis"  # le type d'un préavis lu dans une liste de documents
 PAGES_MAX = 200  # pages de résultats lues au plus pour une commune, même au rattrapage
 
@@ -59,15 +70,183 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
         raise ValueError(f"{source.id} : ni bloc `site` ni bloc `conseil`")
     if site.variante not in VARIANTES:
         raise ValueError(f"{source.id} : variante Quicksite {site.variante} pas encore lue")
-    documents = _documents_coreapi(robot, source, depuis)
     niveau = niveau_de(conseil.donne)
-    seances, objets = _seances_et_preavis(source.nom, documents, depuis, avec_preavis=bool(niveau and niveau.objets))
+    avec_preavis = bool(niveau and niveau.objets)
+    if site.variante == "ancienne":
+        seances, objets = _bibliotheque(source.nom, _documents_bibliotheque(robot, source, depuis), depuis, avec_preavis)
+    else:
+        documents = _documents_coreapi(robot, source, depuis)
+        seances, objets = _seances_et_preavis(source.nom, documents, depuis, avec_preavis)
     return Bruts(conseil, objets=objets, seances=seances, membres=[])
 
 
 def _journal(nom: str, message: str) -> None:
     """Note dans le journal du passage un élément sauté du conseil `nom` (le nom de sa source)."""
     print(f"{nom} : élément sauté, {message}", file=sys.stderr)
+
+
+# --- Bibliothèque (ancienne génération) ----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Piece:
+    """Un document de la bibliothèque de l'ancienne génération."""
+
+    lien: str  # lien stable `Home.asp?N=<id>&DocAction=Download`, absolu
+    titre: str
+    type: str | None
+    reference: str | None  # la référence de son Objet (`strBusinessID`, « 2026-14 »)
+    description: str
+    publie: date | None  # sa mise en ligne
+
+
+TYPES_DE_SEANCE = ("Ordre du jour", "PV du conseil", "Décision")
+_TITRES_DE_SEANCE = re.compile(r"^(ordre du jour|proc[èe]s[- ]verbal|extrait de d[ée]cision)", re.I)
+_CITE_UN_PREAVIS = re.compile(r"pr[ée]avis\s+(?:n[°o]\.?\s*)?(\d[\w/-]*\d)", re.I)
+
+
+def url_de_page(site: Site, page: int) -> str:
+    """La page `page` de la bibliothèque des documents (la première est `site.seances` elle-même)."""
+    if site.seances is None:
+        raise ValueError("variante ancienne sans page `seances`")
+    if page == 1:
+        return site.seances
+    return f"{site.seances}{'&' if '?' in site.seances else '?'}Page_0={page}"
+
+
+def _documents_bibliotheque(robot: Robot, source: Source, depuis: date | None) -> list[_Piece]:
+    """Les documents de la bibliothèque, dans l'ordre du site, page après page : jusqu'à une page vide ou qui ne
+    donne rien de nouveau, et, au passage ordinaire, jusqu'à la première page mise en ligne avant la fenêtre."""
+    site = source.site
+    assert site is not None
+    pieces: list[_Piece] = []
+    vus: set[str] = set()
+    for page in range(1, PAGES_MAX + 1):
+        reponse = robot.lire(url_de_page(site, page), "import")
+        lues = _page_de_bibliotheque(source.nom, reponse.texte, reponse.url)
+        nouvelles = [p for p in lues if p.lien not in vus]
+        if not nouvelles:
+            break
+        vus.update(p.lien for p in nouvelles)
+        pieces += nouvelles
+        if depuis is not None and all(p.publie is not None and p.publie < depuis for p in nouvelles):
+            break
+    return pieces
+
+
+def _page_de_bibliotheque(nom: str, texte: str, url: str) -> list[_Piece]:
+    """Les documents d'une page de la bibliothèque. Lève `ValueError` pour une page sans bibliothèque, ou dont
+    aucun document ne se lit."""
+    racine = arbre(texte)
+    liste = next((n for n in racine.elements() if "tplListDocumentSummary" in _classes(n)), None)
+    if liste is None:
+        raise ValueError(f"{url} : aucune bibliothèque de documents (tplListDocumentSummary)")
+    pieces: list[_Piece] = []
+    illisibles = 0
+    for noeud in (n for n in liste.elements() if "tplDocumentSummaryItem" in _classes(n)):
+        piece = _piece(noeud, url)
+        if isinstance(piece, str):
+            illisibles += 1
+            _journal(nom, f"document illisible ({piece})")
+        else:
+            pieces.append(piece)
+    if illisibles and not pieces:
+        raise ValueError(f"{url} : aucun document lisible dans la bibliothèque")
+    return pieces
+
+
+def _piece(noeud: Noeud, url: str) -> _Piece | str:
+    def texte_de(condition) -> str:
+        return next((espaces(n.texte()) for n in noeud.elements() if condition(n)), "")
+
+    titre = texte_de(lambda n: "strNodeName" in _classes(n))
+    lien = next(
+        (a.attr("href") or "" for a in noeud.elements() if a.tag == "a" and "DocAction=Download" in (a.attr("href") or "")),
+        None,
+    )
+    if not lien:
+        return f"sans lien vers le document : {titre or url}"
+    reference = texte_de(lambda n: "strBusinessID" in _classes(n)).rstrip(": ")
+    return _Piece(
+        lien=urljoin(url, lien),
+        titre=titre or "Document",
+        type=texte_de(lambda n: n.attr("id") == "doctype") or None,
+        reference=reference or None,
+        description=texte_de(lambda n: "strDescription" in _classes(n)),
+        publie=date_ecrite(texte_de(lambda n: "dtmDocLastUpdate" in _classes(n))),
+    )
+
+
+def _bibliotheque(
+    nom: str, pieces: list[_Piece], depuis: date | None, avec_preavis: bool
+) -> tuple[list[dict], list[dict]]:
+    """Les Séances, tirées des ordres du jour, procès-verbaux et décisions datés, et les préavis de la bibliothèque,
+    dans l'ordre du site, ceux de la fenêtre seulement."""
+    par_seance: dict[date, list[_Piece]] = {}
+    for p in pieces:
+        if p.type not in TYPES_DE_SEANCE and not (p.type is None and _TITRES_DE_SEANCE.match(p.titre)):
+            continue
+        jour = date_ecrite(p.titre) or date_ecrite(p.description)
+        if jour is None:
+            _journal(nom, f"document de Séance sans date : {p.titre}")
+            continue
+        if depuis is None or jour >= depuis:
+            par_seance.setdefault(jour, []).append(p)
+    seances = [
+        {
+            "id": None,
+            "name": {"fr": f"Séance du {jour_en_lettres(jour)}"},
+            "begin_date": jour.isoformat(),
+            "url_external": None,
+            "agendas": {"data": []},
+            "docs": {"data": [_doc_de_piece(p) for p in docs]},
+        }
+        for jour, docs in par_seance.items()
+    ]
+    if not avec_preavis:
+        return seances, []
+    preavis: list[dict] = []
+    for p in pieces:
+        if p.type != TYPE_PREAVIS or (depuis is not None and p.publie is not None and p.publie < depuis):
+            continue
+        numero = _numero(p.titre)
+        if numero is None:
+            _journal(nom, f"Objet sans numéro, non importé : {p.titre}")
+            continue
+        if any(o["number"] == numero for o in preavis):
+            _journal(nom, f"Objet {numero} en double, le premier du site gardé : {p.titre}")
+            continue
+        lies = [p] + [x for x in pieces if x is not p and x.type != TYPE_PREAVIS and numero in _cites(x)]
+        suite = p.titre[p.titre.index(numero) + len(numero) :].strip(" -–—:")
+        preavis.append(
+            {
+                "id": None,
+                "number": numero,
+                "title": {"fr": suite or p.titre},
+                "type_name": {"fr": TYPE_PREAVIS},
+                "state_name": None,
+                "begin_date": p.publie.isoformat() if p.publie else None,
+                "url_external": None,
+                "contributors": {"data": []},
+                "docs": {"data": [_doc_de_piece(x) for x in lies]},
+            }
+        )
+    return seances, preavis
+
+
+def _cites(p: _Piece) -> set[str]:
+    """Les numéros d'Objet qu'un document cite : sa référence, et les préavis que son titre nomme."""
+    cites = set(_CITE_UN_PREAVIS.findall(p.titre))
+    return cites | {p.reference} if p.reference else cites
+
+
+def _doc_de_piece(p: _Piece) -> dict:
+    return {"name": p.titre, "url": p.lien, "date": p.publie.isoformat() if p.publie else None, "category": p.type}
+
+
+def jour_en_lettres(jour: date) -> str:
+    """« 1er octobre 2026 », « 29 octobre 2026 »."""
+    return f"{'1er' if jour.day == 1 else jour.day} {_MOIS[jour.month - 1]} {jour.year}"
 
 
 # --- Recherche `coreapi` ------------------------------------------------------------------------------------------
