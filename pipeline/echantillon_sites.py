@@ -62,6 +62,7 @@ class PageEchantillon:
     ids: tuple[str, ...] = ()  # identifiants des lignes gardées ; vide : toutes
     lignes: str | None = None  # sélecteur des lignes d'une liste HTML (`tr`, `tbody>tr`…)
     sans: tuple[str, ...] = ()  # sélecteurs des éléments retirés des blocs (bouton d'archive, contact…)
+    garder: tuple[str, ...] = ()  # balises retirées d'ordinaire mais lues ici (le `button` d'un libellé de Séance)
 
 
 @dataclass(frozen=True)
@@ -189,6 +190,7 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
                 "n1910", "n2144", "n1918",  # 15 juin : ordre du jour, préavis 072 de nouveau, plans de ce préavis
             ),
             lignes="div.qs-edit",
+            garder=("button",),  # le libellé de chaque Séance (« Séance du 9 novembre 2026 »)
         ),
     )),
     # La même recherche, vue `documentconseil` : documents typés (Décisions, Préavis, Procès-verbaux), chacun avec sa
@@ -479,7 +481,10 @@ def _filtrer(bloc: _Noeud, page: PageEchantillon, vus: set[str]) -> None:
     for noeud in [bloc, *bloc.elements()]:
         noeud.enfants = [
             e for e in noeud.enfants
-            if not (isinstance(e, _Noeud) and (e.tag in RETIRES or any(_correspond(e, x) for x in page.sans)))
+            if not (
+                isinstance(e, _Noeud)
+                and ((e.tag in RETIRES and e.tag not in page.garder) or any(_correspond(e, x) for x in page.sans))
+            )
         ]
         noeud.attrs = [(k, v) for k, v in noeud.attrs if k != "style" and not k.startswith("on")]
         entites = noeud.attr("data-entities")

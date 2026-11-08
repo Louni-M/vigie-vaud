@@ -74,6 +74,50 @@
       "title": "Conseil",
       "type": "object"
     },
+    "Coreapi": {
+      "additionalProperties": false,
+      "description": "La recherche `coreapi` d'une page Quicksite de nouvelle génération : les attributs `data-elasticsearch-*` de\nsa section `tplDeepsearch`, et le projet de son script. Le cron demande le fragment HTML de cette recherche\n(`/coreapi/elasticsearch/projects/<projet>/<vue>/search?…`), page par page, au lieu de la page elle-même.",
+      "properties": {
+        "projet": {
+          "description": "Projet du site (`founex25`).",
+          "minLength": 1,
+          "pattern": "^[\\w-]+$",
+          "type": "string"
+        },
+        "vue": {
+          "description": "Vue de la recherche (`documentconseildates`).",
+          "minLength": 1,
+          "pattern": "^[\\w-]+$",
+          "type": "string"
+        },
+        "noeud": {
+          "description": "Nœud de la page des documents (`data-elasticsearch-node`).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "taille": {
+          "description": "Documents par page de résultats (`data-elasticsearch-pagesize`).",
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tri": {
+          "description": "Tri des résultats (`date_extid`).",
+          "minLength": 1,
+          "pattern": "^\\w+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projet",
+        "vue",
+        "noeud",
+        "taille",
+        "tri"
+      ],
+      "title": "Coreapi",
+      "type": "object"
+    },
     "CouvertureDeclaree": {
       "additionalProperties": false,
       "else": {
@@ -300,6 +344,18 @@
           ],
           "default": null,
           "description": "Page des membres du conseil, en HTML ; absente si le site n'en a pas."
+        },
+        "coreapi": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Coreapi"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page `seances` est vide et remplie par le navigateur."
         }
       },
       "required": [
