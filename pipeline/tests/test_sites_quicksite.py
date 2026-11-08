@@ -30,15 +30,25 @@ PLATEFORMES = [
         "variantes": [
             {"id": "ancienne", "marqueur": "tplListDocumentSummary", "niveaux": [["seances"], ["preavis", "seances"]]},
             {"id": "coreapi", "marqueur": "tplDeepsearch", "niveaux": [["seances"], ["preavis", "seances"]]},
+            {"id": "conseil", "marqueur": "tplCCIBPublicOrdreJour", "niveaux": [["seances"], ["objets", "seances"]]},
+            {"id": "conseil-externe", "marqueur": "teaser-agenda", "niveaux": [["seances"]]},
         ],
     }
 ]
 
 
 def _quicksite(
-    ofs, commune, seances, coreapi=None, donne=("preavis", "seances"), conseil="Conseil communal", variante="coreapi"
+    ofs,
+    commune,
+    seances,
+    coreapi=None,
+    donne=("preavis", "seances"),
+    conseil="Conseil communal",
+    variante="coreapi",
+    membres=None,
 ):
     site = {"plateforme": "quicksite", "variante": variante, "seances": seances}
+    site |= {"membres": membres} if membres else {}
     return {
         "id": f"site-{ofs}",
         "nom": f"{conseil} de {commune} (site de la commune)",
@@ -95,6 +105,9 @@ def _reseau(horloge):
     reseau = Reseau(horloge, adresses=adresses)
     reseau.pages |= echantillon("quicksite", "coreapi") | echantillon("quicksite", "coreapi-ropraz")
     reseau.pages |= echantillon("quicksite", "ancienne")
+    reseau.adresses |= {"www.conseilmontreux.ch": "185.54.6.110", "www.vevey.ch": "5.102.146.10"}
+    reseau.adresses |= {"conseil.vevey.ch": "5.102.146.20"}
+    reseau.pages |= echantillon("quicksite", "conseil") | echantillon("quicksite", "conseil-vevey")
     return reseau
 
 
@@ -479,3 +492,181 @@ def test_une_bibliotheque_disparue_est_un_marqueur_absent(tmp_path, horloge):
     _passer(tmp_path, horloge, reseau, _sources(_aigle()))
 
     assert _lire(tmp_path, "etat-sources.json")["sources"]["site-5401"]["motif"] == "marqueur absent"
+
+
+# --- Module Conseil : Montreux, Vevey ------------------------------------------------------------------------------
+
+MONTREUX = "https://www.conseilmontreux.ch/conseilcommunal/public"
+VEVEY = "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-videos"
+
+
+def _montreux(**options):
+    options.setdefault("donne", ("objets", "seances"))
+    return _quicksite(
+        5886, "Montreux", f"{MONTREUX}/ordredujour/", variante="conseil", membres=f"{MONTREUX}/conseillers", **options
+    )
+
+
+def _vevey():
+    return _quicksite(5890, "Vevey", VEVEY, variante="conseil-externe", donne=("seances",))
+
+
+def _montreux_complet(reseau):
+    """Le module de Montreux : l'échantillon, une Séance annoncée sans page le 9 décembre, et les pages des Séances
+    voisines de celle de l'échantillon (9 septembre, 11 novembre), fabriquées."""
+    url = f"{MONTREUX}/ordredujour/"
+    page = reseau.pages[url]
+    annoncee = (
+        '<div class="col col-md-3 col-lg-2 text-center tmp4 date-future"><a href="#"><div class="bullet-date">'
+        '<div class="day">09</div><label>Décembre</label></div></a></div>'
+    )
+    corps = page.corps.decode("utf-8")
+    fin = corps.index('<div class="col col-md-3 col-lg-2 text-center tmp3 date-nextmeeting">')
+    fin = corps.index("</div>\n</div>\n</div>", fin)  # la fin de la pastille du 11 novembre
+    corps = corps[: fin + len("</div>\n</div>\n</div>")] + annoncee + corps[fin + len("</div>\n</div>\n</div>") :]
+    reseau.pages[url] = Page(corps, entetes=page.entetes)
+    for ident, titre in ((4311, "séance du 9 septembre 2026"), (4313, "séance du 11 novembre 2026")):
+        reseau.pages[f"{MONTREUX}/ordredujour/?ID={ident}"] = Page(
+            f'<div class="tplDetailBlade"><h1>{titre}</h1><div class="card"><div class="card-body">'
+            f'<div class="box"><div class="description"><p>Ordre du jour</p></div></div>'
+            f'<a href="https://www.conseilmontreux.ch/conseilcommunal/download.asp?d={ident}0" class="docname" '
+            f'title="OJ_{ident}.pdf">OJ_{ident}.pdf</a></div></div></div>'
+        )
+
+
+def test_une_seance_du_module_conseil_a_ses_points_relies_a_leurs_objets_et_le_reste_de_ses_documents(
+    tmp_path, horloge
+):
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux()))
+
+    seance = _lire(tmp_path, "conseils/5886/seances/2026-10-07.json")
+    assert (seance["nom"], seance["lien"]) == ("séance du 7 octobre 2026", f"{MONTREUX}/ordredujour/?ID=4312")
+    points = [(p["titre"][:40], p["objet"]) for p in seance["ordre_du_jour"]]
+    assert points == [
+        ("Préambule", None),
+        ("Approbation du procès-verbal de la séanc", None),
+        ("Préavis 27/2026 renvoi commission Sur la", None),  # sa fiche n'a pas pu être lue
+        ("Préavis 29/2026 relatif à la fixation de", "5886/29-2026"),
+    ]
+    # Les documents du point relié à son Objet restent à l'Objet ; ceux des autres vont à la Séance.
+    assert [d["titre"] for d in seance["documents"]] == [
+        "AG_OJCC_Seance_20261007_VF.pdf",
+        "PV_9_SEPTEMBRE_2026_provisoire-VF.pdf",
+        "Rapport-renvoi-en-commission-pour-complement-d-information-le-preavis-No-27-2026-relatif-a-l-octro_6_39_56.pdf",
+    ]
+
+
+def test_un_objet_du_module_conseil_a_son_auteur_ses_documents_dates_et_pas_de_statut(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux()))
+
+    objet = _lire(tmp_path, "conseils/5886/objets/29-2026.json")
+    assert (objet["numero"], objet["type"], objet["statut"], objet["depose"]) == ("29/2026", "Préavis", None, "2026-09-08")
+    assert objet["titre"].startswith("relatif à la fixation de la rémunération")
+    assert objet["lien"] == f"{MONTREUX}/documents/recherche/?id=3403"
+    assert [(c["nom"], c["sorte"]) for c in objet["contributeurs"]] == [("Municipalité", "groupe")]
+    assert [(d["titre"][:30], d["date"]) for d in objet["documents"]] == [
+        ("9_1_Preavis_29_2026_Indemnites", "2026-09-08"),
+        ("Rapport-relatif-a-la-fixation-", "2026-09-28"),
+    ]
+
+
+def test_le_module_conseil_lit_ses_conseillers_page_apres_page_et_les_epargne_dans_les_titres(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux()))
+
+    assert _lire(tmp_path, "conseils/5886/membres.json")["membres"] == [
+        "Ihab Al Jundi",
+        "Jonathan Al Jundi",
+        "Olivier Müller",
+        "Tal Luder",
+    ]
+    (point,) = [p for p in _lire(tmp_path, "conseils/5886/seances/2026-10-07.json")["ordre_du_jour"] if p["objet"]]
+    assert "(Rapp. M. Olivier Müller)" in point["titre"]  # un conseiller connu reste lisible
+
+
+def test_le_module_conseil_garde_une_seance_annoncee_sans_page_et_s_en_tient_a_la_fenetre(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux()))
+
+    assert [s["cle"] for s in _lire(tmp_path, "conseils/5886/seances.json")["seances"]] == [
+        "5886/2026-12-09",
+        "5886/2026-11-11",
+        "5886/2026-10-07",
+        "5886/2026-09-09",
+    ]
+    assert _lire(tmp_path, "conseils/5886/seances/2026-12-09.json")["lien"] is None
+    # Les Séances de 2025, avant la fenêtre, ne sont pas ouvertes.
+    assert not any("ID=415" in r.url for r in reseau.journal)
+
+
+def test_au_rattrapage_le_module_conseil_ouvre_aussi_les_annees_precedentes(tmp_path, horloge, capsys):
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux()), rattrapage_cible="5886")
+
+    assert f"{MONTREUX}/ordredujour/?ID=4157" in [r.url for r in reseau.journal]
+    assert f"{MONTREUX}/ordredujour/?ID=4157 non lue" in capsys.readouterr().err  # pas dans l'échantillon : sautée
+
+
+def test_un_module_conseil_en_seances_seulement_n_ouvre_aucune_fiche_d_objet(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux(donne=("seances",))))
+
+    assert not any("/documents/recherche/" in r.url for r in reseau.journal)
+    assert not (tmp_path / "conseils/5886/objets").exists()
+    titres = [d["titre"] for d in _lire(tmp_path, "conseils/5886/seances/2026-10-07.json")["documents"]]
+    assert "9_1_Preavis_29_2026_IndemnitesMembres_CC_VF.pdf" in titres
+
+
+def test_vevey_lit_ses_seances_sur_le_site_de_la_ville_et_leur_ordre_du_jour_en_iso_8859_1(tmp_path, horloge):
+    reseau = _reseau(horloge)
+
+    _passer(tmp_path, horloge, reseau, _sources(_vevey()))
+
+    seance = _lire(tmp_path, "conseils/5890/seances/2026-10-01.json")
+    assert (seance["date"], seance["lien"]) == ("2026-10-01T19:30", "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=157")
+    assert seance["nom"] == "Séance du Conseil communal du jeudi 1er octobre 2026 - 19h30"
+    assert [(p["numero"], p["titre"][:30]) for p in seance["ordre_du_jour"]] == [
+        ("2.1", "Adoption de l’ordre du jour de"),
+        ("9.1", "Réponse au postulat de [partic"),  # Vevey n'a pas de page des membres : masqué
+        ("9.2", "Fixation des indemnités et jet"),
+        ("10.1", "Arrêté communal d’imposition p"),
+        ("10.2", "Crédits supplémentaires au bud"),
+    ]
+    assert [d["titre"] for d in seance["documents"]][:2] == [
+        "OJ-CC_2026-10-01-octobre-2026-ID-7291272.pdf",
+        "rp25_2026_RP-Reponse-postulat-J-Rilliet_Violences-domestiques.pdf",
+    ]
+
+
+def test_vevey_ne_demande_que_ce_que_son_robots_txt_autorise_a_la_casse_pres(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    reseau.pages["https://conseil.vevey.ch/robots.txt"] = Page(
+        "User-agent: *\nAllow: /ConseilCommunal/seances/\nAllow: /conseilcommunal/download.asp\nDisallow: /\n",
+        entetes={"Content-Type": "text/plain"},
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_vevey()))
+
+    module = [r.url for r in reseau.journal if "conseil.vevey.ch" in r.url]
+    # Le lien cassé du site de la Ville (`www.vevey.ch/conseil.vevey.ch/conseilcommunal/…`) est récrit à la casse
+    # autorisée ; la Séance du 3 septembre, sans page dans l'échantillon, est sautée.
+    assert module == [
+        "https://conseil.vevey.ch/robots.txt",
+        "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=157",
+        "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=156",
+    ]
+    assert (tmp_path / "conseils/5890/seances/2026-10-01.json").exists()
