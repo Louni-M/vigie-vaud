@@ -22,7 +22,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -136,3 +136,55 @@ def echantillon(plateforme: str, variante: str) -> dict[str, Page]:
         if p["url"] != p["finale"]:
             pages[p["url"]] = redirection(urlsplit(p["finale"]).path)
     return pages
+
+
+class Ordonnanceur:
+    """Le temps virtuel des fils du passage : l'attente (`attendre`) et l'alternance entre réseaux (`alterner`) du
+    cron, sur l'horloge factice des tests. Hors d'une alternance, `attendre` avance l'horloge comme
+    `HorlogeFactice.attendre`. Pendant une alternance, chaque groupe a son fil, et un fil qui attend dort jusqu'à son
+    heure : l'horloge n'avance que quand tous les fils vivants dorment, jusqu'au premier réveil. Deux fils qui
+    attendent 5 s chacun en même temps ne font donc passer que 5 s, comme sur le réseau réel."""
+
+    def __init__(self, horloge) -> None:
+        self.horloge = horloge
+        self._condition = threading.Condition()
+        self._vivants = 0
+        self._dormeurs: dict[int, datetime] = {}
+
+    def attendre(self, secondes: float) -> None:
+        with self._condition:
+            if self._vivants == 0:
+                self.horloge.attendre(secondes)
+                return
+            moi = threading.get_ident()
+            reveil = self.horloge.heure + timedelta(seconds=secondes)
+            self._dormeurs[moi] = reveil
+            self._avancer()
+            while self.horloge.heure < reveil:
+                self._condition.wait()
+            del self._dormeurs[moi]
+
+    def _avancer(self) -> None:
+        if self._dormeurs and len(self._dormeurs) == self._vivants:
+            self.horloge.heure = max(self.horloge.heure, min(self._dormeurs.values()))
+            self._condition.notify_all()
+
+    def alterner(self, groupes):
+        resultats: list = [None] * len(groupes)
+
+        def fil(i, taches):
+            try:
+                resultats[i] = [tache() for tache in taches]
+            finally:
+                with self._condition:
+                    self._vivants -= 1
+                    self._avancer()
+
+        with self._condition:
+            self._vivants = len(groupes)
+        fils = [threading.Thread(target=fil, args=(i, g)) for i, g in enumerate(groupes)]
+        for f in fils:
+            f.start()
+        for f in fils:
+            f.join()
+        return resultats

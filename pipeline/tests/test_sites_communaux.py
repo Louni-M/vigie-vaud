@@ -366,15 +366,12 @@ def test_le_robot_lit_le_site_une_page_toutes_les_5_s_sous_le_nom_vigievaud_impo
     )
 
 
-@pytest.mark.parametrize(
-    ("adresse", "attente"),
-    [("195.65.10.22", 5), ("193.34.137.9", 0)],
-    ids=["meme-24", "autre-reseau"],
-)
-def test_deux_communes_d_un_meme_24_s_attendent_et_celles_d_un_autre_reseau_non(tmp_path, horloge, adresse, attente):
+def test_deux_communes_d_un_meme_24_s_attendent(tmp_path, horloge):
+    # Deux réseaux, eux, s'alternent : voir `test_alternance_reseaux.py`.
+    attente = 5
     reseau = _preverenges(horloge)
     reseau.duree = 0.001  # chaque réponse prend un peu de temps réel : deux requêtes simultanées se verraient
-    reseau.adresses["www.blonay-saint-legier.ch"] = adresse
+    reseau.adresses["www.blonay-saint-legier.ch"] = "195.65.10.22"
     reseau.pages |= echantillon("i-web", "objets")
     blonay = _site(5892, "Blonay - Saint-Légier", f"{BLONAY}/seances", f"{BLONAY}/conseil-communal")
 

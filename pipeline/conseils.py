@@ -63,7 +63,7 @@ from rattachement import (
     porte_sur_le_canton,
     rattacher_objet,
 )
-from robot_communal import Robot, robot_des_sources
+from robot_communal import Alternance, Robot, alterner, par_reseau, robot_des_sources
 from schema import (
     FUSEAU,
     RACINE,
@@ -79,6 +79,7 @@ from schema import (
     Objet,
     PointOrdreDuJour,
     Seance,
+    Source,
     Statut,
     lire_sources,
 )
@@ -631,12 +632,14 @@ def importer_conseils(
     rattrapage: bool = False,
     communes: Path = COMMUNES_JSON,
     robot: Robot | None = None,
+    alternance: Alternance = alterner,
 ) -> ImportConseils:
     """Importe chaque conseil déclaré dans `sources` dans `depot`, un clone du dépôt de données, ou seulement ceux
     dont la clé est dans `dus`. Un conseil d'OpenParlData repart du jour de son dernier import réussi moins un jour
     de recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
     `rattrapage`. Un conseil dont la source a un bloc `site` est lu sur le site de sa commune par `robot`
-    (`lire_site`), dans la fenêtre du jour à Lausanne, ou en entier pour un `rattrapage`. Un conseil en échec est
+    (`lire_site`), dans la fenêtre du jour à Lausanne, ou en entier pour un `rattrapage` ; les sites sont lus d'abord,
+    un fil par réseau /24 (`alternance`), puis traités dans l'ordre de `sources`. Un conseil en échec est
     signalé, garde sa date, et les autres continuent ; un `rattrapage` réussi est aussi noté dans `rattrapages`.
     Le commit et le push sont l'affaire de l'appelant.
 
@@ -654,9 +657,9 @@ def importer_conseils(
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
     membres: dict[str, MembresConseil] = {}
-    for source in sources.sources:
-        if source.conseil is None or (dus is not None and source.conseil.cle not in dus):
-            continue
+    a_importer = [s for s in sources.sources if s.conseil is not None and (dus is None or s.conseil.cle in dus)]
+    lus = _lire_les_sites(robot, [s for s in a_importer if s.site is not None], sources, jour, rattrapage, alternance)
+    for source in a_importer:
         cle = source.conseil.cle
         if rattrapage:
             debut = None
@@ -664,9 +667,9 @@ def importer_conseils(
             debut = depuis or (imports[cle].date() - RECOUVREMENT if cle in imports else None)
         try:
             if source.site is not None:
-                if robot is None:
-                    raise ValueError("aucun robot communal pour lire le site de la commune")
-                bruts = lire_site(robot, source, sources, jour, rattrapage)
+                if isinstance(lus[source.id], Exception):
+                    raise lus[source.id]
+                bruts = lus[source.id]
             else:
                 bruts = importer(opd, source.conseil, debut)
             connus = lire_membres(depot, cle) if source.site is not None else []
@@ -704,6 +707,33 @@ def importer_conseils(
     ecrire(depot, documents, genere)
     supprimer_perimes(depot, documents)
     return etat
+
+
+def _lire_les_sites(
+    robot: Robot | None,
+    sites: list[Source],
+    sources: FichierSources,
+    jour: date,
+    rattrapage: bool,
+    alternance: Alternance,
+) -> dict[str, Bruts | Exception]:
+    """Les `Bruts` de chaque source communale, ou l'erreur qui a interrompu sa lecture, lus un fil par réseau /24 :
+    les communes d'un même réseau à la suite, les réseaux en même temps (le robot n'envoie jamais deux requêtes à la
+    fois)."""
+    if not sites:
+        return {}
+    if robot is None:
+        return {s.id: ValueError("aucun robot communal pour lire le site de la commune") for s in sites}
+
+    def lire(source: Source) -> Bruts | Exception:
+        try:
+            return lire_site(robot, source, sources, jour, rattrapage)
+        except Exception as e:  # rendue au fil principal, qui la traite comme tout échec d'un conseil
+            return e
+
+    groupes = par_reseau(robot, sites, lambda s: s.site.seances if s.site else None)
+    resultats = alternance([[lambda s=s: lire(s) for s in groupe] for groupe in groupes])
+    return {s.id: r for groupe, rs in zip(groupes, resultats, strict=True) for s, r in zip(groupe, rs, strict=True)}
 
 
 def reconstruire(depot: Path, sources: FichierSources, horloge: Callable[[], datetime]) -> list[str]:

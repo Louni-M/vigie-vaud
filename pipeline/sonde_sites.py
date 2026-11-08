@@ -26,6 +26,7 @@ from robot_communal import (
     ReseauBloque,
     Robot,
     RobotsIndisponible,
+    SiteBloque,
 )
 from schema import FichierSources, Source
 
@@ -54,7 +55,7 @@ def sonder_site(robot: Robot, source: Source, sources: FichierSources) -> str | 
         return "le site refuse les robots"
     except ErreurHttp as e:
         return f"HTTP {e.statut}"
-    except DelaiDepasse:
+    except (DelaiDepasse, SiteBloque):
         return "délai dépassé"
     except ErreurTls:
         return "erreur TLS"
