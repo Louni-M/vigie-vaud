@@ -3,7 +3,7 @@ de test, lues par le robot communal sur l'échantillon enregistré (`echantillon
 les autres conseils. Le seul seam est le passage du cron (`passage_sites._passer`) ; les cas instables sont fabriqués
 par de petites retouches de l'échantillon.
 
-Variante `coreapi` : Founex (vue `documentconseildates`, documents groupés par Séance) et Ropraz (vue
+Variante ancienne génération : Aigle (bibliothèque des documents, page après page). Variante `coreapi` : Founex (vue `documentconseildates`, documents groupés par Séance) et Ropraz (vue
 `documentconseil`, une Séance par document, dont les fausses « Séance du 1 janvier »).
 """
 
@@ -28,13 +28,17 @@ PLATEFORMES = [
         "nom": "Quicksite",
         "editeur": "eAdmin Solutions SA",
         "variantes": [
+            {"id": "ancienne", "marqueur": "tplListDocumentSummary", "niveaux": [["seances"], ["preavis", "seances"]]},
             {"id": "coreapi", "marqueur": "tplDeepsearch", "niveaux": [["seances"], ["preavis", "seances"]]},
         ],
     }
 ]
 
 
-def _coreapi(ofs, commune, seances, coreapi, donne=("preavis", "seances"), conseil="Conseil communal"):
+def _quicksite(
+    ofs, commune, seances, coreapi=None, donne=("preavis", "seances"), conseil="Conseil communal", variante="coreapi"
+):
+    site = {"plateforme": "quicksite", "variante": variante, "seances": seances}
     return {
         "id": f"site-{ofs}",
         "nom": f"{conseil} de {commune} (site de la commune)",
@@ -48,12 +52,12 @@ def _coreapi(ofs, commune, seances, coreapi, donne=("preavis", "seances"), conse
         "fraicheur": "import",
         "couverture": {"communes": [ofs], "mode": "scrape"},
         "conseil": {"body_key": str(ofs), "donne": list(donne)},
-        "site": {"plateforme": "quicksite", "variante": "coreapi", "seances": seances, "coreapi": coreapi},
+        "site": site | ({"coreapi": coreapi} if coreapi else {}),
     }
 
 
 def _founex(**options):
-    return _coreapi(
+    return _quicksite(
         5717,
         "Founex",
         f"{FOUNEX}/N640/documents.html",
@@ -63,7 +67,7 @@ def _founex(**options):
 
 
 def _ropraz(**options):
-    return _coreapi(
+    return _quicksite(
         5798,
         "Ropraz",
         f"{ROPRAZ}/documents-du-conseil",
@@ -87,8 +91,10 @@ def _page_suivante(url, page):
 
 
 def _reseau(horloge):
-    reseau = Reseau(horloge, adresses={"www.founex.ch": RESEAU_QUICKSITE, "www.ropraz.ch": RESEAU_QUICKSITE})
+    adresses = {"www.founex.ch": RESEAU_QUICKSITE, "www.ropraz.ch": RESEAU_QUICKSITE, "www.aigle.ch": "185.54.6.109"}
+    reseau = Reseau(horloge, adresses=adresses)
     reseau.pages |= echantillon("quicksite", "coreapi") | echantillon("quicksite", "coreapi-ropraz")
+    reseau.pages |= echantillon("quicksite", "ancienne")
     return reseau
 
 
@@ -347,3 +353,129 @@ def test_la_recherche_est_demandee_avec_les_parametres_declares(tmp_path, horlog
     parametres = parse_qs(recherche.query, keep_blank_values=True)
     assert (parametres["elasticsearchNode"], parametres["elasticsearchPagesize"]) == (["748"], ["200"])
     assert parametres["elasticsearchSort"] == ["date_extid_desc_rank"]
+
+
+# --- Ancienne génération : la bibliothèque d'Aigle -----------------------------------------------------------------
+
+AIGLE = "https://www.aigle.ch"
+
+
+def _aigle(**options):
+    return _quicksite(5401, "Aigle", f"{AIGLE}/documents", variante="ancienne", **options)
+
+
+def _piece(n, titre, type_, publie, reference="", description=""):
+    """Un document de la bibliothèque, à la forme de ceux d'Aigle."""
+    return (
+        f'<div class="tplDocumentSummaryItem"><div class="col-md-6"><a href="/N{n}/x.html">'
+        f'<h4 class="strNodeName"><strong>{titre}</strong></h4></a><p><span class="strBusinessID">{reference}</span>'
+        f'<span id="doctype">{type_}</span></p></div><div class="col-md-3"><div class="strDescription"><small>'
+        f'{description}</small></div></div><div class="col-md-3"><a href="/qsPortal/Home.asp?N={n}&amp;DocAction=Download">'
+        f'</a><p><small class="dtmDocLastUpdate">{publie} 08:00:00</small></p></div></div>'
+    )
+
+
+def _bibliotheque(*pieces):
+    return Page(f'<div class="tplListDocumentSummary"><div class="resultsFrame">{"".join(pieces)}</div></div>')
+
+
+def _aigle_en_trois_pages(reseau):
+    """La bibliothèque d'Aigle : l'échantillon en première page (mises en ligne de septembre à novembre 2026), une
+    deuxième page mise en ligne avant la fenêtre, une troisième vide (après la dernière page, le site n'a plus rien)."""
+    reseau.pages[f"{AIGLE}/documents?Page_0=2"] = _bibliotheque(
+        _piece(19900, "Ordre du jour du Conseil communal du 12 mars 2026", "Ordre du jour", "02.03.2026"),
+        _piece(19901, "Préavis 2026-12 première version", "Préavis", "01.03.2026"),
+        _piece(19902, "Procès-verbal Installation des autorités communales", "PV du conseil", "01.03.2026"),
+    )
+    reseau.pages[f"{AIGLE}/documents?Page_0=3"] = _bibliotheque()
+
+
+def test_une_commune_de_l_ancienne_generation_tire_ses_seances_des_titres_de_ses_documents(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _aigle_en_trois_pages(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_aigle()))
+
+    assert [s["cle"] for s in _lire(tmp_path, "conseils/5401/seances.json")["seances"]] == [
+        "5401/2026-10-29",
+        "5401/2026-10-01",
+        "5401/2026-09-03",
+    ]
+    seance = _lire(tmp_path, "conseils/5401/seances/2026-10-01.json")
+    assert (seance["nom"], seance["lien"], seance["ordre_du_jour"]) == ("Séance du 1er octobre 2026", None, [])
+    lien = f"{AIGLE}/qsPortal/Home.asp?N={{}}&DocAction=Download"
+    assert seance["documents"] == [
+        {"titre": "Procès-Verbal du Conseil Communal du 1er octobre 2026", "date": "2026-11-04", "lien": lien.format(20354)},
+        {"titre": "Extrait de décision préavis 2025-10", "date": "2026-10-05", "lien": lien.format(20280)},
+        {"titre": "Ordre du jour de la séance du Conseil communal du 1er octobre 2026", "date": "2026-09-30", "lien": lien.format(20248)},
+        {"titre": "Ordre du jour de la séance du Conseil communal du 1er octobre 2026", "date": "2026-09-30", "lien": lien.format(20249)},
+    ]
+
+
+def test_les_preavis_de_la_bibliotheque_sont_dates_de_leur_mise_en_ligne_avec_les_documents_qui_les_citent(
+    tmp_path, horloge
+):
+    reseau = _reseau(horloge)
+    _aigle_en_trois_pages(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_aigle()))
+
+    preavis = _lire(tmp_path, "conseils/5401/objets/2026-12.json")
+    assert (preavis["numero"], preavis["titre"], preavis["type"], preavis["depose"]) == (
+        "2026-12",
+        "Transition numérique",
+        "Préavis",
+        "2026-10-14",
+    )
+    assert [d["titre"] for d in preavis["documents"]] == ["Préavis 2026-12 - Transition numérique", "Annexe au préavis 2026-12"]
+    assert (preavis["statut"], preavis["contributeurs"]) == (None, [])
+    # Une interpellation, un rapport de commission : pas des préavis.
+    assert sorted(p.name for p in (tmp_path / "conseils/5401/objets").iterdir()) == ["2026-12.json", "2026-14.json"]
+
+
+def test_le_passage_ordinaire_s_arrete_a_la_premiere_page_mise_en_ligne_avant_la_fenetre(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _aigle_en_trois_pages(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_aigle()))
+
+    assert [r.url for r in reseau.journal if "Page_0" in r.url] == [f"{AIGLE}/documents?Page_0=2"]
+    assert len(reseau.journal) < 60
+    assert not (tmp_path / "conseils/5401/seances/2026-03-12.json").exists()
+
+
+def test_le_rattrapage_lit_la_bibliotheque_jusqu_a_sa_derniere_page(tmp_path, horloge, capsys):
+    reseau = _reseau(horloge)
+    _aigle_en_trois_pages(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_aigle()), rattrapage_cible="5401")
+
+    assert [r.url for r in reseau.journal if "Page_0" in r.url] == [
+        f"{AIGLE}/documents?Page_0=2",
+        f"{AIGLE}/documents?Page_0=3",
+    ]
+    assert (tmp_path / "conseils/5401/seances/2026-03-12.json").exists()
+    journal = capsys.readouterr().err
+    # Le premier du site, le plus récent, l'emporte ; un procès-verbal sans date n'a pas de Séance.
+    assert "Objet 2026-12 en double, le premier du site gardé : Préavis 2026-12 première version" in journal
+    assert "document de Séance sans date : Procès-verbal Installation des autorités communales" in journal
+    assert _lire(tmp_path, "conseils/5401/objets/2026-12.json")["depose"] == "2026-10-14"
+
+
+def test_une_commune_de_l_ancienne_generation_en_seances_seulement_n_importe_aucun_preavis(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _aigle_en_trois_pages(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_aigle(donne=("seances",))))
+
+    assert (tmp_path / "conseils/5401/seances/2026-10-29.json").exists()
+    assert not (tmp_path / "conseils/5401/objets").exists()
+
+
+def test_une_bibliotheque_disparue_est_un_marqueur_absent(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    reseau.pages[f"{AIGLE}/documents"] = Page("<html><body><h1>Documents</h1></body></html>")
+
+    _passer(tmp_path, horloge, reseau, _sources(_aigle()))
+
+    assert _lire(tmp_path, "etat-sources.json")["sources"]["site-5401"]["motif"] == "marqueur absent"
