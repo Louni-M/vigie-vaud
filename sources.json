@@ -18,6 +18,29 @@
 					"niveaux": [["preavis", "seances"], ["seances"]]
 				}
 			]
+		},
+		{
+			"id": "quicksite",
+			"nom": "Quicksite",
+			"editeur": "eAdmin Solutions SA",
+			"variantes": [
+				{
+					"id": "ancienne",
+					"marqueur": "tplListDocumentSummary",
+					"niveaux": [["preavis", "seances"], ["seances"]]
+				},
+				{
+					"id": "coreapi",
+					"marqueur": "tplDeepsearch",
+					"niveaux": [["preavis", "seances"], ["seances"]]
+				},
+				{
+					"id": "conseil",
+					"marqueur": "tplCCIBPublicOrdreJour",
+					"niveaux": [["objets", "seances"], ["seances"]]
+				},
+				{ "id": "conseil-externe", "marqueur": "teaser-agenda", "niveaux": [["seances"]] }
+			]
 		}
 	],
 	"sources": [
@@ -732,6 +755,812 @@
 				"seances": "https://www.blonay-saint-legier.ch/seances",
 				"objets": "https://www.blonay-saint-legier.ch/objets-politiques",
 				"membres": "https://www.blonay-saint-legier.ch/conseil-communal"
+			}
+		},
+		{
+			"id": "site-5401",
+			"nom": "Conseil communal d'Aigle (site de la commune)",
+			"nom_court": "Site d'Aigle",
+			"attribution": {
+				"texte": "Commune d'Aigle",
+				"lien": "https://www.aigle.ch/N387/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5401], "mode": "scrape" },
+			"conseil": { "body_key": "5401", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "ancienne",
+				"seances": "https://www.aigle.ch/documents"
+			}
+		},
+		{
+			"id": "site-5402",
+			"nom": "Conseil communal de Bex (site de la commune)",
+			"nom_court": "Site de Bex",
+			"attribution": {
+				"texte": "Commune de Bex",
+				"lien": "https://www.bex.ch/N191/conseil-communal.html?M=16485",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5402], "mode": "non_couvert", "raison": "nouveau_site" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5405",
+			"nom": "Conseil communal de Gryon (site de la commune)",
+			"nom_court": "Site de Gryon",
+			"attribution": {
+				"texte": "Commune de Gryon",
+				"lien": "https://www.gryon.ch",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5405], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5409",
+			"nom": "Conseil communal d'Ollon (site de la commune)",
+			"nom_court": "Site d'Ollon",
+			"attribution": {
+				"texte": "Commune d'Ollon",
+				"lien": "https://www.ollon.ch/N698/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5409], "mode": "non_couvert", "raison": "nouveau_site" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5413",
+			"nom": "Conseil communal de Roche (site de la commune)",
+			"nom_court": "Site de Roche",
+			"attribution": {
+				"texte": "Commune de Roche",
+				"lien": "https://www.roche-vd.ch/N474/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5413], "mode": "scrape" },
+			"conseil": { "body_key": "5413", "donne": ["objets", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "conseil",
+				"seances": "https://www.roche-vd.ch/conseilcommunal/public/ordredujour/",
+				"membres": "https://www.roche-vd.ch/conseilcommunal/public/conseillers"
+			}
+		},
+		{
+			"id": "site-5415",
+			"nom": "Conseil communal d'Yvorne (site de la commune)",
+			"nom_court": "Site d'Yvorne",
+			"attribution": {
+				"texte": "Commune d'Yvorne",
+				"lien": "https://www.yvorne.ch/N675/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5415], "mode": "scrape" },
+			"conseil": { "body_key": "5415", "donne": ["seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.yvorne.ch/documents-conseil-communal?t=tagstext%3A'documents.Préavis'&M=1439",
+				"coreapi": {
+					"projet": "yvorne25",
+					"vue": "documentconseildates",
+					"noeud": 515,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5431",
+			"nom": "Conseil général de Mollens (site de la commune)",
+			"nom_court": "Site de Mollens",
+			"attribution": {
+				"texte": "Commune de Mollens",
+				"lien": "https://www.mollensvd.ch/N527/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5431], "mode": "scrape" },
+			"conseil": { "body_key": "5431", "donne": ["seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.mollensvd.ch/N529/proces-verbaux.html",
+				"coreapi": {
+					"projet": "mollens25",
+					"vue": "documentconseil",
+					"noeud": 529,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5474",
+			"nom": "Conseil général de La Chaux (Cossonay) (site de la commune)",
+			"nom_court": "Site de La Chaux (Cossonay)",
+			"attribution": {
+				"texte": "Commune de La Chaux (Cossonay)",
+				"lien": "https://www.lachaux.ch/N1006/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5474], "mode": "scrape" },
+			"conseil": { "body_key": "5474", "donne": ["seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.lachaux.ch/documents-conseil-general",
+				"coreapi": {
+					"projet": "lachaux25",
+					"vue": "documentconseildates",
+					"noeud": 692,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5497",
+			"nom": "Conseil général de Pompaples (site de la commune)",
+			"nom_court": "Site de Pompaples",
+			"attribution": {
+				"texte": "Commune de Pompaples",
+				"lien": "https://www.pompaples.ch/N843/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5497], "mode": "scrape" },
+			"conseil": { "body_key": "5497", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.pompaples.ch/N667/documents.html?t=tagstext%3A'documents.préavis'",
+				"coreapi": {
+					"projet": "pompaples25",
+					"vue": "documentconseildates",
+					"noeud": 667,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5512",
+			"nom": "Conseil communal de Bercher (site de la commune)",
+			"nom_court": "Site de Bercher",
+			"attribution": {
+				"texte": "Commune de Bercher",
+				"lien": "https://www.bercher-vd.ch/N786/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5512], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5521",
+			"nom": "Conseil communal d'Etagnières (site de la commune)",
+			"nom_court": "Site d'Etagnières",
+			"attribution": {
+				"texte": "Commune d'Etagnières",
+				"lien": "https://www.etagnieres.ch/N612/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5521], "mode": "non_couvert", "raison": "nouveau_site" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5531",
+			"nom": "Conseil général de Penthéréaz (site de la commune)",
+			"nom_court": "Site de Penthéréaz",
+			"attribution": {
+				"texte": "Commune de Penthéréaz",
+				"lien": "https://www.penthereaz.ch/N1208/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5531], "mode": "non_couvert", "raison": "rien_en_ligne" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5585",
+			"nom": "Conseil communal de Jouxtens-Mézery (site de la commune)",
+			"nom_court": "Site de Jouxtens-Mézery",
+			"attribution": {
+				"texte": "Commune de Jouxtens-Mézery",
+				"lien": "https://www.jouxtens-mezery.ch/N662/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5585], "mode": "scrape" },
+			"conseil": { "body_key": "5585", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.jouxtens-mezery.ch/N524/preavis-municipaux.html",
+				"coreapi": {
+					"projet": "jouxtens25",
+					"vue": "documentconseil",
+					"noeud": 524,
+					"taille": 60,
+					"tri": "date_extid_desc_rank"
+				}
+			}
+		},
+		{
+			"id": "site-5621",
+			"nom": "Conseil général d'Aclens (site de la commune)",
+			"nom_court": "Site d'Aclens",
+			"attribution": {
+				"texte": "Commune d'Aclens",
+				"lien": "https://www.aclens.ch/N558/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5621], "mode": "scrape" },
+			"conseil": { "body_key": "5621", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.aclens.ch/N560/documents-du-conseil-general.html",
+				"coreapi": {
+					"projet": "aclens26",
+					"vue": "documentconseildates",
+					"noeud": 560,
+					"taille": 100,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5636",
+			"nom": "Conseil communal d'Etoy (site de la commune)",
+			"nom_court": "Site d'Etoy",
+			"attribution": {
+				"texte": "Commune d'Etoy",
+				"lien": "https://www.etoy.ch/N1741/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5636], "mode": "scrape" },
+			"conseil": { "body_key": "5636", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.etoy.ch/N604/preavis-et-decisions.html",
+				"coreapi": {
+					"projet": "etoy26",
+					"vue": "documentconseilyears",
+					"noeud": 604,
+					"taille": 500,
+					"tri": "date_extid_desc_doctag_rank"
+				}
+			}
+		},
+		{
+			"id": "site-5639",
+			"nom": "Conseil général de Lully (site de la commune)",
+			"nom_court": "Site de Lully",
+			"attribution": {
+				"texte": "Commune de Lully",
+				"lien": "https://www.lully.ch/N990/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5639], "mode": "scrape" },
+			"conseil": { "body_key": "5639", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.lully.ch/N522/documents-du-conseil-general.html",
+				"coreapi": {
+					"projet": "lully25",
+					"vue": "documentconseildates",
+					"noeud": 522,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5673",
+			"nom": "Conseil général de Hermenches (site de la commune)",
+			"nom_court": "Site de Hermenches",
+			"attribution": {
+				"texte": "Commune de Hermenches",
+				"lien": "https://www.hermenches.ch/N529/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5673], "mode": "scrape" },
+			"conseil": { "body_key": "5673", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.hermenches.ch/N532/preavis-extraits-de-pv.html",
+				"coreapi": {
+					"projet": "hermenches25",
+					"vue": "documentconseildates",
+					"noeud": 532,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5707",
+			"nom": "Conseil communal de Chavannes-de-Bogis (site de la commune)",
+			"nom_court": "Site de Chavannes-de-Bogis",
+			"attribution": {
+				"texte": "Commune de Chavannes-de-Bogis",
+				"lien": "https://www.chavannes-de-bogis.ch/N591/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5707], "mode": "scrape" },
+			"conseil": { "body_key": "5707", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.chavannes-de-bogis.ch/N593/documents-du-conseil-communal.html",
+				"coreapi": {
+					"projet": "chavannesbogis25",
+					"vue": "documentconseildates",
+					"noeud": 593,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5711",
+			"nom": "Conseil communal de Commugny (site de la commune)",
+			"nom_court": "Site de Commugny",
+			"attribution": {
+				"texte": "Commune de Commugny",
+				"lien": "https://www.commugny.ch/conseil_communal",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5711], "mode": "non_couvert", "raison": "nouveau_site" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5714",
+			"nom": "Conseil communal de Crassier (site de la commune)",
+			"nom_court": "Site de Crassier",
+			"attribution": {
+				"texte": "Commune de Crassier",
+				"lien": "https://www.crassier.ch/N590/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5714], "mode": "scrape" },
+			"conseil": { "body_key": "5714", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.crassier.ch/N650/documents-du-conseil-communal.html",
+				"coreapi": {
+					"projet": "crassier25",
+					"vue": "documentconseildates",
+					"noeud": 650,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5715",
+			"nom": "Conseil communal de Duillier (site de la commune)",
+			"nom_court": "Site de Duillier",
+			"attribution": {
+				"texte": "Commune de Duillier",
+				"lien": "https://www.duillier.ch/N528/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5715], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5717",
+			"nom": "Conseil communal de Founex (site de la commune)",
+			"nom_court": "Site de Founex",
+			"attribution": {
+				"texte": "Commune de Founex",
+				"lien": "https://www.founex.ch/N1487/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5717], "mode": "scrape" },
+			"conseil": { "body_key": "5717", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.founex.ch/N640/documents.html",
+				"coreapi": {
+					"projet": "founex25",
+					"vue": "documentconseildates",
+					"noeud": 640,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5719",
+			"nom": "Conseil communal de Gingins (site de la commune)",
+			"nom_court": "Site de Gingins",
+			"attribution": {
+				"texte": "Commune de Gingins",
+				"lien": "https://www.gingins.ch/N532/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5719], "mode": "scrape" },
+			"conseil": { "body_key": "5719", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.gingins.ch/documents-conseil-communal",
+				"coreapi": {
+					"projet": "gingins24",
+					"vue": "documentconseil",
+					"noeud": 850,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5720",
+			"nom": "Conseil communal de Givrins (site de la commune)",
+			"nom_court": "Site de Givrins",
+			"attribution": {
+				"texte": "Commune de Givrins",
+				"lien": "https://www.givrins.ch/N541/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5720], "mode": "non_couvert", "raison": "nouveau_site" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5723",
+			"nom": "Conseil communal de Mies (site de la commune)",
+			"nom_court": "Site de Mies",
+			"attribution": {
+				"texte": "Commune de Mies",
+				"lien": "https://www.mies.ch/N2398/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5723], "mode": "scrape" },
+			"conseil": { "body_key": "5723", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.mies.ch/documents-conseil-communal",
+				"coreapi": {
+					"projet": "mies24",
+					"vue": "documentconseildates",
+					"noeud": 984,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5726",
+			"nom": "Conseil communal de La Rippe (site de la commune)",
+			"nom_court": "Site de La Rippe",
+			"attribution": {
+				"texte": "Commune de La Rippe",
+				"lien": "https://www.larippe.ch/N922/le-conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5726], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5728",
+			"nom": "Conseil général de Signy-Avenex (site de la commune)",
+			"nom_court": "Site de Signy-Avenex",
+			"attribution": {
+				"texte": "Commune de Signy-Avenex",
+				"lien": "https://www.signy.ch/N533/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5728], "mode": "scrape" },
+			"conseil": { "body_key": "5728", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.signy.ch/preavis-municipaux",
+				"coreapi": {
+					"projet": "signy25",
+					"vue": "documentconseildates",
+					"noeud": 2617,
+					"taille": 30,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5730",
+			"nom": "Conseil communal de Trélex (site de la commune)",
+			"nom_court": "Site de Trélex",
+			"attribution": {
+				"texte": "Commune de Trélex",
+				"lien": "https://www.trelex.ch/N524/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5730], "mode": "scrape" },
+			"conseil": { "body_key": "5730", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.trelex.ch/documents-conseil-communal?t=tagstext%3A'documents.Préavis'&M=895",
+				"coreapi": {
+					"projet": "trelex",
+					"vue": "documentconseil",
+					"noeud": 757,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5754",
+			"nom": "Conseil général de Juriens (site de la commune)",
+			"nom_court": "Site de Juriens",
+			"attribution": {
+				"texte": "Commune de Juriens",
+				"lien": "https://www.juriens.ch/N910/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5754], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5798",
+			"nom": "Conseil général de Ropraz (site de la commune)",
+			"nom_court": "Site de Ropraz",
+			"attribution": {
+				"texte": "Commune de Ropraz",
+				"lien": "https://www.ropraz.ch/N829/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5798], "mode": "scrape" },
+			"conseil": { "body_key": "5798", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.ropraz.ch/documents-du-conseil",
+				"coreapi": {
+					"projet": "ropraz26",
+					"vue": "documentconseil",
+					"noeud": 748,
+					"taille": 200,
+					"tri": "date_extid_desc_rank"
+				}
+			}
+		},
+		{
+			"id": "site-5799",
+			"nom": "Conseil communal de Servion (site de la commune)",
+			"nom_court": "Site de Servion",
+			"attribution": {
+				"texte": "Commune de Servion",
+				"lien": "https://www.servion.ch/N671/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5799], "mode": "scrape" },
+			"conseil": { "body_key": "5799", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.servion.ch/documents-conseil-communal",
+				"coreapi": {
+					"projet": "servion24",
+					"vue": "documentconseil",
+					"noeud": 1342,
+					"taille": 60,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5805",
+			"nom": "Conseil communal d'Oron (site de la commune)",
+			"nom_court": "Site d'Oron",
+			"attribution": {
+				"texte": "Commune d'Oron",
+				"lien": "https://www.oron.ch/N724/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5805], "mode": "scrape" },
+			"conseil": { "body_key": "5805", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.oron.ch/documents-conseil",
+				"coreapi": {
+					"projet": "oron25",
+					"vue": "documentconseildates",
+					"noeud": 727,
+					"taille": 60,
+					"tri": "date_extid_asc_rank"
+				}
+			}
+		},
+		{
+			"id": "site-5813",
+			"nom": "Conseil général de Chevroux (site de la commune)",
+			"nom_court": "Site de Chevroux",
+			"attribution": {
+				"texte": "Commune de Chevroux",
+				"lien": "https://www.chevroux.ch/N561/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5813], "mode": "scrape" },
+			"conseil": { "body_key": "5813", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.chevroux.ch/N564/documents-du-conseil.html",
+				"coreapi": {
+					"projet": "chevroux25",
+					"vue": "documentconseildates",
+					"noeud": 564,
+					"taille": 80,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5854",
+			"nom": "Conseil général de Burtigny (site de la commune)",
+			"nom_court": "Site de Burtigny",
+			"attribution": {
+				"texte": "Commune de Burtigny",
+				"lien": "https://www.burtigny.ch/N1038/conseil-general.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5854], "mode": "non_couvert", "raison": "nouveau_site" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5860",
+			"nom": "Conseil communal de Perroy (site de la commune)",
+			"nom_court": "Site de Perroy",
+			"attribution": {
+				"texte": "Commune de Perroy",
+				"lien": "https://www.perroy.ch/N960/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5860], "mode": "non_couvert", "raison": "nouveau_site" },
+			"site": { "plateforme": "quicksite" }
+		},
+		{
+			"id": "site-5861",
+			"nom": "Conseil communal de Rolle (site de la commune)",
+			"nom_court": "Site de Rolle",
+			"attribution": {
+				"texte": "Commune de Rolle",
+				"lien": "https://www.rolle.ch/N285/conseil-communal.html",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5861], "mode": "scrape" },
+			"conseil": { "body_key": "5861", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.rolle.ch/N1246/documents-du-conseil.html",
+				"coreapi": {
+					"projet": "rolle",
+					"vue": "documentconseil",
+					"noeud": 1246,
+					"taille": 50,
+					"tri": "date_extid"
+				}
+			}
+		},
+		{
+			"id": "site-5886",
+			"nom": "Conseil communal de Montreux (site de la commune)",
+			"nom_court": "Site de Montreux",
+			"attribution": {
+				"texte": "Commune de Montreux",
+				"lien": "https://www.conseilmontreux.ch/",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5886], "mode": "scrape" },
+			"conseil": { "body_key": "5886", "donne": ["objets", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "conseil",
+				"seances": "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/",
+				"membres": "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers"
+			}
+		},
+		{
+			"id": "site-5890",
+			"nom": "Conseil communal de Vevey (site de la commune)",
+			"nom_court": "Site de Vevey",
+			"attribution": {
+				"texte": "Commune de Vevey",
+				"lien": "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-videos",
+				"licence": "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
+			},
+			"voie_acces": "cron",
+			"fraicheur": "import",
+			"couverture": { "communes": [5890], "mode": "scrape" },
+			"conseil": { "body_key": "5890", "donne": ["seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "conseil-externe",
+				"seances": "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-videos"
 			}
 		}
 	]

@@ -181,7 +181,9 @@ def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure
             "voie_acces": "cron",
             "fraicheur": "import",
             "conseil": {"body_key": str(candidat.ofs), "donne": list(niveau)},
-            "site": {"plateforme": plateforme.id, "variante": mesure.variante} | pages,
+            "site": {"plateforme": plateforme.id, "variante": mesure.variante}
+            | pages
+            | ({"coreapi": mesure.coreapi} if mesure.coreapi else {}),
         }
     )
 
@@ -236,6 +238,9 @@ def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: Plate
         ecarts.append(f"niveau déclaré {_niveau(source.conseil.donne)}, mesuré {_niveau(mesure.niveau)}{pourquoi}")
     ecarts += ecart("page des Objets", site.objets, mesure.objets)
     ecarts += ecart("page des membres", site.membres, mesure.membres)
+    declares = site.coreapi.model_dump() if site.coreapi else None
+    if declares != mesure.coreapi:
+        ecarts.append(f"recherche coreapi déclarée {declares or 'aucune'}, mesurée {mesure.coreapi or 'aucune'}")
     return ecarts
 
 
@@ -309,6 +314,8 @@ def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> 
     source["site"] = {"plateforme": plateforme.id, "variante": mesure.variante} | {
         k: v for k, v in pages.items() if v is not None
     }
+    if mesure.coreapi:
+        source["site"]["coreapi"] = mesure.coreapi
     return source
 
 
@@ -316,7 +323,7 @@ def candidats_du_recensement(chemin: Path, id_plateforme: str) -> list[Candidat]
     """Les communes que le recensement des sites communaux (#118, `sites-communaux.csv`) met sur la plateforme, sauf
     celles qui disparaissent au 1er janvier 2027. Sans page du conseil relevée, la page d'accueil en tient lieu."""
     with chemin.open(encoding="utf-8", newline="") as f:
-        lignes = [r for r in csv.DictReader(f) if r["plateforme"] == id_plateforme]
+        lignes = [r for r in csv.DictReader(f) if r["plateforme"].lower() == id_plateforme]
     return [
         Candidat(
             int(r["ofs"]),

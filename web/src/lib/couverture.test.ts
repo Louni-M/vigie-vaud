@@ -242,7 +242,7 @@ describe('grisage de la carte', () => {
 		expect(c.grisees('conseils')).toEqual([5590]);
 	});
 
-	it('grise, avec les couches inscrites, toutes les communes sauf Lausanne, Yverdon et les 19 communes i-web couvertes au volet Conseils, et rien ailleurs', () => {
+	it('grise, avec les couches inscrites, toutes les communes sauf Lausanne, Yverdon et les 44 communes scrapées couvertes (19 i-web, 25 Quicksite) au volet Conseils, et rien ailleurs', () => {
 		const c = deduireCouverture({
 			sources: SOURCES,
 			etat: etat({ 'camac-permis': panne, 'openparldata-5586': panne }),
@@ -252,13 +252,16 @@ describe('grisage de la carte', () => {
 		});
 		expect(communesJ0).toHaveLength(300);
 		const grisees = c.grisees('conseils');
-		expect(grisees).toHaveLength(300 - 2 - 19);
+		expect(grisees).toHaveLength(300 - 2 - 44);
 		expect(grisees).not.toContain(5586);
 		expect(grisees).not.toContain(5938);
 		expect(grisees).not.toContain(5643); // Préverenges, i-web
 		expect(grisees).toContain(5568); // Sainte-Croix, i-web non couverte
 		expect(grisees).toContain(5410); // Ormont-Dessous, i-web sans page des Séances
 		expect(grisees).toContain(5624); // Bussigny
+		expect(grisees).not.toContain(5717); // Founex, Quicksite
+		expect(grisees).not.toContain(5886); // Montreux, module Conseil de Quicksite
+		expect(grisees).toContain(5726); // La Rippe, Quicksite non couverte (préavis seuls)
 		expect(c.grisees('permis')).toEqual([]);
 		expect(c.grisees('routes')).toEqual([]);
 		expect(c.grisees('hotels-de-ville')).toEqual([]);
@@ -287,15 +290,15 @@ describe('Couverture des conseils déclarés dans sources.json', () => {
 		expect(couvertes('openparldata-vd')).toEqual([]);
 	});
 
-	it('couvre Lausanne, Yverdon et les 19 communes i-web couvertes, et grise toutes les autres communes', () => {
+	it('couvre Lausanne, Yverdon et les 44 communes scrapées couvertes, et grise toutes les autres communes', () => {
 		expect(conseils.slice(0, 3).map((s) => s.id)).toEqual(['openparldata-vd', 'openparldata-5586', 'openparldata-5938']);
-		expect(conseils).toHaveLength(3 + 19);
+		expect(conseils).toHaveLength(3 + 19 + 25);
 		expect(c.couvre('conseils', 5586)).toBe(true);
 		expect(c.couvre('conseils', 5938)).toBe(true);
 		expect(c.couvre('conseils', 5643)).toBe(true);
 		expect(c.couvre('conseils', 5590)).toBe(false);
 		expect(c.couvre('conseils', 5568)).toBe(false);
-		expect(c.grisees('conseils')).toHaveLength(300 - 2 - 19);
+		expect(c.grisees('conseils')).toHaveLength(300 - 2 - 44);
 	});
 });
 
@@ -416,7 +419,7 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 			const c = d();
 			expect(c.couvre('conseils', 5568)).toBe(false);
 			expect(c.grisees('conseils')).toContain(5568);
-			expect(c.grisees('conseils')).toHaveLength(300 - 2 - 19);
+			expect(c.grisees('conseils')).toHaveLength(300 - 2 - 44);
 			expect(c.sources.map((s) => s.source.id)).not.toContain('site-5568');
 		});
 	});
@@ -460,7 +463,7 @@ describe('encarts de la page Couverture : un par source', () => {
 		]);
 	});
 
-	it('a la fiche i-web des communes déclarées dans sources.json, couvertes et non couvertes', () => {
+	it('a les fiches i-web et Quicksite des communes déclarées dans sources.json, couvertes et non couvertes', () => {
 		const d = deduireCouverture({
 			sources: SOURCES,
 			etat: null,
@@ -470,7 +473,8 @@ describe('encarts de la page Couverture : un par source', () => {
 			maintenant: MAINTENANT
 		});
 		expect(d.plateformes.map((p) => libellePlateforme(p, false))).toEqual([
-			'i-web : 19\u00a0communes couvertes, 9\u00a0non couvertes'
+			'i-web : 19\u00a0communes couvertes, 9\u00a0non couvertes',
+			'Quicksite : 25\u00a0communes couvertes, 13\u00a0non couvertes'
 		]);
 	});
 

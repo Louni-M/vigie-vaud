@@ -122,8 +122,10 @@ describe('sources de la couche Conseils', () => {
 			'site-5458',
 			'site-5487' // Lussery-Villars, non couverte
 		]);
-		expect(ids).toHaveLength(3 + 28);
+		expect(ids).toHaveLength(3 + 28 + 38);
 		expect(ids).toContain('site-5568');
+		expect(ids.slice(3 + 28, 3 + 28 + 2)).toEqual(['site-5401', 'site-5402']); // Quicksite, après i-web
+		expect(ids).toContain('site-5886'); // Montreux, module Conseil
 	});
 });
 
