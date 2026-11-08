@@ -31,6 +31,12 @@ describe('résumé de la couche Conseils pour la description d’une commune', (
 		);
 	});
 
+	it('nomme le conseil général d’une commune qui en a un (Ropraz, Quicksite)', () => {
+		expect(resume(commune(5798, 'Ropraz', [6.74, 46.6, 6.77, 46.63]))).toBe(
+			'les préavis et les séances de son Conseil général, et les objets du Grand Conseil qui la nomment'
+		);
+	});
+
 	it('ne dit que le Grand Conseil quand le conseil communal n’est pas couvert (Bussigny)', () => {
 		expect(resume(commune(5624, 'Bussigny', [6.53, 46.54, 6.57, 46.57]))).toBe(
 			'les objets du Grand Conseil qui la nomment'
