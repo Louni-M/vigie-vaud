@@ -1,4 +1,9 @@
 <script lang="ts">
+	/*
+	 * Carte d'un dossier dans une liste : un lien quand elle a une adresse, sinon un bouton. Chacun porte son rôle
+	 * natif ; le contenu, commun, est un extrait.
+	 */
+	import { typographier } from '#lib/almanach/typographie.js';
 	import { STATUTS, natureLabel } from '#lib/labels.js';
 	import { dateCourte } from '#lib/dates.js';
 	import type { Dossier } from '#lib/types.js';
@@ -12,31 +17,29 @@
 	}: { d: Dossier; actif?: boolean; href?: string; onclick?: () => void } = $props();
 </script>
 
-<svelte:element
-	this={href ? 'a' : 'button'}
-	{href}
-	type={href ? undefined : 'button'}
-	role={href ? 'link' : 'button'}
-	class="carte"
-	class:actif
-	{onclick}
->
+{#snippet contenu()}
 	<span class="haut">
 		<span class="pastille" style:background={STATUTS[d.statut].couleur}></span>
 		<span class="statut">{STATUTS[d.statut].court}</span>
-		<span class="commune">{d.commune}</span>
+		<span class="commune">{typographier(d.commune)}</span>
 	</span>
 	<span class="nature">{natureLabel(d.nature)}</span>
-	<span class="desc">{d.description ?? 'Sans description'}</span>
+	<span class="desc">{d.description ? typographier(d.description) : 'Sans description'}</span>
 	<span class="bas">
 		{#if d.statut === 'enquete'}
 			<Compte fin={d.fin} compact />
 		{:else}
 			<span class="muted">Enquête du {dateCourte(d.debut)}</span>
 		{/if}
-		<span class="muted">n° {d.id}</span>
+		<span class="muted">n°&nbsp;{d.id}</span>
 	</span>
-</svelte:element>
+{/snippet}
+
+{#if href}
+	<a {href} class="carte" class:actif {onclick}>{@render contenu()}</a>
+{:else}
+	<button type="button" class="carte" class:actif {onclick}>{@render contenu()}</button>
+{/if}
 
 <style>
 	.carte {
@@ -58,6 +61,9 @@
 	.actif {
 		border-color: var(--accent);
 		box-shadow: 0 0 0 1px var(--accent);
+	}
+	.actif:hover {
+		box-shadow: 0 0 0 2px var(--accent);
 	}
 	.haut,
 	.bas {

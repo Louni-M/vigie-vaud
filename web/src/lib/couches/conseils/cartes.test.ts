@@ -12,8 +12,8 @@ describe('carte d’un conseil couvert, dans le volet Conseils', () => {
 		expect(carteConseil(conseilLausanne(), COMMUNES)).toEqual({
 			nom: 'Conseil communal de Lausanne',
 			donne: 'objets et séances',
-			recents: '2 objets récents',
-			seance: 'Prochaine séance : mar. 20 oct.',
+			recents: '2 objets récents',
+			seance: 'Prochaine séance : mar. 20 oct.',
 			commune: 'lausanne'
 		});
 	});
@@ -21,8 +21,8 @@ describe('carte d’un conseil couvert, dans le volet Conseils', () => {
 	it('dit la dernière Séance quand aucune n’est annoncée, et n’a pas de commune pour le Grand Conseil', () => {
 		expect(carteConseil(grandConseil(), COMMUNES)).toMatchObject({
 			nom: 'Grand Conseil',
-			recents: '1 objet récent',
-			seance: 'Dernière séance : mar. 6 oct.',
+			recents: '1 objet récent',
+			seance: 'Dernière séance : mar. 6 oct.',
 			commune: null
 		});
 	});
@@ -31,33 +31,33 @@ describe('carte d’un conseil couvert, dans le volet Conseils', () => {
 		expect(carteConseil(conseilYverdon(), COMMUNES)).toMatchObject({
 			donne: 'séances seulement',
 			recents: null,
-			seance: 'Dernière séance : jeu. 1 oct.',
+			seance: 'Dernière séance : jeu. 1 oct.',
 			commune: 'yverdon-les-bains'
 		});
 	});
 
 	it('compte les préavis récents d’une commune scrapée en séances et préavis', () => {
 		const conseil = conseilLausanne({ donne: ['preavis', 'seances'], recents: [ligneObjet()] });
-		expect(carteConseil(conseil, COMMUNES)).toMatchObject({ donne: 'séances et préavis', recents: '1 objet récent' });
+		expect(carteConseil(conseil, COMMUNES)).toMatchObject({ donne: 'séances et préavis', recents: '1 objet récent' });
 	});
 
 	it('dit l’absence d’Objet récent et de Séance connue', () => {
 		const conseil = conseilLausanne({ recents: [], prochaine_seance: null, derniere_seance: null });
 		expect(carteConseil(conseil, COMMUNES)).toMatchObject({ recents: 'aucun objet récent', seance: null });
-		expect(carteConseil(conseilLausanne({ recents: [ligneObjet()] }), COMMUNES).recents).toBe('1 objet récent');
+		expect(carteConseil(conseilLausanne({ recents: [ligneObjet()] }), COMMUNES).recents).toBe('1 objet récent');
 	});
 });
 
 describe('phrase sur les communes grisées, sous les cartes', () => {
 	it('sur bureau, le grisage suit le volet ouvert', () => {
 		expect(noteAutresCommunes(298, false)).toBe(
-			'Les 298 autres communes : pas de conseil couvert, grisées tant que ce volet est ouvert. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
+			'Les 298 autres communes : pas de conseil couvert, grisées tant que ce volet est ouvert. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
 		);
 	});
 
 	it('sur téléphone, il suit « Voir sur la carte »', () => {
 		expect(noteAutresCommunes(298, true)).toBe(
-			'Les 298 autres communes : pas de conseil couvert, grisées sur la carte par « Voir sur la carte ». Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
+			'Les 298 autres communes : pas de conseil couvert, grisées sur la carte par « Voir sur la carte ». Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
 		);
 	});
 });

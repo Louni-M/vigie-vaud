@@ -3,12 +3,15 @@
 	 * Une ligne d'Objet, dans l'onglet Conseil et la fiche du Grand Conseil : pastille pleine, type et
 	 * numéro, date ; le titre sur 3 lignes au plus ; les auteur·e·s (2, puis « et al. ») avec leur parti, et le
 	 * statut. Pour un Objet du Grand Conseil, avec l'index `communes`, « → communes nommées » ; avec `origine`
-	 * (dans « Au Grand Conseil »), comment il est rattaché à la commune de l'onglet. Sans `ouvrir`, la ligne n'est
-	 * pas cliquable.
+	 * (dans « Au Grand Conseil »), comment il est rattaché à la commune de l'onglet. Avec `ouvrir`, la ligne est un
+	 * lien vers l'Objet : un clic simple l'ouvre par `ouvrir`, Cmd/Ctrl-clic ou le clic du milieu dans un nouvel
+	 * onglet ; sans, elle n'est pas cliquable.
 	 */
 	import type { LigneObjet } from '#lib/schema.js';
 	import type { Commune } from '#lib/types.js';
-	import { COULEUR_CONSEILS } from './index.js';
+	import { typographier } from '#lib/almanach/typographie.js';
+	import { clicSimple, lienElement } from '#lib/registre/liens.js';
+	import { COULEUR_CONSEILS, coucheConseils } from './index.js';
 	import { auteursObjet, dateObjet } from './lignes.js';
 	import { communesNommees } from './rattachements.js';
 
@@ -27,11 +30,18 @@
 	const auteurs = $derived(auteursObjet(objet));
 	const date = $derived(dateObjet(objet));
 	const nommees = $derived(communesNommees(objet.communes, communes));
+
+	/** Un clic simple ouvre l'Objet par `ouvrir` ; avec une touche ou un autre bouton, le navigateur suit le lien. */
+	function clic(e: MouseEvent) {
+		if (!ouvrir || !clicSimple(e)) return;
+		e.preventDefault();
+		ouvrir(objet.cle);
+	}
 </script>
 
 <li style:--c={COULEUR_CONSEILS}>
 	{#if ouvrir}
-		<button type="button" class="ligne" onclick={() => ouvrir(objet.cle)}>{@render contenu()}</button>
+		<a class="ligne" href={lienElement(coucheConseils.id, objet.cle)} onclick={clic}>{@render contenu()}</a>
 	{:else}
 		<div class="ligne">{@render contenu()}</div>
 	{/if}
@@ -39,13 +49,18 @@
 
 {#snippet contenu()}
 	<span class="meta"><span class="pastille" aria-hidden="true"></span>{objet.type} {objet.numero}{date ? ` · ${date}` : ''}</span>
-	<span class="titre">{objet.titre}</span>
+	<span class="titre">{typographier(objet.titre)}</span>
 	{#if auteurs || objet.statut}
 		<span class="sous">
-			{auteurs}{#if objet.statut}{auteurs ? ' · ' : ''}<em>{objet.statut.libelle}</em>{/if}
+			{typographier(auteurs)}{#if objet.statut}{auteurs ? ' · ' : ''}<em>{typographier(objet.statut.libelle)}</em
+				>{/if}
 		</span>
 	{/if}
-	{#if nommees.length}<span class="sous">→ {nommees.join(', ')}</span>{/if}
+	{#if nommees.length}
+		<span class="sous"
+			><span aria-hidden="true">→&nbsp;</span><span class="lecteur-seul">Communes nommées&nbsp;: </span>{typographier(nommees.join(', '))}</span
+		>
+	{/if}
 	{#if origine}<span class="origine">{origine}</span>{/if}
 {/snippet}
 
@@ -65,12 +80,13 @@
 		font: inherit;
 		text-align: left;
 		color: inherit;
+		text-decoration: none;
 	}
-	button.ligne {
-		cursor: pointer;
-	}
-	button.ligne:hover {
+	a.ligne:hover {
 		background: var(--bg);
+	}
+	a.ligne:hover .titre {
+		text-decoration: underline;
 	}
 	.meta {
 		display: flex;

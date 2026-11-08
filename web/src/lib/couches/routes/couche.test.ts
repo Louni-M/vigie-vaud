@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COUCHES } from '#lib/registre/couches.js';
 import { teteCommune } from '#lib/registre/tete.js';
-import { ecrireUrl, lireUrl } from '#lib/registre/url.js';
+import { clesEnDouble, ecrireUrl, lireUrl } from '#lib/registre/url.js';
 import { calculerFil, depuisFil, type ContexteFil, type ReglagesFil, type SourceFil } from '#lib/fil/fil.js';
 import { commune, LUTRY, PULLY } from '#tests/faux-canton.js';
 import { fauxDgmr, heureLocale, restriction, type FauxDgmr } from '#tests/faux-dgmr.js';
-import { coucheRoutes } from './index.js';
+import { coucheRoutes, FILTRES_INITIAUX } from './index.js';
+import type { Filtres } from './volet.js';
 
 // Le module de données refuse d'interroger la DGMR ailleurs que dans un navigateur.
 vi.mock('$app/env', () => ({ browser: true }));
@@ -31,16 +32,59 @@ describe('adresse d’une restriction ouverte', () => {
 		expect(lireUrl(COUCHES, new URLSearchParams('r=5031')).ouvert).toEqual(ouverte);
 	});
 
-	it('ne met que l’élément ouvert dans l’adresse, sans réglage de la couche', () => {
-		expect(coucheRoutes.codec).toBeUndefined();
-		expect(coucheRoutes.cleElement).toBe('r');
+	it('garde l’élément ouvert à côté des puces du volet', () => {
+		const etat = { ...lireUrl(COUCHES, new URLSearchParams()), ouvert: ouverte };
+		const requete = ecrireUrl(COUCHES, { ...etat, parametres: { ...etat.parametres, routes: { sortes: ['feux'], etats: ['a_venir'] } } });
+
+		expect(requete).toBe('?r=5031&sortes=feux&etats=a_venir');
+		expect(lireUrl(COUCHES, new URLSearchParams(requete.slice(1))).ouvert).toEqual(ouverte);
+	});
+});
+
+describe('puces du volet Routes dans l’adresse', () => {
+	const codec = coucheRoutes.codec!;
+	const lire = (requete: string) => codec.lire(new URLSearchParams(requete));
+
+	it('allume toutes les puces sans rien écrire par défaut', () => {
+		expect(lire('')).toEqual(FILTRES_INITIAUX);
+		expect(codec.ecrire(FILTRES_INITIAUX)).toEqual([]);
+		expect(ecrireUrl(COUCHES, lireUrl(COUCHES, new URLSearchParams()))).toBe('');
+	});
+
+	it('n’écrit que les puces allumées, dans l’ordre de la légende, et seulement si l’une est éteinte', () => {
+		expect(codec.ecrire({ sortes: ['feux', 'fermeture'], etats: FILTRES_INITIAUX.etats })).toEqual([
+			['sortes', 'fermeture,feux']
+		]);
+		expect(codec.ecrire({ sortes: FILTRES_INITIAUX.sortes, etats: ['en_cours'] })).toEqual([['etats', 'en_cours']]);
+		expect(codec.ecrire({ sortes: [], etats: [] })).toEqual([
+			['sortes', ''],
+			['etats', '']
+		]);
+	});
+
+	it.each<[string, Filtres]>([
+		['sortes=feux,fermeture', { sortes: ['fermeture', 'feux'], etats: FILTRES_INITIAUX.etats }],
+		['etats=a_venir', { sortes: FILTRES_INITIAUX.sortes, etats: ['a_venir'] }],
+		['sortes=&etats=', { sortes: [], etats: [] }],
+		['sortes=feux,inconnue&etats=hier', { sortes: ['feux'], etats: [] }]
+	])('lit « %s »', (requete, attendu) => {
+		expect(lire(requete)).toEqual(attendu);
+	});
+
+	it('fait l’aller-retour', () => {
+		for (const f of [FILTRES_INITIAUX, { sortes: ['deviation', 'autre'], etats: ['a_venir'] }, { sortes: [], etats: [] }] as Filtres[])
+			expect(lire(new URLSearchParams(codec.ecrire(f)).toString())).toEqual(f);
+	});
+
+	it('ne prend aucune clé déjà prise', () => {
+		expect(clesEnDouble(COUCHES)).toEqual([]);
 	});
 });
 
 describe('messages et titres d’une restriction', () => {
 	it('dit qu’une restriction introuvable n’est plus publiée, sans son numéro', () => {
 		expect(coucheRoutes.introuvable?.('5031')).toBe(
-			'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.'
+			'Cette restriction de circulation n’est plus publiée par la DGMR : elle a pu être levée ou modifiée.'
 		);
 	});
 

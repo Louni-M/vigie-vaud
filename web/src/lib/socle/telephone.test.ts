@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { affichageApres, affichageArrivee, decalageAuDessus, recherchePleine, texteApresRecherche } from './telephone.js';
+import {
+	affichageApres,
+	affichageArrivee,
+	affichageDeLAdresse,
+	affichageOuverture,
+	decalageAuDessus,
+	recherchePleine,
+	texteApresRecherche
+} from './telephone.js';
 
 const RIEN = { fiche: null, element: null };
 const PULLY = { fiche: 'commune:pully', element: null };
@@ -47,6 +55,32 @@ describe('vue affichée à l’arrivée sur téléphone', () => {
 	});
 	it('montre la carte quand on arrive sur la carte seule', () => {
 		expect(affichageArrivee(RIEN)).toBe('carte');
+	});
+});
+
+describe('vue affichée dès qu’on ouvre quelque chose', () => {
+	it('passe des vues Couches et Fil à la carte, pour l’aperçu', () => {
+		expect(affichageOuverture('couches')).toBe('carte');
+		expect(affichageOuverture('fil')).toBe('carte');
+	});
+	it('reste sur la carte ou la fiche', () => {
+		expect(affichageOuverture('carte')).toBe('carte');
+		expect(affichageOuverture('fiche')).toBe('fiche');
+	});
+});
+
+describe('vue que donne l’adresse', () => {
+	it('suit la requête (`affichage=fil`)', () => {
+		expect(affichageDeLAdresse('fil', RIEN)).toBe('fil');
+		expect(affichageDeLAdresse('carte', PULLY)).toBe('carte');
+		expect(affichageDeLAdresse('couches', SEANCE)).toBe('couches');
+	});
+	it('prend celle qui va avec le chemin quand la requête n’en dit rien', () => {
+		expect(affichageDeLAdresse(null, RIEN)).toBe('carte');
+		expect(affichageDeLAdresse(null, PULLY)).toBe('fiche');
+	});
+	it('montre la carte pour « Fiche » sans fiche ouverte', () => {
+		expect(affichageDeLAdresse('fiche', RIEN)).toBe('carte');
 	});
 });
 

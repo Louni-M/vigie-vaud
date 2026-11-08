@@ -9,8 +9,11 @@
  */
 export const TELEPHONE = '(max-width: 760px)';
 
-/** Vue plein écran affichée sur téléphone. */
+/** Vue plein écran affichée sur téléphone ; elle est dans l'adresse (`affichage=fil`), avec son historique. */
 export type Affichage = 'carte' | 'fil' | 'couches' | 'fiche';
+
+/** Les vues, pour lire celle de l'adresse. */
+export const AFFICHAGES: readonly Affichage[] = ['carte', 'fil', 'couches', 'fiche'];
 
 /**
  * Ce qui est ouvert : la fiche (« commune:pully », « fiche:grand-conseil ») et l'élément ouvert
@@ -29,11 +32,30 @@ export interface Ouverture {
 export function affichageApres(affichage: Affichage, avant: Ouverture, apres: Ouverture): Affichage {
 	if (apres.fiche === null) return affichage === 'fiche' ? 'carte' : affichage;
 	const nouveau = apres.fiche !== avant.fiche || (apres.element !== null && apres.element !== avant.element);
-	return nouveau && (affichage === 'couches' || affichage === 'fil') ? 'carte' : affichage;
+	return nouveau ? affichageOuverture(affichage) : affichage;
 }
 
-/** Vue affichée à l'arrivée : celle de la fiche du chemin (`/commune/pully`, `/grand-conseil`), sinon la carte. */
+/**
+ * Vue affichée dès qu'on ouvre quelque chose, avant de savoir dans quelle fiche : depuis la vue Couches ou la vue Fil,
+ * la carte, pour son aperçu ; les autres vues restent.
+ */
+export const affichageOuverture = (affichage: Affichage): Affichage =>
+	affichage === 'couches' || affichage === 'fil' ? 'carte' : affichage;
+
+/**
+ * Vue affichée à l'arrivée, et celle qui va avec le chemin quand l'adresse n'en dit rien : celle de la fiche du chemin
+ * (`/commune/pully`, `/grand-conseil`), sinon la carte.
+ */
 export const affichageArrivee = (ouverture: Ouverture): Affichage => (ouverture.fiche === null ? 'carte' : 'fiche');
+
+/**
+ * Vue que donne l'adresse : celle de sa requête (`affichage=fil`), sinon celle qui va avec le chemin
+ * (`affichageArrivee`). « Fiche » sans fiche ouverte n'a rien à montrer : la carte.
+ */
+export function affichageDeLAdresse(demandee: Affichage | null, ouverture: Ouverture): Affichage {
+	if (demandee === null) return affichageArrivee(ouverture);
+	return demandee === 'fiche' && ouverture.fiche === null ? 'carte' : demandee;
+}
 
 /**
  * Décalage (px) vers le haut d'un point vers lequel la carte vole, pour le placer au milieu de la bande libre de

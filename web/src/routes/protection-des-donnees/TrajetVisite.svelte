@@ -25,13 +25,13 @@
 		<div class="plan">
 			<div class="appareil">
 				<svg aria-hidden="true" class="ecran" viewBox="0 0 48 40" width="48" height="40">
-					<rect x="4" y="3" width="40" height="26" rx="2" pathLength="1" />
-					<path d="M1 34h46M17 29l-2 5M31 29l2 5" pathLength="1" />
+					<rect x="4" y="3" width="40" height="26" rx="2" />
+					<path d="M1 34h46M17 29l-2 5M31 29l2 5" />
 				</svg>
 				<strong>Votre appareil</strong>
 				<span class="position">
 					<svg aria-hidden="true" class="repere" viewBox="0 0 20 20" width="20" height="20">
-						<circle class="anneau" cx="10" cy="10" r="8" pathLength="1" />
+						<g class="anneau"><circle cx="10" cy="10" r="8" /></g>
 						<circle class="point" cx="10" cy="10" r="3.5" />
 					</svg>
 					Votre position «&nbsp;Autour de moi&nbsp;» reste ici
@@ -101,10 +101,14 @@
 	}
 	.repere {
 		flex: none;
+		/* L'anneau qui se referme part de plus loin que le dessin. */
+		overflow: visible;
 		color: var(--color-ink);
 	}
 	.anneau {
 		stroke-width: 1.5;
+		transform-box: fill-box;
+		transform-origin: center;
 	}
 	.point {
 		fill: var(--color-ink);
@@ -286,15 +290,13 @@
 		:global([data-js-etat='attente']) .destinataire {
 			opacity: 0;
 		}
-		:global([data-js-etat='attente']) .ecran *,
+		:global([data-js-etat='attente']) .ecran,
 		:global([data-js-etat='attente']) .anneau {
-			stroke-dasharray: 1;
-			stroke-dashoffset: 1;
+			opacity: 0;
 		}
 
-		:global([data-js-etat='joue']) .ecran * {
-			stroke-dasharray: 1;
-			animation: trace 0.9s var(--ease-out) 0.1s both;
+		:global([data-js-etat='joue']) .ecran {
+			animation: allume 0.9s var(--ease-out) 0.1s both;
 		}
 		:global([data-js-etat='joue']) .liens::before {
 			animation: deploie 0.6s var(--ease-out) 0.3s both;
@@ -316,19 +318,30 @@
 		}
 		/* Une fois tous les paquets partis, l'anneau se referme autour de la position : elle, ne bouge pas. */
 		:global([data-js-etat='joue']) .anneau {
-			stroke-dasharray: 1;
-			animation: trace 0.8s var(--ease-in-out) calc(1.2s + var(--n) * var(--pas)) both;
+			animation: referme 0.8s var(--ease-in-out) calc(1.2s + var(--n) * var(--pas)) both;
 		}
 		:global([data-js-etat='joue']) .point {
 			animation: pose 0.5s var(--ease-out) calc(1.2s + var(--n) * var(--pas)) both;
 		}
 	}
-	@keyframes trace {
+	@keyframes allume {
 		from {
-			stroke-dashoffset: 1;
+			opacity: 0;
+			transform: scale(0.85);
 		}
 		to {
-			stroke-dashoffset: 0;
+			opacity: 1;
+			transform: none;
+		}
+	}
+	@keyframes referme {
+		from {
+			opacity: 0;
+			transform: scale(1.6);
+		}
+		to {
+			opacity: 1;
+			transform: none;
 		}
 	}
 	@keyframes deploie {

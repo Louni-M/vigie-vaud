@@ -5,6 +5,7 @@
 	 * Une Séance sans points montre ses documents en lien à la place du nombre de points ; un lien ne pouvant être
 	 * dans un bouton, c'est alors son nom qui ouvre la Séance.
 	 */
+	import { typographier } from '#lib/almanach/typographie.js';
 	import type { LigneSeance } from '#lib/schema.js';
 	import { COULEUR_CONSEILS } from './index.js';
 	import { dateSeance, detailSeance, nomSeance } from './lignes.js';
@@ -20,7 +21,7 @@
 			<span class="meta">
 				<span class="pastille" aria-hidden="true"></span>{dateSeance(seance.date)}
 				{#each detail.documents as d, i (i)}
-					<span>· <a href={d.lien} target="_blank" rel="noopener">{d.texte}</a></span>
+					<span>· <a href={d.lien} target="_blank" rel="noopener">{typographier(d.texte)}</a></span>
 				{/each}
 			</span>
 			{#if ouvrir}

@@ -271,11 +271,14 @@ export const RAISONS: Record<RaisonNonCouvert, { cellule: string; onglet: (de: s
 const jour = new Intl.DateTimeFormat('fr-CH', { day: 'numeric', month: 'short', timeZone: 'Europe/Zurich' });
 const heure = new Intl.DateTimeFormat('fr-CH', { hour: 'numeric', minute: '2-digit', timeZone: 'Europe/Zurich' });
 
-/** Un instant à l'heure de Lausanne, à la minute : « 12 oct., 14 h », « 1 déc., 8 h 47 ». */
+/**
+ * Un instant à l'heure de Lausanne, à la minute : « 12 oct., 14 h », « 1 déc., 8 h 47 ». L'heure ne se coupe pas en fin
+ * de ligne : ses espaces sont insécables (U+00A0).
+ */
 export function dateHeure(iso: string): string {
 	const d = new Date(iso);
 	const [h, m] = heure.format(d).split(':').map(Number);
-	return `${jour.format(d)}, ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
+	return `${jour.format(d)}, ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
 }
 
 /** Libellé du mode : « API », « Scrapé » ou « Non couvert ». */
@@ -301,10 +304,10 @@ export function libelleEtat(e: EtatCouverture): string {
 export const libellePaire = ({ mode, etat }: Paire) =>
 	etat ? `${libelleMode(mode)} · ${libelleEtat(etat)}` : libelleMode(mode);
 
-/** Ligne Communes d'un encart : « Porte sur le canton » sans Couverture, sinon « 1 commune sur 300 »… */
+/** Ligne Communes d'un encart : « Porte sur le canton » sans Couverture, sinon « 1 commune sur 300 »… (insécables). */
 export function libelleCommunes({ source, communes }: SourceCouverte, total: number): string {
 	if (!source.couverture) return 'Porte sur le canton';
-	return `${communes} ${communes > 1 ? 'communes' : 'commune'} sur ${total}`;
+	return `${communes}\u00a0${communes > 1 ? 'communes' : 'commune'} sur\u00a0${total}`;
 }
 
 /**
@@ -340,7 +343,8 @@ export function libelleCellule(couvrantes: readonly Couvrante[], charge = true):
 	});
 }
 
-const compte = (n: number, un: string, plusieurs: string) => `${n} ${n > 1 ? plusieurs : un}`;
+/** « 19 communes couvertes », « 1 non couverte » : le nombre et ce qu'il compte, liés par une espace insécable. */
+const compte = (n: number, un: string, plusieurs: string) => `${n}\u00a0${n > 1 ? plusieurs : un}`;
 
 /**
  * Le titre d'une fiche de plateforme : « i-web : 26 communes couvertes, 1 en panne », « aucune en panne », puis

@@ -50,12 +50,12 @@
 	<title>Protection des données – Vigie Vaud</title>
 	<meta
 		name="description"
-		content="Ce que Vigie Vaud publie sur des personnes, et ce que votre visite transmet : responsable, finalités, destinataires et vos droits."
+		content="Ce que Vigie Vaud publie sur des personnes, et ce que votre visite transmet : responsable, finalités, destinataires et vos droits."
 	/>
 	<link rel="canonical" href={canonique('/protection-des-donnees')} />
 </svelte:head>
 
-<main class="almanach" data-theme="almanach">
+<main class="almanach" data-theme="almanach" id="contenu" tabindex="-1">
 	<div class="cadre">
 		<header class="tete">
 			<h1>Protection des données</h1>
@@ -67,19 +67,18 @@
 			<ul>
 				<li>
 					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<circle cx="12" cy="12" r="8.5" pathLength="1" />
+						<circle cx="12" cy="12" r="8.5" />
 						<circle cx="9.5" cy="10" r="1" class="plein" />
 						<circle cx="14" cy="14.5" r="1" class="plein" />
-						<path d="M4 20 20 4" pathLength="1" />
+						<path d="M4 20 20 4" />
 					</svg>
 					<span><strong>Aucun compte, aucun cookie.</strong></span>
 				</li>
 				<li>
 					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<circle cx="12" cy="12" r="8.5" pathLength="1" />
+						<circle cx="12" cy="12" r="8.5" />
 						<path
 							d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.4 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.4-3.5-8.5s1-5.9 3.5-8.5"
-							pathLength="1"
 						/>
 					</svg>
 					<span>
@@ -89,8 +88,8 @@
 				</li>
 				<li>
 					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" pathLength="1" />
-						<circle cx="12" cy="10" r="2.3" pathLength="1" />
+						<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+						<circle cx="12" cy="10" r="2.3" />
 					</svg>
 					<span>Votre <strong>position</strong> «&nbsp;Autour de moi&nbsp;» ne quitte pas votre appareil.</span>
 				</li>
@@ -98,7 +97,6 @@
 					<svg viewBox="0 0 24 24" aria-hidden="true">
 						<path
 							d="M3 12s3.3-6 9-6c1.6 0 3 .5 4.2 1.2M21 12s-3.3 6-9 6c-1.6 0-3-.5-4.2-1.2M4 20 20 4"
-							pathLength="1"
 						/>
 					</svg>
 					<span>
@@ -108,7 +106,7 @@
 				{#if AUDIENCE}
 					<li>
 						<svg viewBox="0 0 24 24" aria-hidden="true">
-							<path d="M4 20h16M7 16v-4M12 16V6M17 16v-7" pathLength="1" />
+							<path d="M4 20h16M7 16v-4M12 16V6M17 16v-7" />
 						</svg>
 						<span>
 							Une <strong>mesure d’audience</strong> sans cookie compte les pages vues, sans garder votre adresse IP.
@@ -117,12 +115,12 @@
 				{/if}
 				<li>
 					<svg viewBox="0 0 24 24" aria-hidden="true">
-						<rect x="3" y="5" width="18" height="14" rx="2" pathLength="1" />
-						<path d="m3.5 6 8.5 7 8.5-7" pathLength="1" />
+						<rect x="3" y="5" width="18" height="14" rx="2" />
+						<path d="m3.5 6 8.5 7 8.5-7" />
 					</svg>
 					<span>
 						Un nom a échappé au masquage&nbsp;? <a href="#retrait">Un courriel suffit</a>&nbsp;: il est
-						<strong>retiré sous 7 jours</strong>.
+						<strong>retiré sous 7&nbsp;jours</strong>.
 					</span>
 				</li>
 			</ul>
@@ -143,7 +141,7 @@
 				<p>
 					Pour les permis de construire, le site ne reprend pas les noms de propriétaire, de requérant ou d’architecte
 					des avis officiels&nbsp;: seulement la nature des travaux, leur description, les dates et le statut. Lorsqu’une
-					description mentionne un particulier («&nbsp;pour le compte de M. …&nbsp;»), son nom est remplacé automatiquement par
+					description mentionne un particulier («&nbsp;pour le compte de M.&nbsp;…&nbsp;»), son nom est remplacé automatiquement par
 					«&nbsp;[particulier]&nbsp;», dans votre navigateur, avant affichage. Ce masquage automatique peut laisser passer un
 					cas isolé&nbsp;: il suffit de le signaler à <a href="mailto:{COURRIEL}">{COURRIEL}</a> pour qu’il soit corrigé.
 					Les avis officiels, eux, contiennent ces informations pendant la durée de l’enquête.
@@ -159,7 +157,7 @@
 				<h3 id="origine">Quelles données, d’où</h3>
 				<p>
 					Le site ne publie sur des personnes que des données d’élu·e·s&nbsp;: leur nom, leur parti quand la source le
-					donne, et les objets dont ils sont auteur·e·s. Elles viennent de sources publiques&nbsp;: OpenParlData, qui
+					donne, et les objets dont ils sont auteur·e·s. Elles viennent de sources publiques&nbsp;: <span translate="no">OpenParlData</span>, qui
 					réunit les données du Grand Conseil et de quelques conseils communaux, et les sites des communes, pour les
 					autres conseils. Des avis officiels d’enquête publique de la CAMAC, le site ne publie aucun nom de
 					personne&nbsp;: il ne reprend pas les champs qui en contiennent et masque ceux des descriptions.
@@ -172,7 +170,7 @@
 					commune, les membres que nomme sa page des membres. Cette liste est publique, en clair, sans limite de
 					durée, dans le
 					<a href={DEPOT_DONNEES} target="_blank" rel="noopener">dépôt de données public</a>&nbsp;: pour un conseil lu sur
-					le site de sa commune, dans le fichier <code>conseils/&lt;n° OFS&gt;/membres.json</code>&nbsp;; pour les autres,
+					le site de sa commune, dans le fichier <code translate="no">conseils/&lt;n°&nbsp;OFS&gt;/membres.json</code>&nbsp;; pour les autres,
 					ce sont les auteur·e·s des Objets de l’archive.
 				</p>
 				<p>
@@ -205,11 +203,10 @@
 					<EtapesRetrait />
 					<p>
 						Écrivez à <a href="mailto:{COURRIEL}">{COURRIEL}</a>, jamais par une issue, qui publierait le nom. Il est
-						retiré dans
-						les 7 jours, historique du dépôt de données public compris. Comme le cron relit les sources chaque jour,
+						retiré dans les 7&nbsp;jours, historique du dépôt de données public compris. Comme le cron relit les sources chaque jour,
 						le dépôt de données garde une correction pour cet élément (son texte corrigé, sans le nom), appliquée à
 						chaque import et à chaque rattrapage&nbsp;; quand le cas révèle une règle, le masquage est corrigé aussi. Le
-						texte d’origine reste à la source&nbsp;: chez OpenParlData ou sur le site de la commune.
+						texte d’origine reste à la source&nbsp;: chez <span translate="no">OpenParlData</span> ou sur le site de la commune.
 					</p>
 				</div>
 			</section>
@@ -219,7 +216,7 @@
 				<p class="chapeau">
 					Le site ne demande aucun compte et ne pose aucun cookie. Afficher une page et sa carte passe toutefois par
 					les services ci-dessous, qui reçoivent au moins l’adresse IP de votre appareil. Cette déclaration répond à
-					l’art. 19 de la <a href={NLPD} target="_blank" rel="noopener">loi fédérale sur la protection des données</a>
+					l’art.&nbsp;19 de la <a href={NLPD} target="_blank" rel="noopener">loi fédérale sur la protection des données</a>
 					(nLPD).
 				</p>
 
@@ -247,68 +244,71 @@
 					Liste écrite à la main : ce sont des services, pas des sources. À revoir à chaque nouvelle source Direct
 					(sources.json, voie_acces « direct ») : le navigateur l'interroge lui-même, c'est donc un nouveau
 					destinataire de l'adresse IP des visiteurs. Le diagramme TrajetVisite.svelte la reprend en bref.
+					Les rôles de tableau sont redits : sur téléphone, le tableau est replié en fiches (display: block), ce qui
+					lui ôte sa sémantique de tableau dans certains navigateurs.
 				-->
-				<table class="destinataires">
-					<thead>
-						<tr>
-							<th scope="col">Service</th>
-							<th scope="col">Pays</th>
-							<th scope="col">Données reçues</th>
-							<th scope="col">Garantie</th>
+				<!-- svelte-ignore a11y_no_redundant_roles -->
+				<table class="destinataires" role="table">
+					<thead role="rowgroup">
+						<tr role="row">
+							<th scope="col" role="columnheader">Service</th>
+							<th scope="col" role="columnheader">Pays</th>
+							<th scope="col" role="columnheader">Données reçues</th>
+							<th scope="col" role="columnheader">Garantie</th>
 						</tr>
 					</thead>
-					<tbody>
-						<tr>
-							<th scope="row" data-titre="Service">
-								<strong>GitHub Pages</strong> (GitHub), qui héberge le site et ses données
+					<tbody role="rowgroup">
+						<tr role="row">
+							<th scope="row" role="rowheader" data-titre="Service">
+								<strong translate="no">GitHub Pages</strong> (<span translate="no">GitHub</span>), qui héberge le site et ses données
 							</th>
-							<td data-titre="Pays">États-Unis</td>
-							<td data-titre="Données reçues">
-								votre adresse IP, enregistrée pour la sécurité de l’hébergement, pendant une durée fixée par GitHub
+							<td role="cell" data-titre="Pays">États-Unis</td>
+							<td role="cell" data-titre="Données reçues">
+								votre adresse IP, enregistrée pour la sécurité de l’hébergement, pendant une durée fixée par <span translate="no">GitHub</span>
 							</td>
-							<td data-titre="Garantie">GitHub est certifié selon le Swiss-U.S. Data Privacy Framework.</td>
+							<td role="cell" data-titre="Garantie"><span translate="no">GitHub</span> est certifié selon le Swiss-U.S. Data Privacy Framework.</td>
 						</tr>
 						{#if AUDIENCE}
-							<tr>
-								<th scope="row" data-titre="Service"><strong>GoatCounter</strong>, la mesure d’audience</th>
-								<td data-titre="Pays">Irlande, serveurs en Finlande et en Allemagne</td>
-								<td data-titre="Données reçues">
+							<tr role="row">
+								<th scope="row" role="rowheader" data-titre="Service"><strong translate="no">GoatCounter</strong>, la mesure d’audience</th>
+								<td role="cell" data-titre="Pays">Irlande, serveurs en Finlande et en Allemagne</td>
+								<td role="cell" data-titre="Données reçues">
 									à chaque page vue, votre adresse IP, le nom de votre navigateur et le chemin de la page
-									(<code>/commune/pully</code>), sans ses paramètres&nbsp;: ni le centre de la carte, ni le dossier ouvert,
+									(<code translate="no">/commune/pully</code>), sans ses paramètres&nbsp;: ni le centre de la carte, ni le dossier ouvert,
 									ni la page d’où vous venez. Il ne pose aucun cookie, ne conserve pas votre adresse IP et ne garde
 									que des totaux.
 								</td>
-								<td data-titre="Garantie">
+								<td role="cell" data-titre="Garantie">
 									Ces trois pays offrent une protection adéquate (<a href={OPDO} target="_blank" rel="noopener"
-										>annexe 1 OPDo</a
+										>annexe&nbsp;1&nbsp;OPDo</a
 									>).
 								</td>
 							</tr>
 						{/if}
-						<tr>
-							<th scope="row" data-titre="Service">
-								<strong>swisstopo</strong> (Office fédéral de topographie), pour le fond de carte et la recherche
+						<tr role="row">
+							<th scope="row" role="rowheader" data-titre="Service">
+								<strong translate="no">swisstopo</strong> (Office fédéral de topographie), pour le fond de carte et la recherche
 								d’adresses
 							</th>
-							<td data-titre="Pays">Suisse</td>
-							<td data-titre="Données reçues">votre adresse IP, la zone affichée et le texte d’une recherche d’adresse</td
+							<td role="cell" data-titre="Pays">Suisse</td>
+							<td role="cell" data-titre="Données reçues">votre adresse IP, la zone affichée et le texte d’une recherche d’adresse</td
 							>
-							<td data-titre="Garantie">en Suisse</td>
+							<td role="cell" data-titre="Garantie">en Suisse</td>
 						</tr>
-						<tr data-destinataire="vd">
-							<th scope="row" data-titre="Service">
-								<strong>L’État de Vaud</strong> (<code>ogc.vd.ch</code>), pour les permis de construire et les
+						<tr role="row" data-destinataire="vd">
+							<th scope="row" role="rowheader" data-titre="Service">
+								<strong>L’État de Vaud</strong> (<code translate="no">ogc.vd.ch</code>), pour les permis de construire et les
 								restrictions de circulation
 							</th>
-							<td data-titre="Pays">Suisse</td>
-							<td data-titre="Données reçues">votre adresse IP et, pour les permis, la zone affichée</td>
-							<td data-titre="Garantie">en Suisse</td>
+							<td role="cell" data-titre="Pays">Suisse</td>
+							<td role="cell" data-titre="Données reçues">votre adresse IP et, pour les permis, la zone affichée</td>
+							<td role="cell" data-titre="Garantie">en Suisse</td>
 						</tr>
 					</tbody>
 				</table>
 				<p class="note">
 					<strong>«&nbsp;Autour de moi&nbsp;»</strong>&nbsp;: la position de votre appareil n’est envoyée à personne&nbsp;; la carte
-					charge ensuite la zone autour d’elle auprès de swisstopo et du canton, comme pour tout déplacement de la
+					charge ensuite la zone autour d’elle auprès de <span translate="no">swisstopo</span> et du canton, comme pour tout déplacement de la
 					carte.
 				</p>
 
@@ -322,7 +322,7 @@
 						</svg>
 						<span>
 							<strong>savoir</strong> si des données vous concernant sont traitées, et lesquelles (droit d’accès,
-							<span class="article">art. 25 nLPD</span>)&nbsp;: la réponse est gratuite et vous parvient dans les 30 jours
+							<span class="article">art. 25 nLPD</span>)&nbsp;: la réponse est gratuite et vous parvient dans les 30&nbsp;jours
 							(<span class="article">art. 18 OPDo</span>)&nbsp;;
 						</span>
 					</li>
@@ -350,7 +350,7 @@
 				{#if AUDIENCE}
 					<h3 id="statistiques">Statistiques de visite</h3>
 					<p>
-						Les statistiques de GoatCounter sont publiques&nbsp;:
+						Les statistiques de <span translate="no">GoatCounter</span> sont publiques&nbsp;:
 						<a href={AUDIENCE.tableau} target="_blank" rel="noopener">tableau de bord de Vigie Vaud</a>.
 					</p>
 				{/if}
@@ -431,9 +431,7 @@
 		font-size: var(--text-md);
 		font-weight: 600;
 		text-align: left;
-		transition:
-			background-color var(--dur-micro) var(--ease-out),
-			transform var(--dur-micro) var(--ease-out);
+		transition: transform var(--dur-micro) var(--ease-out);
 	}
 	.almanach .courriel:hover {
 		background: var(--color-accent-2);
@@ -503,9 +501,6 @@
 	.destinataires tbody strong {
 		font-family: var(--font-display);
 	}
-	.destinataires tbody tr {
-		transition: background-color var(--dur-short) var(--ease-out);
-	}
 	.destinataires tbody tr:hover {
 		background: var(--color-paper);
 	}
@@ -563,7 +558,9 @@
 		.fiches h3 {
 			margin-top: 0;
 		}
-		/* Le tableau devient une fiche par destinataire, chaque case précédée de son titre de colonne. */
+		/* Le tableau devient une fiche par destinataire, chaque case précédée de son titre de colonne. Il reste un
+		   tableau pour les lecteurs d'écran (rôles explicites dans le balisage) : ses titres de colonne sont seulement
+		   masqués à la vue, pas retirés. */
 		.destinataires,
 		.destinataires tbody,
 		.destinataires tr,
@@ -573,7 +570,15 @@
 			width: auto;
 		}
 		.destinataires thead {
-			display: none;
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			margin: -1px;
+			padding: 0;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+			border: 0;
 		}
 		.destinataires tbody tr {
 			padding-block: var(--space-xs);
@@ -588,8 +593,10 @@
 			width: auto;
 			padding: var(--space-2xs) var(--space-sm);
 		}
+		/* Le titre visible n'est pas relu : le lecteur d'écran annonce déjà le titre de colonne de la case. */
 		.destinataires [data-titre]::before {
 			content: attr(data-titre);
+			content: attr(data-titre) / '';
 			display: block;
 			font-size: var(--text-xs);
 			font-weight: 500;
@@ -616,13 +623,9 @@
 		.bref li:nth-child(6) {
 			--rang: 5;
 		}
-		.bref svg > * {
-			stroke-dasharray: 1;
-			animation: trace 0.9s var(--ease-out) calc(0.45s + var(--rang, 0) * 0.07s) both;
-		}
-		.bref svg > .plein {
-			stroke-dasharray: none;
-			animation-name: apparait;
+		/* Le pictogramme se pose après sa ligne : il apparaît en se resserrant sur lui-même. */
+		.bref svg {
+			animation: apparait 0.9s var(--ease-out) calc(0.45s + var(--rang, 0) * 0.07s) both;
 		}
 	}
 	@keyframes monte {
@@ -635,20 +638,14 @@
 			transform: none;
 		}
 	}
-	@keyframes trace {
-		from {
-			stroke-dashoffset: 1;
-		}
-		to {
-			stroke-dashoffset: 0;
-		}
-	}
 	@keyframes apparait {
 		from {
 			opacity: 0;
+			transform: scale(0.7);
 		}
 		to {
 			opacity: 1;
+			transform: none;
 		}
 	}
 

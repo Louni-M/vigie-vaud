@@ -28,8 +28,8 @@
 {:else}
 	<!-- Dossier pas encore chargé, ou que le service du canton n'a pas rendu : la fiche dira pourquoi. -->
 	<button class="attente" type="button" onclick={voir}>
-		<strong>Dossier n° {id}</strong>
-		<span>Voir la fiche ›</span>
+		<strong>Dossier n°&nbsp;{id}</strong>
+		<span>Voir la fiche&nbsp;<span aria-hidden="true">›</span></span>
 	</button>
 {/if}
 
@@ -48,7 +48,14 @@
 		text-align: left;
 		cursor: pointer;
 	}
-	.attente span {
+	.attente:hover {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 1px var(--accent);
+	}
+	.attente:active {
+		background: var(--surface-2);
+	}
+	.attente > span {
 		font-size: 13px;
 		color: var(--accent);
 	}

@@ -9,11 +9,11 @@
 	import type { Contexte } from '#lib/registre/types.js';
 	import { messageIntrouvable } from './cles.js';
 	import { conseils } from './donnees.js';
-	import { coucheConseils } from './index.js';
+	import { coucheConseils, type ParametresConseils } from './index.js';
 	import FicheObjet from './FicheObjet.svelte';
 	import FicheSeance from './FicheSeance.svelte';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<ParametresConseils> } = $props();
 
 	const cle = untrack(() => ctx.ouvert?.element) ?? '';
 	const ouvrir = (c: string) => ctx.ouvrir({ couche: coucheConseils.id, element: c });

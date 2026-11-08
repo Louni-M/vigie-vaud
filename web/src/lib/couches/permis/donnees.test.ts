@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { creerDonneesPermis } from './donnees.svelte.js';
+import { creerDonneesPermis, SOURCE } from './donnees.svelte.js';
 import { entite, fauxCanton, PULLY } from '#tests/faux-canton.js';
 
 // Le client du canton refuse de partir ailleurs que dans un navigateur.
@@ -12,6 +12,14 @@ const A_LUTRY: [number, number] = [6.72, 46.5];
 /** Nombre de n° demandés par chaque requête de fiches. */
 const lots = (requetes: string[]) =>
 	requetes.filter((w) => w.startsWith('NO_CAMAC IN')).map((w) => w.split(',').length);
+
+describe('mention de la source', () => {
+	it('lie « Source » et ses deux-points par une espace insécable, et dit que les dossiers sont lus en direct', () => {
+		expect(SOURCE).toMatch(/^Source\u00a0: \S/);
+		expect(SOURCE).not.toMatch(/ [;:?!»]/);
+		expect(SOURCE.endsWith(', consultées en direct')).toBe(true);
+	});
+});
 
 describe('fiches', () => {
 	const delivres = Array.from({ length: 650 }, (_, i) => entite(1000 + i, { ETAT: 'Permis délivré' }));

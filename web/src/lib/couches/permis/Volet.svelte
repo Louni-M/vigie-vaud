@@ -4,6 +4,7 @@
 	 * d'années, puis le compteur et la liste des dossiers de la zone visible, masqués quand la couche est
 	 * désactivée. Le registre a déjà rendu l'interrupteur et l'attribution au-dessus.
 	 */
+	import { nombre } from '#lib/almanach/typographie.js';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import { NATURES, PROCEDURE_PERMIS, STATUTS } from '#lib/labels.js';
@@ -67,10 +68,27 @@
 		ctx.regler({ historique, statuts: [...statutsProposes(historique)] });
 	}
 
-	/** Le curseur suit la main ; l'adresse et le chargement suivent la valeur (le chargement attend qu'il s'arrête). */
+	/**
+	 * Année que montre le curseur pendant qu'on le fait glisser, ou `null` quand il est au repos sur la valeur réglée.
+	 * Le libellé la suit en direct ; la liste, l'adresse et le chargement attendent qu'on lâche le curseur (`change`),
+	 * pour ne pas filtrer ni réécrire l'adresse à chaque cran. Au clavier, chaque flèche lâche aussitôt le curseur.
+	 */
+	let glisse = $state<number | null>(null);
+	const depuisAffiche = $derived(glisse ?? p.depuis);
+
+	function suivre(e: Event) {
+		const v = Number((e.currentTarget as HTMLInputElement).value);
+		// Revenu à la valeur réglée, le curseur n'émettra pas de `change` : il n'y a rien à régler.
+		glisse = v === p.depuis ? null : v;
+	}
+
 	function depuis(e: Event) {
+		glisse = null;
 		ctx.regler({ depuis: Number((e.currentTarget as HTMLInputElement).value) });
 	}
+
+	/** L'historique est demandé, les dossiers en cours sont là : son chargement ou son échec s'annonce à part. */
+	const suiviHisto = $derived(p.historique && !permis.source.erreur && actifs.length > 0);
 
 	/** Un dossier de la liste s'ouvre dans l'onglet Permis de sa commune ; la carte vole vers lui. */
 	function vers(d: Dossier) {
@@ -120,38 +138,51 @@
 	</label>
 	{#if p.historique}
 		<label class="annee">
-			<span>Depuis <strong>{p.depuis}</strong></span>
-			<input type="range" min={ANNEE_MIN} max={ANNEE_COURANTE} value={p.depuis} oninput={depuis} />
+			<span>Depuis <strong>{depuisAffiche}</strong></span>
+			<input type="range" min={ANNEE_MIN} max={ANNEE_COURANTE} value={p.depuis} oninput={suivre} onchange={depuis} />
 		</label>
 	{/if}
 </div>
 
 {#if ctx.active}
 	<div class="zone">
-		<p class="compte" tabindex="-1">
-			{#if permis.source.erreur}
-				Dossiers en cours non chargés.
-			{:else if !actifs.length}
-				Chargement des dossiers en cours auprès du canton…
-			{:else if p.historique}
-				<strong>{visibles.length}</strong> dossier{visibles.length > 1 ? 's' : ''} dans la zone affichée,
-				historique depuis {p.depuis} compris
-				{#if permis.histoChargement}<span class="muted"> · chargement de l’historique…</span>{/if}
-				{#if permis.histoEchec}
-					<span class="erreur"> · historique partiel : une partie n’a pas pu être chargée</span>
+		<div class="tete">
+			<p class="compte">
+				{#if permis.source.erreur}
+					Dossiers en cours non chargés.
+				{:else if !actifs.length}
+					Chargement des dossiers en cours auprès du canton…
+				{:else if p.historique}
+					<strong>{nombre.format(visibles.length)}</strong>&nbsp;dossier{visibles.length > 1 ? 's' : ''} dans la zone
+					affichée, historique depuis {p.depuis} compris
+				{:else}
+					<strong>{nombre.format(visibles.length)}</strong>&nbsp;dossier{visibles.length > 1 ? 's' : ''} en cours dans la
+					zone affichée
+				{/if}
+			</p>
+			<!--
+				Chargement et échec de l'historique : une zone d'état toujours présente, pour que les lecteurs d'écran
+				l'annoncent quand elle se remplit. Le compte, lui, change à chaque mouvement de la carte : il ne s'annonce pas.
+			-->
+			<div class="etat-histo">
+				<p role="status">
+					{#if suiviHisto && permis.histoChargement}<span class="muted">Chargement de l’historique…</span>{/if}
+					{#if suiviHisto && permis.histoEchec}
+						<span class="erreur">Historique partiel&nbsp;: une partie n’a pas pu être chargée.</span>
+					{/if}
+				</p>
+				{#if suiviHisto && permis.histoEchec}
 					<button class="bouton secondaire petit" type="button" onclick={() => permis.chargerHisto(p.depuis)}>Réessayer</button>
 				{/if}
-			{:else}
-				<strong>{visibles.length}</strong> dossier{visibles.length > 1 ? 's' : ''} en cours dans la zone affichée
-			{/if}
-		</p>
+			</div>
+		</div>
 		{#if actifs.length && !visibles.length && !permis.histoChargement}
 			<p class="muted vide">
 				{#if !p.statuts.length}
-					Aucun statut n’est sélectionné : activez-en au moins un pour afficher la liste.
+					Aucun statut n’est sélectionné&nbsp;: activez-en au moins un pour afficher la liste.
 				{:else}
 					Aucun dossier ne correspond à ces filtres dans la zone affichée. Dézoomez la carte ou choisissez
-					« Toutes natures ».
+					«&nbsp;Toutes natures&nbsp;».
 				{/if}
 			</p>
 		{/if}
@@ -172,15 +203,15 @@
 			{/each}
 		</ul>
 		{#if visibles.length > LISTE_MAX}
-			<p class="muted">… et {visibles.length - LISTE_MAX} autres : zoomez pour affiner.</p>
+			<p class="muted">… et {nombre.format(visibles.length - LISTE_MAX)}&nbsp;autres&nbsp;: zoomez pour affiner.</p>
 		{/if}
 	</div>
 {/if}
 
 <p class="source">
-	Dossiers consultés en direct depuis votre navigateur ; ce site ne les stocke pas. Sans foi publique : seule la
+	Dossiers consultés en direct depuis votre navigateur&nbsp;; ce site ne les stocke pas. Sans foi publique&nbsp;: seule la
 	<a href="https://www.vd.ch/territoire-et-construction/permis-de-construire/faq/avis-denquete/publication-fao" target="_blank" rel="noopener">FAO</a>
-	fait foi. <a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique : ce que prévoit la loi</a>
+	fait foi. <a href={PROCEDURE_PERMIS} target="_blank" rel="noopener">L’enquête publique&nbsp;: ce que prévoit la loi</a>
 </p>
 
 <style>
@@ -209,6 +240,13 @@
 		font-size: 13px;
 		color: inherit;
 		cursor: pointer;
+	}
+	.puce:hover {
+		background: color-mix(in oklab, var(--c) 12%, var(--surface));
+	}
+	.puce.off:hover {
+		border-color: var(--muted);
+		color: inherit;
 	}
 	.puce span {
 		width: 9px;
@@ -271,11 +309,26 @@
 		margin: 0;
 		font-size: 14px;
 	}
-	.compte .bouton {
-		margin-left: 6px;
+	/*
+	 * La zone d'état suit le compte dans le même bloc : vide, elle ne prend pas de place (le paragraphe n'a pas de
+	 * hauteur, le bouton n'est pas rendu) et n'ajoute pas d'écart à la colonne.
+	 */
+	.etat-histo {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0 8px;
+		font-size: 13.5px;
 	}
-	.compte:focus {
-		outline: none;
+	.etat-histo p {
+		margin: 0;
+	}
+	.etat-histo p span {
+		display: block;
+		padding-top: 4px;
+	}
+	.etat-histo .bouton {
+		margin-top: 4px;
 	}
 	.petit {
 		padding: 6px 10px;
@@ -293,6 +346,15 @@
 		display: grid;
 		gap: 8px;
 	}
+	/*
+	 * Jusqu'à LISTE_MAX cartes : le navigateur ne rend que celles à l'écran. Le confinement est posé sur la carte et non
+	 * sur l'élément de liste : il rogne ce qui déborde des descendants, pas l'anneau de focus ni le contour de survol que
+	 * la carte trace elle-même hors de sa boîte.
+	 */
+	.liste > li > :global(*) {
+		content-visibility: auto;
+		contain-intrinsic-size: auto 120px;
+	}
 	.carte-attente {
 		display: flex;
 		flex-direction: column;
@@ -303,25 +365,35 @@
 		background: var(--surface);
 		min-height: 92px;
 	}
+	/* Le reflet est un calque qui glisse sur la barre (transform, sans repeindre le fond à chaque image). */
 	.barre-s {
+		position: relative;
 		display: block;
 		height: 12px;
 		border-radius: 6px;
-		background: linear-gradient(90deg, var(--line) 0%, var(--bg) 50%, var(--line) 100%);
-		background-size: 200% 100%;
+		background: var(--line);
+		overflow: hidden;
+	}
+	.barre-s::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(90deg, transparent 0%, var(--bg) 50%, transparent 100%);
+		transform: translateX(-100%);
 		animation: reflet 1.2s ease-in-out infinite;
 	}
 	@keyframes reflet {
 		from {
-			background-position: 100% 0;
+			transform: translateX(-100%);
 		}
 		to {
-			background-position: -100% 0;
+			transform: translateX(100%);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.barre-s {
+		.barre-s::after {
 			animation: none;
+			display: none;
 		}
 	}
 	.muted {
@@ -332,6 +404,10 @@
 	}
 	.source {
 		margin: 4px 0 0;
+	}
+	/* Les liens soulignés : au survol, le soulignement s'épaissit. */
+	.source a:hover {
+		text-decoration-thickness: var(--rule-bar, 2px);
 	}
 	@media (pointer: coarse) {
 		.petit,

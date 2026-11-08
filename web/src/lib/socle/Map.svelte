@@ -240,6 +240,15 @@
 	});
 </script>
 
+<svelte:head>
+	<!-- Fond de carte et géocodage de swisstopo, données des permis : connexions ouvertes dès l'arrivée. -->
+	<link rel="preconnect" href="https://vectortiles.geo.admin.ch" crossorigin="anonymous" />
+	<link rel="preconnect" href="https://api3.geo.admin.ch" crossorigin="anonymous" />
+	<link rel="preconnect" href="https://www.ogc.vd.ch" crossorigin="anonymous" />
+	<!-- L'image aérienne n'est chargée qu'à la demande : résolution du nom seule. -->
+	<link rel="dns-prefetch" href="https://wmts.geo.admin.ch" />
+</svelte:head>
+
 <div class="carte" bind:this={container}></div>
 
 <style>

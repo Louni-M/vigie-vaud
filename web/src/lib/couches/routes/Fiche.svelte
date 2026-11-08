@@ -4,19 +4,24 @@
 	 * « Routes › Restriction de circulation » au-dessus, et la remonte pour une autre restriction ; la fermer ramène à
 	 * l'onglet. Dans l'ordre : sorte, état et échéance, puis le nom des travaux ; période et horaires ; route,
 	 * travaux, remarque et longueur ; communes traversées, chacune ouvrant son onglet Routes ; « Mêmes travaux »,
-	 * chacune ouvrant sa fiche ; badge de la source. Ni `OBJECTID`, ni `ENTITE`, ni `ARRDT`.
+	 * chacune ouvrant sa fiche ; badge de la source. Ni `OBJECTID`, ni `ENTITE`, ni `ARRDT`. Communes et Mêmes
+	 * travaux sont des liens : un clic simple ouvre par le registre, Cmd/Ctrl-clic ou le clic du milieu dans un
+	 * nouvel onglet.
 	 */
 	import { untrack } from 'svelte';
+	import { typographier } from '#lib/almanach/typographie.js';
 	import { ErreurApi } from '#lib/api.js';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { jourDe } from '#lib/fil/fil.js';
+	import { clicSimple, lienCommune, lienElement } from '#lib/registre/liens.js';
 	import type { Contexte } from '#lib/registre/types.js';
+	import type { Filtres } from './volet.js';
 	import { source } from '#lib/sources.js';
 	import { routes, type Restriction } from './donnees.svelte.js';
 	import { ficheRestriction, ligneMemesTravaux, memesTravaux } from './fiche.js';
 	import { coucheRoutes, ouvrirRestriction } from './index.js';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<Filtres> } = $props();
 
 	const id = Number(untrack(() => ctx.ouvert?.element));
 	const dgmr = source('dgmr-restrictions');
@@ -24,6 +29,13 @@
 	let trouvee = $state.raw<Restriction | null>(null);
 	let etat = $state<'chargement' | 'trouve' | 'absent' | 'erreur'>('chargement');
 	let message = $state('');
+
+	/** Un clic simple fait `action` ; avec une touche ou un autre bouton, le navigateur suit le lien. */
+	function auClic(e: MouseEvent, action: () => void) {
+		if (!clicSimple(e)) return;
+		e.preventDefault();
+		action();
+	}
 
 	function charger() {
 		etat = 'chargement';
@@ -36,7 +48,7 @@
 				etat = 'erreur';
 				message =
 					e instanceof ErreurApi && e.hors_ligne
-						? 'Vous semblez hors ligne : les restrictions sont lues en direct auprès de la DGMR.'
+						? 'Vous semblez hors ligne : les restrictions sont lues en direct auprès de la DGMR.'
 						: `${e instanceof ErreurApi ? e.message : 'La restriction n’a pas pu être chargée.'} Réessayez dans un instant.`;
 			}
 		);
@@ -61,7 +73,7 @@
 		<strong>{f.sorte}</strong>
 		<span class="muted">{f.etat} · {f.echeance}</span>
 	</p>
-	{#if f.nom}<h3 class="nom">{f.nom}</h3>{/if}
+	{#if f.nom}<h3 class="nom">{typographier(f.nom)}</h3>{/if}
 
 	<p class="periode">{f.periode}</p>
 	<p class="horaires">
@@ -69,9 +81,9 @@
 	</p>
 
 	<dl>
-		{#if f.route}<dt>Route</dt><dd>{f.route}</dd>{/if}
-		{#if f.travaux}<dt>Travaux</dt><dd>{f.travaux}</dd>{/if}
-		{#if f.remarque}<dt>Remarque</dt><dd>{f.remarque}</dd>{/if}
+		{#if f.route}<dt>Route</dt><dd>{typographier(f.route)}</dd>{/if}
+		{#if f.travaux}<dt>Travaux</dt><dd>{typographier(f.travaux)}</dd>{/if}
+		{#if f.remarque}<dt>Remarque</dt><dd>{typographier(f.remarque)}</dd>{/if}
 		<dt>Longueur</dt>
 		<dd>{f.longueur}</dd>
 	</dl>
@@ -81,10 +93,10 @@
 		<ol class="communes">
 			{#each f.communes as c (c.slug)}
 				<li>
-					<button
-						type="button"
+					<a
 						class="lien"
-						onclick={() => ctx.ouvrir({ commune: c.slug, onglet: coucheRoutes.id })}>{c.nom}</button
+						href={lienCommune(c.slug, coucheRoutes.id)}
+						onclick={(e) => auClic(e, () => ctx.ouvrir({ commune: c.slug, onglet: coucheRoutes.id }))}>{typographier(c.nom)}</a
 					>
 					<span class="muted">{c.longueur}</span>
 				</li>
@@ -102,8 +114,12 @@
 				<li style:--c={l.couleur}>
 					<span class="trait" class:tirets={l.tirets}></span>
 					<span class="frere">
-						<button type="button" class="lien" onclick={() => ouvrirRestriction(ctx, x)}>{l.sorte}</button>
-						<span class="muted">{l.detail}</span>
+						<a
+							class="lien"
+							href={lienElement(coucheRoutes.id, String(x.id))}
+							onclick={(e) => auClic(e, () => ouvrirRestriction(ctx, x))}>{l.sorte}</a
+						>
+						<span class="muted">{typographier(l.detail)}</span>
 					</span>
 				</li>
 			{/each}
@@ -129,7 +145,7 @@
 {/if}
 
 <p class="source">
-	Restriction de circulation lue en direct auprès de la DGMR depuis votre navigateur ; ce site ne la conserve pas. La
+	Restriction de circulation lue en direct auprès de la DGMR depuis votre navigateur&nbsp;; ce site ne la conserve pas. La
 	signalisation sur place fait foi.
 </p>
 
@@ -155,6 +171,7 @@
 	.nom {
 		font-size: 20px;
 		margin: 6px 0 10px;
+		text-wrap: balance;
 	}
 	.periode {
 		margin: 0;
@@ -212,13 +229,13 @@
 		min-width: 0;
 	}
 	.lien {
-		padding: 0;
-		border: 0;
-		background: none;
-		font: inherit;
+		display: inline-block;
 		color: var(--accent);
 		text-decoration: underline;
-		cursor: pointer;
+	}
+	.lien:hover {
+		text-decoration-thickness: 2px;
+		color: color-mix(in oklab, var(--accent), black 25%);
 	}
 	@media (pointer: coarse) {
 		.lien {

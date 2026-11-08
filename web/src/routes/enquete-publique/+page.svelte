@@ -12,7 +12,7 @@
 	<link rel="canonical" href={PROCEDURE_PERMIS} />
 </svelte:head>
 
-<main class="page">
+<main class="page" id="contenu" tabindex="-1">
 	<h1>L’enquête publique</h1>
 	<p>
 		Cette page a déménagé&nbsp;: les étapes de l’enquête publique et de la procédure du permis de construire sont

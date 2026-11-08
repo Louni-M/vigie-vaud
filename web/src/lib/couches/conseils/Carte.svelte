@@ -11,9 +11,9 @@
 	import type { Contexte } from '#lib/registre/types.js';
 	import { retirerDeLaCarte } from '#lib/socle/carte.js';
 	import { FICHE_GRAND_CONSEIL } from './cles.js';
-	import { COULEUR_CONSEILS, PARLEMENT } from './index.js';
+	import { COULEUR_CONSEILS, PARLEMENT, type ParametresConseils } from './index.js';
 
-	let { ctx }: { ctx: Contexte<undefined> } = $props();
+	let { ctx }: { ctx: Contexte<ParametresConseils> } = $props();
 
 	const map = untrack(() => ctx.map);
 	const avant = untrack(() => ctx.avant);

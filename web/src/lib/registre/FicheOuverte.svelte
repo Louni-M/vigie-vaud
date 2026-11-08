@@ -14,16 +14,22 @@
 	 * `ctx.fiche`, sous lequel les badges des sources qui portent sur tout le canton.
 	 *
 	 * L'élément ouvert s'affiche dans l'onglet de sa couche, sous le fil « Permis › n° 248845 » : l'`Onglet` reste
-	 * monté, caché, pour retrouver sa place quand on ferme l'élément ; le focus revient alors sur l'onglet.
+	 * monté, caché, pour retrouver sa place quand on ferme l'élément ; le focus revient alors sur l'onglet. « Permis »
+	 * est un lien vers la fiche sans l'élément : un clic simple le ferme sur place.
+	 *
+	 * L'onglet choisi est dans l'adresse (`onglet=conseils`), sauf le premier : le registre le lit à l'arrivée.
 	 */
 	import { tick } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { insecables } from '#lib/almanach/typographie.js';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
 	import { couvertureCourante } from '#lib/couverture-courante.svelte.js';
 	import { SOURCES } from '#lib/sources.js';
 	import type { Commune } from '#lib/types.js';
+	import { deNom } from './elision.js';
 	import { enteteFiche } from './entete.js';
 	import type { FicheDeCouche } from './fiches.js';
+	import { clicSimple } from './liens.js';
 	import { messageNonCouvert, nomOnglet, sourcesDeLOnglet } from './onglet.js';
 	import type { Registre } from './registre.svelte.js';
 
@@ -35,6 +41,8 @@
 	/** Ce qui distingue la fiche, pour remonter l'onglet quand elle change. */
 	const cle = $derived(commune ? `commune:${commune.slug}` : `fiche:${propre!.fiche.id}`);
 	const entete = $derived(commune ? enteteFiche(commune) : null);
+	/** « Fermer la fiche d’Yverdon-les-Bains » ; une fiche propre est nommée telle quelle, sans en supposer le genre. */
+	const fermerLibelle = $derived(commune ? `Fermer la fiche ${deNom(nom)}` : `Fermer la fiche : ${nom}`);
 
 	const onglets = $derived(
 		propre
@@ -50,8 +58,8 @@
 	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === registre.onglet) ?? onglets[0]);
 	const element = $derived(avecFiche === courant ? registre.ouvert : null);
 	const couvert = $derived(!courant || !commune || couvertureCourante().couvre(courant.id, commune.bfs));
-	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil, retour du navigateur) y ramène,
-	// même quand on est arrivé par un lien.
+	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil d'Ariane, croix) y ramène, même quand
+	// on est arrivé par un lien. Le retour du navigateur rend l'onglet de l'entrée où il ramène.
 	$effect(() => {
 		if (avecFiche) registre.onglet = avecFiche.id;
 	});
@@ -86,15 +94,21 @@
 
 	/** Choisir un autre onglet ferme l'élément ouvert ; le sien ramène à son contenu. */
 	function choisir(id: string) {
-		registre.onglet = id;
-		if (element) registre.fermer();
+		registre.choisirOnglet(id, element !== null);
+	}
+
+	/** Le fil d'Ariane : un clic simple ferme l'élément sur place ; avec une touche, le navigateur suit le lien. */
+	function retourOnglet(e: MouseEvent) {
+		if (!clicSimple(e)) return;
+		e.preventDefault();
+		registre.fermer();
 	}
 </script>
 
 <section class="fiche" aria-labelledby="fiche-titre">
 	<div class="entete">
 		<h2 id="fiche-titre" tabindex="-1">{nom}</h2>
-		<button class="fermer" type="button" aria-label="Fermer la fiche {commune ? 'de' : 'du'} {nom}" onclick={registre.fermerFiche}>
+		<button class="fermer" type="button" aria-label={fermerLibelle} onclick={registre.fermerFiche}>
 			×
 		</button>
 	</div>
@@ -102,9 +116,9 @@
 		{#if propre}
 			<p>{propre.fiche.sousTitre}</p>
 		{:else if entete?.siege}
-			<p>Hôtel de ville : {entete.siege}</p>
+			<p>Hôtel de ville&nbsp;: {entete.siege}</p>
 		{:else}
-			<p class="approximative">Hôtel de ville : position approximative</p>
+			<p class="approximative">Hôtel de ville&nbsp;: position approximative</p>
 		{/if}
 		{#each entete?.anciens ?? [] as ligne (ligne)}<p>{ligne}</p>{/each}
 	</div>
@@ -134,7 +148,7 @@
 					{#if !couvert && commune}
 						{@const message = messageNonCouvert(courant, commune)}
 						<p class="non-couvert">
-							<strong>Non couvert</strong> : {message.texte}
+							<strong>Non couvert</strong>&nbsp;: {insecables(message.texte)}
 							{#if message.lien}<a href={message.lien.url} target="_blank" rel="noopener">{message.lien.texte}</a>{/if}
 							<a href={resolve('/couverture')}>Voir la Couverture</a>
 						</p>
@@ -148,9 +162,9 @@
 			{/key}
 			{#if element}
 				<nav class="fil" aria-label="Fil d’Ariane">
-					<button type="button" class="lien" onclick={registre.fermer}>{nomOnglet(courant)}</button>
+					<a class="lien" href={registre.adresseSansElement} onclick={retourOnglet}>{nomOnglet(courant)}</a>
 					<span aria-hidden="true">›</span>
-					<span aria-current="page">{courant.libelle?.(element.element) ?? `n° ${element.element}`}</span>
+					<span aria-current="page">{courant.libelle?.(element.element) ?? `n° ${element.element}`}</span>
 				</nav>
 				{#key `${element.couche}:${element.element}`}
 					{#await registre.composant(courant, 'Fiche') then module}
@@ -235,6 +249,10 @@
 		cursor: pointer;
 		white-space: nowrap;
 	}
+	.onglets button:hover {
+		color: var(--text);
+		background: var(--color-paper-2, var(--surface));
+	}
 	.onglets button[aria-selected='true'] {
 		color: var(--text);
 		border-bottom-color: var(--enquete);
@@ -242,6 +260,8 @@
 	.corps {
 		flex: 1;
 		overflow-y: auto;
+		/* Arrivé en bas de l'onglet, le défilement ne passe pas à la page. */
+		overscroll-behavior: contain;
 		padding: 12px 14px 32px;
 		font-size: 14px;
 	}
@@ -258,13 +278,12 @@
 		color: var(--muted);
 	}
 	.lien {
-		padding: 0;
-		border: 0;
-		background: none;
-		font: inherit;
 		color: var(--accent);
 		text-decoration: underline;
-		cursor: pointer;
+	}
+	.lien:hover {
+		color: var(--text);
+		text-decoration-thickness: 2px;
 	}
 	.erreur {
 		color: var(--erreur);

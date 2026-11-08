@@ -36,4 +36,11 @@
 		padding: 4px 10px;
 		font-size: 13px;
 	}
+	/* Au doigt, la cible de toucher habituelle : les 44 px de la règle globale de .bouton cèdent devant les 32 px
+	   ci-dessus, plus précis, et sont donc repris ici. */
+	@media (pointer: coarse) {
+		.echec button {
+			min-height: 44px;
+		}
+	}
 </style>

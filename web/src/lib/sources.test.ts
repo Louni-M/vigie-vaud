@@ -189,7 +189,7 @@ describe('phrase des communes lues sur leur site, sous « Conseils couverts »',
 				{ nom: 'Quicksite', communes: 1 }
 			]
 		};
-		expect(phraseSitesLus(sites)).toBe('et 3 communes dont Vigie Vaud lit le site : i-web (2), Quicksite (1)');
+		expect(phraseSitesLus(sites)).toBe('et 3\u00a0communes dont Vigie Vaud lit le site : i-web (2), Quicksite (1)');
 	});
 
 	it('accorde une seule commune au singulier', () => {
@@ -198,7 +198,7 @@ describe('phrase des communes lues sur leur site, sous « Conseils couverts »',
 				communes: 1,
 				plateformes: [{ nom: 'i-web', communes: 1 }]
 			})
-		).toBe('et 1 commune dont Vigie Vaud lit le site : i-web (1)');
+		).toBe('et 1\u00a0commune dont Vigie Vaud lit le site : i-web (1)');
 	});
 
 	it('ne dit rien sans commune lue', () => {

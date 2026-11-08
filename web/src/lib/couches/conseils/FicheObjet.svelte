@@ -8,6 +8,7 @@
 	 * Pour un Objet du Grand Conseil, après le tableau, les communes nommées (même aucune : une commune peut
 	 * manquer), avec « rattachement automatique · signaler une erreur », un courriel pré-rempli.
 	 */
+	import { typographier } from '#lib/almanach/typographie.js';
 	import type { Objet } from '#lib/schema.js';
 	import type { Commune } from '#lib/types.js';
 	import { CLE_GRAND_CONSEIL, lireCle, nomConseil } from './cles.js';
@@ -28,7 +29,7 @@
 
 <article class="fiche" style:--c={COULEUR_CONSEILS}>
 	<p class="type"><span class="pastille" aria-hidden="true"></span>{objet.type} {objet.numero}{conseil ? ` · ${conseil}` : ''}</p>
-	<h3>{objet.titre}</h3>
+	<h3>{typographier(objet.titre)}</h3>
 	<dl>
 		{#if objet.depose}
 			<dt>Déposé le</dt>
@@ -36,18 +37,18 @@
 		{/if}
 		{#if auteurs.length}
 			<dt>{auteurs.length > 1 ? 'Auteur·e·s' : 'Auteur·e'}</dt>
-			<dd>{auteurs.join(', ')}</dd>
+			<dd>{typographier(auteurs.join(', '))}</dd>
 		{/if}
 		{#if objet.statut}
 			<dt>Statut</dt>
-			<dd>{objet.statut.libelle}{objet.statut.date ? `, ${dateLongue(objet.statut.date)}` : ''}</dd>
+			<dd>{typographier(objet.statut.libelle)}{objet.statut.date ? `, ${dateLongue(objet.statut.date)}` : ''}</dd>
 		{/if}
 	</dl>
 	{#if nonPublies}<p class="mention">{nonPublies}</p>{/if}
 
 	{#if duGrandConseil}
 		<div class="communes">
-			<p><span class="etiquette">Communes nommées</span> {nommees.length ? nommees.join(', ') : 'aucune'}</p>
+			<p><span class="etiquette">Communes nommées</span> {nommees.length ? typographier(nommees.join(', ')) : 'aucune'}</p>
 			<p class="aide">
 				rattachement automatique · <a href={signalement(cle, nommees)}>signaler une erreur</a>
 			</p>
@@ -58,7 +59,7 @@
 		<h4>Étapes</h4>
 		<ol class="etapes">
 			{#each objet.etapes as e, i (i)}
-				<li><span class="date">{dateCourte(e.date)}</span> {e.libelle}</li>
+				<li><span class="date">{dateCourte(e.date)}</span> {typographier(e.libelle)}</li>
 			{/each}
 		</ol>
 	{/if}
@@ -68,7 +69,7 @@
 		<ul class="documents">
 			{#each objet.documents as d, i (i)}
 				<li>
-					<a href={d.lien} target="_blank" rel="noopener">{d.titre ?? 'Document'}</a>
+					<a href={d.lien} target="_blank" rel="noopener">{d.titre ? typographier(d.titre) : 'Document'}</a>
 					{#if d.date}<span class="date"> · {dateCourte(d.date)}</span>{/if}
 				</li>
 			{/each}
@@ -76,7 +77,7 @@
 	{/if}
 
 	{#if objet.lien}
-		<p class="externe"><a href={objet.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(objet.lien)} ›</a></p>
+		<p class="externe"><a href={objet.lien} target="_blank" rel="noopener">Voir sur {siteDuLien(objet.lien)}&nbsp;<span aria-hidden="true">›</span></a></p>
 	{/if}
 	<Source conseil={lireCle(cle)?.conseil ?? ''} />
 </article>
@@ -106,6 +107,7 @@
 		margin: 0;
 		font-size: 18px;
 		line-height: 1.3;
+		text-wrap: balance;
 	}
 	dl {
 		display: grid;

@@ -31,7 +31,7 @@
 	// puis le compte des communes lues sur leur site, par plateforme (sans les communes non couvertes).
 	const conseils = conseilsCouverts(SOURCES, PLATEFORMES);
 	const sitesLus = phraseSitesLus(conseils.sites);
-	const communesLues = `${conseils.sites.communes} commune${conseils.sites.communes > 1 ? 's' : ''}`;
+	const communesLues = `${conseils.sites.communes} commune${conseils.sites.communes > 1 ? 's' : ''}`;
 	/** « i-web et Quicksite » : les plateformes de l'entrée « Sites des communes ». */
 	const ET = new Intl.ListFormat('fr', { type: 'conjunction' });
 	// Le lien vers la page vd.ch des Routes est celui de l'attribution, déclaré une fois dans sources.json.
@@ -66,7 +66,7 @@
 	<link rel="canonical" href={canonique('/a-propos')} />
 </svelte:head>
 
-<main class="almanach" data-theme="almanach">
+<main class="almanach" data-theme="almanach" id="contenu" tabindex="-1">
 	<div class="cadre">
 		<header class="tete">
 			<h1>À propos</h1>
@@ -114,12 +114,12 @@
 				</p>
 				<p>
 					Chaque dossier est rattaché à une commune d’après sa position, croisée avec les limites communales actuelles
-					de swisstopo&nbsp;: un ancien dossier d’une commune fusionnée apparaît donc sous la commune d’aujourd’hui.
+					de <span translate="no">swisstopo</span>&nbsp;: un ancien dossier d’une commune fusionnée apparaît donc sous la commune d’aujourd’hui.
 				</p>
 				<p>
 					Pour recevoir par courriel chaque nouvel avis d’enquête autour d’une adresse, l’État de Vaud propose un
 					service gratuit&nbsp;:
-					<a href="https://www.vd.ch/prestation/sabonner-aux-avis-denquete" target="_blank" rel="noopener"
+					<a href="https://www.vd.ch/prestation/sabonner-aux-avis-denquete" target="_blank" rel="noopener" translate="no"
 						>InfoCamac</a
 					>. Les règles de l’enquête publique (consultation, observations, oppositions, recours) sont décrites sur la
 					page de l’État de Vaud
@@ -130,7 +130,7 @@
 				<p>
 					Un marqueur par commune, placé sur le siège de son administration communale&nbsp;: l’adresse vient de
 					l’annuaire de l’Union des communes vaudoises, et sa position du répertoire officiel des adresses de bâtiments
-					de swisstopo. Un clic sur le marqueur ouvre la fiche de la commune. Cette couche est permanente&nbsp;: elle
+					de <span translate="no">swisstopo</span>. Un clic sur le marqueur ouvre la fiche de la commune. Cette couche est permanente&nbsp;: elle
 					reste toujours affichée.
 				</p>
 				<p>
@@ -144,7 +144,7 @@
 				<p>
 					Les <strong>Objets</strong> (motions, postulats, interpellations, décrets, préavis…) et les
 					<strong>Séances</strong>, avec leur ordre du jour, du Grand Conseil et de conseils communaux. Ils viennent
-					d’<a href="https://openparldata.ch" target="_blank" rel="noopener">OpenParlData</a>, une plateforme qui
+					d’<a href="https://openparldata.ch" target="_blank" rel="noopener" translate="no">OpenParlData</a>, une plateforme qui
 					rassemble les données des parlements suisses, ou du site de la commune.
 				</p>
 				<p>
@@ -186,7 +186,7 @@
 						</li>
 					{/each}
 					{#if sitesLus}
-						<li>{insecables(sitesLus)}. <a href={resolve('/couverture')}>Couverture ›</a></li>
+						<li>{insecables(sitesLus)}. <a href={resolve('/couverture')}>Couverture&nbsp;<span aria-hidden="true">›</span></a></li>
 					{/if}
 				</ul>
 				<p>
@@ -262,13 +262,13 @@
 			<section class="partie" aria-labelledby="robot">
 				<h2 id="robot"><span class="numero" aria-hidden="true">2</span>Le robot de Vigie Vaud</h2>
 				<p>
-					Pour les conseils communaux qu’OpenParlData n’expose pas, Vigie Vaud lit le site de la commune avec un robot.
+					Pour les conseils communaux qu’<span translate="no">OpenParlData</span> n’expose pas, Vigie Vaud lit le site de la commune avec un robot.
 					Ce qui suit s’adresse au service informatique d’une commune comme à toute personne curieuse.
 				</p>
 				<ul class="robot">
 					<li>
-						<strong>Qui.</strong> Il se présente sous les noms <code>VigieVaud-sonde</code> (la vérification quotidienne
-						de la page de liste) et <code>VigieVaud-import</code> (la lecture), avec un courriel de contact et un lien
+						<strong>Qui.</strong> Il se présente sous les noms <code translate="no">VigieVaud-sonde</code> (la vérification quotidienne
+						de la page de liste) et <code translate="no">VigieVaud-import</code> (la lecture), avec un courriel de contact et un lien
 						vers cette section. Ce n’est pas un robot d’IA.
 					</li>
 					<li>
@@ -282,8 +282,8 @@
 						l’historique, lancé à la main, relit un site au même rythme.
 					</li>
 					<li>
-						<strong>Ses règles.</strong> Il suit <code>robots.txt</code> et <code>Crawl-delay</code> sous le nom
-						<code>VigieVaud</code>&nbsp;; une règle faite à tous les robots (<code>User-agent: *</code>) le concerne
+						<strong>Ses règles.</strong> Il suit <code translate="no">robots.txt</code> et <code translate="no">Crawl-delay</code> sous le nom
+						<code translate="no">VigieVaud</code>&nbsp;; une règle faite à tous les robots (<code translate="no">User-agent: *</code>) le concerne
 						aussi. Il s’arrête après une réponse 429 ou 503.
 					</li>
 					<li>
@@ -291,31 +291,31 @@
 						(art.&nbsp;5&nbsp;LDA)&nbsp;; le robot n’en garde que les métadonnées et le lien.
 					</li>
 					<li>
-						<strong>Où il tourne.</strong> Sur GitHub Actions, dont les adresses IP changent. Pour le filtrer, passez
-						par son User-Agent ou par <code>robots.txt</code>, jamais par l’adresse IP.
+						<strong>Où il tourne.</strong> Sur <span translate="no">GitHub Actions</span>, dont les adresses IP changent. Pour le filtrer, passez
+						par son <span translate="no">User-Agent</span> ou par <code translate="no">robots.txt</code>, jamais par l’adresse IP.
 					</li>
 				</ul>
 				<p>Une commune qui ne veut plus être lue a deux voies&nbsp;:</p>
 				<ol class="arret" use:anime>
 					<li>
 						<span class="delai" aria-hidden="true">dès le lendemain</span>
-						interdire <code>VigieVaud</code> dans le <code>robots.txt</code> de son site&nbsp;: le robot s’arrête dès le
+						interdire <code translate="no">VigieVaud</code> dans le <code translate="no">robots.txt</code> de son site&nbsp;: le robot s’arrête dès le
 						lendemain, sans attendre personne&nbsp;;
-						<pre><code>User-agent: VigieVaud
+						<pre translate="no"><code>User-agent: VigieVaud
 Disallow: /</code></pre>
 					</li>
 					<li>
-						<span class="delai" aria-hidden="true"><span class="nombre">7</span> jours au plus</span>
+						<span class="delai" aria-hidden="true"><span class="nombre">7</span>&nbsp;jours au plus</span>
 						écrire à <a href="mailto:{COURRIEL}">{COURRIEL}</a>&nbsp;: le robot est arrêté dans les 7&nbsp;jours.
 					</li>
 				</ol>
 				<p>
-					Pour seulement le ralentir, un <code>Crawl-delay</code> suffit, en secondes&nbsp;:
+					Pour seulement le ralentir, un <code translate="no">Crawl-delay</code> suffit, en secondes&nbsp;:
 				</p>
-				<pre><code>User-agent: VigieVaud
+				<pre translate="no"><code>User-agent: VigieVaud
 Crawl-delay: 30</code></pre>
 				<p>
-					Le robot suit un <code>Crawl-delay</code> jusqu’à 30&nbsp;secondes et ne le raccourcit jamais&nbsp;: au-delà,
+					Le robot suit un <code translate="no">Crawl-delay</code> jusqu’à 30&nbsp;secondes et ne le raccourcit jamais&nbsp;: au-delà,
 					il ne lit plus le site.
 				</p>
 				<p>

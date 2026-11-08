@@ -10,9 +10,9 @@
 	import type { Objet, Seance } from '#lib/schema.js';
 	import { apercuElement } from './apercu.js';
 	import { conseils } from './donnees.js';
-	import { COULEUR_CONSEILS } from './index.js';
+	import { COULEUR_CONSEILS, type ParametresConseils } from './index.js';
 
-	let { ctx, voir }: { ctx: Contexte<undefined>; voir: () => void } = $props();
+	let { ctx, voir }: { ctx: Contexte<ParametresConseils>; voir: () => void } = $props();
 
 	const cle = untrack(() => ctx.ouvert?.element) ?? '';
 	let element = $state<Objet | Seance | null>(null);
@@ -28,7 +28,7 @@
 <button class="apercu-element" type="button" style:--c={COULEUR_CONSEILS} onclick={voir}>
 	<span class="meta">{texte.meta}</span>
 	<strong class="titre">{texte.titre}</strong>
-	<span class="fiche"><span class="nom">{fiche}</span> · <span class="voir">Voir la fiche ›</span></span>
+	<span class="fiche"><span class="nom">{fiche}</span> · <span class="voir">Voir la fiche&nbsp;<span aria-hidden="true">›</span></span></span>
 </button>
 
 <style>

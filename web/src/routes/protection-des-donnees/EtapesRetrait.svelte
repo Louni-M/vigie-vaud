@@ -26,13 +26,13 @@
 						<span class="pastille">
 							<svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
 								{#if i === 0}
-									<rect x="3" y="5" width="18" height="14" rx="2" pathLength="1" />
-									<path d="m3.5 6 8.5 7 8.5-7" pathLength="1" />
+									<rect x="3" y="5" width="18" height="14" rx="2" />
+									<path d="m3.5 6 8.5 7 8.5-7" />
 								{:else if i === 1}
-									<path d="M6 3h9l4 4v14H6z" pathLength="1" />
-									<path d="M15 3v4h4M9 14l2 2 4-4.5" pathLength="1" />
+									<path d="M6 3h9l4 4v14H6z" />
+									<path d="M15 3v4h4M9 14l2 2 4-4.5" />
 								{:else}
-									<path d="M4 12.5 9.5 18 20 6.5" pathLength="1" />
+									<path d="M4 12.5 9.5 18 20 6.5" />
 								{/if}
 							</svg>
 						</span>
@@ -44,7 +44,7 @@
 				{/each}
 			</ol>
 		</div>
-		<p class="delai"><span class="duree">7 jours</span> au plus, du courriel au retrait</p>
+		<p class="delai"><span class="duree">7&nbsp;jours</span> au plus, du courriel au retrait</p>
 	</div>
 </Diagramme>
 
@@ -196,9 +196,8 @@
 		:global([data-js-etat='attente']) .delai {
 			opacity: 0;
 		}
-		:global([data-js-etat='attente']) .pastille * {
-			stroke-dasharray: 1;
-			stroke-dashoffset: 1;
+		:global([data-js-etat='attente']) .pastille svg {
+			opacity: 0;
 		}
 
 		:global([data-js-etat='joue']) .remplissage {
@@ -212,9 +211,9 @@
 		:global([data-js-etat='joue']) .pastille {
 			animation: allume 0.5s var(--ease-out) calc(0.15s + var(--i) * var(--course) / 2) both;
 		}
-		:global([data-js-etat='joue']) .pastille * {
-			stroke-dasharray: 1;
-			animation: trace 0.55s var(--ease-out) calc(0.4s + var(--i) * var(--course) / 2) both;
+		/* Le pictogramme se pose dans la pastille allumée, en se resserrant sur lui-même. */
+		:global([data-js-etat='joue']) .pastille svg {
+			animation: pose 0.55s var(--ease-out) calc(0.4s + var(--i) * var(--course) / 2) both;
 		}
 		:global([data-js-etat='joue']) .texte {
 			animation: monte 0.5s var(--ease-out) calc(0.3s + var(--i) * var(--course) / 2) both;
@@ -249,12 +248,14 @@
 			transform: none;
 		}
 	}
-	@keyframes trace {
+	@keyframes pose {
 		from {
-			stroke-dashoffset: 1;
+			opacity: 0;
+			transform: scale(0.6);
 		}
 		to {
-			stroke-dashoffset: 0;
+			opacity: 1;
+			transform: none;
 		}
 	}
 	@keyframes monte {

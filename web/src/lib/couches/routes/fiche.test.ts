@@ -48,18 +48,18 @@ describe('fiche d’une restriction', () => {
 			couleur: '#c92a2a',
 			tirets: false,
 			etat: 'À venir',
-			echeance: 'commence dans 8 jours',
+			echeance: 'commence dans 8\u00a0jours',
 			nom: 'Lutry, Route des Essais nuit',
 			periode: 'Du lundi 26 octobre 2026 au jeudi 29 octobre 2026',
-			horaires: 'La nuit seulement, de 19 h 30 à 5 h 30',
+			horaires: 'La nuit seulement, de 19\u00a0h\u00a030 à 5\u00a0h\u00a030',
 			weekEnd: 'Levée le week-end',
 			route: 'Route cantonale 701 (réseau de base, principale)',
 			travaux: 'Revêtement',
 			remarque: null,
-			longueur: '3,8 km',
+			longueur: '3,8\u202fkm',
 			communes: [
-				{ slug: 'pully', nom: 'Pully', longueur: '3,1 km' },
-				{ slug: 'lutry', nom: 'Lutry', longueur: '770 m' }
+				{ slug: 'pully', nom: 'Pully', longueur: '3,1\u202fkm' },
+				{ slug: 'lutry', nom: 'Lutry', longueur: '770\u202fm' }
 			]
 		});
 	});
@@ -72,7 +72,7 @@ describe('fiche d’une restriction', () => {
 			sorte: 'Déviation',
 			couleur: '#e8590c',
 			tirets: true,
-			detail: 'en cours · Lutry, Pully · 3,1 km'
+			detail: 'en cours · Lutry, Pully · 3,1\u202fkm'
 		});
 	});
 });

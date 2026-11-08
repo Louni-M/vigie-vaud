@@ -41,7 +41,6 @@
 .app[data-theme='almanach'] .rail button {
 	border-radius: 0;
 	color: var(--color-ink-2);
-	transition: background-color var(--dur-short) var(--ease-out);
 }
 .app[data-theme='almanach'] .rail button:hover {
 	background: var(--color-paper-2);
@@ -50,6 +49,10 @@
 	background: var(--color-sheet);
 	box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
 	color: var(--color-ink);
+}
+/* Ouverte, la couche se pose au survol sur le papier, comme les autres, et garde son trait orange. */
+.app[data-theme='almanach'] .rail button.ouvert:hover {
+	background: var(--color-paper-2);
 }
 .app[data-theme='almanach'] .rail .fil {
 	border-bottom-color: var(--color-rule-2);
@@ -66,10 +69,7 @@
 	border-radius: var(--radius-pill);
 	font-family: var(--font-display);
 	font-weight: 600;
-	transition:
-		background-color var(--dur-short) var(--ease-out),
-		color var(--dur-short) var(--ease-out),
-		transform var(--dur-short) var(--ease-out);
+	transition: transform var(--dur-short) var(--ease-out);
 }
 .app[data-theme='almanach'] .rail .icone.off {
 	background: var(--color-sheet);
@@ -147,7 +147,6 @@
 }
 .app[data-theme='almanach'] :is(section.volet, section.fil) .fermer {
 	border-radius: 0;
-	transition: background-color var(--dur-micro) var(--ease-out);
 }
 .app[data-theme='almanach'] :is(section.volet, section.fil) .fermer:hover {
 	background: var(--color-paper);
@@ -158,6 +157,10 @@
 }
 .app[data-theme='almanach'] section.volet :is(.badges, .attribution) {
 	font-size: var(--text-xs);
+}
+.app[data-theme='almanach'] section.volet :is(.couverture, .attribution a):hover {
+	color: var(--color-ink);
+	text-decoration-thickness: var(--rule-bar);
 }
 
 /* Les réglages d'une couche : des puces à angle droit, des listes déroulantes sans cadre arrondi. */
@@ -207,13 +210,16 @@
 	border: 0;
 	border-radius: 0;
 	background: none;
-	transition: background-color var(--dur-short) var(--ease-out);
 }
 .app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte:hover,
 .app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte.actif {
 	border: 0;
 	background: var(--color-paper);
 	box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
+}
+/* La carte de l'élément ouvert, survolée : le papier fonce d'un ton. */
+.app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte.actif:hover {
+	background: var(--color-paper-2);
 }
 .app[data-theme='almanach'] :is(a, button).carte .nature {
 	font-size: var(--text-md);
@@ -238,15 +244,16 @@
 .app[data-theme='almanach'] section.fil .puces button {
 	border-color: var(--color-rule);
 	color: var(--color-muted);
-	transition:
-		background-color var(--dur-short) var(--ease-out),
-		color var(--dur-short) var(--ease-out);
 }
 .app[data-theme='almanach'] section.fil .puces button[aria-pressed='true'] {
 	border-color: var(--c);
 	background: color-mix(in oklch, var(--c) 12%, var(--color-sheet));
 	color: var(--color-ink);
 	font-weight: 500;
+}
+/* Survolée, la puce choisie fonce son lavis. */
+.app[data-theme='almanach'] section.fil .puces button[aria-pressed='true']:hover {
+	background: color-mix(in oklch, var(--c) 24%, var(--color-sheet));
 }
 
 /* Le fil cantonal : intertitres en casse de phrase, lignes réglées, l'entrée ouverte sur un lavis orange. */
@@ -273,15 +280,19 @@
 	background: var(--color-accent-wash);
 	box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
 }
-.app[data-theme='almanach'] section.fil li > button {
+.app[data-theme='almanach'] section.fil li > :is(a, button) {
 	padding-inline: var(--space-xs);
-	transition: background-color var(--dur-short) var(--ease-out);
 }
-.app[data-theme='almanach'] section.fil li > button:hover {
+.app[data-theme='almanach'] section.fil li > :is(a, button):hover {
 	background: var(--color-paper);
 }
-.app[data-theme='almanach'] section.fil li.ouvert > button:hover {
+/* L'entrée ouverte garde son lavis orange au survol : son titre s'y souligne d'orange. */
+.app[data-theme='almanach'] section.fil li.ouvert > :is(a, button):hover {
 	background: none;
+}
+.app[data-theme='almanach'] section.fil li.ouvert > :is(a, button):hover .titre {
+	text-decoration: underline var(--rule-bar) var(--color-accent);
+	text-underline-offset: 0.18em;
 }
 .app[data-theme='almanach'] section.fil .signe {
 	border-radius: var(--radius-pill);
@@ -388,6 +399,10 @@
 .app[data-theme='almanach'] .maplibregl-ctrl-group button {
 	border-radius: 0;
 }
+/* Les boutons de zoom se posent sur le papier au survol, aussi sur un écran tactile avec souris. */
+.app[data-theme='almanach'] .maplibregl-ctrl-group button:not(:disabled):hover {
+	background-color: var(--color-paper-2);
+}
 
 /* Téléphone : la barre des vues, à angle droit, la vue courante en encre. */
 .app[data-theme='almanach'] .barre-vues {
@@ -403,4 +418,18 @@
 .app[data-theme='almanach'] .barre-vues button[aria-pressed='true'] {
 	background: var(--color-ink);
 	color: var(--color-accent-ink);
+}
+
+/* Les changements de fond et de couleur au survol (rail, liste des dossiers, fil) se font d'un coup : seuls transform et
+   opacity s'animent, sans repeindre. Sans mouvement, le déplacement des icônes du rail est coupé aussi. */
+@media (prefers-reduced-motion: reduce) {
+	.app[data-theme='almanach'] .rail button,
+	.app[data-theme='almanach'] .rail .icone,
+	.app[data-theme='almanach'] :is(section.volet, section.fil) .fermer,
+	.app[data-theme='almanach'] :is(.liste, .grille) :is(a, button).carte,
+	.app[data-theme='almanach'] .carte-attente,
+	.app[data-theme='almanach'] section.fil .puces button,
+	.app[data-theme='almanach'] section.fil li > :is(a, button) {
+		transition: none;
+	}
 }

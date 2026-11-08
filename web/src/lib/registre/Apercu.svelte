@@ -5,6 +5,7 @@
 	 * Conseil · Voir la fiche › », sans résumé par couche) ; l'`Apercu` de la couche rend celui de l'élément ouvert.
 	 * La croix ferme la fiche, et l'aperçu avec elle.
 	 */
+	import { deNom } from './elision.js';
 	import type { Registre } from './registre.svelte.js';
 	import type { Chargeur } from './types.js';
 
@@ -14,6 +15,8 @@
 	const couche = $derived(
 		registre.couches.find((c) => c.id === registre.ouvert?.couche && c.composants.Apercu) ?? null
 	);
+	/** « Fermer l’aperçu d’Yverdon-les-Bains » pour une commune ; une fiche propre est nommée telle quelle. */
+	const fermerLibelle = $derived(registre.commune ? `Fermer l’aperçu ${deNom(nom)}` : `Fermer l’aperçu : ${nom}`);
 	const chargerApercu = (c: NonNullable<typeof couche>) =>
 		registre.composant(c, 'Apercu') as ReturnType<Chargeur<unknown, { voir: () => void }>>;
 </script>
@@ -25,16 +28,16 @@
 				<module.default ctx={registre.contexte(couche)} voir={onvoir} />
 			{:catch}
 				<button class="commune" type="button" onclick={onvoir}>
-					<strong>{nom}</strong> · <span>Voir la fiche ›</span>
+					<strong>{nom}</strong> · <span>Voir la fiche&nbsp;<span aria-hidden="true">›</span></span>
 				</button>
 			{/await}
 		{/key}
 	{:else}
 		<button class="commune" type="button" onclick={onvoir}>
-			<strong>{nom}</strong> · <span>Voir la fiche ›</span>
+			<strong>{nom}</strong> · <span>Voir la fiche&nbsp;<span aria-hidden="true">›</span></span>
 		</button>
 	{/if}
-	<button class="fermer" type="button" aria-label="Fermer l’aperçu de {nom}" onclick={registre.fermerFiche}>
+	<button class="fermer" type="button" aria-label={fermerLibelle} onclick={registre.fermerFiche}>
 		×
 	</button>
 </div>
@@ -67,7 +70,7 @@
 		font-size: 17px;
 		color: var(--text);
 	}
-	.commune span {
+	.commune > span {
 		color: var(--accent);
 		font-weight: 600;
 	}

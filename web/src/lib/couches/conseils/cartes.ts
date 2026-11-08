@@ -22,7 +22,7 @@ const jour = new Intl.DateTimeFormat('fr-CH', { weekday: 'short', day: 'numeric'
 const jourDe = (cle: string) => jour.format(new Date(`${cle.split('/')[1].slice(0, 10)}T00:00:00`));
 
 function recents(n: number): string {
-	return n === 0 ? 'aucun objet récent' : n === 1 ? '1 objet récent' : `${n} objets récents`;
+	return n === 0 ? 'aucun objet récent' : n === 1 ? '1 objet récent' : `${n} objets récents`;
 }
 
 /** La carte d'un conseil de `conseils/index.json` ; sa commune est traduite en slug par l'index des communes. */
@@ -33,9 +33,9 @@ export function carteConseil(conseil: ConseilIndexe, communes: readonly Commune[
 		donne: libelleDonne(conseil),
 		recents: donneDesObjets(conseil) ? recents(conseil.recents.length) : null,
 		seance: prochaine
-			? `Prochaine séance : ${jourDe(prochaine)}`
+			? `Prochaine séance : ${jourDe(prochaine)}`
 			: derniere
-				? `Dernière séance : ${jourDe(derniere)}`
+				? `Dernière séance : ${jourDe(derniere)}`
 				: null,
 		commune: conseil.commune === null ? null : (communes.find((c) => c.bfs === conseil.commune)?.slug ?? null)
 	};
@@ -68,7 +68,7 @@ export function lignesConseils(
 			const commune = conseil.commune === null ? undefined : parNumero.get(conseil.commune);
 			if (!commune || !dans(commune.hotel)) return [];
 			const { seance } = carteConseil(conseil, communes);
-			const detail = [libelleDonne(conseil), seance && seance.charAt(0).toLowerCase() + seance.slice(1).replace(' :', '')]
+			const detail = [libelleDonne(conseil), seance && seance.charAt(0).toLowerCase() + seance.slice(1).replace(' :', '')]
 				.filter(Boolean)
 				.join(' · ');
 			return [{ cle: conseil.cle, commune: commune.nom, slug: commune.slug, detail }];
@@ -81,6 +81,6 @@ export function lignesConseils(
  * ouvert ; sur téléphone, il suit « Voir sur la carte » (`grisage-mobile`).
  */
 export function noteAutresCommunes(autres: number, telephone: boolean): string {
-	const quand = telephone ? 'sur la carte par « Voir sur la carte »' : 'tant que ce volet est ouvert';
-	return `Les ${autres} autres communes : pas de conseil couvert, grisées ${quand}. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.`;
+	const quand = telephone ? 'sur la carte par « Voir sur la carte »' : 'tant que ce volet est ouvert';
+	return `Les ${autres} autres communes : pas de conseil couvert, grisées ${quand}. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.`;
 }

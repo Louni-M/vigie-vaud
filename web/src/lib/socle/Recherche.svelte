@@ -2,7 +2,8 @@
 	import { untrack } from 'svelte';
 	import { normaliser } from '#lib/labels.js';
 	import type { Commune, Resultat } from '#lib/types.js';
-	import { avecAdresses, resultatsLocaux } from './recherche.js';
+	import { typographier } from '#lib/almanach/typographie.js';
+	import { ancienEtActuelle, avecAdresses, resultatsLocaux } from './recherche.js';
 
 	/*
 	 * Recherche flottante du socle : communes, résultats des couches (fiches propres et `chercher`), adresses et
@@ -53,7 +54,7 @@
 				localisation = false;
 				erreur =
 					e.code === e.PERMISSION_DENIED
-						? 'Position refusée : autorisez la localisation pour ce site, ou cherchez une adresse.'
+						? 'Position refusée : autorisez la localisation pour ce site, ou cherchez une adresse.'
 						: 'Position indisponible pour le moment. Cherchez plutôt une adresse.';
 			},
 			{ timeout: 15_000, maximumAge: 60_000 }
@@ -287,9 +288,11 @@
 			<input
 				bind:this={champ}
 				type="search"
-				placeholder="Adresse, commune, n° de dossier ou d’objet"
+				name="q"
+				placeholder="Adresse, commune, n°&nbsp;de dossier…"
 				aria-label="Rechercher une adresse, une commune, un numéro de dossier ou d’objet"
 				autocomplete="off"
+				spellcheck="false"
 				bind:value={texte}
 				oninput={saisie}
 				onfocus={entree}
@@ -319,16 +322,25 @@
 				<span aria-hidden="true">◎</span>
 				{localisation ? 'Localisation en cours…' : 'Autour de moi'}
 			</button>
-			<p class="aide">Une adresse, une commune, un n° de dossier ou d’Objet</p>
+			<p class="aide">Une adresse, une commune, un n°&nbsp;de dossier ou d’objet</p>
 		</div>
 	{:else if deroule && resultats.length}
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<ul bind:this={liste} aria-label="Résultats de recherche" onkeydown={clavierListe}>
 			{#each resultats as r, i (i)}
+				{@const ancien = ancienEtActuelle(r)}
 				<li>
 					<button type="button" onclick={() => choisir(r)}>
 						<span class="type">{r.type === 'commune' ? 'Commune' : r.type === 'adresse' ? r.categorie : r.nomCouche}</span>
-						<span>{r.libelle}</span>
+						{#if ancien}
+							<span
+								>{ancien[0]}<span aria-hidden="true">&nbsp;→ </span><span class="lecteur-seul"
+									>, aujourd’hui </span
+								>{ancien[1]}</span
+							>
+						{:else}
+							<span>{typographier(r.libelle)}</span>
+						{/if}
 					</button>
 				</li>
 			{/each}
@@ -336,13 +348,15 @@
 	{/if}
 	<p class="annonce" aria-live="polite">
 		{#if deroule && resultats.length}
-			{resultats.length} résultat{resultats.length > 1 ? 's' : ''}, flèche bas pour les parcourir.
+			{resultats.length}&nbsp;résultat{resultats.length > 1 ? 's' : ''}, flèche bas pour les parcourir.
 		{:else if deroule && vide}
-			Aucun résultat.
+			Aucun résultat. Essayez un nom de commune, une adresse ou un n°&nbsp;de dossier.
 		{/if}
 	</p>
 	{#if deroule && vide && !resultats.length}
-		<p class="aucun">Aucun résultat pour cette recherche.</p>
+		<p class="aucun">
+			Aucun résultat pour cette recherche. Essayez un nom de commune, une adresse ou un n°&nbsp;de dossier.
+		</p>
 	{/if}
 	<p class="erreur" role="status">{erreur}</p>
 </div>
@@ -503,6 +517,8 @@
 	}
 	.plein ul {
 		flex: 1 1 auto;
+		/* Arrivée en bas de la liste, le défilement ne passe pas à la page dessous. */
+		overscroll-behavior: contain;
 		min-height: 0;
 		max-height: none;
 		border-top: 1px solid var(--line);

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fauxDgmr, heureLocale, restriction, type RestrictionDgmr } from '#tests/faux-dgmr.js';
 import { creerDonneesRoutes, type Restriction } from './donnees.svelte.js';
 import { SORTES } from './sortes.js';
-import { FILTRES_INITIAUX, sortesDesPuces, visibles, type Filtres } from './volet.js';
+import { basculer, FILTRES_INITIAUX, sortesDesPuces, visibles, type Filtres } from './volet.js';
 
 // Le module de données refuse d'interroger la DGMR ailleurs que dans un navigateur.
 vi.mock('$app/env', () => ({ browser: true }));
@@ -111,5 +111,13 @@ describe('puces des sortes', () => {
 			'Restriction particulière',
 			'Autres'
 		]);
+	});
+});
+
+describe('clic sur une puce', () => {
+	it('éteint une puce allumée et rallume une puce éteinte, sans toucher aux autres', () => {
+		expect(basculer(['fermeture', 'feux'], 'feux')).toEqual(['fermeture']);
+		expect(basculer(['fermeture'], 'feux')).toEqual(['fermeture', 'feux']);
+		expect(basculer([], 'a_venir')).toEqual(['a_venir']);
 	});
 });
