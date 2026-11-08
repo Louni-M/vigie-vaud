@@ -777,4 +777,35 @@ export interface Site {
 	 * Page des membres du conseil, en HTML ; absente si le site n'en a pas.
 	 */
 	membres?: Lien | null;
+	/**
+	 * Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page `seances` est vide et remplie par le navigateur.
+	 */
+	coreapi?: Coreapi | null;
+}
+/**
+ * La recherche `coreapi` d'une page Quicksite de nouvelle génération : les attributs `data-elasticsearch-*` de
+ * sa section `tplDeepsearch`, et le projet de son script. Le cron demande le fragment HTML de cette recherche
+ * (`/coreapi/elasticsearch/projects/<projet>/<vue>/search?…`), page par page, au lieu de la page elle-même.
+ */
+export interface Coreapi {
+	/**
+	 * Projet du site (`founex25`).
+	 */
+	projet: string;
+	/**
+	 * Vue de la recherche (`documentconseildates`).
+	 */
+	vue: string;
+	/**
+	 * Nœud de la page des documents (`data-elasticsearch-node`).
+	 */
+	noeud: number;
+	/**
+	 * Documents par page de résultats (`data-elasticsearch-pagesize`).
+	 */
+	taille: number;
+	/**
+	 * Tri des résultats (`date_extid`).
+	 */
+	tri: string;
 }

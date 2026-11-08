@@ -40,17 +40,16 @@ le journal et ne donne personne : l'import continue.
 
 from __future__ import annotations
 
-import html
 import json
 import re
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
-from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
 
 from bruts import Bruts
+from pages_html import Noeud, arbre, espaces, texte_html
 from mesure_sites import Mesure, PagesLues, RobotSansReseau, liens, sans_journal
 from robot_communal import PageNonLue, Robot
 from schema import Plateforme, Site, Source, niveau_de
@@ -135,8 +134,8 @@ _HEURE = re.compile(r"\b(\d{1,2})h(\d{2})\b")
 def _lignes_de_seances(texte: str, url: str) -> list[_Ligne | str]:
     """Les lignes des deux tableaux de Séances, dans l'ordre du site : chacune lue (`_Ligne`) ou, illisible, la raison
     de son échec."""
-    arbre = _arbre(texte)
-    tableaux = [n for n in arbre.elements() if n.tag == "table" and n.attr("id") in TABLEAUX_SEANCES]
+    racine = arbre(texte)
+    tableaux = [n for n in racine.elements() if n.tag == "table" and n.attr("id") in TABLEAUX_SEANCES]
     if not tableaux:
         raise ValueError(f"{url} : aucun tableau de Séances ({', '.join(TABLEAUX_SEANCES)})")
     lignes: list[_Ligne | str] = []
@@ -157,7 +156,7 @@ def _ligne(brute: object, url: str) -> _Ligne | str:
     lien = _LIEN_ANLASS.search(str(brute.get("name") or ""))
     if lien is None:
         return "sans lien vers sa page"
-    datum = _texte(str(brute.get("_datum") or ""))
+    datum = texte_html(str(brute.get("_datum") or ""))
     jour = _DATE.search(datum)
     if jour is None:
         return f"sans date : {lien[1]}"
@@ -167,7 +166,7 @@ def _ligne(brute: object, url: str) -> _Ligne | str:
         return f"date impossible « {jour[0]} » : {lien[1]}"
     heure = _HEURE.search(datum[jour.end() :])
     return _Ligne(
-        nom=_texte(lien[2]),
+        nom=texte_html(lien[2]),
         lien=urljoin(url, lien[1]),
         jour=quand,
         heure=f"{int(heure[1]):02d}:{heure[2]}" if heure else None,
@@ -183,16 +182,16 @@ def _meeting(ligne: _Ligne, texte: str, url: str, numeros: dict[str, str]) -> di
     des Objets donne le numéro (`numeros`, par lien stable). Les documents de la page sont ceux de la Séance, avec ceux
     d'un point sans Objet (ADR-0010) ; ceux d'un point relié à son Objet sont à cet Objet, dont la fiche les donne.
     Un document n'a pas de date : i-web n'en affiche pas, ni sa mise en ligne."""
-    arbre = _arbre(texte)
+    racine = arbre(texte)
     points = []
-    relies: list[_Noeud] = []  # les lignes des points reliés à leur Objet
-    for tr in arbre.elements():
+    relies: list[Noeud] = []  # les lignes des points reliés à leur Objet
+    for tr in racine.elements():
         if tr.tag != "tr" or not (tr.attr("id") or "").startswith("traktanden_"):
             continue
         cellules = [c for c in tr.enfants_elements() if c.tag == "td"]
         if len(cellules) < 2:
             continue
-        numero = _espaces(cellules[0].texte()) or None
+        numero = espaces(cellules[0].texte()) or None
         liens = [urljoin(url, a.attr("href") or "") for c in cellules[2:] for a in c.elements() if a.tag == "a"]
         objet = next((numeros[lien] for lien in liens if lien in numeros), None)
         if objet is not None:
@@ -200,11 +199,11 @@ def _meeting(ligne: _Ligne, texte: str, url: str, numeros: dict[str, str]) -> di
         points.append(
             {
                 "item_number_display": numero,
-                "item_title": _espaces(cellules[1].texte()),
+                "item_title": espaces(cellules[1].texte()),
                 "item_affair_number": objet,
             }
         )
-    documents = _documents(arbre, url, sauf=relies)
+    documents = _documents(racine, url, sauf=relies)
     debut = ligne.jour.isoformat() + (f"T{ligne.heure}:00" if ligne.heure else "")
     return {
         "id": None,
@@ -216,16 +215,16 @@ def _meeting(ligne: _Ligne, texte: str, url: str, numeros: dict[str, str]) -> di
     }
 
 
-def _documents(arbre: _Noeud, url: str, sauf: list[_Noeud] | None = None) -> list[dict]:
+def _documents(racine: Noeud, url: str, sauf: list[Noeud] | None = None) -> list[dict]:
     """Les documents d'une page (liens `/_doc/<id>`), hors des nœuds `sauf`, chacun une fois, nommés par le texte du
     lien, sinon son titre, sinon la fin du lien."""
     documents, vus = [], set()
-    for a in arbre.elements(sauf or []):
+    for a in racine.elements(sauf or []):
         lien = urljoin(url, a.attr("href") or "") if a.tag == "a" else ""
         if "/_doc/" not in lien or lien in vus:
             continue
         vus.add(lien)
-        nom = _espaces(a.texte()) or a.attr("title") or lien.rsplit("/", 1)[-1]
+        nom = espaces(a.texte()) or a.attr("title") or lien.rsplit("/", 1)[-1]
         documents.append({"name": nom, "url": lien, "date": None, "category": None})
     return documents
 
@@ -250,7 +249,7 @@ def _lignes_d_objets(nom: str, texte: str, url: str) -> list[_LigneObjet]:
     date, titre et lien stable. Un Objet sans numéro n'est pas gardé, ni le second de deux Objets de même numéro ; une
     ligne sans lien est illisible ; tous sont notés dans le journal. Une liste sans son tableau ou dont aucune ligne
     ne se lit lève `ValueError`."""
-    tableau = next((n for n in _arbre(texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_OBJETS), None)
+    tableau = next((n for n in arbre(texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_OBJETS), None)
     if tableau is None:
         raise ValueError(f"{url} : aucun tableau d'Objets ({TABLEAU_OBJETS})")
     try:
@@ -265,18 +264,18 @@ def _lignes_d_objets(nom: str, texte: str, url: str) -> list[_LigneObjet]:
             illisibles += 1
             _journal(nom, "ligne d'Objet illisible (sans lien vers sa page)")
             continue
-        titre, numero = _texte(lien[2]), _texte(str(brute.get("_nummer") or ""))
+        titre, numero = texte_html(lien[2]), texte_html(str(brute.get("_nummer") or ""))
         if not numero:
             _journal(nom, f"Objet sans numéro, non importé : {titre}")
             continue
         if any(o.numero == numero for o in lignes):
             _journal(nom, f"Objet {numero} en double, le premier du site gardé : {titre}")
             continue
-        jour = _DATE.search(_texte(str(brute.get("_geschaeftsdatum") or "")))
+        jour = _DATE.search(texte_html(str(brute.get("_geschaeftsdatum") or "")))
         lignes.append(
             _LigneObjet(
                 numero=numero,
-                type=_texte(str(brute.get("_kategorieId") or "")),
+                type=texte_html(str(brute.get("_kategorieId") or "")),
                 titre=titre,
                 lien=urljoin(url, lien[1]),
                 jour=_date(jour) if jour else None,
@@ -301,19 +300,19 @@ def _date(jour: re.Match) -> date | None:
 def _affair(ligne: _LigneObjet, texte: str, url: str) -> dict:
     """L'Objet à la forme d'une *affair* d'OpenParlData : numéro, type, date et titre de la liste ; statut et
     auteur·e·s de sa fiche (`dl` : « Statut », « Auteur »), seulement s'ils y sont ; ses documents."""
-    arbre = _arbre(texte)
+    racine = arbre(texte)
     statut, auteurs = None, []
-    for dl in (n for n in arbre.elements() if n.tag == "dl"):
+    for dl in (n for n in racine.elements() if n.tag == "dl"):
         enfants = dl.enfants_elements()
         for dt, dd in zip(enfants, enfants[1:], strict=False):
             if dt.tag != "dt" or dd.tag != "dd":
                 continue
-            libelle = _espaces(dt.texte()).lower()
+            libelle = espaces(dt.texte()).lower()
             if libelle == "statut":
-                statut = _espaces(dd.texte()) or None
+                statut = espaces(dd.texte()) or None
             elif libelle.startswith(("auteur", "co-auteur")):
                 auteurs += [
-                    {"type": "person", "fullname": _prenom_nom(_espaces(a.texte()))}
+                    {"type": "person", "fullname": _prenom_nom(espaces(a.texte()))}
                     for a in dd.elements()
                     if a.tag == "a" and "/_rte/person/" in (a.attr("href") or "") and a.texte().strip()
                 ]
@@ -326,7 +325,7 @@ def _affair(ligne: _LigneObjet, texte: str, url: str) -> dict:
         "begin_date": ligne.jour.isoformat() if ligne.jour else None,
         "url_external": {"fr": ligne.lien},
         "contributors": {"data": auteurs},
-        "docs": {"data": _documents(arbre, url)},
+        "docs": {"data": _documents(racine, url)},
     }
 
 
@@ -352,7 +351,7 @@ def _preavis_rediges(nom: str, texte: str, url: str) -> list[dict]:
     « Titre » et « Statut » de l'en-tête (sinon la deuxième, et pas de statut) le titre et le statut ; les liens de la
     ligne sont ses documents. Un préavis sans numéro n'est pas importé, ni le second de deux préavis de même
     numéro ; l'un et l'autre sont notés dans le journal. Une page sans tableau rédigé lève `ValueError`."""
-    redige = [n for n in _arbre(texte).elements() if "icms-wysiwyg" in (n.attr("class") or "").split()]
+    redige = [n for n in arbre(texte).elements() if "icms-wysiwyg" in (n.attr("class") or "").split()]
     tableaux = [t for r in redige for t in r.elements() if t.tag == "table"]
     if not tableaux:
         raise ValueError(f"{url} : aucun tableau de préavis rédigé dans la page")
@@ -362,7 +361,7 @@ def _preavis_rediges(nom: str, texte: str, url: str) -> list[dict]:
             [c for c in tr.enfants_elements() if c.tag in ("td", "th")] for tr in tableau.elements() if tr.tag == "tr"
         ]
         rangees = [r for r in rangees if r]
-        entete = [_espaces(c.texte()).lower() for c in rangees[0]] if rangees else []
+        entete = [espaces(c.texte()).lower() for c in rangees[0]] if rangees else []
         if entete and not re.search(r"\d", entete[0]):
             rangees = rangees[1:]
         else:
@@ -370,7 +369,7 @@ def _preavis_rediges(nom: str, texte: str, url: str) -> list[dict]:
         col_titre = next((i for i, t in enumerate(entete) if "titre" in t), 1)
         col_statut = next((i for i, t in enumerate(entete) if "statut" in t), None)
         for cellules in rangees:
-            textes = [_espaces(c.texte()) for c in cellules]
+            textes = [espaces(c.texte()) for c in cellules]
             if len(textes) <= col_titre:
                 _journal(nom, f"ligne de préavis illisible ({textes[0]})")
                 continue
@@ -397,7 +396,7 @@ def _preavis_rediges(nom: str, texte: str, url: str) -> list[dict]:
                     "docs": {
                         "data": [
                             {
-                                "name": _espaces(a.texte()) or (a.attr("href") or "").rsplit("/", 1)[-1],
+                                "name": espaces(a.texte()) or (a.attr("href") or "").rsplit("/", 1)[-1],
                                 "url": urljoin(url, a.attr("href") or ""),
                                 "date": None,
                                 "category": None,
@@ -441,7 +440,7 @@ def _membres(robot: Robot, source: Source) -> list[str]:
         _journal(source.nom, f"page des membres {url} non lue ({e})")
         return []
     tableau = next(
-        (n for n in _arbre(page.texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES), None
+        (n for n in arbre(page.texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES), None
     )
     try:
         lignes = json.loads(tableau.attr("data-entities") or "")["data"] if tableau else None
@@ -462,8 +461,8 @@ def _nom_de_membre(ligne: dict) -> str | None:
     """« Prénom Nom », depuis la colonne `_nameVorname` (« Nom Prénom » : le dernier mot est pris pour le prénom,
     un prénom composé s'écrivant avec un trait d'union) ou `_vornameName` (déjà dans l'ordre)."""
     if ligne.get("_vornameName"):
-        return _texte(str(ligne["_vornameName"])) or None
-    nom = _texte(str(ligne.get("_nameVorname") or ""))
+        return texte_html(str(ligne["_vornameName"])) or None
+    nom = texte_html(str(ligne.get("_nameVorname") or ""))
     return _prenom_nom(nom) if nom else None
 
 
@@ -546,71 +545,3 @@ def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | Non
     except (ValueError, PageNonLue):
         return None
     return robot.requetes
-
-
-# --- Analyse du HTML ----------------------------------------------------------------------------------------------
-
-_VIDES = frozenset("area base br col embed hr img input link meta source track wbr".split())
-
-
-@dataclass
-class _Noeud:
-    tag: str
-    attrs: dict[str, str]
-    enfants: list[_Noeud | str] = field(default_factory=list)
-
-    def attr(self, nom: str) -> str | None:
-        return self.attrs.get(nom)
-
-    def elements(self, sauf: list[_Noeud] | None = None):
-        """Les éléments descendants, dans l'ordre du document, sans ceux de `sauf` ni leurs descendants."""
-        for e in self.enfants:
-            if isinstance(e, _Noeud) and not any(e is x for x in sauf or ()):
-                yield e
-                yield from e.elements(sauf)
-
-    def enfants_elements(self) -> list[_Noeud]:
-        return [e for e in self.enfants if isinstance(e, _Noeud)]
-
-    def texte(self) -> str:
-        return " ".join(e if isinstance(e, str) else e.texte() for e in self.enfants)
-
-
-class _Arbre(HTMLParser):
-    """Un arbre tolérant : une balise fermante sans ouvrante est ignorée, une fermante referme ce qu'elle englobe."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.racine = _Noeud("#document", {})
-        self._pile = [self.racine]
-
-    def handle_starttag(self, tag, attrs):
-        noeud = _Noeud(tag, {k: v or "" for k, v in attrs})
-        self._pile[-1].enfants.append(noeud)
-        if tag not in _VIDES:
-            self._pile.append(noeud)
-
-    def handle_endtag(self, tag):
-        for i in range(len(self._pile) - 1, 0, -1):
-            if self._pile[i].tag == tag:
-                del self._pile[i:]
-                return
-
-    def handle_data(self, data):
-        self._pile[-1].enfants.append(data)
-
-
-def _arbre(texte: str) -> _Noeud:
-    analyse = _Arbre()
-    analyse.feed(texte)
-    analyse.close()
-    return analyse.racine
-
-
-def _texte(fragment: str) -> str:
-    """Le texte d'un fragment HTML, balises retirées, entités décodées, espaces réduites."""
-    return " ".join(html.unescape(re.sub(r"<[^>]*>", " ", fragment)).split())
-
-
-def _espaces(texte: str) -> str:
-    return " ".join(texte.split())
