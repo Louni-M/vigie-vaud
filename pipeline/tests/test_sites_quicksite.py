@@ -343,6 +343,38 @@ def test_une_vue_sans_seances_donne_ses_preavis_par_objet_et_ses_seances_par_les
     assert [s["cle"] for s in _lire(tmp_path, "conseils/5798/seances.json")["seances"]] == ["5798/2026-06-23"]
 
 
+def test_la_vue_par_annees_donne_la_seance_de_son_en_tete_et_le_preavis_de_sa_reference(tmp_path, horloge):
+    # La vue `documentconseilyears` d'Etoy : un en-tête par Séance, puis ses documents, titrés par leur lien ; le
+    # préavis n'a pas de numéro dans son titre, ses rapport et décision partagent sa référence d'Objet.
+    def document(n, titre, type_, reference):
+        return (
+            f'<div class="qs-edit qs-edit-top qs-edit-out" data-qsedit data-qsedit-editnode="{n}">'
+            f'<a href="{ROPRAZ}/n{n}" class="link-dark"><i class="fal"></i></a><div class="col-auto">28.09.2026</div>'
+            f'<a href="javascript:;" data-filter-type="ext_id" data-filter-value="{reference}">{reference}</a>'
+            f'<a href="{ROPRAZ}/n{n}" class="d-block mb-1">{titre}</a>'
+            f'<a href="javascript:;" class="badge" data-filter-type="t" data-filter-value="x">{type_}</a></div>'
+        )
+
+    reseau = _reseau(horloge)
+    reseau.pages[_recherche(reseau, ROPRAZ)] = Page(
+        '<div class="tplDocumentConseil">1 à 3 sur 3 éléments trouvés<div class="tab-pane" id="nav-2026">'
+        '<div id="search-standard-result"><div class="mt-3"><div class="bg-light">Séance du 28 septembre 2026</div></div>'
+        + document(1907, "Préavis relatif à l'arrêté d'imposition pour 2027", "Préavis", "04-2026")
+        + document(1908, "Rapport de la Commission des Finances", "Rapport", "04-2026")
+        + document(1909, "Décision au préavis 04-2026", "Décision", "04-2026")
+        + "</div></div></div>"
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz()))
+
+    preavis = _lire(tmp_path, "conseils/5798/objets/04-2026.json")
+    assert (preavis["titre"], preavis["depose"]) == ("Préavis relatif à l'arrêté d'imposition pour 2027", "2026-09-28")
+    assert [d["lien"] for d in preavis["documents"]] == [f"{ROPRAZ}/n1907", f"{ROPRAZ}/n1908", f"{ROPRAZ}/n1909"]
+    seance = _lire(tmp_path, "conseils/5798/seances/2026-09-28.json")
+    assert [d["titre"] for d in seance["documents"]][0] == "Préavis relatif à l'arrêté d'imposition pour 2027"
+    assert sorted(p.name for p in (tmp_path / "conseils/5798/objets").iterdir()) == ["04-2026.json"]
+
+
 def test_une_recherche_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):
     # Un conseil général qui n'a encore rien publié : « 0 éléments trouvés » n'est pas un échec.
     reseau = _reseau(horloge)

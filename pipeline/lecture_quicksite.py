@@ -360,19 +360,21 @@ def _page_de_resultats(nom: str, texte: str, url: str) -> tuple[list[_Document],
     """Les documents d'une page de résultats, et la position de sa fin dans le total (« 1 à 60 sur 399 éléments
     trouvés »). Lève `ValueError` pour un fragment sans liste de documents, ou dont aucun document ne se lit."""
     racine = arbre(texte)
-    liste = next((n for n in racine.elements() if "tplDocumentConseil" in _classes(n)), None)
+    # La liste du thème de 2023 (`tplDocumentConseil`), ou celle d'un thème plus ancien (Rolle, Trélex).
+    liste = next(
+        (n for n in racine.elements() if "tplDocumentConseil" in _classes(n) or n.attr("id") == "search-standard-result"),
+        None,
+    )
     if liste is None:
-        raise ValueError(f"{url} : aucune liste de documents (tplDocumentConseil)")
-    position = _TOTAL.search(espaces(liste.texte()))
+        raise ValueError(f"{url} : aucune liste de documents (tplDocumentConseil, search-standard-result)")
+    position = _TOTAL.search(espaces(racine.texte()))
     debut, fin, total = (int(x) for x in position.groups()) if position else (0, 0, 0)
     documents: list[_Document] = []
     illisibles = 0
     groupes = [n for n in liste.elements() if "accordion-item" in _classes(n)]
     for groupe, seance in [(g, _libelle_du_groupe(g)) for g in groupes] or [(liste, None)]:
-        for noeud in groupe.elements():
-            if "qs-edit" not in _classes(noeud) or noeud.attr("data-qsedit-editnode") is None:
-                continue
-            document = _document(noeud, seance, url)
+        for noeud, entete in _documents_et_entetes(groupe):
+            document = _document(noeud, seance or entete, url)
             if isinstance(document, str):
                 illisibles += 1
                 _journal(nom, f"document illisible ({document})")
@@ -381,6 +383,25 @@ def _page_de_resultats(nom: str, texte: str, url: str) -> tuple[list[_Document],
     if illisibles and not documents:
         raise ValueError(f"{url} : aucun document lisible dans la page {debut}–{fin}")
     return documents, fin, total
+
+
+_ENTETE_DE_SEANCE = re.compile(r"^(s[ée]ance|assembl[ée]e)\b.*\d{4}$", re.I)
+
+
+def _documents_et_entetes(racine: Noeud):
+    """Les documents (`div.qs-edit`) sous `racine`, dans l'ordre, chacun avec le dernier en-tête de Séance qui le
+    précède hors d'un document (« Séance du 28 septembre 2026 », vue par années d'Etoy), sinon `None`."""
+    entete = None
+    pile = list(reversed(racine.enfants_elements()))
+    while pile:
+        noeud = pile.pop()
+        if "qs-edit" in _classes(noeud) and noeud.attr("data-qsedit-editnode") is not None:
+            yield noeud, entete
+            continue
+        enfants = noeud.enfants_elements()
+        if not enfants and _ENTETE_DE_SEANCE.match(espaces(noeud.texte())):
+            entete = espaces(noeud.texte())
+        pile.extend(reversed(enfants))
 
 
 def _libelle_du_groupe(groupe: Noeud) -> str | None:
@@ -400,6 +421,7 @@ def _document(noeud: Noeud, seance: str | None, url: str) -> _Document | str:
     """Un document de la recherche, ou la raison pour laquelle il ne se lit pas."""
     liens = [a for a in noeud.elements() if a.tag == "a" and _LIEN_NOEUD.search(a.attr("href") or "")]
     titre = next((espaces(n.texte()) for n in noeud.elements() if n.tag in ("h5", "h6")), "")
+    titre = titre or next((espaces(a.texte()) for a in liens if espaces(a.texte())), "")
     if not liens:
         return f"sans lien vers le document : {titre or url}"
     filtres = {
@@ -432,7 +454,9 @@ def _document(noeud: Noeud, seance: str | None, url: str) -> _Document | str:
 
 _SEANCE_PAR_LE_TYPE = re.compile(r"proc[èe]s|ordre|d[ée]cision", re.I)
 _SEANCE_PAR_LE_TITRE = re.compile(r"^(proc[èe]s[- ]verbal|ordre du jour|extraits? d|d[ée]cisions?\b|convocation)", re.I)
-_OBJET_NUMERO = re.compile(r"^Objet\s+n[°o]\.?\s*(?P<numero>\S*\d\S*)", re.I)
+# « Objet n° 05-2026 » (Juriens) ou « 05-2026 » seul (La Rippe) : la référence d'Objet d'un préavis sans numéro dans
+# son titre ; « 005: Demande de crédit… » (Founex) n'en est pas une, son numéro est dans le titre du préavis.
+_OBJET_NUMERO = re.compile(r"^(?:Objet\s+n[°o]\.?\s*)?(?P<numero>[\w/.-]*\d[\w/.-]*)$", re.I)
 
 # --- Séances et préavis -------------------------------------------------------------------------------------------
 
@@ -483,13 +507,14 @@ def _seances_et_preavis(
     preavis: list[dict] = []
     for d in dans_la_fenetre:
         par_l_objet = _OBJET_NUMERO.match(d.objet or "")
-        if d.titre.lower().startswith("préavis"):
-            numero = _numero(d.titre)
-        elif par_l_objet and not _SEANCE_PAR_LE_TYPE.search(d.type or ""):
-            # Le titre est le texte de l'Objet (La Rippe, Juriens) : son numéro est dans « Objet n° 05-2026 ».
-            numero = par_l_objet["numero"]
-        else:
+        titre_de_preavis = d.titre.lower().startswith("préavis")
+        type_de_preavis = (d.type or "").lower() in ("", "préavis", "preavis")
+        if not titre_de_preavis and not (par_l_objet and type_de_preavis):
             continue
+        numero = _numero(d.titre) if titre_de_preavis else None
+        if numero is None and par_l_objet and type_de_preavis:
+            # Le titre ne porte pas de numéro (La Rippe, Juriens, Etoy) : il est dans « Objet n° 05-2026 ».
+            numero = par_l_objet["numero"]
         if numero is None:
             _journal(nom, f"Objet sans numéro, non importé : {d.titre}")
             continue
@@ -536,7 +561,7 @@ def _titre_du_preavis(d: _Document, numero: str) -> str:
         texte = re.sub(r"^\s*\S+\s*:\s*", "", d.objet)
         if texte:
             return texte
-    if not d.titre.lower().startswith("préavis"):
+    if numero not in d.titre:
         return d.titre  # le titre est déjà le texte de l'Objet
     suite = d.titre[d.titre.index(numero) + len(numero) :].strip(" -–—:")
     return suite or d.titre
@@ -561,7 +586,7 @@ _LIENS_DU_MENU = (
 )
 _HORS_SUJET = re.compile(r"identit|passeport|formulaire|r[èe]glement|municipal(e|it)", re.I)
 _PROJET = re.compile(r"/coreapi/elasticsearch/projects/([\w-]+)/assets/js/elasticsearch\.js")
-VUES_DU_CONSEIL = ("documentconseil", "documentconseildates")
+VUES_DU_CONSEIL = ("documentconseil", "documentconseildates", "documentconseilyears")
 
 
 def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
