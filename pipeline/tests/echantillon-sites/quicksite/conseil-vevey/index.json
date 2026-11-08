@@ -1,0 +1,30 @@
+{
+ "plateforme": "quicksite",
+ "variante": "conseil",
+ "commune": "Vevey",
+ "ofs": 5890,
+ "pages": [
+  {
+   "sorte": "seances",
+   "url": "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-videos",
+   "finale": "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-videos",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seances.html"
+  },
+  {
+   "sorte": "seance",
+   "url": "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=157",
+   "finale": "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=157",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=ISO-8859-1",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seance.html"
+  }
+ ]
+}
