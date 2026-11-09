@@ -92,14 +92,18 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
   sans plancher.
 - Les communes scrapées sont déclarées dans `sources.json`, une source par commune (`site-<n° OFS>`), comme toute
   source (ADR-0013) : il n'y a pas de registre à part. Chaque source donne sa plateforme, sa variante, sa page de liste
-  des Séances (la page sondée), et selon le cas celles des Objets et des membres et les paramètres `coreapi` ; son
-  niveau se déclare dans `conseil.donne` (Objets, préavis ou Séances seules), et non d'après ce que l'import trouve.
+  des Séances (la page sondée), et selon le cas celles des Objets et des membres et les paramètres de sa recherche
+  `coreapi`, ou de ses recherches quand la commune sépare ses préavis et ses procès-verbaux en deux pages (Duillier,
+  Juriens) : leurs documents sont réunis, puis lus comme ceux d'une seule recherche, leurs pages comptent ensemble
+  dans le plafond de requêtes de la commune, et une recherche vide parmi elles met l'import en échec (seule la page
+  des Séances est sondée) ; son niveau se déclare dans `conseil.donne` (Objets, préavis ou Séances
+  seules), et non d'après ce que l'import trouve.
   Une section `plateformes` déclare une fois chaque plateforme, ses variantes, leur marqueur de sonde et les niveaux
   qu'elles permettent. Une commune non couverte d'une plateforme retenue a aussi sa source, sans conseil ni sonde,
   avec une raison prise dans une liste fermée (« préavis seuls », « rien en ligne », « à la demande de la commune »,
   « le site refuse les robots », « nouveau site pas encore lu », « forme pas encore lue » : le site publie son
-  conseil sous une forme que le module de sa plateforme ne lit pas encore, comme des pages rédigées ou deux
-  recherches séparées). Écartés : un fichier préparé à part, comme
+  conseil sous une forme que le module de sa plateforme ne lit pas encore, comme des pages rédigées ou une
+  recherche documentaire seule). Écartés : un fichier préparé à part, comme
   `hotels-de-ville.csv` (deux déclarations d'une même source) ; la découverte des pages par le cron (une erreur y
   publierait n'importe quelle page).
 - Ces déclarations ne changent que par une PR dans le dépôt principal, jamais par le cron. Un script de `pipeline/`

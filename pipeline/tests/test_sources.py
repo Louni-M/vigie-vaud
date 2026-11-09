@@ -182,6 +182,25 @@ def _non_couverte(**modifs):
     ) | modifs
 
 
+_PREAVIS = {"projet": "duillier25", "vue": "documentconseil", "noeud": 543, "taille": 60, "tri": "date_extid"}
+_PROCES_VERBAUX = _PREAVIS | {"noeud": 720}
+
+
+def _coreapi(coreapi):
+    """Une commune Quicksite couverte, dont la page des Séances est remplie par `coreapi` : une recherche, ou une
+    liste."""
+    return _non_couverte(
+        couverture=_COUVERTE,
+        conseil={"body_key": "5555", "donne": ["preavis", "seances"]},
+        site={
+            "plateforme": "quicksite",
+            "variante": "coreapi",
+            "seances": "https://www.exemple-vd.ch/N543/preavis-municipaux.html",
+            "coreapi": coreapi,
+        },
+    )
+
+
 def _ecrire(tmp_path, sources):
     chemin = tmp_path / "sources.json"
     chemin.write_text(json.dumps({"$schema": "./schema/sources.schema.json", "sources": sources}))
@@ -218,6 +237,19 @@ def test_une_commune_non_couverte_a_sa_raison_et_ni_conseil_ni_sonde(tmp_path, r
 
 
 @pytest.mark.parametrize(
+    ("coreapi", "noeuds"),
+    [
+        pytest.param(_PREAVIS, [543], id="une recherche"),
+        pytest.param([_PREAVIS, _PROCES_VERBAUX], [543, 720], id="préavis et procès-verbaux séparés"),
+    ],
+)
+def test_une_commune_quicksite_declare_une_recherche_coreapi_ou_la_liste_de_ses_recherches(tmp_path, coreapi, noeuds):
+    (source,) = lire_sources(_ecrire(tmp_path, [_coreapi(coreapi)])).sources
+
+    assert [c.noeud for c in source.site.recherches] == noeuds
+
+
+@pytest.mark.parametrize(
     "sources",
     [
         pytest.param([_source(id="Camac_Permis")], id="id hors kebab-case"),
@@ -249,6 +281,8 @@ def test_une_commune_non_couverte_a_sa_raison_et_ni_conseil_ni_sonde(tmp_path, r
             [_non_couverte(conseil={"body_key": "5555", "donne": ["seances"]}, couverture=_COUVERTE)],
             id="conseil scrapé sans variante ni page des Séances",
         ),
+        pytest.param([_coreapi([_PREAVIS])], id="liste d'une seule recherche coreapi"),
+        pytest.param([_coreapi([_PREAVIS, _PREAVIS | {"tri": "date_extid"}])], id="deux recherches d'un même nœud"),
     ],
 )
 def test_une_declaration_invalide_est_refusee(tmp_path, sources):

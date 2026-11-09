@@ -779,9 +779,9 @@ export interface Site {
 	 */
 	membres?: Lien | null;
 	/**
-	 * Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page `seances` est vide et remplie par le navigateur.
+	 * Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page `seances` est vide et remplie par le navigateur. Une commune qui sépare ses préavis et ses procès-verbaux en deux pages, chacune avec sa recherche, en déclare la liste (une recherche par nœud), lue recherche après recherche.
 	 */
-	coreapi?: Coreapi | null;
+	coreapi?: Coreapi | [Coreapi, Coreapi, ...Coreapi[]] | null;
 }
 /**
  * La recherche `coreapi` d'une page Quicksite de nouvelle génération : les attributs `data-elasticsearch-*` de

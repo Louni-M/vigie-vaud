@@ -142,6 +142,13 @@ Couverture. Chaque commune emploie l'une des **variantes** de sa plateforme, qui
 module Conseil dont la liste des Séances est sur le site de la Ville, à Vevey).
 _À éviter_ : CMS, éditeur (pour la plateforme) ; registre des communes scrapées (ce sont leurs sources déclarées)
 
+**Recherche `coreapi`** :
+La liste des documents du conseil d'un site Quicksite de nouvelle génération, que le navigateur remplit et que le
+cron demande page par page (`site.coreapi`, `site.recherches`). Une commune qui sépare ses préavis et ses
+procès-verbaux en a deux. Dans le code du cron, « recherche » seule désigne celle-ci ; ce n'est pas la Recherche du
+site.
+_À éviter_ : requête (réservé aux requêtes du robot), API
+
 **Voie d'accès** :
 La manière dont le site obtient une source : **Direct** (le navigateur appelle la source), **Cron** (la source
 passe par le cron et le dépôt de données), **Worker** (la source passe par le relais Cloudflare) ou **Préparée**

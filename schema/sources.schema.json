@@ -352,11 +352,18 @@
               "$ref": "#/$defs/Coreapi"
             },
             {
+              "items": {
+                "$ref": "#/$defs/Coreapi"
+              },
+              "minItems": 2,
+              "type": "array"
+            },
+            {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page `seances` est vide et remplie par le navigateur."
+          "description": "Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page `seances` est vide et remplie par le navigateur. Une commune qui sépare ses préavis et ses procès-verbaux en deux pages, chacune avec sa recherche, en déclare la liste (une recherche par nœud), lue recherche après recherche."
         }
       },
       "required": [

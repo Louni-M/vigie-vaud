@@ -42,10 +42,11 @@ from pathlib import Path
 
 import httpx
 from pydantic import ValidationError
+from pydantic_core import to_jsonable_python
 
 from mesure_sites import Mesure, PagesLues
 from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Robot, robot_des_sources
-from schema import FUSEAU, RACINE, FichierSources, Plateforme, Site, Source, lire_sources, niveau_de
+from schema import FUSEAU, RACINE, Coreapi, FichierSources, Plateforme, Site, Source, lire_sources, niveau_de
 from sites_communaux import LECTEURS, debut_de_fenetre
 
 LICENCE = "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
@@ -187,16 +188,21 @@ def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure
 
 def _site_mesure(plateforme: Plateforme, mesure: Mesure) -> dict:
     """Le bloc `site` que déclarerait la mesure, au format de `sources.json` : sa variante, les pages trouvées et,
-    pour une recherche `coreapi`, ses paramètres."""
+    pour la variante `coreapi`, ses recherches (`_coreapi_declare`)."""
     site = Site(
         plateforme=plateforme.id,
         variante=mesure.variante,
         seances=mesure.seances,
         objets=mesure.objets,
         membres=mesure.membres,
-        coreapi=mesure.coreapi,
+        coreapi=_coreapi_declare(mesure.recherches),
     )
     return site.model_dump(exclude_none=True)
+
+
+def _coreapi_declare(recherches: list[Coreapi]) -> Coreapi | list[Coreapi] | None:
+    """Le bloc `site.coreapi` qui déclare `recherches` : la recherche seule, la liste de plusieurs, ou rien."""
+    return None if not recherches else recherches[0] if len(recherches) == 1 else recherches
 
 
 # --- Vérification -----------------------------------------------------------------------------------------------
@@ -249,10 +255,21 @@ def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: Plate
         ecarts.append(f"niveau déclaré {_niveau(source.conseil.donne)}, mesuré {_niveau(mesure.niveau)}{pourquoi}")
     ecarts += ecart("page des Objets", site.objets, mesure.objets)
     ecarts += ecart("page des membres", site.membres, mesure.membres)
-    if site.coreapi != mesure.coreapi:
-        declaree, mesuree = (c.model_dump() if c else "aucune" for c in (site.coreapi, mesure.coreapi))
+    if _par_noeud(site.recherches) != _par_noeud(mesure.recherches):
+        declaree, mesuree = (_lisibles(r) for r in (site.recherches, mesure.recherches))
         ecarts.append(f"recherche coreapi déclarée {declaree}, mesurée {mesuree}")
     return ecarts
+
+
+def _par_noeud(recherches: list[Coreapi]) -> list[Coreapi]:
+    """Les recherches `coreapi` dans l'ordre de leurs nœuds : leur ordre de déclaration ne change pas la lecture."""
+    return sorted(recherches, key=lambda c: c.cle)
+
+
+def _lisibles(recherches: list[Coreapi]) -> object:
+    """Des recherches `coreapi` pour un écart, telles que `sources.json` les déclare (`_coreapi_declare`)."""
+    coreapi = _coreapi_declare(recherches)
+    return "aucune" if coreapi is None else to_jsonable_python(coreapi)
 
 
 def _candidat_de_source(source: Source) -> Candidat:
@@ -288,6 +305,12 @@ def brouillon(
             remarques[cle] = [f"{candidat.commune} : aucune page des Séances {plateforme.nom} trouvée ; raison à relire"]
             continue
         a_relire = [f"{candidat.commune} : {r}" for r in mesure.remarques]
+        if len(mesure.recherches) > 1:
+            noeuds = ", ".join(str(c.noeud) for c in mesure.recherches)
+            a_relire.append(
+                f"{candidat.commune} : {len(mesure.recherches)} recherches coreapi (nœuds {noeuds}), préavis et "
+                "procès-verbaux séparés ; à relire : leurs documents ne doivent pas se reprendre"
+            )
         if mesure.niveau is not None:
             a_relire += [
                 f"{candidat.commune} : {requetes} requêtes au niveau {_niveau(niveau)}, au-delà du plafond de "

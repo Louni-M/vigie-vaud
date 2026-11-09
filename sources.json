@@ -1191,8 +1191,29 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5715], "mode": "non_couvert", "raison": "forme_non_lue" },
-			"site": { "plateforme": "quicksite" }
+			"couverture": { "communes": [5715], "mode": "scrape" },
+			"conseil": { "body_key": "5715", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.duillier.ch/N543/preavis-municipaux.html",
+				"coreapi": [
+					{
+						"projet": "duillier25",
+						"vue": "documentconseil",
+						"noeud": 543,
+						"taille": 60,
+						"tri": "date_extid_desc_doctag_rank"
+					},
+					{
+						"projet": "duillier25",
+						"vue": "documentconseil",
+						"noeud": 720,
+						"taille": 60,
+						"tri": "date_extid"
+					}
+				]
+			}
 		},
 		{
 			"id": "site-5717",
@@ -1363,8 +1384,29 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5754], "mode": "non_couvert", "raison": "forme_non_lue" },
-			"site": { "plateforme": "quicksite" }
+			"couverture": { "communes": [5754], "mode": "scrape" },
+			"conseil": { "body_key": "5754", "donne": ["preavis", "seances"] },
+			"site": {
+				"plateforme": "quicksite",
+				"variante": "coreapi",
+				"seances": "https://www.juriens.ch/N586/preavis-municipaux.html",
+				"coreapi": [
+					{
+						"projet": "juriens25",
+						"vue": "documentconseil",
+						"noeud": 586,
+						"taille": 60,
+						"tri": "date_extid"
+					},
+					{
+						"projet": "juriens25",
+						"vue": "documentconseil",
+						"noeud": 959,
+						"taille": 60,
+						"tri": "date_extid"
+					}
+				]
+			}
 		},
 		{
 			"id": "site-5798",

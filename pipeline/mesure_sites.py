@@ -54,7 +54,7 @@ class Mesure:
     seances: str | None = None
     objets: str | None = None
     membres: str | None = None
-    coreapi: Coreapi | None = None  # la recherche Quicksite (`site.coreapi`), pour la variante `coreapi`
+    recherches: list[Coreapi] = field(default_factory=list)  # les recherches Quicksite de la variante `coreapi`
     niveau: list[str] | None = None
     requetes: int | None = None
     remarques: list[str] = field(default_factory=list)

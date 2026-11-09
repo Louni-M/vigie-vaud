@@ -8,7 +8,7 @@ import { objet } from '#tests/faux-conseils.js';
 describe('communes Quicksite de sources.json', () => {
 	it('« Conseils couverts » compte les communes lues par plateforme, sans les non couvertes', () => {
 		expect(phraseSitesLus(conseilsCouverts(SOURCES, PLATEFORMES).sites)).toBe(
-			'et 44 communes dont Vigie Vaud lit le site : i-web (19), Quicksite (25)'
+			'et 46 communes dont Vigie Vaud lit le site : i-web (19), Quicksite (27)'
 		);
 	});
 

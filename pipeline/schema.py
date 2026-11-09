@@ -234,11 +234,27 @@ class Site(Modele):
     membres: Lien | None = Field(
         default=None, description="Page des membres du conseil, en HTML ; absente si le site n'en a pas."
     )
-    coreapi: Coreapi | None = Field(
+    coreapi: Coreapi | Annotated[list[Coreapi], Field(min_length=2)] | None = Field(
         default=None,
         description="Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page "
-        "`seances` est vide et remplie par le navigateur.",
+        "`seances` est vide et remplie par le navigateur. Une commune qui sépare ses préavis et ses procès-verbaux en "
+        "deux pages, chacune avec sa recherche, en déclare la liste (une recherche par nœud), lue recherche après "
+        "recherche.",
     )
+
+    @property
+    def recherches(self) -> list[Coreapi]:
+        """Les recherches `coreapi` déclarées, dans leur ordre : une, plusieurs, ou aucune hors de cette variante."""
+        if self.coreapi is None:
+            return []
+        return self.coreapi if isinstance(self.coreapi, list) else [self.coreapi]
+
+    @model_validator(mode="after")
+    def _recherches_distinctes(self) -> Site:
+        cles = [c.cle for c in self.recherches]
+        if len(set(cles)) != len(cles):
+            raise ValueError("deux recherches `coreapi` d'un même nœud")
+        return self
 
 
 class Coreapi(Modele):
@@ -251,6 +267,12 @@ class Coreapi(Modele):
     noeud: int = Field(ge=1, description="Nœud de la page des documents (`data-elasticsearch-node`).")
     taille: int = Field(ge=1, le=500, description="Documents par page de résultats (`data-elasticsearch-pagesize`).")
     tri: str = Field(min_length=1, pattern=r"^\w+$", description="Tri des résultats (`date_extid`).")
+
+    @property
+    def cle(self) -> tuple[str, int]:
+        """Ce qui distingue une recherche d'une autre : son projet et son nœud (ses autres paramètres n'en changent que
+        la lecture)."""
+        return (self.projet, self.noeud)
 
 
 class Variante(Modele):
