@@ -71,7 +71,7 @@ from datetime import date
 from urllib.parse import urlencode, urljoin, urlsplit
 
 from bruts import Bruts
-from mesure_sites import Mesure, PagesLues, liens, sans_journal
+from mesure_sites import Mesure, PagesLues, RobotCompteur, liens, sans_journal
 from pages_html import Noeud, arbre, espaces
 from robot_communal import PageNonLue, Reponse, Robot
 from schema import Coreapi, Plateforme, Site, Source, niveau_de
@@ -687,27 +687,11 @@ def _parametres_coreapi(texte: str) -> Coreapi | None:
     )
 
 
-class _RobotCompteur:
-    """Un robot qui lit par les pages du script de préparation (chaque page une fois par lancement) et compte les
-    requêtes que le passage ordinaire ferait : deux pour une page redirigée, une sinon."""
-
-    def __init__(self, pages: PagesLues) -> None:
-        self._pages = pages
-        self.requetes = 0
-
-    def lire(self, url: str, role: str) -> Reponse:
-        page = self._pages.lire(url)
-        self.requetes += 1 if isinstance(page, PageNonLue) or page.url == url else 2
-        if isinstance(page, PageNonLue):
-            raise page
-        return page
-
-
 def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | None:
     """Les requêtes que coûterait la lecture de `source` (`lire`) au passage ordinaire dont la fenêtre part de
     `depuis`. Les pages qui manquent sont lues par le robot du script (une liste Quicksite en demande peu : pages de
     résultats, ou Séances et fiches du module Conseil) ; `None` si la lecture échoue."""
-    robot = _RobotCompteur(pages)
+    robot = RobotCompteur(pages.lire)
     try:
         sans_journal(lambda: lire(robot, source, depuis))  # type: ignore[arg-type]
     except (ValueError, PageNonLue):
