@@ -64,7 +64,7 @@ def _reseau(horloge):
             "www.exemple.ch": "5.102.146.30",
         },
     )
-    for variante in ("ancienne", "coreapi", "conseil", "conseil-vevey"):
+    for variante in ("ancienne", "coreapi", "conseil", "conseil-externe"):
         reseau.pages |= echantillon("quicksite", variante)
     reseau.pages[f"{AIGLE}/N387/conseil-communal.html"] = _page_quicksite(
         [("/N389/membres.html", "Membres"), ("/documents", "Documents du Conseil")]

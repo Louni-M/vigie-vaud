@@ -103,11 +103,11 @@ def _page_suivante(url, page):
 def _reseau(horloge):
     adresses = {"www.founex.ch": RESEAU_QUICKSITE, "www.ropraz.ch": RESEAU_QUICKSITE, "www.aigle.ch": "185.54.6.109"}
     reseau = Reseau(horloge, adresses=adresses)
-    reseau.pages |= echantillon("quicksite", "coreapi") | echantillon("quicksite", "coreapi-ropraz")
+    reseau.pages |= echantillon("quicksite", "coreapi") | echantillon("quicksite", "coreapi-documentconseil")
     reseau.pages |= echantillon("quicksite", "ancienne")
     reseau.adresses |= {"www.conseilmontreux.ch": "185.54.6.110", "www.vevey.ch": "5.102.146.10"}
     reseau.adresses |= {"conseil.vevey.ch": "5.102.146.20"}
-    reseau.pages |= echantillon("quicksite", "conseil") | echantillon("quicksite", "conseil-vevey")
+    reseau.pages |= echantillon("quicksite", "conseil") | echantillon("quicksite", "conseil-externe")
     return reseau
 
 
