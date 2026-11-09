@@ -201,12 +201,12 @@ finish() {
 ETAPES=(
   "prealables|Préalables : branche j3/quicksite, outils, PR, alternance entre réseaux"
   "clone|Clone du dépôt de données à côté du dépôt"
-  "rattrapage|Facultatif : rattrapage local des communes Quicksite, jamais poussé (DUREE_RATTRAPAGE)"
+  "rattrapage|Facultatif : rattrapage local des communes Quicksite, jamais poussé (environ 2 h 15 (2 h 11 le 8 novembre))"
   "comptes|Facultatif : Séances et Objets de chaque commune contre son site"
   "masquage|Facultatif : titres masqués et communes sans page des membres"
   "second_import|Facultatif : passage ordinaire, durée, requêtes, rien de neuf ; clone remis à zéro"
   "fusion|Fusionner la PR de j3/quicksite et publier le site"
-  "rattrapage_prod|Rattrapage ciblé de Quicksite en production (DUREE_RATTRAPAGE)"
+  "rattrapage_prod|Rattrapage ciblé de Quicksite en production (environ 2 h 15 (2 h 11 le 8 novembre))"
   "suivi|Sondes, imports et issues du dépôt de données"
   "interface|Vérifier l'interface en ligne, sur bureau et sur téléphone"
   "bilan|Bilan et commentaire sur #181"
@@ -378,7 +378,7 @@ etape_clone() {
 etape_rattrapage() {
   say "Le passage du cron avec --rattrapage-cible quicksite et sans push : la sonde de chaque commune Quicksite"
   say "couverte, puis tout son site, sans plafond, une requête à la fois et au moins 5 s par réseau, les réseaux en"
-  say "alternance (deux /24 Quicksite, plus Vevey) : compter DUREE_RATTRAPAGE. Puis un commit dans le clone, jamais"
+  say "alternance (deux /24 Quicksite, plus Vevey) : compter environ 2 h 15 (2 h 11 le 8 novembre). Puis un commit dans le clone, jamais"
   say "poussé : la production refait son propre rattrapage. Déjà fait le 8 novembre (chiffres dans #181) : passer les"
   say "étapes 3 à 6 avec scripts/mise-en-ligne-j3-quicksite.sh 7, sauf pour revérifier."
   step "Laisser ce terminal ouvert et la machine branchée (caffeinate la garde éveillée)."
@@ -593,7 +593,7 @@ etape_fusion() {
 etape_rattrapage_prod() {
   say "Le rattrapage ciblé de Quicksite, lancé à la main sur le cron du dépôt de données : tout le site de chaque"
   say "commune Quicksite couverte, sans plafond, au même débit, puis commit, push et publication des Pages des données."
-  say "Les passages planifiés attendent sa fin (même groupe de concurrence). Compter DUREE_RATTRAPAGE, sous le délai de"
+  say "Les passages planifiés attendent sa fin (même groupe de concurrence). Compter environ 2 h 15 (2 h 11 le 8 novembre), sous le délai de"
   say "6 h du job."
   cron_actif || arreter "le cron de $REPO_DONNEES est désactivé : gh workflow enable cron.yml -R $REPO_DONNEES"
   gh run list -R "$REPO_DONNEES" --workflow cron.yml --limit 3 \
