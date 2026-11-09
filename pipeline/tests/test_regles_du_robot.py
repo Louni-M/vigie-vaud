@@ -5,8 +5,9 @@ les issues signalées au faux client d'issues.
 - `robots.txt` est lu une fois par hôte et par passage, avant la sonde (RFC 9309 : une erreur 4xx permet tout, une
   erreur 5xx interdit tout), pour le nom `VigieVaud`, sinon `*` ;
 - `Crawl-delay` plus grand que 5 s, et l'intervalle de la section `reseaux` de `sources.json`, espacent les requêtes ;
-- une 429, une 503, une connexion refusée ou un délai dépassé bloque le /24 jusqu'à la fin du passage (ou plus si
-  `Retry-After`) ; au passage suivant, une seule sonde teste le réseau ;
+- une 429, une 503 ou une connexion refusée bloque le /24 jusqu'à la fin du passage (ou plus si `Retry-After`) ; un
+  délai dépassé ne bloque d'abord que le site de sa commune, et le /24 au second du passage ; au passage suivant, une
+  seule sonde teste le réseau ;
 - 60 requêtes au plus par commune et par passage ordinaire.
 """
 
@@ -262,11 +263,10 @@ def _reseaux_bloques(depot):
         (Page("", statut=429), "HTTP 429", "HTTP 429"),
         (Page("", statut=503), "HTTP 503", "HTTP 503"),
         (REFUS, "site injoignable", "connexion refusée"),
-        (DELAI, "délai dépassé", "délai dépassé"),
     ],
-    ids=["429", "503", "refus", "delai"],
+    ids=["429", "503", "refus"],
 )
-def test_une_429_une_503_un_refus_ou_un_delai_bloque_le_24_et_les_communes_non_sondees_ont_l_acces_refuse(
+def test_une_429_une_503_ou_un_refus_bloque_le_24_et_les_communes_non_sondees_ont_l_acces_refuse(
     tmp_path, horloge, page, motif, blocage
 ):
     reseau = _meme_24(horloge)
@@ -281,6 +281,55 @@ def test_une_429_une_503_un_refus_ou_un_delai_bloque_le_24_et_les_communes_non_s
     assert _reseaux_bloques(tmp_path) == {
         "195.65.10.0/24": {"depuis": "2026-10-23T05:17:05Z", "jusqu_a": None, "motif": blocage}
     }
+
+
+def _vers(reseau, hote):
+    """Les requêtes reçues par un site : (URL, rôle)."""
+    return [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal if r.url.startswith(hote)]
+
+
+def test_un_premier_delai_depasse_a_la_sonde_ne_bloque_que_le_site_de_sa_commune(tmp_path, horloge):
+    # Une page lente ce jour-là chez Préverenges ne coûte pas Blonay, sur le même /24 d'i-web.
+    reseau = _meme_24(horloge)
+    reseau.pages[LISTE] = DELAI
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    assert _vers(reseau, PREVERENGES) == [(ROBOTS, "VigieVaud-sonde"), (LISTE, "VigieVaud-sonde")]
+    assert (_etat(tmp_path)["echecs_consecutifs"], _etat(tmp_path)["motif"]) == (1, "délai dépassé")
+    assert _etat(tmp_path, "site-5892")["echecs_consecutifs"] == 0
+    assert _importe(tmp_path) is None and _importe(tmp_path, "5892") is not None
+    assert _reseaux_bloques(tmp_path) == {}
+
+
+def test_un_premier_delai_depasse_a_l_import_met_sa_commune_en_echec_sans_requete_de_plus(tmp_path, horloge, capsys):
+    # Le cas de Vallorbe le 7 novembre 2026 : une Séance lente, puis tout le /24 bloqué jusqu'à la fin du passage.
+    reseau = _meme_24(horloge)
+    seance = f"{PREVERENGES}/_rte/anlass/6987214"
+    reseau.pages[seance] = DELAI
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    lues = [url for url, _ in _vers(reseau, PREVERENGES)]
+    assert lues[-1] == seance  # plus rien vers Préverenges après le délai dépassé
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune) (DelaiDepasse" in journal
+    assert _etat(tmp_path)["echecs_consecutifs"] == 0  # la sonde avait réussi : pas une panne
+    assert _importe(tmp_path) is None and _importe(tmp_path, "5892") is not None
+    assert _reseaux_bloques(tmp_path) == {}
+
+
+def test_un_second_delai_depasse_sur_le_meme_24_bloque_le_reseau(tmp_path, horloge):
+    reseau = _meme_24(horloge)
+    reseau.pages[LISTE] = DELAI
+    reseau.pages[f"{BLONAY}/seances"] = DELAI
+
+    _passer(tmp_path, horloge, reseau, sources=SOURCES_MEME_24)
+
+    assert (_etat(tmp_path)["motif"], _etat(tmp_path, "site-5892")["motif"]) == ("délai dépassé", "délai dépassé")
+    assert not any(ua == "VigieVaud-import" for _, ua in _vers(reseau, PREVERENGES) + _vers(reseau, BLONAY))
+    blocage = _reseaux_bloques(tmp_path)["195.65.10.0/24"]
+    assert (blocage["jusqu_a"], blocage["motif"]) == (None, "délai dépassé")
 
 
 @pytest.mark.parametrize(

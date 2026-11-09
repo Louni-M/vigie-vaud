@@ -116,6 +116,11 @@ class ReseauBloque(PageNonLue):
     `Retry-After`), ni, au passage suivant, avant qu'une sonde l'ait testé."""
 
 
+class SiteBloque(PageNonLue):
+    """Le site de la page a dépassé un délai plus tôt dans le passage : aucune requête ne lui est plus envoyée
+    jusqu'à la fin du passage. Son réseau, lui, reste ouvert aux autres communes, jusqu'à un second délai dépassé."""
+
+
 class PlafondAtteint(PageNonLue):
     """La commune a déjà envoyé toutes ses requêtes de ce passage ordinaire : la page n'a pas été demandée."""
 
@@ -133,8 +138,9 @@ def erreur_tls(erreur: BaseException | None) -> bool:
 
 
 def _bloquante(erreur: PageNonLue) -> bool:
-    """Une 429, une 503, une connexion refusée ou un délai dépassé : le réseau de la page est bloqué. Une erreur TLS
-    ne l'est pas : elle ne dit rien que du site qui l'a."""
+    """Une 429, une 503, une connexion refusée ou un délai dépassé : la lecture de la commune s'arrête, son réseau
+    ou, pour un premier délai dépassé, son site étant bloqué. Une erreur TLS ne bloque rien : elle ne dit rien que du
+    site qui l'a."""
     if isinstance(erreur, ErreurHttp):
         return erreur.statut in STATUTS_BLOQUANTS
     return isinstance(erreur, (DelaiDepasse, ConnexionRefusee))
@@ -168,12 +174,13 @@ class Robot:
     `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`). Un `Crawl-delay` est suivi
     jusqu'à `CRAWL_DELAY_MAX` ; au-delà, aucune page de l'hôte n'est demandée (`CrawlDelayTropLong`).
 
-    **Blocage** : une 429, une 503, une connexion refusée ou un délai dépassé (pas une erreur TLS) arrête toute
-    requête vers ce réseau
-    (`ReseauBloque`) pour la vie du robot, et au-delà si `Retry-After` le demande. Le robot reçoit les réseaux
-    bloqués aux passages précédents (`bloques`) et rend ceux qui le restent (`reseaux_bloques`) : un réseau dont le
-    blocage a pris fin est à tester, seule une requête de sonde peut le faire, et la première qui ne le bloque pas de
-    nouveau le rouvre. Une 403 ou une 404 ne bloque rien. Une requête en échec n'est pas refaite pour la vie du robot.
+    **Blocage** : une 429, une 503 ou une connexion refusée (pas une erreur TLS) arrête toute requête vers ce réseau
+    (`ReseauBloque`) pour la vie du robot, et au-delà si `Retry-After` le demande. Un délai dépassé n'arrête d'abord
+    que les requêtes vers son site (`SiteBloque`), pour la vie du robot : une page lente ce jour-là ne coûte pas toutes
+    les communes du /24. Le second délai dépassé sur un même réseau, ou le premier sur un réseau à tester, le bloque.
+    Le robot reçoit les réseaux bloqués aux passages précédents (`bloques`) et rend ceux qui le restent
+    (`reseaux_bloques`) : un réseau dont le blocage a pris fin est à tester, seule une requête de sonde peut le faire,
+    et la première qui ne le bloque pas de nouveau le rouvre. Une 403 ou une 404 ne bloque rien. Une requête en échec n'est pas refaite pour la vie du robot.
 
     **Plafond** : avec `plafond`, une commune n'envoie pas plus de `plafond` requêtes (`robots.txt`, sonde et import
     compris) par ses vues `pour(commune)`.
@@ -203,6 +210,7 @@ class Robot:
         self._robots: dict[str, Regles | PageInterdite] = {}  # hôte → ses règles, ou tout interdit
         self._dernieres: dict[str, datetime] = {}  # réseau → fin de sa dernière requête
         self._echecs: dict[str, PageNonLue] = {}  # URL demandée → son échec
+        self._sites_lents: set[str] = set()  # hôtes qui ont dépassé un délai, bloqués pour la vie du robot
         self._comptes: dict[str, int] = {}  # commune → ses requêtes
         self._bloques: dict[str, EtatReseau] = dict(bloques or {})  # réseau → son blocage, fermé ou à tester
         maintenant = horloge()
@@ -218,7 +226,7 @@ class Robot:
                 raise self._echecs[url]
             try:
                 return self._lire(url, role)
-            except (ReseauBloque, PlafondAtteint, CrawlDelayTropLong) as e:
+            except (ReseauBloque, SiteBloque, PlafondAtteint, CrawlDelayTropLong) as e:
                 self._interrompre(e)
                 raise
             except (ErreurHttp, DelaiDepasse, Injoignable, PageIllisible) as e:
@@ -284,6 +292,8 @@ class Robot:
             raise ReseauBloque(f"{url} : réseau {reseau} bloqué ({self._bloques[reseau].motif})")
         if reseau in self._bloques and role != "sonde":
             raise ReseauBloque(f"{url} : réseau {reseau} bloqué au passage précédent, pas encore testé par une sonde")
+        if hote in self._sites_lents:
+            raise SiteBloque(f"{url} : site bloqué jusqu'à la fin du passage (délai dépassé)")
         if self._commune is not None and self._plafond is not None:
             if self._comptes.get(self._commune, 0) >= self._plafond:
                 raise PlafondAtteint(f"{url} : plafond de {self._plafond} requêtes atteint ({self._commune})")
@@ -294,7 +304,7 @@ class Robot:
                 url, headers={"User-Agent": user_agent(role)}, timeout=DELAI, follow_redirects=False
             )
         except httpx.TimeoutException as e:
-            self._bloquer(reseau, "délai dépassé")
+            self._delai_depasse(reseau, hote)
             raise DelaiDepasse(f"{url} : délai de {DELAI:.0f} s dépassé") from e
         except httpx.ConnectError as e:
             if erreur_tls(e):
@@ -312,6 +322,13 @@ class Robot:
         else:
             self._bloques.pop(reseau, None)  # le site répond : le réseau, s'il était à tester, est rouvert
         return reponse
+
+    def _delai_depasse(self, reseau: str, hote: str) -> None:
+        """Un premier délai dépassé sur un réseau ne bloque que son site ; le second, venu d'un autre site du même
+        réseau, bloque le réseau, comme le premier sur un réseau bloqué au passage précédent et encore à tester."""
+        if reseau in self._bloques or any(self._reseaux[h] == reseau for h in self._sites_lents):
+            self._bloquer(reseau, "délai dépassé")
+        self._sites_lents.add(hote)
 
     def _bloquer(self, reseau: str, motif: str, retry_after: str | None = None) -> None:
         maintenant = self._horloge().astimezone(UTC).replace(microsecond=0)
