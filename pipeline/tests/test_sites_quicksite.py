@@ -481,11 +481,10 @@ def test_un_rapport_que_le_site_type_preavis_n_est_pas_un_preavis_et_reste_a_sa_
     # pas l'Objet « 12-2025-2-b », et reste un document de sa Séance.
     reseau = _reseau(horloge)
     reseau.pages[_recherche(reseau, ROPRAZ)] = Page(
-        '<div class="tplDocumentConseil">1 à 3 sur 3 éléments trouvés<div id="search-standard-result">'
+        '<div class="tplDocumentConseil">1 à 2 sur 2 éléments trouvés<div id="search-standard-result">'
         '<div class="bg-light">Séance du 6 octobre 2026</div>'
         + _document_par_type(901, "Préavis 12-2025-2 - Patinoire", "Préavis", "Objet n° 12-2025-2")
         + _document_par_type(902, "Rapport de minorité - Préavis 12-2025-2", "Préavis", "Objet n° 12-2025-2-b")
-        + _document_par_type(903, "Annexe plan", "Préavis", "Objet n° 12/2025/2")
         + "</div></div>"
     )
 
@@ -493,7 +492,45 @@ def test_un_rapport_que_le_site_type_preavis_n_est_pas_un_preavis_et_reste_a_sa_
 
     assert sorted(p.name for p in (tmp_path / "conseils/5798/objets").iterdir()) == ["12-2025-2.json"]
     seance = _lire(tmp_path, "conseils/5798/seances/2026-10-06.json")
-    assert [d["lien"] for d in seance["documents"]] == [f"{ROPRAZ}/n901", f"{ROPRAZ}/n902", f"{ROPRAZ}/n903"]
+    assert [d["lien"] for d in seance["documents"]] == [f"{ROPRAZ}/n901", f"{ROPRAZ}/n902"]
+
+
+@pytest.mark.parametrize(
+    ("titre", "type_", "preavis"),
+    [
+        # Typé « Préavis » : une commune qui titre ses préavis par leur sujet les garde tous ; seuls les rapports d'une
+        # commission, de sa minorité ou de sa majorité sont écartés.
+        ("Réponse de la Municipalité au postulat sur les pistes cyclables", "Préavis", True),
+        ("Plan d'affectation communal", "Préavis", True),
+        ("Rapport de la Municipalité sur la motion des pistes cyclables", "Préavis", True),
+        ("Décision d'octroi d'un crédit", "Préavis", True),
+        ("Rapport de gestion 2025", "Préavis", True),
+        ("Rapport de la Commission des finances", "Préavis", False),
+        ("Rapport de majorité", "Préavis", False),
+        ("Rapport COFIN", "Préavis", False),
+        # Sans type : ni un rapport, ni une annexe, ni un plan…, le `_` d'un nom de fichier finissant le mot.
+        ("Délégations de compétences", "", True),
+        ("Planification financière 2026-2030", "", True),
+        ("Rapport de gestion 2025", "", False),
+        ("Rapport_commission_finances", "", False),
+        ("Annexe_1_plan_situation", "", False),
+        ("Plan_de_quartier", "", False),
+        # Un titre « Préavis … » sans numéro ne prend celui de sa référence que s'il a le type d'un préavis.
+        ("Préavis relatif à l'arrêté d'imposition", "Préavis", True),
+        ("Préavis de la commission des finances", "Rapport", False),
+    ],
+)
+def test_ce_qui_est_un_preavis_quand_il_cite_son_objet_par_un_numero_seul(tmp_path, horloge, titre, type_, preavis):
+    reseau = _reseau(horloge)
+    reseau.pages[_recherche(reseau, ROPRAZ)] = Page(
+        '<div class="tplDocumentConseil"><div>1 à 1 sur 1 éléments trouvés</div>'
+        + _document_par_type(901, titre, type_, "Objet n° 11-2026", "6 octobre 2026")
+        + "</div>"
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz()))
+
+    assert (tmp_path / "conseils/5798/objets/11-2026.json").exists() is preavis
 
 
 def test_deux_preavis_de_meme_numero_donnent_le_meme_objet_quel_que_soit_l_ordre_du_site(tmp_path, horloge, capsys):
@@ -812,6 +849,25 @@ def test_les_documents_d_un_point_dont_la_fiche_ne_se_lit_pas_attendent_leur_obj
     assert [d["lien"].rsplit("=", 1)[-1] for d in documents] == ["8614", "8622"]
 
 
+def test_les_documents_d_un_point_dont_la_fiche_n_a_pas_de_numero_vont_a_la_seance(tmp_path, horloge, capsys):
+    # Une interpellation sans numéro (fiche « <h1>Interpellation</h1> ») n'est pas importée : son point est un point
+    # sans Objet, et ses documents (la réponse de la Municipalité) vont à la Séance, d'un passage à l'autre.
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+    fiche = f"{MONTREUX}/documents/recherche/?id=3403"
+    page = reseau.pages[fiche]
+    corps = page.corps.decode("utf-8").replace("<h1>Préavis 29/2026</h1>", "<h1>Interpellation</h1>")
+    reseau.pages[fiche] = Page(corps, entetes=page.entetes)
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux()))
+
+    assert "élément sauté, Objet sans numéro, non importé : Interpellation" in capsys.readouterr().err
+    assert not (tmp_path / "conseils/5886/objets").exists()
+    seance = _lire(tmp_path, "conseils/5886/seances/2026-10-07.json")
+    assert [p["objet"] for p in seance["ordre_du_jour"]] == [None, None, None, None]
+    assert [d["lien"].rsplit("=", 1)[-1] for d in seance["documents"]] == ["8636", "8637", "8614", "8622"]
+
+
 def test_un_document_du_module_conseil_est_nomme_par_le_texte_de_son_lien_sinon_par_son_fichier(tmp_path, horloge):
     # ADR 0010 : le texte du lien (sans la taille du fichier), sinon le nom du fichier quand ce texte ne nomme rien.
     reseau = _reseau(horloge)
@@ -981,4 +1037,25 @@ def test_l_hote_du_module_se_lit_dans_le_lien_de_l_ordre_du_jour(tmp_path, horlo
         "https://conseil.ville.ch/ConseilCommunal/seances/?ID=157",
         "https://conseil.ville.ch/ConseilCommunal/seances/?ID=156",
     ]
+    assert (tmp_path / "conseils/5890/seances/2026-10-01.json").exists()
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        "http://www.vevey.ch/conseil.vevey.ch/conseilcommunal/seances/?ID=157&amp;DOC=1",  # cassé, l'hôte en chemin
+        "https://conseil.vevey.ch/conseilcommunal/seances/?ID=157",  # direct
+        "//conseil.vevey.ch/conseilcommunal/seances/?ID=157",  # sans schéma, à la racine
+        "conseil.vevey.ch/conseilcommunal/seances/?ID=157",  # sans schéma ni barre : l'hôte, pas un chemin relatif
+    ],
+)
+def test_le_lien_de_l_ordre_du_jour_mene_au_module_sous_chacune_de_ses_formes(tmp_path, horloge, href):
+    reseau = _reseau(horloge)
+    page = reseau.pages[VEVEY]
+    casse = b"http://www.vevey.ch/conseil.vevey.ch/conseilcommunal/seances/?ID=157&amp;DOC=1"
+    reseau.pages[VEVEY] = Page(page.corps.replace(casse, href.encode()), entetes=page.entetes)
+
+    _passer(tmp_path, horloge, reseau, _sources(_vevey()))
+
+    assert SEANCE_VEVEY.format(157) in [r.url for r in reseau.journal]
     assert (tmp_path / "conseils/5890/seances/2026-10-01.json").exists()

@@ -28,11 +28,13 @@ publication. Deux vues :
 
 **Séances** : une par Séance citée, à la date de son libellé, sans lien propre (le site n'a pas de page de Séance)
 ni ordre du jour structuré ; ses documents sont tous ceux de la Séance, préavis compris. **Préavis** (niveau
-« séances et préavis ») : un document dont le titre commence par « Préavis », ou qui, typé « Préavis » ou sans type,
-cite son Objet par un numéro seul (« Objet n° 05-2026 ») ; jamais un document que son titre dit être autre chose
-(rapport de commission ou de minorité, convocation, réponse, annexe, plan, extrait, décision), quel que soit son type.
-Son numéro brut est celui de son titre (« Préavis 005_2026-2031 », « Préavis 06/2025 »), sinon, quand le titre n'en
-porte pas (Etoy, La Rippe), celui de sa référence d'Objet ; son type est « Préavis », sa date celle de sa Séance ; ses
+« séances et préavis ») : un document dont le titre commence par « Préavis », ou qui cite son Objet par un numéro
+seul (« Objet n° 05-2026 ») et est typé « Préavis » (une commune qui titre ses préavis par leur sujet : « Réponse de
+la Municipalité au postulat… », « Plan d'affectation… ») ou n'a pas de type et pas un titre de rapport, convocation,
+réponse, amendement, annexe, plan, extrait ou décision. Un rapport de commission, de minorité ou de majorité n'est
+jamais un préavis, quel que soit son type. Son numéro brut est celui de son titre (« Préavis 005_2026-2031 »,
+« Préavis 06/2025 ») ; quand le titre n'en porte pas (Etoy, La Rippe), celui de sa référence d'Objet, pour un document
+typé « Préavis » ou sans type seulement. Son type est « Préavis », sa date celle de sa Séance ; ses
 documents sont le préavis et ceux de la même Séance qui citent le même Objet (« 072: … »). Un préavis sans numéro
 n'est pas importé, noté dans le journal. Les documents sont rangés par nœud (`/n<id>`, qui croît avec la mise en
 ligne) : la recherche ne range pas toujours de la même façon des documents à égalité de tri. De deux préavis de même
@@ -46,16 +48,17 @@ sans page n'ont pas de lien) et les années précédentes en onglets (date, lien
 (`documents/recherche/?id=<id>`) et donne ses documents (`download.asp?d=<id>`, nommés par le texte de leur lien
 sans sa taille, sinon par leur fichier). La fiche de chaque Objet cité est ouverte : numéro brut et type de son titre
 (« Préavis 29/2026 »), texte, auteur·e (« Auteur : Municipalité »), documents typés et datés ; pas de statut. Un
-point qui cite un Objet lui laisse ses documents, même quand sa fiche ne se lit pas : l'Objet est alors sauté, noté
-dans le journal, et les retrouve au passage où sa fiche se relit (à la Séance, l'import les garderait pour toujours).
-Seuls les documents des points sans Objet vont à la Séance. Les conseillers (`site.membres`, « **Nom** Prénom ») sont
-lus page après page (`rel="next"`).
+point relié à son Objet lui laisse ses documents. Ceux d'un point sans Objet vont à la Séance, comme ceux d'un point
+dont la fiche n'a pas de numéro (« Interpellation » : l'Objet n'est pas importé, noté dans le journal). Quand la fiche
+ne se lit pas, l'Objet est sauté, noté dans le journal, et les documents de son point sont écartés pour ce passage :
+ils iront à l'Objet au passage où sa fiche se relit (à la Séance, l'import les garderait pour toujours). Les
+conseillers (`site.membres`, « **Nom** Prénom ») sont lus page après page (`rel="next"`).
 
 Variante **`conseil-externe`** (le module Conseil dont la liste des Séances est sur le site de la Ville : Vevey) :
 la page `site.seances` (Drupal) donne chaque Séance (`div.teaser-agenda` : « Séance du Conseil communal du jeudi
 1er octobre 2026 - 19h30 ») et le lien de son ordre du jour sur le module (`conseilcommunal/seances/?ID=<id>`). Ce
-lien donne l'hôte du module : le sien, ou, quand il est cassé, le premier segment de son chemin
-(`www.vevey.ch/conseil.vevey.ch/conseilcommunal/…`) ; il est récrit vers
+lien donne l'hôte du module : le sien (`conseil.vevey.ch/conseilcommunal/…` sans schéma compris), ou, quand il est
+cassé, le premier segment de son chemin (`www.vevey.ch/conseil.vevey.ch/conseilcommunal/…`) ; il est récrit vers
 `https://<hôte du module>/ConseilCommunal/seances/?ID=<id>`, à la casse que `robots.txt` autorise. La page d'une
 Séance (ISO-8859-1) donne ses points numérotés (`div.centerGroup`, `h2` : « 9. », puis « 9.1 » et son titre) et leurs
 documents ; tous vont à la Séance (niveau « séances seulement »). Une page de Séance sans points est sautée, notée
@@ -530,13 +533,18 @@ _NUMERO_PREAVIS = re.compile(
     r"(?P<numero>(?:\d[\d/._-]*\d|\d)(?:\s*/\s*\d{2,4}\b|\s+(?:19|20)\d{2}\b)?)",
     re.I,
 )
-# Un document qui cite un Objet sans en être le préavis, quel que soit le type que le site lui donne : un rapport (de
-# commission, de minorité…), une convocation, la réponse de la Municipalité, un amendement, une annexe, un plan, un
-# extrait, une décision. Le rapport de gestion et le rapport-préavis de la Municipalité restent des préavis (Lully type
-# « Préavis » son rapport de gestion).
+# Le rapport d'une commission, de sa minorité ou de sa majorité, qui cite l'Objet de son préavis : jamais un préavis,
+# quel que soit le type que le site lui donne (Pompaples type « Préavis » son rapport de minorité). Le rapport de la
+# Municipalité (de gestion, sur une motion) reste un préavis quand le site le type ainsi (Lully).
+_RAPPORT_DE_COMMISSION = re.compile(
+    r"^rapports?[\s_-]+(?:(?:de|du|des|d['’])[\s_-]*(?:la[\s_-]+|l['’])?)?(?:commissions?|minorit|majorit|cofin|coges)",
+    re.I,
+)
+# Un document sans type qui cite un Objet sans en être le préavis : son rapport, sa convocation, la réponse de la
+# Municipalité, un amendement, une annexe, un plan, un extrait, une décision. Le mot finit à une espace, une
+# ponctuation ou un `_` (« Plan_de_quartier », « Annexe_1 »), pas à une lettre (« Planification » n'en est pas un).
 _PAS_UN_PREAVIS = re.compile(
-    r"^(rapports?(?!\s+de\s+gestion|[\s-]+pr[ée]avis)|convocations?|r[ée]ponses?|amendements?|annexes?|plans?|"
-    r"extraits?|d[ée]cisions?)\b",
+    r"^(?:rapports?|convocations?|r[ée]ponses?|amendements?|annexes?|plans?|extraits?|d[ée]cisions?)(?![^\W_])",
     re.I,
 )
 _TYPES_DE_PREAVIS = ("préavis", "preavis")
@@ -579,7 +587,7 @@ def _seances_et_preavis(
     for d in dans_la_fenetre:
         if not _est_un_preavis(d):
             continue
-        numero = _numero(d.titre) or _reference_seule(d)
+        numero = _numero_de_preavis(d)
         if numero is None:
             _journal(nom, f"Objet sans numéro, non importé : {d.titre}")
             continue
@@ -596,20 +604,37 @@ def _seances_et_preavis(
 
 
 def _est_un_preavis(d: _DocumentDeRecherche) -> bool:
-    """Un préavis : un document dont le titre commence par « Préavis », ou qui, typé « Préavis » ou sans type, cite
-    son Objet par un numéro seul (« Objet n° 05-2026 », La Rippe, Juriens) ; jamais un document que son titre dit être
-    autre chose (`_PAS_UN_PREAVIS`), quel que soit son type."""
-    if _PAS_UN_PREAVIS.match(d.titre):
+    """Un préavis : un document dont le titre commence par « Préavis », ou qui cite son Objet par un numéro seul
+    (« Objet n° 05-2026 », La Rippe, Juriens) et a le type d'un préavis (`_type_de_preavis`) ; jamais le rapport d'une
+    commission (`_RAPPORT_DE_COMMISSION`), quel que soit son type."""
+    if _RAPPORT_DE_COMMISSION.match(d.titre):
         return False
     if d.titre.lower().startswith("préavis"):
         return True
-    return _reference_seule(d) is not None and (d.type is None or d.type.lower() in _TYPES_DE_PREAVIS)
+    return _reference_seule(d) is not None and _type_de_preavis(d)
+
+
+def _type_de_preavis(d: _DocumentDeRecherche) -> bool:
+    """Le document est typé « Préavis », ou n'a pas de type et pas un titre qui dit autre chose (`_PAS_UN_PREAVIS`).
+    Une commune qui type ses documents titre ses préavis par leur sujet (« Réponse de la Municipalité au postulat… »,
+    « Plan d'affectation… ») : seul son type les dit."""
+    if d.type is None:
+        return not _PAS_UN_PREAVIS.match(d.titre)
+    return d.type.lower() in _TYPES_DE_PREAVIS
+
+
+def _numero_de_preavis(d: _DocumentDeRecherche) -> str | None:
+    """Le numéro brut d'un préavis : celui de son titre (« Préavis 005_2026-2031 ») ; quand le titre n'en porte pas
+    (Etoy, La Rippe, Juriens), celui de sa référence d'Objet, pour un document qui a le type d'un préavis seulement
+    (« Préavis de la commission des finances » typé « Rapport » n'en a pas)."""
+    numero = _numero(d.titre)
+    if numero is None and _type_de_preavis(d):
+        numero = _reference_seule(d)
+    return numero
 
 
 def _reference_seule(d: _DocumentDeRecherche) -> str | None:
-    """La référence d'Objet d'un document quand elle n'est qu'un numéro (« Objet n° 05-2026 », « 05-2026 »). Le
-    numéro d'un préavis est celui de son titre (`_numero`) ; cette référence ne le donne que si le titre n'en porte
-    pas (Etoy, La Rippe, Juriens)."""
+    """La référence d'Objet d'un document quand elle n'est qu'un numéro (« Objet n° 05-2026 », « 05-2026 »)."""
     m = _OBJET_NUMERO.match(d.objet or "")
     return m["numero"] if m else None
 
@@ -781,7 +806,8 @@ def _module_conseil(robot: Robot, source: Source, depuis: date | None, avec_obje
     liste = robot.lire(site.seances, "import")
     seances: list[dict] = []
     objets: list[dict] = []
-    fiches: dict[str, dict | None] = {}  # lien de la fiche → Objet lu (None : illisible)
+    fiches: dict[str, dict | None] = {}  # lien de la fiche → Objet lu (None : sans numéro, non importé)
+    non_lues: set[str] = set()  # les fiches qui ne se lisent pas à ce passage
     for ligne in _liste_du_module(liste.texte, liste.url):
         if isinstance(ligne, str):
             _journal(source.nom, f"ligne de Séance illisible ({ligne})")
@@ -800,18 +826,21 @@ def _module_conseil(robot: Robot, source: Source, depuis: date | None, avec_obje
         ligne = _SeanceListee(titre or ligne.nom, ligne.jour, ligne.heure, ligne.lien)  # le nom brut, celui de sa page
         points, documents = [], []
         for point in _points_du_module(page.texte, page.url):
-            cite_un_objet = avec_objets and point.fiche is not None
-            numero = None
-            if cite_un_objet:
-                if point.fiche not in fiches:
-                    fiches[point.fiche] = _fiche_d_objet(robot, source, point.fiche)
-                objet = fiches[point.fiche]
-                numero = objet["number"] if objet else None
+            fiche = point.fiche if avec_objets else None
+            if fiche is not None and fiche not in fiches and fiche not in non_lues:
+                try:
+                    fiches[fiche] = _fiche_d_objet(robot, source, fiche)
+                except PageNonLue as e:
+                    _journal(source.nom, f"Objet {fiche} non lu ({e}), ni les documents de son point")
+                    non_lues.add(fiche)
+            objet = fiches.get(fiche) if fiche is not None else None
+            numero = objet["number"] if objet else None
             points.append({"item_number_display": None, "item_title": point.titre, "item_affair_number": numero})
-            if not cite_un_objet:
-                # Seuls les documents d'un point sans Objet vont à la Séance. Ceux d'un point dont la fiche ne se lit
-                # pas restent à son Objet, qui les retrouvera au passage où elle se relit : à la Séance, l'import, qui
-                # garde les documents archivés, les y laisserait pour toujours.
+            # Les documents d'un point sans Objet importé vont à la Séance : un point sans fiche, ou dont la fiche n'a
+            # pas de numéro (une interpellation, non importée, d'un passage à l'autre). Ceux d'un point dont la fiche
+            # ne se lit pas sont écartés pour ce passage : son Objet les retrouvera quand elle se relira, et à la
+            # Séance l'import, qui garde les documents archivés, les y laisserait pour toujours.
+            if numero is None and fiche not in non_lues:
                 documents += point.documents
         seances.append(ligne.meeting(points, documents))
     for objet in fiches.values():
@@ -927,13 +956,9 @@ def _texte_sans_taille(a: Noeud) -> str:
 
 
 def _fiche_d_objet(robot: Robot, source: Source, url: str) -> dict | None:
-    """L'Objet de sa fiche, à la forme d'une *affair* ; `None`, noté dans le journal, s'il ne se lit pas ou n'a
-    pas de numéro (ses documents ne vont pas pour autant à la Séance)."""
-    try:
-        page = robot.lire(url, "import")
-    except PageNonLue as e:
-        _journal(source.nom, f"Objet {url} non lu ({e}), ses documents avec lui")
-        return None
+    """L'Objet de sa fiche, à la forme d'une *affair* ; `None`, noté dans le journal, s'il n'a pas de numéro. Lève
+    `PageNonLue` si la fiche ne se lit pas."""
+    page = robot.lire(url, "import")
     racine = arbre(page.texte)
     bloc = racine.premier(lambda n: "tplDetailBlade" in n.classes()) or racine
     entete = bloc.texte_du_premier(lambda n: n.tag == "h1")
@@ -996,7 +1021,7 @@ def _conseillers(robot: Robot, source: Source) -> list[str]:
 # --- Module Conseil dont la liste est sur le site de la Ville (Vevey) -----------------------------------------------
 
 _ID_DU_MODULE = re.compile(r"/conseilcommunal/seances/\?ID=(\d+)", re.I)
-_HOTE = re.compile(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", re.I)
+_HOTE = re.compile(r"[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}", re.I)  # un nom d'hôte, terminé par un domaine de lettres
 
 
 def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -> list[dict]:
@@ -1020,7 +1045,7 @@ def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -
         if depuis is not None and quand < depuis:
             continue
         heure = _HEURE.search(titre)
-        liens = (urljoin(liste.url, a.attr("href") or "") for a in noeud.elements() if a.tag == "a")
+        liens = (_lien_absolu(a.attr("href") or "", liste.url) for a in noeud.elements() if a.tag == "a")
         lien = next((p for p in map(_page_du_module, liens) if p), None)
         ligne = _SeanceListee(titre, quand, f"{int(heure[1]):02d}:{heure[2]}" if heure else None, lien)
         if lien is None:
@@ -1043,6 +1068,16 @@ def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -
     if pages_a_ouvrir and not pages_lues:
         raise ValueError(f"{liste.url} : aucune des {pages_a_ouvrir} pages de Séance du module ne se lit")
     return seances
+
+
+def _lien_absolu(href: str, base: str) -> str:
+    """Le lien `href` de la page `base`, absolu. Un lien sans schéma dont le premier segment est un nom d'hôte
+    (`conseil.vevey.ch/conseilcommunal/…`) mène à cet hôte, en `https`, et non à un chemin sous `base` ; les autres
+    (lien direct, `//hôte/…`, chemin) se résolvent depuis `base`."""
+    premier = href.split("/", 1)[0]
+    if "/" in href and _HOTE.fullmatch(premier):
+        return f"https://{href}"
+    return urljoin(base, href)
 
 
 def _page_du_module(lien: str) -> str | None:

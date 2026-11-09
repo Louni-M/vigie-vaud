@@ -17,10 +17,11 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
   variante ; un Objet sans numéro n'est pas importé (noté dans le journal), et une commune dont les préavis n'ont
   pas de numéro est déclarée en Séances seules. Dans la recherche `coreapi` de Quicksite, c'est le titre du préavis
   (« Préavis 005_2026-2031 »), et sa référence d'Objet (« Objet n° 05-2026 ») seulement quand ce titre n'a pas de
-  numéro ; un rapport de commission ou de minorité n'y est jamais un préavis, quel que soit le type que le site lui
-  donne. Sa date est celle que le site lui donne, sinon la mise en ligne de son premier document. Un document a pour
-  nom le texte de son lien, sinon le nom du fichier, et pour date celle affichée, sinon sa mise en ligne. Le lien
-  d'un élément est sa page propre sous sa forme stable (`/_rte/anlass/<id>` plutôt que la redirection), sinon rien.
+  numéro et que le document est typé « Préavis » ou n'a pas de type ; un rapport de commission ou de minorité n'y est
+  jamais un préavis, quel que soit le type que le site lui donne. Sa date est celle que le site lui donne, sinon la
+  mise en ligne de son premier document. Un document a pour nom le texte de son lien, sinon le nom du fichier, et pour
+  date celle affichée, sinon sa mise en ligne. Le lien d'un élément est sa page propre sous sa forme stable
+  (`/_rte/anlass/<id>` plutôt que la redirection), sinon rien.
 - Une Séance porte ses documents (ordre du jour, procès-verbal, convocation), comme les `docs` d'un *meeting*. Ses
   points ne sont remplis que si le site structure l'ordre du jour en HTML ; sinon son PDF est un document de la
   Séance. Le scraper relie un point à son Objet par le numéro (`item_affair_number`), qu'il tire lui-même des listes
