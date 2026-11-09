@@ -1,6 +1,7 @@
 """Le script de préparation des sources sur Quicksite (`preparation_sources.py`, spec de J3, « Scripts de
 préparation ») : la mesure du module de lecture Quicksite trouve la variante de chaque site (ancienne génération,
-recherche `coreapi` et ses paramètres, module Conseil, module Conseil dont la liste est sur le site de la Ville),
+recherche `coreapi` et ses paramètres, ou ses deux recherches quand la commune sépare ses préavis et ses
+procès-verbaux, module Conseil, module Conseil dont la liste est sur le site de la Ville),
 le brouillon déclare chaque commune, et la vérification le relit sans écart. Le réseau est le faux réseau des sites,
 qui sert l'échantillon Quicksite et des pages du conseil fabriquées.
 """
@@ -189,3 +190,103 @@ def test_la_mesure_cherche_le_marqueur_que_la_section_plateformes_declare():
 
     assert aigle["couverture"]["mode"] == "non_couvert"
     assert remarques == {"site-5401": ["Aigle : aucune page des Séances Quicksite trouvée ; raison à relire"]}
+
+
+# --- Deux recherches : préavis et procès-verbaux séparés (Duillier, Juriens) -------------------------------------
+
+DUILLIER = "https://www.duillier.ch"
+CANDIDAT_DUILLIER = Candidat(5715, "Duillier", "Conseil communal", f"{DUILLIER}/N528/conseil-communal.html")
+PREAVIS_DUILLIER = {
+    "projet": "duillier25", "vue": "documentconseil", "noeud": 543, "taille": 60, "tri": "date_extid_desc_doctag_rank"
+}
+PROCES_VERBAUX_DUILLIER = PREAVIS_DUILLIER | {"noeud": 720, "tri": "date_extid"}
+
+
+def _recherche_de_duillier(noeud, tri, page=1):
+    url = (
+        f"{DUILLIER}/coreapi/elasticsearch/projects/duillier25/documentconseil/search?q=&elasticsearchProject="
+        f"&elasticsearchNode={noeud}&elasticsearchPagesize=60&elasticsearchNodetype=&elasticsearchParentnode={noeud}"
+        f"&elasticsearchSort={tri}&elasticsearchView=documentconseil&elasticsearchQuery=input.query-full"
+        "&elasticsearchResult=%23search-result-list-full&elasticsearchFiltertags=&elasticsearchInitresult=true"
+        "&query=&date_from=&date_to="
+    )
+    return url if page == 1 else f"{url}&page={page}"
+
+
+def _duillier(reseau, pages=1):
+    """Duillier, qui sépare ses préavis et ses procès-verbaux : la page des documents de Founex retouchée en deux
+    pages de son menu, chacune avec sa recherche (nœud 543, puis 720 sans tri déclaré), de `pages` pages de
+    résultats chacune. Sa page des assemblées, sans recherche, n'est pas servie."""
+    founex = reseau.pages[f"{FOUNEX}/N640/documents.html"].corps.decode("utf-8")
+    reseau.adresses["www.duillier.ch"] = "193.34.137.66"
+    reseau.pages[CANDIDAT_DUILLIER.page] = _page_quicksite(
+        [
+            ("/N543/preavis-municipaux.html", "Préavis municipaux"),
+            ("/N720/proces-verbaux-du-conseil-communal.html", "Procès-verbaux du Conseil communal"),
+            ("/N530/assemblees-du-conseil-communal.html", "Assemblées du Conseil communal - ordre du jour"),
+        ]
+    )
+    for chemin, recherche, tri in (
+        ("/N543/preavis-municipaux.html", PREAVIS_DUILLIER, PREAVIS_DUILLIER["tri"]),
+        ("/N720/proces-verbaux-du-conseil-communal.html", PROCES_VERBAUX_DUILLIER, ""),
+    ):
+        noeud = recherche["noeud"]
+        reseau.pages[f"{DUILLIER}{chemin}"] = Page(
+            founex.replace("founex25", "duillier25")
+            .replace('"640"', f'"{noeud}"')
+            .replace('sort="date_extid"', f'sort="{tri}"')
+            .replace("documentconseildates", "documentconseil")
+        )
+        for page in range(1, pages + 1):
+            reseau.pages[_recherche_de_duillier(noeud, recherche["tri"], page)] = Page(
+                f'<div class="tplDocumentConseil"><div>{page} à {page} sur {pages} éléments trouvés</div>'
+                f'<div class="qs-edit" data-qsedit-editnode="{noeud}{page}"><a href="{DUILLIER}/n{noeud}{page}">'
+                f"<h5>Préavis {page:02d}-2026</h5></a></div></div>"
+            )
+
+
+def test_la_mesure_declare_les_deux_recherches_d_une_commune_qui_separe_preavis_et_proces_verbaux():
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _duillier(reseau)
+
+    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+
+    assert duillier == _declaration(
+        5715, "Duillier", CANDIDAT_DUILLIER.page, ["preavis", "seances"],
+        {
+            "variante": "coreapi",
+            "seances": f"{DUILLIER}/N543/preavis-municipaux.html",
+            "coreapi": [PREAVIS_DUILLIER, PROCES_VERBAUX_DUILLIER],
+        },
+    )
+    assert remarques == {}
+    assert verifier(_robot(reseau, horloge), _fichier(duillier), "quicksite", JOUR) == []
+
+
+def test_une_commune_declaree_avec_une_seule_de_ses_deux_recherches_est_un_ecart():
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _duillier(reseau)
+    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    duillier["site"]["coreapi"] = PREAVIS_DUILLIER
+
+    (ecart,) = verifier(_robot(reseau, horloge), _fichier(duillier), "quicksite", JOUR)
+
+    assert ecart == (
+        f"site-5715 (Duillier) : recherche coreapi déclarée {PREAVIS_DUILLIER}, "
+        f"mesurée {[PREAVIS_DUILLIER, PROCES_VERBAUX_DUILLIER]}"
+    )
+
+
+def test_les_pages_des_deux_recherches_comptent_ensemble_face_au_plafond():
+    # 30 pages de résultats par recherche : 62 requêtes au passage ordinaire, `robots.txt` et sonde compris, à tous
+    # les niveaux (la recherche est lue en entier, même pour les seules Séances).
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _duillier(reseau, pages=30)
+
+    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+
+    assert remarques == {"site-5715": ["Duillier : 62 requêtes au passage ordinaire, au-delà du plafond de 60"]}
+    assert duillier["conseil"]["donne"] == ["seances"]  # le moins complet de sa variante, à relire

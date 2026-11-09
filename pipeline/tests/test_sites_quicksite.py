@@ -4,7 +4,8 @@ les autres conseils. Le seul seam est le passage du cron (`passage_sites._passer
 par de petites retouches de l'échantillon.
 
 Variante ancienne génération : Aigle (bibliothèque des documents, page après page). Variante `coreapi` : Founex (vue `documentconseildates`, documents groupés par Séance) et Ropraz (vue
-`documentconseil`, une Séance par document, dont les fausses « Séance du 1 janvier »).
+`documentconseil`, une Séance par document, dont les fausses « Séance du 1 janvier ») ; Ropraz déclarée avec deux
+recherches, comme Duillier et Juriens, qui séparent leurs préavis et leurs procès-verbaux.
 """
 
 import re
@@ -389,11 +390,14 @@ def test_un_preavis_sans_numero_n_est_pas_importe_et_un_document_illisible_est_s
     assert _lire(tmp_path, "conseils/import.json")["conseils"]["5717"] == "2026-10-23T05:17:05Z"
 
 
-def _document_par_type(n, titre, type_="", objet="", publie=""):
-    """Un document de la vue `documentconseil`, à la forme de ceux de La Rippe et de Mollens : sans Séance."""
+def _document_par_type(n, titre, type_="", objet="", publie="", seance=""):
+    """Un document de la vue `documentconseil`, à la forme de ceux de La Rippe et de Mollens : sans Séance, sauf
+    `seance`, donnée comme Ropraz la donne."""
     filtres = f'<a href="javascript:;" data-filter-type="t" data-filter-value="x">{type_}</a>'
     if objet:
         filtres += f'<a href="javascript:;" data-filter-type="ext_id" data-filter-value="{objet}">{objet}</a>'
+    if seance:
+        filtres += f'<a href="javascript:;" data-filter-type="sortdate" data-filter-value="1">{seance}</a>'
     return (
         f'<div class="qs-edit qs-edit-top qs-edit-out" data-qsedit data-qsedit-editnode="{n}"><div class="col">'
         f'{filtres}<a href="{ROPRAZ}/n{n}"><h5>{titre}</h5></a></div>'
@@ -609,6 +613,192 @@ def test_la_recherche_est_demandee_avec_les_parametres_declares(tmp_path, horlog
     parametres = parse_qs(recherche.query, keep_blank_values=True)
     assert (parametres["elasticsearchNode"], parametres["elasticsearchPagesize"]) == (["748"], ["200"])
     assert parametres["elasticsearchSort"] == ["date_extid_desc_rank"]
+
+
+# --- Deux recherches : préavis et procès-verbaux séparés (Duillier, Juriens) -------------------------------------
+
+
+def _ropraz_en_deux_recherches(**options):
+    """Ropraz déclarée comme Duillier et Juriens, qui séparent leurs préavis et leurs procès-verbaux : la recherche de
+    l'échantillon (nœud 748) pour ses préavis, une seconde (nœud 749, 60 par page) pour ses procès-verbaux."""
+    ropraz = _ropraz(**options)
+    preavis = ropraz["site"]["coreapi"]
+    ropraz["site"]["coreapi"] = [preavis, {**preavis, "noeud": 749, "taille": 60, "tri": "date_extid"}]
+    return ropraz
+
+
+def _deux_recherches(reseau):
+    """Les URL des deux recherches de Ropraz : celle de l'échantillon, et la seconde, sur le nœud 749."""
+    preavis = _recherche(reseau, ROPRAZ)
+    proces_verbaux = (
+        preavis.replace("=748&", "=749&").replace("Pagesize=200", "Pagesize=60").replace("_desc_rank", "")
+    )
+    return preavis, proces_verbaux
+
+
+def _resultats(debut, fin, total, *documents):
+    """Une page de résultats de la vue `documentconseil`, avec sa position dans le total."""
+    return Page(
+        f'<div class="tplDocumentConseil"><div>{debut} à {fin} sur {total} éléments trouvés</div>'
+        + "".join(documents)
+        + "</div>"
+    )
+
+
+def _duillier(reseau):
+    """Les deux recherches de Ropraz, à la forme de celles de Duillier le 9 novembre 2026 : ses préavis, sans Séance,
+    datés de leur mise en ligne, et ses procès-verbaux, chacun sous sa Séance."""
+    preavis, proces_verbaux = _deux_recherches(reseau)
+    reseau.pages[preavis] = _resultats(
+        1, 3, 3,
+        _document_par_type(1479, "Préavis 10-2026 Indemnités", "Préavis", "10-2026", "4 septembre 2026"),
+        _document_par_type(1456, "Préavis 03-2026 Gestion et comptes 2025", "Préavis", "03-2026", "9 juin 2026"),
+        _document_par_type(1455, "Rapport sur la gestion et les comptes 2025", "Rapport", "03-2026", "9 juin 2026"),
+    )
+    reseau.pages[proces_verbaux] = _resultats(
+        1, 3, 3,
+        _document_par_type(1483, "Extrait des décisions", "Extrait de décisions", "", "24 septembre 2026",
+                           "Séance du 24 septembre 2026"),
+        _document_par_type(1458, "Procès-verbal", "Procès-verbal", "", "18 juin 2026", "Séance du 18 juin 2026"),
+        _document_par_type(1443, "Procès-verbal", "Procès-verbal", "", "26 mars 2026", "Séance du 26 mars 2026"),
+    )
+    return preavis, proces_verbaux
+
+
+def test_une_commune_qui_separe_ses_preavis_et_ses_proces_verbaux_lit_ses_deux_recherches(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    preavis, proces_verbaux = _duillier(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz_en_deux_recherches()))
+
+    assert [(r.url, r.user_agent.split(" ")[0]) for r in reseau.journal] == [
+        (f"{ROPRAZ}/robots.txt", "VigieVaud-sonde"),
+        (f"{ROPRAZ}/documents-du-conseil", "VigieVaud-sonde"),  # la page des préavis, seule sondée
+        (preavis, "VigieVaud-import"),
+        (proces_verbaux, "VigieVaud-import"),
+    ]
+    heures = reseau.heures("www.ropraz.ch")
+    assert all(b - a >= timedelta(seconds=5) for a, b in zip(heures, heures[1:]))
+    # Les Séances viennent des procès-verbaux, celles de la fenêtre seulement (le 26 mars en est hors) ; les préavis,
+    # sans Séance, de la recherche des préavis.
+    assert [s["cle"] for s in _lire(tmp_path, "conseils/5798/seances.json")["seances"]] == [
+        "5798/2026-09-24",
+        "5798/2026-06-18",
+    ]
+    seance = _lire(tmp_path, "conseils/5798/seances/2026-06-18.json")
+    assert [d["lien"] for d in seance["documents"]] == [f"{ROPRAZ}/n1458"]
+    gestion = _lire(tmp_path, "conseils/5798/objets/03-2026.json")
+    assert (gestion["titre"], gestion["depose"]) == ("Gestion et comptes 2025", "2026-06-09")
+    assert [d["lien"] for d in gestion["documents"]] == [f"{ROPRAZ}/n1456", f"{ROPRAZ}/n1455"]
+    assert sorted(p.name for p in (tmp_path / "conseils/5798/objets").iterdir()) == ["03-2026.json", "10-2026.json"]
+
+
+def test_les_documents_des_deux_recherches_sont_reunis_sous_les_regles_d_une_seule(tmp_path, horloge, capsys):
+    # Duillier, le 9 novembre : deux « Préavis 01-2026 », l'un dans chaque recherche ; un préavis rangé sous sa Séance,
+    # dont le procès-verbal est dans l'autre recherche ; un procès-verbal que les deux recherches donnent.
+    reseau = _reseau(horloge)
+    preavis, proces_verbaux = _deux_recherches(reseau)
+    juin = "Séance du 18 juin 2026"
+    proces_verbal = _document_par_type(1458, "Procès-verbal", "Procès-verbal", "", "18 juin 2026", juin)
+    reseau.pages[preavis] = _resultats(
+        1, 3, 3,
+        _document_par_type(1454, "Préavis 01-2026 du bureau", "Préavis", "01-2026", "9 juin 2026"),
+        _document_par_type(1456, "Préavis 03-2026 Gestion et comptes 2025", "Préavis", "03-2026", "9 juin 2026", juin),
+        proces_verbal,
+    )
+    reseau.pages[proces_verbaux] = _resultats(
+        1, 3, 3,
+        proces_verbal,
+        _document_par_type(1457, "Rapport de la commission de gestion", "Rapport", "03-2026", "18 juin 2026", juin),
+        _document_par_type(1407, "Préavis 01-2026 Patrimoine arboré", "Préavis", "01-2026", "24 mars 2026"),
+    )
+    sources = _sources(_ropraz_en_deux_recherches())
+
+    _passer(tmp_path, horloge, reseau, sources, rattrapage_cible="5798")
+
+    # La Séance a ses documents des deux recherches, chacun une fois, dans l'ordre de leurs nœuds.
+    seance = _lire(tmp_path, "conseils/5798/seances/2026-06-18.json")
+    assert [d["lien"] for d in seance["documents"]] == [f"{ROPRAZ}/n{n}" for n in (1456, 1457, 1458)]
+    # Le préavis garde le rapport de sa Séance que l'autre recherche donne.
+    gestion = _lire(tmp_path, "conseils/5798/objets/03-2026.json")
+    assert [d["lien"] for d in gestion["documents"]] == [f"{ROPRAZ}/n1456", f"{ROPRAZ}/n1457"]
+    # De deux préavis de même numéro, le plus ancien l'emporte, quelle que soit la recherche qui le donne.
+    assert _lire(tmp_path, "conseils/5798/objets/01-2026.json")["titre"] == "Patrimoine arboré"
+    assert "Objet 01-2026 en double, le plus ancien gardé (« Patrimoine arboré ») : Préavis 01-2026 du bureau" in (
+        capsys.readouterr().err
+    )
+
+
+def test_chaque_recherche_va_jusqu_a_sa_fin_meme_si_sa_premiere_page_ne_reprend_que_l_autre(tmp_path, horloge):
+    # La seconde recherche n'a, en première page, qu'un document que la première a déjà donné : elle n'est pas finie
+    # pour autant, sa page suivante est lue.
+    reseau = _reseau(horloge)
+    preavis, proces_verbaux = _deux_recherches(reseau)
+    juin = "Séance du 18 juin 2026"
+    proces_verbal = _document_par_type(1458, "Procès-verbal", "Procès-verbal", "", "18 juin 2026", juin)
+    reseau.pages[preavis] = _resultats(1, 1, 1, proces_verbal)
+    reseau.pages[proces_verbaux] = _resultats(1, 1, 2, proces_verbal)
+    reseau.pages[_page_suivante(proces_verbaux, 2)] = _resultats(
+        2, 2, 2, _document_par_type(1483, "Extrait des décisions", "", "", "", "Séance du 24 septembre 2026")
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz_en_deux_recherches()))
+
+    lues = [r.url for r in reseau.journal if "/coreapi/" in r.url]
+    assert lues == [preavis, proces_verbaux, _page_suivante(proces_verbaux, 2)]
+    assert [d["lien"] for d in _lire(tmp_path, "conseils/5798/seances/2026-06-18.json")["documents"]] == [
+        f"{ROPRAZ}/n1458"
+    ]
+    assert (tmp_path / "conseils/5798/seances/2026-09-24.json").exists()
+
+
+def test_une_seconde_recherche_qui_ne_se_lit_pas_met_l_import_en_echec(tmp_path, horloge, capsys):
+    # Sans ses procès-verbaux, chaque Séance serait réécrite avec une partie de ses documents.
+    reseau = _reseau(horloge)
+    _preavis, proces_verbaux = _duillier(reseau)
+    del reseau.pages[proces_verbaux]  # 404
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz_en_deux_recherches()))
+
+    assert "Import en échec : Conseil général de Ropraz (site de la commune)" in capsys.readouterr().err
+    assert "5798" not in _lire(tmp_path, "conseils/import.json")["conseils"]
+    assert not (tmp_path / "conseils/5798/objets").exists()
+
+
+def test_les_pages_des_deux_recherches_comptent_ensemble_dans_le_plafond_de_la_commune(tmp_path, horloge, capsys):
+    # 30 pages de résultats par recherche : chacune tiendrait sous le plafond de 60 requêtes, pas les deux ensemble,
+    # avec `robots.txt` et la sonde. Le rattrapage, sans plafond, les lit toutes.
+    reseau = _reseau(horloge)
+    for n, url in enumerate(_deux_recherches(reseau)):
+        for page in range(1, 31):
+            document = _document_par_type(1000 * (n + 1) + page, "Procès-verbal", "", "", "", "Séance du 18 juin 2026")
+            reseau.pages[url if page == 1 else _page_suivante(url, page)] = _resultats(page, page, 30, document)
+    sources = _sources(_ropraz_en_deux_recherches())
+
+    _passer(tmp_path, horloge, reseau, sources)
+
+    assert len(reseau.journal) == 60
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil général de Ropraz (site de la commune)" in journal
+    assert "plafond de 60 requêtes atteint" in journal
+    assert not (tmp_path / "conseils/5798/seances").exists()
+
+    _passer(tmp_path, horloge, reseau, sources, rattrapage_cible="5798", heure=T0 + timedelta(days=1))
+
+    assert len(_lire(tmp_path, "conseils/5798/seances/2026-06-18.json")["documents"]) == 60
+
+
+def test_les_deux_recherches_sont_demandees_chacune_avec_ses_parametres(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    _duillier(reseau)
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz_en_deux_recherches()))
+
+    recherches = [parse_qs(urlsplit(r.url).query, keep_blank_values=True) for r in reseau.journal if "/coreapi/" in r.url]
+    assert [(p["elasticsearchNode"], p["elasticsearchPagesize"], p["elasticsearchSort"]) for p in recherches] == [
+        (["748"], ["200"], ["date_extid_desc_rank"]),
+        (["749"], ["60"], ["date_extid"]),
+    ]
 
 
 # --- Ancienne génération : la bibliothèque d'Aigle -----------------------------------------------------------------

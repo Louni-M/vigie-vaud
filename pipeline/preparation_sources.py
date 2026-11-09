@@ -45,7 +45,7 @@ from pydantic import ValidationError
 
 from mesure_sites import Mesure, PagesLues
 from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Robot, robot_des_sources
-from schema import FUSEAU, RACINE, FichierSources, Plateforme, Site, Source, lire_sources, niveau_de
+from schema import FUSEAU, RACINE, Coreapi, FichierSources, Plateforme, Site, Source, lire_sources, niveau_de
 from sites_communaux import LECTEURS, debut_de_fenetre
 
 LICENCE = "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
@@ -187,14 +187,16 @@ def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure
 
 def _site_mesure(plateforme: Plateforme, mesure: Mesure) -> dict:
     """Le bloc `site` que déclarerait la mesure, au format de `sources.json` : sa variante, les pages trouvées et,
-    pour une recherche `coreapi`, ses paramètres."""
+    pour la variante `coreapi`, les paramètres de sa recherche, ou la liste de ses recherches quand elle en a
+    plusieurs."""
+    recherches = mesure.recherches
     site = Site(
         plateforme=plateforme.id,
         variante=mesure.variante,
         seances=mesure.seances,
         objets=mesure.objets,
         membres=mesure.membres,
-        coreapi=mesure.coreapi,
+        coreapi=recherches[0] if len(recherches) == 1 else recherches or None,
     )
     return site.model_dump(exclude_none=True)
 
@@ -249,10 +251,22 @@ def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: Plate
         ecarts.append(f"niveau déclaré {_niveau(source.conseil.donne)}, mesuré {_niveau(mesure.niveau)}{pourquoi}")
     ecarts += ecart("page des Objets", site.objets, mesure.objets)
     ecarts += ecart("page des membres", site.membres, mesure.membres)
-    if site.coreapi != mesure.coreapi:
-        declaree, mesuree = (c.model_dump() if c else "aucune" for c in (site.coreapi, mesure.coreapi))
+    if _par_noeud(site.recherches) != _par_noeud(mesure.recherches):
+        declaree, mesuree = (_lisibles(r) for r in (site.recherches, mesure.recherches))
         ecarts.append(f"recherche coreapi déclarée {declaree}, mesurée {mesuree}")
     return ecarts
+
+
+def _par_noeud(recherches: list[Coreapi]) -> list[Coreapi]:
+    """Les recherches `coreapi` dans l'ordre de leurs nœuds : leur ordre de déclaration ne change pas la lecture."""
+    return sorted(recherches, key=lambda c: (c.projet, c.noeud))
+
+
+def _lisibles(recherches: list[Coreapi]) -> object:
+    """Des recherches `coreapi` pour un écart : leurs paramètres, en liste quand il y en a plusieurs."""
+    if not recherches:
+        return "aucune"
+    return recherches[0].model_dump() if len(recherches) == 1 else [c.model_dump() for c in recherches]
 
 
 def _candidat_de_source(source: Source) -> Candidat:

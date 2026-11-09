@@ -17,9 +17,12 @@ numéro (annexe, extrait de décision, rapport de commission).
 Variante **`coreapi`** (nouvelle génération, thème eAdmin de 2023) : la page des documents du conseil
 (`site.seances`, celle que la sonde lit) est vide ; le navigateur la remplit par la recherche `coreapi`, dont les
 paramètres sont déclarés (`site.coreapi`). Le cron demande ce fragment HTML page par page (`&page=<n>`), du plus
-récent au plus ancien, sans ouvrir la page des documents. Chaque document (`div.qs-edit`) donne son lien stable
-`/n<id>`, son titre, son type s'il en a un (Décisions, Préavis, Procès-verbaux…), sa Séance et sa date de
-publication. Deux vues :
+récent au plus ancien, sans ouvrir la page des documents. Une commune qui sépare ses préavis et ses procès-verbaux
+(Duillier, Juriens) a une page et une recherche pour chacun : elle déclare les deux, lues l'une après l'autre, et
+leurs documents sont réunis avant d'en tirer Séances et préavis, sous les mêmes règles que ceux d'une seule
+recherche. Leurs pages comptent ensemble dans le plafond de requêtes de la commune. Chaque document (`div.qs-edit`)
+donne son lien stable `/n<id>`, son titre, son type s'il en a un (Décisions, Préavis, Procès-verbaux…), sa Séance et
+sa date de publication. Deux vues :
 
 - `documentconseildates` (Founex) : les documents sont groupés par Séance (« Séance du 28 septembre 2026 ») ; un
   préavis cite son Objet (« Objet n° 005: … »), dont le texte est le titre du préavis ;
@@ -69,7 +72,7 @@ ligne ne se lit : la sonde lit la liste de la Ville et ne verrait pas une refont
 site l'affiche. Les dates des noms de fichiers et de `Content-Disposition` ne servent pas : chaque document de ces
 vues a sa Séance (choix à relire, #175).
 
-**Fenêtre** : la recherche `coreapi` est lue en entier, chaque jour, comme toute page de liste (spec, « Fenêtre ») ;
+**Fenêtre** : chaque recherche `coreapi` est lue en entier, chaque jour, comme toute page de liste (spec, « Fenêtre ») ;
 au passage ordinaire, seuls les Séances et préavis de la fenêtre sont importés. La bibliothèque de l'ancienne
 génération, triée par mise en ligne, s'arrête à la première page mise en ligne avant la fenêtre ; le rattrapage la
 lit en entier. Une liste paginée s'arrête à sa dernière page, ou à une page qui ne donne rien de nouveau ; au-delà de
@@ -82,6 +85,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urlencode, urljoin, urlsplit
@@ -118,7 +122,7 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
     elif site.variante == "conseil-externe":
         return Bruts(conseil, objets=[], seances=_module_conseil_externe(robot, source, depuis), membres=[])
     else:
-        documents = _documents_coreapi(robot, source, depuis)
+        documents = _documents_coreapi(robot, source)
         seances, objets = _seances_et_preavis(source.nom, documents, depuis, avec_preavis)
     return Bruts(conseil, objets=objets, seances=seances, membres=[])
 
@@ -351,12 +355,11 @@ def _jour_en_lettres(jour: date) -> str:
 # --- Recherche `coreapi` ------------------------------------------------------------------------------------------
 
 
-def _url_de_recherche(site: Site, page: int = 1) -> str:
-    """Le fragment de la recherche `coreapi` que le navigateur demande pour remplir la page `site.seances`, avec les
-    paramètres déclarés, à la page de résultats `page`."""
-    c = site.coreapi
-    if c is None or site.seances is None:
-        raise ValueError("variante coreapi sans bloc `coreapi` ni page `seances`")
+def _url_de_recherche(site: Site, c: Coreapi, page: int = 1) -> str:
+    """Le fragment de la recherche `c` que le navigateur demande pour remplir sa page des documents, sur l'hôte de
+    `site.seances`, avec les paramètres déclarés, à la page de résultats `page`."""
+    if site.seances is None:
+        raise ValueError("variante coreapi sans page `seances`")
     origine = urlsplit(site.seances)
     parametres = {
         "q": "",
@@ -397,19 +400,39 @@ class _DocumentDeRecherche:
 _TOTAL = re.compile(r"(\d+)\s*à\s*(\d+)\s*sur\s*(\d+)\s*éléments?")
 
 
-def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> list[_DocumentDeRecherche]:
-    """Les documents de la recherche `coreapi`, dans l'ordre du site, page de résultats après page de résultats,
-    toutes, même au passage ordinaire (`depuis` n'y change rien) : la recherche n'est pas triée par mise en ligne,
-    et une Séance ou un préavis de la fenêtre peut avoir des documents sur n'importe quelle page. Lire moins
-    réécrirait l'élément avec une partie de ses documents. Elle s'arrête à la fin du total (« 1 à 60 sur 399 »), ou à
-    une page qui ne donne rien de nouveau (un site qui ignorerait `page` rendrait la première sans fin) ; un document
-    qu'une page reprend d'une autre, sous la même Séance, n'est lu qu'une fois."""
+def _documents_coreapi(robot: Robot, source: Source) -> list[_DocumentDeRecherche]:
+    """Les documents des recherches `coreapi` déclarées, l'une après l'autre (`site.recherches` : une commune qui
+    sépare ses préavis et ses procès-verbaux en a deux), chacune lue en entier par `_documents_d_une_recherche`. Un
+    document que deux recherches donnent sous la même Séance n'est gardé qu'une fois, comme celui qu'une page reprend
+    d'une autre. Leur rangement par nœud, les doublons d'Objet et la fenêtre sont ceux d'une seule recherche
+    (`_seances_et_preavis`)."""
+    site = source.site
+    assert site is not None
+    if not site.recherches:
+        raise ValueError("variante coreapi sans bloc `coreapi`")
+    documents: list[_DocumentDeRecherche] = []
+    vus: set[_DocumentDeRecherche] = set()
+    for recherche in site.recherches:
+        nouveaux = [d for d in _documents_d_une_recherche(robot, source, recherche) if d not in vus]
+        vus.update(nouveaux)
+        documents += nouveaux
+    return documents
+
+
+def _documents_d_une_recherche(robot: Robot, source: Source, recherche: Coreapi) -> list[_DocumentDeRecherche]:
+    """Les documents d'une recherche `coreapi`, dans l'ordre du site, page de résultats après page de résultats,
+    toutes, même au passage ordinaire : la recherche n'est pas triée par mise en ligne, et une Séance ou un préavis de
+    la fenêtre peut avoir des documents sur n'importe quelle page. Lire moins réécrirait l'élément avec une partie de
+    ses documents. Elle s'arrête à la fin du total (« 1 à 60 sur 399 »), ou à une page qui ne donne rien de nouveau
+    pour elle (un site qui ignorerait `page` rendrait la première sans fin) ; un document qu'une page reprend d'une
+    autre, sous la même Séance, n'est lu qu'une fois. Sa première page doit se lire, sinon l'import est en échec : sans
+    elle, les Séances et les préavis seraient réécrits avec une partie de leurs documents."""
     site = source.site
     assert site is not None
     documents: list[_DocumentDeRecherche] = []
     vus: set[_DocumentDeRecherche] = set()
     for page in range(1, PAGES_MAX + 1):
-        reponse = _page_de_liste(robot, source, _url_de_recherche(site, page), page)
+        reponse = _page_de_liste(robot, source, _url_de_recherche(site, recherche, page), page)
         if reponse is None:
             break
         lus, fin, total = _page_de_resultats(source.nom, reponse.texte, reponse.url)
@@ -677,12 +700,14 @@ def _titre_du_preavis(d: _DocumentDeRecherche, numero: str) -> str:
 
 ESSAIS = 6  # liens du menu essayés au plus pour trouver la page des documents du conseil
 _TRACE = re.compile(r"quicksite|qsPortal|/coreapi/elasticsearch/|conseilcommunal/", re.I)
+_PREAVIS = re.compile(r"pr[ée]avis", re.I)
+_PROCES_VERBAUX = re.compile(r"proc[èe]s[- ]verbaux|/pv\b", re.I)
 # Les liens du menu qui mènent aux documents du conseil, par ordre de préférence : ses documents, puis ses préavis,
 # ses procès-verbaux, ses séances. Ni « Documents d'identité » ni les formulaires.
 _LIENS_DU_MENU = (
     re.compile(r"documents?[ -](du|des|conseil)|documents-publics|/documents?$", re.I),
-    re.compile(r"pr[ée]avis", re.I),
-    re.compile(r"proc[èe]s[- ]verbaux|/pv\b", re.I),
+    _PREAVIS,
+    _PROCES_VERBAUX,
     re.compile(r"s[ée]ances?|ordres? du jour|assembl[ée]es", re.I),
     re.compile(r"documents?", re.I),
 )
@@ -698,8 +723,9 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
     d'une variante, tel que `plateforme` le déclare (section `plateformes` de `sources.json`), et la liste qui va
     avec : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers le
     module (`conseil-externe`), la bibliothèque de l'ancienne génération (`ancienne`), ou la recherche `coreapi`
-    d'une vue du conseil (`coreapi`, avec ses paramètres) ; le fragment de la recherche est lu pour que `requetes`
-    rejoue la lecture. Le niveau et les requêtes du passage ordinaire sont l'affaire du script (`requetes`)."""
+    d'une vue du conseil (`coreapi`, avec ses paramètres) et celles des autres pages de préavis ou de procès-verbaux
+    du menu (`_recherches_separees`). Le niveau et les requêtes du passage ordinaire sont l'affaire du script
+    (`requetes`), qui rejoue la lecture et lit pour cela les fragments des recherches."""
     conseil = pages.texte(page_du_conseil) or ""
     if not _TRACE.search(conseil):
         return Mesure("autre", remarques=[f"aucune trace de Quicksite sur {page_du_conseil}"])
@@ -711,9 +737,11 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
         return variante in marqueurs and marqueurs[variante] in texte
 
     tous = [(u, f"{u} {t}") for u, t in liens(conseil, page_du_conseil) if not _HORS_SUJET.search(t)]
-    menu = [u for motif in _LIENS_DU_MENU for u, texte in tous if motif.search(texte)]
+    menu = list(dict.fromkeys(u for motif in _LIENS_DU_MENU for u, texte in tous if motif.search(texte)))[:ESSAIS]
+    textes = dict(tous)
+    separees = [u for u in menu if _PREAVIS.search(textes[u]) or _PROCES_VERBAUX.search(textes[u])]
     module = [urljoin(page_du_conseil, h) for h in re.findall(r'href="([^"]*/conseilcommunal/public/ordredujour/)"', conseil)]
-    essais = [u for u in (declare.seances, *module, page_du_conseil) if u] + list(dict.fromkeys(menu))[:ESSAIS]
+    essais = [u for u in (declare.seances, *module, page_du_conseil) if u] + menu
     autres_vues = []
     for url in dict.fromkeys(essais):
         texte = pages.texte(url)
@@ -735,7 +763,8 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
             continue
         coreapi = _parametres_coreapi(texte)
         if coreapi is not None:
-            mesure.variante, mesure.seances, mesure.coreapi = "coreapi", url, coreapi
+            mesure.variante, mesure.seances = "coreapi", url
+            mesure.recherches = _recherches_separees(pages, coreapi, [u for u in separees if u != url], porte)
             return mesure
         vue = re.search(r'class="tplDeepsearch"[^>]*?data-elasticsearch-view="([^"]*)"', texte, re.S)
         if vue:
@@ -744,6 +773,21 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
     if autres_vues:
         mesure.remarques.append(f"recherches d'une autre vue : {', '.join(autres_vues)}")
     return mesure
+
+
+def _recherches_separees(
+    pages: PagesLues, premiere: Coreapi, separees: list[str], porte: Callable[[str, str], bool]
+) -> list[Coreapi]:
+    """La recherche trouvée (`premiere`), puis celles des pages de préavis ou de procès-verbaux du menu (`separees`),
+    chacune une fois par nœud : une commune qui sépare ses préavis et ses procès-verbaux (Duillier, Juriens) a une
+    page et une recherche pour chacun, et les déclare toutes. Une page sans recherche du conseil est passée."""
+    recherches = [premiere]
+    for url in separees:
+        texte = pages.texte(url)
+        autre = _parametres_coreapi(texte) if texte is not None and porte(texte, "coreapi") else None
+        if autre is not None and all((autre.projet, autre.noeud) != (r.projet, r.noeud) for r in recherches):
+            recherches.append(autre)
+    return recherches
 
 
 def _parametres_coreapi(texte: str) -> Coreapi | None:
