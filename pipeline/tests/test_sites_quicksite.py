@@ -267,6 +267,22 @@ def test_un_preavis_de_la_fenetre_garde_ses_documents_anciens_d_une_page_suivant
     assert [d["lien"] for d in documents] == [f"{ROPRAZ}/n901", f"{ROPRAZ}/n902"]
 
 
+def test_un_document_que_le_site_ne_montre_plus_reste_a_sa_seance(tmp_path, horloge):
+    # Oron, entre deux lectures : un document à égalité de tri change de page et n'est pas vu. L'archive le garde.
+    reseau = _reseau(horloge)
+    _founex_en_trois_pages(reseau)
+    sources = _sources(_founex())
+    _passer(tmp_path, horloge, reseau, sources)
+    url = _recherche(reseau, FOUNEX)
+    page = reseau.pages[url]
+    reseau.pages[url] = Page(re.sub(rb'href="https://www.founex.ch/n2228"', b'href="#"', page.corps), entetes=page.entetes)
+
+    _passer(tmp_path, horloge, reseau, sources, heure=T0 + timedelta(days=1))
+
+    liens = [d["lien"] for d in _lire(tmp_path, "conseils/5717/seances/2026-11-09.json")["documents"]]
+    assert liens == [f"{FOUNEX}/n2227", f"{FOUNEX}/n2229", f"{FOUNEX}/n2228"]
+
+
 def test_le_rattrapage_lit_toutes_les_pages_de_resultats(tmp_path, horloge):
     reseau = _reseau(horloge)
     url = _founex_en_trois_pages(reseau)

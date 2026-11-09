@@ -338,7 +338,19 @@ def vers_archive(
         if seance is not None:
             cle = f"{conseil}/{seance.date[:10]}"
             seances[cle] = _fusionner(seances[cle], seance) if cle in seances else seance
-    return elements | seances
+    return {cle: _garder_les_documents(e, archive.get(cle)) for cle, e in (elements | seances).items()}
+
+
+def _garder_les_documents(element: Element, ancien: Element | None) -> Element:
+    """Un élément scrapé (`id` nul) garde les documents de sa version archivée que la lecture du jour n'a pas vus,
+    après les siens : rien ne s'efface de l'archive (ADR-0017), et un site peut ne pas tout montrer d'un jour à
+    l'autre (une recherche Quicksite à égalité de tri d'une page à l'autre, un document retiré). Les éléments
+    d'OpenParlData, qui donne tous leurs documents, ne changent pas."""
+    if element.id is not None or type(ancien) is not type(element) or not ancien.documents:
+        return element
+    liens = {d.lien for d in element.documents}
+    manquants = [d for d in ancien.documents if d.lien not in liens]
+    return element.model_copy(update={"documents": element.documents + manquants}) if manquants else element
 
 
 def _fusionner(premiere: Seance, seconde: Seance) -> Seance:
