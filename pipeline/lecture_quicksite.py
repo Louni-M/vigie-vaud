@@ -74,7 +74,7 @@ from bruts import Bruts
 from mesure_sites import Mesure, PagesLues, liens, sans_journal
 from pages_html import Noeud, arbre, espaces
 from robot_communal import PageNonLue, Reponse, Robot
-from schema import Plateforme, Site, Source, niveau_de
+from schema import Coreapi, Plateforme, Site, Source, niveau_de
 
 VARIANTES = ("ancienne", "coreapi", "conseil", "conseil-externe")
 HOTES_DU_MODULE = {"www.vevey.ch": "conseil.vevey.ch"}  # le module Conseil d'une ville dont la liste est ailleurs
@@ -668,8 +668,9 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
     return mesure
 
 
-def _parametres_coreapi(texte: str) -> dict | None:
-    """Les paramètres de la recherche `coreapi` d'une page, si c'est une vue des documents du conseil."""
+def _parametres_coreapi(texte: str) -> Coreapi | None:
+    """La recherche `coreapi` d'une page, telle que `site.coreapi` la déclare, si c'est une vue des documents du
+    conseil."""
     section = re.search(r'<section[^>]*class="tplDeepsearch"(.*?)>', texte, re.S)
     projet = _PROJET.search(texte)
     if section is None or projet is None:
@@ -677,13 +678,13 @@ def _parametres_coreapi(texte: str) -> dict | None:
     attrs = dict(re.findall(r'data-elasticsearch-([\w-]+)="([^"]*)"', section[1]))
     if attrs.get("view") not in VUES_DU_CONSEIL or not attrs.get("node", "").isdigit():
         return None
-    return {
-        "projet": projet[1],
-        "vue": attrs["view"],
-        "noeud": int(attrs["node"]),
-        "taille": int(attrs.get("pagesize") or 60),
-        "tri": attrs.get("sort") or "date_extid",
-    }
+    return Coreapi(
+        projet=projet[1],
+        vue=attrs["view"],
+        noeud=int(attrs["node"]),
+        taille=int(attrs.get("pagesize") or 60),
+        tri=attrs.get("sort") or "date_extid",
+    )
 
 
 class _RobotCompteur:

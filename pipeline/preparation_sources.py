@@ -171,7 +171,6 @@ def _mesurer(pages: PagesLues, candidat: Candidat, plateforme: Plateforme, jour:
 
 def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure, niveau: Sequence[str]) -> Source:
     """La source que déclarerait la mesure, au `niveau` donné : de quoi rejouer le module de lecture."""
-    pages = {"seances": mesure.seances, "objets": mesure.objets, "membres": mesure.membres}
     return Source.model_validate(
         {
             "id": f"site-{candidat.ofs}",
@@ -181,11 +180,23 @@ def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure
             "voie_acces": "cron",
             "fraicheur": "import",
             "conseil": {"body_key": str(candidat.ofs), "donne": list(niveau)},
-            "site": {"plateforme": plateforme.id, "variante": mesure.variante}
-            | pages
-            | ({"coreapi": mesure.coreapi} if mesure.coreapi else {}),
+            "site": _site_mesure(plateforme, mesure),
         }
     )
+
+
+def _site_mesure(plateforme: Plateforme, mesure: Mesure) -> dict:
+    """Le bloc `site` que déclarerait la mesure, au format de `sources.json` : sa variante, les pages trouvées et,
+    pour une recherche `coreapi`, ses paramètres."""
+    site = Site(
+        plateforme=plateforme.id,
+        variante=mesure.variante,
+        seances=mesure.seances,
+        objets=mesure.objets,
+        membres=mesure.membres,
+        coreapi=mesure.coreapi,
+    )
+    return site.model_dump(exclude_none=True)
 
 
 # --- Vérification -----------------------------------------------------------------------------------------------
@@ -238,9 +249,9 @@ def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: Plate
         ecarts.append(f"niveau déclaré {_niveau(source.conseil.donne)}, mesuré {_niveau(mesure.niveau)}{pourquoi}")
     ecarts += ecart("page des Objets", site.objets, mesure.objets)
     ecarts += ecart("page des membres", site.membres, mesure.membres)
-    declares = site.coreapi.model_dump() if site.coreapi else None
-    if declares != mesure.coreapi:
-        ecarts.append(f"recherche coreapi déclarée {declares or 'aucune'}, mesurée {mesure.coreapi or 'aucune'}")
+    if site.coreapi != mesure.coreapi:
+        declaree, mesuree = (c.model_dump() if c else "aucune" for c in (site.coreapi, mesure.coreapi))
+        ecarts.append(f"recherche coreapi déclarée {declaree}, mesurée {mesuree}")
     return ecarts
 
 
@@ -310,12 +321,7 @@ def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> 
         return source
     source["couverture"] = {"communes": [candidat.ofs], "mode": "scrape"}
     source["conseil"] = {"body_key": str(candidat.ofs), "donne": mesure.niveau or list(variante.niveaux[-1])}
-    pages = {"seances": mesure.seances, "objets": mesure.objets, "membres": mesure.membres}
-    source["site"] = {"plateforme": plateforme.id, "variante": mesure.variante} | {
-        k: v for k, v in pages.items() if v is not None
-    }
-    if mesure.coreapi:
-        source["site"]["coreapi"] = mesure.coreapi
+    source["site"] = _site_mesure(plateforme, mesure)
     return source
 
 

@@ -19,6 +19,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
 
 from robot_communal import PageNonLue, Reponse, Robot
+from schema import Coreapi
 
 
 class PagesLues:
@@ -53,7 +54,7 @@ class Mesure:
     seances: str | None = None
     objets: str | None = None
     membres: str | None = None
-    coreapi: dict | None = None  # paramètres de la recherche Quicksite (`site.coreapi`), pour la variante `coreapi`
+    coreapi: Coreapi | None = None  # la recherche Quicksite (`site.coreapi`), pour la variante `coreapi`
     niveau: list[str] | None = None
     requetes: int | None = None
     remarques: list[str] = field(default_factory=list)
