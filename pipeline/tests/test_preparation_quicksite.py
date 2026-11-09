@@ -64,7 +64,7 @@ def _reseau(horloge):
             "www.exemple.ch": "5.102.146.30",
         },
     )
-    for variante in ("ancienne", "coreapi", "conseil", "conseil-vevey"):
+    for variante in ("ancienne", "coreapi", "conseil", "conseil-externe"):
         reseau.pages |= echantillon("quicksite", variante)
     reseau.pages[f"{AIGLE}/N387/conseil-communal.html"] = _page_quicksite(
         [("/N389/membres.html", "Membres"), ("/documents", "Documents du Conseil")]
@@ -172,3 +172,20 @@ def test_des_parametres_coreapi_qui_ne_sont_plus_ceux_du_site_sont_un_ecart():
 
     (ecart,) = verifier(_robot(reseau, horloge), _fichier(founex), "quicksite", JOUR)
     assert ecart.startswith("site-5717 (Founex) : recherche coreapi déclarée {'projet': 'founex24'")
+
+
+def test_la_mesure_cherche_le_marqueur_que_la_section_plateformes_declare():
+    # Le marqueur de sonde de chaque variante n'est déclaré qu'une fois, dans `sources.json` (ADR 0010) : une
+    # bibliothèque qui n'a pas celui de sa variante n'est pas une page des Séances.
+    horloge = HorlogeFactice(T0)
+    variantes = [
+        {**v, "marqueur": "tplAutreBibliotheque"} if v["id"] == "ancienne" else v for v in PLATEFORMES[0]["variantes"]
+    ]
+    plateforme = FichierSources.model_validate(
+        {"plateformes": [{**PLATEFORMES[0], "variantes": variantes}], "sources": []}
+    ).plateformes[0]
+
+    (aigle,), remarques = brouillon(_robot(_reseau(horloge), horloge), CANDIDATS[:1], plateforme, JOUR)
+
+    assert aigle["couverture"]["mode"] == "non_couvert"
+    assert remarques == {"site-5401": ["Aigle : aucune page des Séances Quicksite trouvée ; raison à relire"]}

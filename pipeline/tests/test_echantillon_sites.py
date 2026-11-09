@@ -12,6 +12,7 @@ from echantillon_sites import Echantillon, PageEchantillon, enregistrer
 from faux_openparldata import HorlogeFactice
 from faux_sites import REFUS, Page, Reseau
 from robot_communal import Injoignable, Robot
+from schema import lire_sources
 
 T0 = datetime(2026, 10, 23, 7, 0, tzinfo=UTC)
 
@@ -211,26 +212,18 @@ def test_un_bloc_ou_un_identifiant_absent_arrete_le_script_sans_rien_ecrire(tmp_
     assert not (tmp_path / "echantillon").exists()
 
 
-# Le marqueur que la sonde cherche sur la page de liste de chaque échantillon (section `plateformes`).
-MARQUEURS = {
-    "i-web/seances": "icmsTablePastSitzungen",
-    "i-web/objets": "icmsTablePastSitzungen",
-    "i-web/pages": "icmsTablePastSitzungen",
-    "quicksite/ancienne": "tplListDocumentSummary",
-    "quicksite/coreapi": "tplDeepsearch",
-    "quicksite/coreapi-ropraz": "tplDeepsearch",
-    "quicksite/conseil": "tplCCIBPublicOrdreJour",
-    "quicksite/conseil-vevey": "teaser-agenda",
-}
-
-
 def test_l_echantillon_enregistre_est_declare_et_reduit_au_bloc_lu():
-    from echantillon_sites import DOSSIER, ECHANTILLONS, _charset
+    from echantillon_sites import DOSSIER, ECHANTILLONS, SOURCES, _charset
 
-    assert sorted(e.nom for e in ECHANTILLONS) == sorted(MARQUEURS)
+    # Un échantillon par variante déclarée dans la section `plateformes` de `sources.json` (ADR 0010).
+    plateformes = {p.id: p for p in lire_sources(SOURCES).plateformes}
+    declarees = {(p.id, v.id) for p in plateformes.values() for v in p.variantes}
+    assert {(e.plateforme, e.variante) for e in ECHANTILLONS} == declarees
+    assert len({e.nom for e in ECHANTILLONS}) == len(ECHANTILLONS)
     for echantillon in ECHANTILLONS:
         dossier = DOSSIER / echantillon.nom
         index = json.loads((dossier / "index.json").read_text(encoding="utf-8"))
+        assert (index["plateforme"], index["variante"]) == (echantillon.plateforme, echantillon.variante)
         assert [p["sorte"] for p in index["pages"]] == [p.sorte for p in echantillon.pages]
         for page in index["pages"]:
             # Chaque page est écrite dans l'encodage que le site a servi (ISO-8859-1 pour le module Conseil de Vevey).
@@ -241,13 +234,14 @@ def test_l_echantillon_enregistre_est_declare_et_reduit_au_bloc_lu():
             assert len(texte) < 20_000, page["fichier"]
         seances = next(p for p in index["pages"] if p["sorte"] == "seances")
         liste = (dossier / seances["fichier"]).read_text(encoding=_charset(seances["entetes"]))
-        assert MARQUEURS[echantillon.nom] in liste  # marqueur de sonde
+        # Le marqueur que la sonde cherche sur la page de liste, celui que `sources.json` déclare pour la variante.
+        assert plateformes[echantillon.plateforme].variante(echantillon.variante).marqueur in liste
 
 
 def test_le_module_conseil_de_vevey_est_enregistre_en_iso_8859_1():
     from echantillon_sites import DOSSIER
 
-    page = (DOSSIER / "quicksite/conseil-vevey/seance.html").read_bytes()
+    page = (DOSSIER / "quicksite/conseil-externe/seance.html").read_bytes()
     assert "Préavis".encode("iso-8859-1") in page and "Préavis".encode("utf-8") not in page
 
 

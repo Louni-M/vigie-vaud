@@ -84,10 +84,10 @@ from datetime import date
 from urllib.parse import urlencode, urljoin, urlsplit
 
 from bruts import Bruts
-from mesure_sites import Mesure, PagesLues, liens, sans_journal
+from mesure_sites import Mesure, PagesLues, RobotCompteur, liens, sans_journal
 from pages_html import Noeud, arbre, espaces
 from robot_communal import PageNonLue, Reponse, Robot
-from schema import Plateforme, Site, Source, niveau_de
+from schema import Coreapi, Plateforme, Site, Source, niveau_de
 
 VARIANTES = ("ancienne", "coreapi", "conseil", "conseil-externe")
 TYPE_PREAVIS = "Préavis"  # le type d'un préavis lu dans une liste de documents
@@ -669,15 +669,22 @@ VUES_DU_CONSEIL = ("documentconseil", "documentconseildates", "documentconseilye
 def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
     """Le site d'une commune mesuré pour le script de préparation des sources, d'après sa page du conseil (déjà lue)
     et ses pages déjà déclarées : une page sans trace de Quicksite l'écarte (« autre ») ; puis, parmi les pages
-    déclarées, la page du conseil et `ESSAIS` liens de son menu au plus, la première qui porte la liste d'une
-    variante : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers
-    le module (`conseil-externe`), la bibliothèque de l'ancienne génération (`ancienne`), ou la recherche `coreapi`
+    déclarées, la page du conseil et `ESSAIS` liens de son menu au plus, la première qui porte le marqueur de sonde
+    d'une variante, tel que `plateforme` le déclare (section `plateformes` de `sources.json`), et la liste qui va
+    avec : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers le
+    module (`conseil-externe`), la bibliothèque de l'ancienne génération (`ancienne`), ou la recherche `coreapi`
     d'une vue du conseil (`coreapi`, avec ses paramètres) ; le fragment de la recherche est lu pour que `requetes`
     rejoue la lecture. Le niveau et les requêtes du passage ordinaire sont l'affaire du script (`requetes`)."""
     conseil = pages.texte(page_du_conseil) or ""
     if not _TRACE.search(conseil):
         return Mesure("autre", remarques=[f"aucune trace de Quicksite sur {page_du_conseil}"])
     mesure = Mesure(plateforme.id)
+    marqueurs = {v.id: v.marqueur for v in plateforme.variantes}
+
+    def porte(texte: str, variante: str) -> bool:
+        """La page porte le marqueur de sonde de `variante` ; une variante que `plateforme` ne déclare pas, aucun."""
+        return variante in marqueurs and marqueurs[variante] in texte
+
     tous = [(u, f"{u} {t}") for u, t in liens(conseil, page_du_conseil) if not _HORS_SUJET.search(t)]
     menu = [u for motif in _LIENS_DU_MENU for u, texte in tous if motif.search(texte)]
     module = [urljoin(page_du_conseil, h) for h in re.findall(r'href="([^"]*/conseilcommunal/public/ordredujour/)"', conseil)]
@@ -687,18 +694,20 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
         texte = pages.texte(url)
         if texte is None:
             continue
-        if "tplCCIBPublicOrdreJour" in texte:
+        if porte(texte, "conseil"):
             mesure.variante, mesure.seances = "conseil", url
             conseillers = urljoin(url, "../conseillers/")  # avec sa barre : sans, le site redirige
             if pages.texte(conseillers) and "tplCCIBPublicConseillers" in (pages.texte(conseillers) or ""):
                 mesure.membres = conseillers
             return mesure
-        if "teaser-agenda" in texte and _ID_DU_MODULE.search(texte):
+        if porte(texte, "conseil-externe") and _ID_DU_MODULE.search(texte):
             mesure.variante, mesure.seances = "conseil-externe", url
             return mesure
-        if "tplListDocumentSummary" in texte:
+        if porte(texte, "ancienne"):
             mesure.variante, mesure.seances = "ancienne", url
             return mesure
+        if not porte(texte, "coreapi"):
+            continue
         coreapi = _parametres_coreapi(texte)
         if coreapi is not None:
             mesure.variante, mesure.seances, mesure.coreapi = "coreapi", url, coreapi
@@ -712,8 +721,9 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
     return mesure
 
 
-def _parametres_coreapi(texte: str) -> dict | None:
-    """Les paramètres de la recherche `coreapi` d'une page, si c'est une vue des documents du conseil."""
+def _parametres_coreapi(texte: str) -> Coreapi | None:
+    """La recherche `coreapi` d'une page, telle que `site.coreapi` la déclare, si c'est une vue des documents du
+    conseil."""
     section = re.search(r'<section[^>]*class="tplDeepsearch"(.*?)>', texte, re.S)
     projet = _PROJET.search(texte)
     if section is None or projet is None:
@@ -721,36 +731,20 @@ def _parametres_coreapi(texte: str) -> dict | None:
     attrs = dict(re.findall(r'data-elasticsearch-([\w-]+)="([^"]*)"', section[1]))
     if attrs.get("view") not in VUES_DU_CONSEIL or not attrs.get("node", "").isdigit():
         return None
-    return {
-        "projet": projet[1],
-        "vue": attrs["view"],
-        "noeud": int(attrs["node"]),
-        "taille": int(attrs.get("pagesize") or 60),
-        "tri": attrs.get("sort") or "date_extid",
-    }
-
-
-class _RobotCompteur:
-    """Un robot qui lit par les pages du script de préparation (chaque page une fois par lancement) et compte les
-    requêtes que le passage ordinaire ferait : deux pour une page redirigée, une sinon."""
-
-    def __init__(self, pages: PagesLues) -> None:
-        self._pages = pages
-        self.requetes = 0
-
-    def lire(self, url: str, role: str) -> Reponse:
-        page = self._pages.lire(url)
-        self.requetes += 1 if isinstance(page, PageNonLue) or page.url == url else 2
-        if isinstance(page, PageNonLue):
-            raise page
-        return page
+    return Coreapi(
+        projet=projet[1],
+        vue=attrs["view"],
+        noeud=int(attrs["node"]),
+        taille=int(attrs.get("pagesize") or 60),
+        tri=attrs.get("sort") or "date_extid",
+    )
 
 
 def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | None:
     """Les requêtes que coûterait la lecture de `source` (`lire`) au passage ordinaire dont la fenêtre part de
     `depuis`. Les pages qui manquent sont lues par le robot du script (une liste Quicksite en demande peu : pages de
     résultats, ou Séances et fiches du module Conseil) ; `None` si la lecture échoue."""
-    robot = _RobotCompteur(pages)
+    robot = RobotCompteur(pages.lire)
     try:
         sans_journal(lambda: lire(robot, source, depuis))  # type: ignore[arg-type]
     except (ValueError, PageNonLue):

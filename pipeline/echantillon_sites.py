@@ -17,11 +17,15 @@ Les identifiants sont choisis pour porter les cas à couvrir **sans nommer aucun
 enregistrement, on relit l'échantillon. Un bloc ou un identifiant qui manque arrête le script : la page a changé, la
 déclaration est à revoir. Une page non lue (erreur HTTP, refus, délai) l'arrête aussi, sans nouvel essai.
 
+Un échantillon par variante, et non par commune (ADR 0010) : la commune choisie ne fait que montrer sa variante.
 Chaque variante a son dossier (`<plateforme>/<variante>/`), avec ses pages réduites, encodées comme le site les a
 servies, et `index.json` (URL demandée et finale, statut, en-têtes utiles de chaque page ; le corps enregistré est
-décompressé, un faux transport qui sert son `content-encoding` le recompresse). Les pages entières
-restent hors du dépôt, dans le dossier `--brut` : relancé avec `--hors-ligne`, le script refait la réduction sans
-aucune requête et produit les mêmes fichiers.
+décompressé, un faux transport qui sert son `content-encoding` le recompresse). Seule exception, une variante que son
+module de lecture lit sous plusieurs formes : la recherche `coreapi` de Quicksite a deux vues du conseil
+(`site.coreapi.vue`), et la seconde, `documentconseil`, porte des cas que la première ne montre pas (une Séance par
+document, les fausses « Séance du 1 janvier ») ; elle a son propre échantillon, dans le dossier de sa vue
+(`quicksite/coreapi-documentconseil/`). Les pages entières restent hors du dépôt, dans le dossier `--brut` : relancé
+avec `--hors-ligne`, le script refait la réduction sans aucune requête et produit les mêmes fichiers.
 
 Lancé à la main, jamais par le cron : au début de chaque étape de J3 pour sa plateforme, puis dans la PR qui corrige
 une refonte si elle touche la commune d'un échantillon. Usage (depuis `pipeline/`) :
@@ -72,11 +76,12 @@ class Echantillon:
     commune: str
     ofs: int
     pages: tuple[PageEchantillon, ...]
-    dossier: str | None = None  # dossier de l'échantillon dans sa plateforme, s'il n'est pas celui de la variante
+    vue: str | None = None  # la vue `coreapi` d'un second échantillon de la variante, qui a alors son dossier
 
     @property
     def nom(self) -> str:
-        return f"{self.plateforme}/{self.dossier or self.variante}"
+        """Le dossier de l'échantillon : `<plateforme>/<variante>`, ou `<plateforme>/<variante>-<vue>`."""
+        return f"{self.plateforme}/{self.variante}" + (f"-{self.vue}" if self.vue else "")
 
 
 _SEANCES_IWEB = ("table#icmsTableFutureSitzungen", "table#icmsTablePastSitzungen")
@@ -194,7 +199,8 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
         ),
     )),
     # La même recherche, vue `documentconseil` : documents typés (Décisions, Préavis, Procès-verbaux), chacun avec sa
-    # Séance, dont les fausses « Séance du 1 janvier » qui rassemblent les préavis d'une année.
+    # Séance, dont les fausses « Séance du 1 janvier » qui rassemblent les préavis d'une année. Ropraz est la commune
+    # qui la montre, mais le dossier est celui de la vue.
     Echantillon("quicksite", "coreapi", "Ropraz", 5798, (
         PageEchantillon("seances", "https://www.ropraz.ch/documents-du-conseil", ("section.tplDeepsearch",)),
         PageEchantillon(
@@ -213,7 +219,7 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             ),
             lignes="div.qs-edit",
         ),
-    ), dossier="coreapi-ropraz"),
+    ), vue="documentconseil"),
     # Module Conseil de Quicksite (« Vision Citoyenne »), sur un site à part : la liste des Séances (année en cours,
     # années précédentes en onglets), une page par Séance (`?ID=`) dont les points citent leur Objet, une fiche par
     # Objet (`?id=`) avec son auteur·e et ses documents datés, les conseillers en deux pages.
@@ -247,10 +253,10 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             lignes="div.table-row-body",
         ),
     )),
-    # Le module Conseil à Vevey : la liste des Séances est sur le site de la Ville (Drupal), avec des liens vers
+    # Le module Conseil dont la liste des Séances est sur le site de la Ville (Drupal), à Vevey : des liens vers
     # `conseil.vevey.ch` souvent cassés ; la page d'une Séance y est en ISO-8859-1, et son `robots.txt` n'autorise
     # que `/ConseilCommunal/seances/` (à la casse près) et les documents.
-    Echantillon("quicksite", "conseil", "Vevey", 5890, (
+    Echantillon("quicksite", "conseil-externe", "Vevey", 5890, (
         PageEchantillon(
             "seances", "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-videos",
             ("div.border-top",),
@@ -263,7 +269,7 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             ("6244", "6220", "6199"),
             lignes="div.centerGroup",
         ),
-    ), dossier="conseil-vevey"),
+    )),
 )
 
 

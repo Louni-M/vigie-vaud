@@ -7,10 +7,10 @@ erreur TLS. Chaque
 requête est notée dans `journal` avec son URL, son User-Agent et l'heure de l'horloge factice ; `en_vol_max` dit
 combien de requêtes ont été en cours en même temps, au plus.
 
-`echantillon(plateforme, variante)` sert les pages enregistrées par le script d'échantillon (`echantillon-sites/`),
-chacune à son URL, avec la redirection de l'URL demandée vers l'URL finale. Le passage du cron reçoit un seul
-transport : `Reseau.transport(repli)` sert les sites de `adresses` et passe toute autre requête à `repli`, le faux
-OpenParlData.
+`echantillon(plateforme, variante)` sert les pages enregistrées par le script d'échantillon (`echantillon-sites/`,
+un dossier par variante, ou par vue `coreapi` : `coreapi-documentconseil`), chacune à son URL, avec la redirection
+de l'URL demandée vers l'URL finale. Le passage du cron reçoit un seul transport : `Reseau.transport(repli)` sert
+les sites de `adresses` et passe toute autre requête à `repli`, le faux OpenParlData.
 """
 
 from __future__ import annotations
