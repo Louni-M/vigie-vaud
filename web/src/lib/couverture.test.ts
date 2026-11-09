@@ -409,7 +409,8 @@ describe('tableau de la page Couverture : une colonne par couche', () => {
 			['rien_en_ligne', 'Non couvert · rien en ligne'],
 			['demande_commune', 'Non couvert · à la demande de la commune'],
 			['refus_robots', 'Non couvert · le site refuse les robots'],
-			['nouveau_site', 'Non couvert · nouveau site pas encore lu']
+			['nouveau_site', 'Non couvert · nouveau site pas encore lu'],
+			['forme_non_lue', 'Non couvert · forme pas encore lue']
 		] as const)('donne sa raison dans la cellule (%s), les autres restent « Non couvert »', (raison, libelle) => {
 			expect(libelleCellule(d(raison).cellule('conseils', 5568))).toEqual([libelle]);
 			expect(libelleCellule(d(raison).cellule('conseils', 5624))).toEqual(['Non couvert']);

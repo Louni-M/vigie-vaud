@@ -40,7 +40,8 @@ export type Retraits = Retrait[];
 export type VoieAcces = 'direct' | 'cron' | 'worker' | 'preparee';
 export type SorteFraicheur = 'donnee' | 'requete' | 'millesime' | 'import';
 export type ModeCouverture = 'api' | 'scrape' | 'non_couvert';
-export type RaisonNonCouvert = 'preavis_seuls' | 'rien_en_ligne' | 'demande_commune' | 'refus_robots' | 'nouveau_site';
+export type RaisonNonCouvert =
+	'preavis_seuls' | 'rien_en_ligne' | 'demande_commune' | 'refus_robots' | 'nouveau_site' | 'forme_non_lue';
 
 /**
  * Une correction de rattachement écrite à la main dans `corrections.json` (ADR 0016).

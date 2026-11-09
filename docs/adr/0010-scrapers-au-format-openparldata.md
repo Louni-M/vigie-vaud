@@ -96,7 +96,9 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
   Une section `plateformes` déclare une fois chaque plateforme, ses variantes, leur marqueur de sonde et les niveaux
   qu'elles permettent. Une commune non couverte d'une plateforme retenue a aussi sa source, sans conseil ni sonde,
   avec une raison prise dans une liste fermée (« préavis seuls », « rien en ligne », « à la demande de la commune »,
-  « le site refuse les robots », « nouveau site pas encore lu »). Écartés : un fichier préparé à part, comme
+  « le site refuse les robots », « nouveau site pas encore lu », « forme pas encore lue » : le site publie son
+  conseil sous une forme que le module de sa plateforme ne lit pas encore, comme des pages rédigées ou deux
+  recherches séparées). Écartés : un fichier préparé à part, comme
   `hotels-de-ville.csv` (deux déclarations d'une même source) ; la découverte des pages par le cron (une erreur y
   publierait n'importe quelle page).
 - Ces déclarations ne changent que par une PR dans le dépôt principal, jamais par le cron. Un script de `pipeline/`

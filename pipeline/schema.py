@@ -82,7 +82,8 @@ VoieAcces = TypeAliasType("VoieAcces", Literal["direct", "cron", "worker", "prep
 SorteFraicheur = TypeAliasType("SorteFraicheur", Literal["donnee", "requete", "millesime", "import"])
 ModeCouverture = TypeAliasType("ModeCouverture", Literal["api", "scrape", "non_couvert"])
 RaisonNonCouvert = TypeAliasType(
-    "RaisonNonCouvert", Literal["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site"]
+    "RaisonNonCouvert",
+    Literal["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site", "forme_non_lue"],
 )
 
 

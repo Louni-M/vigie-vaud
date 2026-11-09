@@ -787,7 +787,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5402], "mode": "non_couvert", "raison": "nouveau_site" },
+			"couverture": { "communes": [5402], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -815,7 +815,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5409], "mode": "non_couvert", "raison": "nouveau_site" },
+			"couverture": { "communes": [5409], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -967,7 +967,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5521], "mode": "non_couvert", "raison": "nouveau_site" },
+			"couverture": { "communes": [5521], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -1151,7 +1151,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5711], "mode": "non_couvert", "raison": "nouveau_site" },
+			"couverture": { "communes": [5711], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -1191,7 +1191,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5715], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"couverture": { "communes": [5715], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -1257,7 +1257,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5720], "mode": "non_couvert", "raison": "nouveau_site" },
+			"couverture": { "communes": [5720], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -1363,7 +1363,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5754], "mode": "non_couvert", "raison": "preavis_seuls" },
+			"couverture": { "communes": [5754], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -1481,7 +1481,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5854], "mode": "non_couvert", "raison": "nouveau_site" },
+			"couverture": { "communes": [5854], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{
@@ -1495,7 +1495,7 @@
 			},
 			"voie_acces": "cron",
 			"fraicheur": "import",
-			"couverture": { "communes": [5860], "mode": "non_couvert", "raison": "nouveau_site" },
+			"couverture": { "communes": [5860], "mode": "non_couvert", "raison": "forme_non_lue" },
 			"site": { "plateforme": "quicksite" }
 		},
 		{

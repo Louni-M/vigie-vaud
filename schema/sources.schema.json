@@ -259,7 +259,8 @@
         "rien_en_ligne",
         "demande_commune",
         "refus_robots",
-        "nouveau_site"
+        "nouveau_site",
+        "forme_non_lue"
       ],
       "type": "string"
     },
