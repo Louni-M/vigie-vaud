@@ -20,7 +20,8 @@ paramètres sont déclarés (`site.coreapi`). Le cron demande ce fragment HTML p
 récent au plus ancien, sans ouvrir la page des documents. Une commune qui sépare ses préavis et ses procès-verbaux
 (Duillier, Juriens) a une page et une recherche pour chacun : elle déclare les deux, lues l'une après l'autre, et
 leurs documents sont réunis avant d'en tirer Séances et préavis, sous les mêmes règles que ceux d'une seule
-recherche. Leurs pages comptent ensemble dans le plafond de requêtes de la commune. Chaque document (`div.qs-edit`)
+recherche. Leurs pages comptent ensemble dans le plafond de requêtes de la commune ; seule la page des Séances est
+sondée, et une recherche vide parmi plusieurs met donc l'import en échec. Chaque document (`div.qs-edit`)
 donne son lien stable `/n<id>`, son titre, son type s'il en a un (Décisions, Préavis, Procès-verbaux…), sa Séance et
 sa date de publication. Deux vues :
 
@@ -132,21 +133,27 @@ def _journal(nom: str, message: str) -> None:
     print(f"{nom} : élément sauté, {message}", file=sys.stderr)
 
 
-def _page_de_liste(robot: Robot, source: Source, url: str, page: int) -> Reponse | None:
-    """La page `page` d'une liste paginée. La première doit se lire (sinon l'import est en échec) ; une suivante
-    qui ne se lit pas finit la liste, notée dans le journal (un réseau bloqué interrompt quand même l'import)."""
+def _page_de_liste(robot: Robot, source: Source, url: str, page: int, liste: str = "la liste") -> Reponse | None:
+    """La page `page` d'une liste paginée (`liste`, pour le journal : « la recherche du nœud 720 »). La première doit
+    se lire (sinon l'import est en échec) ; une suivante qui ne se lit pas finit la liste, notée dans le journal (un
+    réseau bloqué interrompt quand même l'import)."""
     if page == 1:
         return robot.lire(url, "import")
     try:
         return robot.lire(url, "import")
     except PageNonLue as e:
-        _journal(source.nom, f"page {page} de la liste non lue ({e}), liste lue jusqu'à la page {page - 1}")
+        _journal(source.nom, f"page {page} de {liste} non lue ({e}), liste lue jusqu'à la page {page - 1}")
         return None
 
 
-def _liste_tronquee(nom: str) -> None:
-    """Note dans le journal une liste paginée lue jusqu'à `PAGES_MAX` sans en voir la fin."""
-    _journal(nom, f"liste tronquée : {PAGES_MAX} pages lues sans en voir la fin, les suivantes ne le sont pas")
+def _liste_tronquee(nom: str, liste: str | None = None) -> None:
+    """Note dans le journal une liste paginée (`liste`, s'il faut la nommer) lue jusqu'à `PAGES_MAX` sans en voir la
+    fin."""
+    _journal(
+        nom,
+        f"liste tronquée : {PAGES_MAX} pages lues sans en voir la fin, les suivantes ne le sont pas"
+        + (f" ({liste})" if liste else ""),
+    )
 
 
 def _meeting(
@@ -403,20 +410,24 @@ _TOTAL = re.compile(r"(\d+)\s*à\s*(\d+)\s*sur\s*(\d+)\s*éléments?")
 def _documents_coreapi(robot: Robot, source: Source) -> list[_DocumentDeRecherche]:
     """Les documents des recherches `coreapi` déclarées, l'une après l'autre (`site.recherches` : une commune qui
     sépare ses préavis et ses procès-verbaux en a deux), chacune lue en entier par `_documents_d_une_recherche`. Un
-    document que deux recherches donnent sous la même Séance n'est gardé qu'une fois, comme celui qu'une page reprend
-    d'une autre. Leur rangement par nœud, les doublons d'Objet et la fenêtre sont ceux d'une seule recherche
-    (`_seances_et_preavis`)."""
+    document (son lien) n'est gardé qu'une fois sous une même Séance, quelle que soit la recherche qui le donne ; sans
+    Séance, il ne l'est que si aucune ne le range sous une Séance (Duillier donne ses préavis sans Séance, ses
+    procès-verbaux sous la leur). Une recherche vide parmi plusieurs met l'import en échec : la sonde ne lit que la
+    page des Séances, et une autre page déplacée ne viderait sinon ses Séances qu'en silence. Leur rangement par nœud,
+    les doublons d'Objet et la fenêtre sont ceux d'une seule recherche (`_seances_et_preavis`)."""
     site = source.site
     assert site is not None
     if not site.recherches:
         raise ValueError("variante coreapi sans bloc `coreapi`")
-    documents: list[_DocumentDeRecherche] = []
-    vus: set[_DocumentDeRecherche] = set()
+    documents: dict[tuple[str, date | None, str | None], _DocumentDeRecherche] = {}
     for recherche in site.recherches:
-        nouveaux = [d for d in _documents_d_une_recherche(robot, source, recherche) if d not in vus]
-        vus.update(nouveaux)
-        documents += nouveaux
-    return documents
+        lus = _documents_d_une_recherche(robot, source, recherche)
+        if not lus and len(site.recherches) > 1:
+            raise ValueError(f"{source.id} : la recherche coreapi du nœud {recherche.noeud} ne donne aucun document")
+        for d in lus:
+            documents.setdefault((d.lien, d.jour, d.seance), d)
+    sous_une_seance = {d.lien for d in documents.values() if d.seance is not None}
+    return [d for d in documents.values() if d.seance is not None or d.lien not in sous_une_seance]
 
 
 def _documents_d_une_recherche(robot: Robot, source: Source, recherche: Coreapi) -> list[_DocumentDeRecherche]:
@@ -431,8 +442,9 @@ def _documents_d_une_recherche(robot: Robot, source: Source, recherche: Coreapi)
     assert site is not None
     documents: list[_DocumentDeRecherche] = []
     vus: set[_DocumentDeRecherche] = set()
+    liste = f"la recherche du nœud {recherche.noeud}"
     for page in range(1, PAGES_MAX + 1):
-        reponse = _page_de_liste(robot, source, _url_de_recherche(site, recherche, page), page)
+        reponse = _page_de_liste(robot, source, _url_de_recherche(site, recherche, page), page, liste)
         if reponse is None:
             break
         lus, fin, total = _page_de_resultats(source.nom, reponse.texte, reponse.url)
@@ -442,7 +454,7 @@ def _documents_d_une_recherche(robot: Robot, source: Source, recherche: Coreapi)
         if not nouveaux or fin >= total:
             break
     else:
-        _liste_tronquee(source.nom)
+        _liste_tronquee(source.nom, liste)
     return documents
 
 
@@ -738,8 +750,6 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
 
     tous = [(u, f"{u} {t}") for u, t in liens(conseil, page_du_conseil) if not _HORS_SUJET.search(t)]
     menu = list(dict.fromkeys(u for motif in _LIENS_DU_MENU for u, texte in tous if motif.search(texte)))[:ESSAIS]
-    textes = dict(tous)
-    separees = [u for u in menu if _PREAVIS.search(textes[u]) or _PROCES_VERBAUX.search(textes[u])]
     module = [urljoin(page_du_conseil, h) for h in re.findall(r'href="([^"]*/conseilcommunal/public/ordredujour/)"', conseil)]
     essais = [u for u in (declare.seances, *module, page_du_conseil) if u] + menu
     autres_vues = []
@@ -764,7 +774,7 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
         coreapi = _parametres_coreapi(texte)
         if coreapi is not None:
             mesure.variante, mesure.seances = "coreapi", url
-            mesure.recherches = _recherches_separees(pages, coreapi, [u for u in separees if u != url], porte)
+            mesure.recherches = _recherches_separees(pages, url, coreapi, tous, porte)
             return mesure
         vue = re.search(r'class="tplDeepsearch"[^>]*?data-elasticsearch-view="([^"]*)"', texte, re.S)
         if vue:
@@ -775,17 +785,32 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
     return mesure
 
 
+def _genre(texte: str) -> str | None:
+    """« préavis » ou « procès-verbaux » pour un lien qui mène à l'un ou l'autre (son URL et son texte), sinon
+    `None`."""
+    if _PREAVIS.search(texte):
+        return "préavis"
+    return "procès-verbaux" if _PROCES_VERBAUX.search(texte) else None
+
+
 def _recherches_separees(
-    pages: PagesLues, premiere: Coreapi, separees: list[str], porte: Callable[[str, str], bool]
+    pages: PagesLues, url: str, premiere: Coreapi, tous: list[tuple[str, str]], porte: Callable[[str, str], bool]
 ) -> list[Coreapi]:
-    """La recherche trouvée (`premiere`), puis celles des pages de préavis ou de procès-verbaux du menu (`separees`),
-    chacune une fois par nœud : une commune qui sépare ses préavis et ses procès-verbaux (Duillier, Juriens) a une
-    page et une recherche pour chacun, et les déclare toutes. Une page sans recherche du conseil est passée."""
+    """La recherche trouvée sur `url` (`premiere`), puis, quand `url` est une page de préavis ou de procès-verbaux,
+    celles des pages de l'autre genre parmi les liens de la page du conseil (`tous`, `ESSAIS` au plus), chacune une
+    fois par nœud : une commune qui sépare ses préavis et ses procès-verbaux (Duillier, Juriens) a une page et une
+    recherche pour chacun, et les déclare toutes. Une page générale des documents du conseil n'en appelle aucune
+    autre : ses pages de préavis ou de procès-verbaux n'en sont qu'une partie. Une page sans recherche du conseil est
+    passée."""
+    genre = _genre(dict(tous).get(url, url))
+    if genre is None:
+        return [premiere]
+    autres = [u for u, texte in tous if u != url and _genre(texte) not in (None, genre)][:ESSAIS]
     recherches = [premiere]
-    for url in separees:
-        texte = pages.texte(url)
+    for autre_url in autres:
+        texte = pages.texte(autre_url)
         autre = _parametres_coreapi(texte) if texte is not None and porte(texte, "coreapi") else None
-        if autre is not None and all((autre.projet, autre.noeud) != (r.projet, r.noeud) for r in recherches):
+        if autre is not None and autre.cle not in {r.cle for r in recherches}:
             recherches.append(autre)
     return recherches
 

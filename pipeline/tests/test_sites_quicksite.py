@@ -752,6 +752,54 @@ def test_chaque_recherche_va_jusqu_a_sa_fin_meme_si_sa_premiere_page_ne_reprend_
     assert (tmp_path / "conseils/5798/seances/2026-09-24.json").exists()
 
 
+def test_un_document_que_l_autre_recherche_range_sous_sa_seance_n_est_garde_qu_une_fois(tmp_path, horloge, capsys):
+    # La recherche des préavis donne le préavis sans Séance, celle des procès-verbaux sous la sienne : il n'est gardé
+    # que sous sa Séance, et son Objet n'a pas deux fois le même document.
+    reseau = _reseau(horloge)
+    preavis, proces_verbaux = _deux_recherches(reseau)
+    juin = "Séance du 18 juin 2026"
+    titre = "Préavis 03-2026 Gestion et comptes 2025"
+    reseau.pages[preavis] = _resultats(1, 1, 1, _document_par_type(1456, titre, "Préavis", "03-2026", "9 juin 2026"))
+    reseau.pages[proces_verbaux] = _resultats(
+        1, 2, 2,
+        _document_par_type(1456, titre, "Préavis", "03-2026", "9 juin 2026", juin),
+        _document_par_type(1457, "Rapport de la commission de gestion", "Rapport", "03-2026", "18 juin 2026", juin),
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz_en_deux_recherches()))
+
+    gestion = _lire(tmp_path, "conseils/5798/objets/03-2026.json")
+    assert [d["lien"] for d in gestion["documents"]] == [f"{ROPRAZ}/n1456", f"{ROPRAZ}/n1457"]
+    seance = _lire(tmp_path, "conseils/5798/seances/2026-06-18.json")
+    assert [d["lien"] for d in seance["documents"]] == [f"{ROPRAZ}/n1456", f"{ROPRAZ}/n1457"]
+    assert "en double" not in capsys.readouterr().err
+
+
+def test_une_seconde_recherche_vide_met_l_import_en_echec(tmp_path, horloge, capsys):
+    # Seule la page des préavis est sondée : une recherche des procès-verbaux vidée (son nœud déplacé) ne doit pas
+    # passer pour un conseil sans Séance.
+    reseau = _reseau(horloge)
+    _preavis, proces_verbaux = _duillier(reseau)
+    reseau.pages[proces_verbaux] = _resultats(0, 0, 0)
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz_en_deux_recherches()))
+
+    assert "Import en échec : Conseil général de Ropraz (site de la commune)" in capsys.readouterr().err
+    assert "5798" not in _lire(tmp_path, "conseils/import.json")["conseils"]
+
+
+def test_le_journal_nomme_la_recherche_dont_une_page_ne_se_lit_pas(tmp_path, horloge, capsys):
+    reseau = _reseau(horloge)
+    _preavis, proces_verbaux = _duillier(reseau)
+    reseau.pages[proces_verbaux] = _resultats(
+        1, 1, 2, _document_par_type(1458, "Procès-verbal", "Procès-verbal", "", "18 juin 2026", "Séance du 18 juin 2026")
+    )  # sa page 2 n'est pas servie
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz_en_deux_recherches()))
+
+    assert "page 2 de la recherche du nœud 749 non lue" in capsys.readouterr().err
+
+
 def test_une_seconde_recherche_qui_ne_se_lit_pas_met_l_import_en_echec(tmp_path, horloge, capsys):
     # Sans ses procès-verbaux, chaque Séance serait réécrite avec une partie de ses documents.
     reseau = _reseau(horloge)

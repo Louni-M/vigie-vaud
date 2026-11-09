@@ -200,6 +200,10 @@ PREAVIS_DUILLIER = {
     "projet": "duillier25", "vue": "documentconseil", "noeud": 543, "taille": 60, "tri": "date_extid_desc_doctag_rank"
 }
 PROCES_VERBAUX_DUILLIER = PREAVIS_DUILLIER | {"noeud": 720, "tri": "date_extid"}
+DEUX_RECHERCHES_A_RELIRE = (
+    "Duillier : 2 recherches coreapi (nœuds 543, 720), préavis et procès-verbaux séparés ; à relire : leurs documents "
+    "ne doivent pas se reprendre"
+)
 
 
 def _recherche_de_duillier(noeud, tri, page=1):
@@ -213,14 +217,26 @@ def _recherche_de_duillier(noeud, tri, page=1):
     return url if page == 1 else f"{url}&page={page}"
 
 
-def _duillier(reseau, pages=1):
+def _page_des_documents(reseau, noeud, tri):
+    """La page des documents de Founex retouchée pour Duillier : sa recherche sur le nœud `noeud`, triée par `tri`."""
+    founex = reseau.pages[f"{FOUNEX}/N640/documents.html"].corps.decode("utf-8")
+    return Page(
+        founex.replace("founex25", "duillier25")
+        .replace('"640"', f'"{noeud}"')
+        .replace('sort="date_extid"', f'sort="{tri}"')
+        .replace("documentconseildates", "documentconseil")
+    )
+
+
+def _duillier(reseau, pages=1, avant=()):
     """Duillier, qui sépare ses préavis et ses procès-verbaux : la page des documents de Founex retouchée en deux
     pages de son menu, chacune avec sa recherche (nœud 543, puis 720 sans tri déclaré), de `pages` pages de
-    résultats chacune. Sa page des assemblées, sans recherche, n'est pas servie."""
-    founex = reseau.pages[f"{FOUNEX}/N640/documents.html"].corps.decode("utf-8")
+    résultats chacune. Sa page des assemblées, sans recherche, n'est pas servie ; les liens `avant` (chemin, texte)
+    précèdent les siens dans le menu."""
     reseau.adresses["www.duillier.ch"] = "193.34.137.66"
     reseau.pages[CANDIDAT_DUILLIER.page] = _page_quicksite(
         [
+            *avant,
             ("/N543/preavis-municipaux.html", "Préavis municipaux"),
             ("/N720/proces-verbaux-du-conseil-communal.html", "Procès-verbaux du Conseil communal"),
             ("/N530/assemblees-du-conseil-communal.html", "Assemblées du Conseil communal - ordre du jour"),
@@ -231,12 +247,7 @@ def _duillier(reseau, pages=1):
         ("/N720/proces-verbaux-du-conseil-communal.html", PROCES_VERBAUX_DUILLIER, ""),
     ):
         noeud = recherche["noeud"]
-        reseau.pages[f"{DUILLIER}{chemin}"] = Page(
-            founex.replace("founex25", "duillier25")
-            .replace('"640"', f'"{noeud}"')
-            .replace('sort="date_extid"', f'sort="{tri}"')
-            .replace("documentconseildates", "documentconseil")
-        )
+        reseau.pages[f"{DUILLIER}{chemin}"] = _page_des_documents(reseau, noeud, tri)
         for page in range(1, pages + 1):
             reseau.pages[_recherche_de_duillier(noeud, recherche["tri"], page)] = Page(
                 f'<div class="tplDocumentConseil"><div>{page} à {page} sur {pages} éléments trouvés</div>'
@@ -260,8 +271,49 @@ def test_la_mesure_declare_les_deux_recherches_d_une_commune_qui_separe_preavis_
             "coreapi": [PREAVIS_DUILLIER, PROCES_VERBAUX_DUILLIER],
         },
     )
-    assert remarques == {}
+    assert remarques == {"site-5715": [DEUX_RECHERCHES_A_RELIRE]}
     assert verifier(_robot(reseau, horloge), _fichier(duillier), "quicksite", JOUR) == []
+
+
+def test_la_verification_ne_tient_pas_compte_de_l_ordre_des_recherches():
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _duillier(reseau)
+    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    duillier["site"]["coreapi"] = [PROCES_VERBAUX_DUILLIER, PREAVIS_DUILLIER]
+
+    assert verifier(_robot(reseau, horloge), _fichier(duillier), "quicksite", JOUR) == []
+
+
+def test_la_page_des_proces_verbaux_est_trouvee_au_dela_des_premiers_liens_du_menu():
+    # Cinq pages de documents avant celles des préavis et des procès-verbaux : ces derniers sont le 7e lien du menu.
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _duillier(reseau, avant=[(f"/N60{i}/documents-du-conseil-{i}.html", f"Documents du conseil {i}") for i in range(5)])
+
+    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+
+    assert duillier["site"]["coreapi"] == [PREAVIS_DUILLIER, PROCES_VERBAUX_DUILLIER]
+
+
+def test_une_page_generale_des_documents_du_conseil_n_appelle_pas_les_recherches_de_ses_parties():
+    # Les pages des préavis et des procès-verbaux ne sont qu'une partie de la page des documents du conseil : la lire
+    # en plus en reprendrait les documents.
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _duillier(reseau, avant=[("/N500/documents-du-conseil.html", "Documents du Conseil communal")])
+    reseau.pages[f"{DUILLIER}/N500/documents-du-conseil.html"] = _page_des_documents(reseau, 500, "date_extid")
+    for noeud in (500, 543, 720):
+        reseau.pages[_recherche_de_duillier(noeud, "date_extid")] = Page(
+            f'<div class="tplDocumentConseil"><div>1 à 1 sur 1 éléments trouvés</div><div class="qs-edit" '
+            f'data-qsedit-editnode="{noeud}"><a href="{DUILLIER}/n{noeud}1"><h5>Préavis 01-2026</h5></a></div></div>'
+        )
+
+    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+
+    assert duillier["site"]["seances"] == f"{DUILLIER}/N500/documents-du-conseil.html"
+    assert duillier["site"]["coreapi"] == PREAVIS_DUILLIER | {"noeud": 500, "tri": "date_extid"}
+    assert remarques == {}
 
 
 def test_une_commune_declaree_avec_une_seule_de_ses_deux_recherches_est_un_ecart():
@@ -288,5 +340,7 @@ def test_les_pages_des_deux_recherches_comptent_ensemble_face_au_plafond():
 
     (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
 
-    assert remarques == {"site-5715": ["Duillier : 62 requêtes au passage ordinaire, au-delà du plafond de 60"]}
+    assert remarques == {
+        "site-5715": ["Duillier : 62 requêtes au passage ordinaire, au-delà du plafond de 60", DEUX_RECHERCHES_A_RELIRE]
+    }
     assert duillier["conseil"]["donne"] == ["seances"]  # le moins complet de sa variante, à relire
