@@ -61,7 +61,7 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
-from robot_communal import Alternance, CrawlDelayTropLong, Robot, alterner, erreur_tls, par_reseau, robot_des_sources
+from robot_communal import Alternance, CrawlDelayTropLong, Robot, alterner, erreur_tls, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
     FUSEAU,
@@ -409,8 +409,9 @@ def passage(
     chaque hôte ; il ralentit les réseaux de la section `reseaux` de `sources.json`, plafonne chaque commune à
     `PLAFOND` requêtes hors rattrapage ciblé, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
     (`reseaux`) pour que le passage suivant les teste d'abord. Les sondes, puis les lectures des sites, se font un
-    fil par réseau /24 (`alternance`) : un réseau lit pendant que les autres attendent leurs 5 s ; leurs résultats
-    sont appliqués dans l'ordre de `sources.json`. Le commit et le push sont l'affaire de l'appelant.
+    fil par réseau /24 (`alternance`, que reçoit le robot) : un réseau lit pendant que les autres attendent leurs
+    5 s ; leurs résultats sont appliqués dans l'ordre de `sources.json`. Le commit et le push sont l'affaire de
+    l'appelant.
 
     Un `rattrapage` relit tout l'historique des conseils d'OpenParlData, à toute heure, sans toucher aux sites des
     communes. Un `rattrapage_cible` (une plateforme ou le n° OFS d'une commune scrapée, lancé à la main) relit tout
@@ -440,10 +441,9 @@ def passage(
         resoudre,
         rattrapage=rattrapage_cible is not None,
         bloques=lu.reseaux if lu else {},
+        alternance=alternance,
     )
-    sondes, sautes = sonder_les_sites(
-        robot, sources, precedent, lire_imports(depot), horloge, rattrapes, alternance=alternance
-    )
+    sondes, sautes = sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapes)
     etats |= sondes
     etat = EtatSources(version=1, genere=genere, sources=etats, reseaux=robot.reseaux_bloques())
     (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
@@ -458,7 +458,7 @@ def passage(
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
 
     opd = OpenParlData(client, horloge, attendre)
-    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes, alternance=alternance)
+    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes)
     if robot.reseaux_bloques() != etat.reseaux:
         # Un réseau bloqué pendant l'import : le passage suivant doit le savoir pour le tester d'abord.
         etat = etat.model_copy(update={"reseaux": robot.reseaux_bloques()})
@@ -693,7 +693,6 @@ def sonder_les_sites(
     imports: Mapping[str, datetime],
     horloge: Callable[[], datetime],
     rattrapes: Collection[str] | None = None,
-    alternance: Alternance = alterner,
 ) -> tuple[dict[str, EtatSource], dict[str, str]]:
     """L'état de chaque source communale sondée, et les conseils dont l'import est sauté à ce passage, avec la
     raison. Une commune est sondée une fois par jour, juste avant son import : au passage où son conseil est dû (pour
@@ -746,11 +745,9 @@ def sonder_les_sites(
             continue
         a_sonder.append(source)
     # Un fil par réseau ; les états sont ensuite écrits dans l'ordre des sources.
-    groupes = par_reseau(robot, a_sonder, lambda s: s.site.seances)
-    resultats = alternance([[lambda s=s: sonde(s) for s in groupe] for groupe in groupes])
-    par_id = {s.id: r for groupe, rs in zip(groupes, resultats, strict=True) for s, r in zip(groupe, rs, strict=True)}
-    for source in a_sonder:
-        appliquer(source, par_id[source.id])
+    resultats = robot.en_alternance(a_sonder, lambda s: s.site.seances, sonde)
+    for source, resultat in zip(a_sonder, resultats, strict=True):
+        appliquer(source, resultat)
     etats = {s.id: etats[s.id] for s in sites if s.id in etats}
     sautes = {
         s.conseil.cle: f"sonde en échec : {etats[s.id].motif}"
@@ -769,7 +766,6 @@ def importer_les_conseils(
     issues: ClientIssues,
     rattrapes: Collection[str] | None = None,
     sautes: Mapping[str, str] | None = None,
-    alternance: Alternance = alterner,
 ) -> None:
     """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique), puis, hors
     rattrapage, accorde les issues `import-conseils` et `a-verifier` aux dates d'import. `sautes` donne, par clé, les conseils dont le site n'est pas lu
@@ -799,7 +795,6 @@ def importer_les_conseils(
                 dus=dus,
                 rattrapage=rattrapes is not None,
                 robot=robot,
-                alternance=alternance,
             ).conseils
         except Exception:
             # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus : l'état des
