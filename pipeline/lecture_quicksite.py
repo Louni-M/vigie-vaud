@@ -54,9 +54,10 @@ puis « 9.1 » et son titre) et leurs documents ; tous vont à la Séance (nivea
 site l'affiche. Les dates des noms de fichiers et de `Content-Disposition` ne servent pas : chaque document de ces
 vues a sa Séance (choix à relire, #175).
 
-**Fenêtre** : au passage ordinaire, la lecture s'arrête à la première page de résultats dont toutes les Séances sont
-plus vieilles que la fenêtre, et seules les Séances de la fenêtre sont importées ; le rattrapage lit toutes les
-pages. Un document illisible (sans lien ou sans Séance datée) est sauté et noté dans le journal ; un fragment sans
+**Fenêtre** : la recherche `coreapi` est lue en entier, chaque jour, comme toute page de liste (spec, « Fenêtre ») ;
+au passage ordinaire, seuls les Séances et préavis de la fenêtre sont importés. La bibliothèque de l'ancienne
+génération, triée par mise en ligne, s'arrête à la première page mise en ligne avant la fenêtre ; le rattrapage la
+lit en entier. Un document illisible (sans lien ou sans Séance datée) est sauté et noté dans le journal ; un fragment sans
 liste de documents, ou dont aucun document ne se lit, lève `ValueError`.
 """
 
@@ -334,7 +335,10 @@ _TOTAL = re.compile(r"(\d+)\s*à\s*(\d+)\s*sur\s*(\d+)\s*éléments?")
 
 
 def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> list[_Document]:
-    """Les documents de la recherche `coreapi`, dans l'ordre du site, page de résultats après page de résultats."""
+    """Les documents de la recherche `coreapi`, dans l'ordre du site, page de résultats après page de résultats,
+    toutes, même au passage ordinaire (`depuis` n'y change rien) : la recherche n'est pas triée par mise en ligne,
+    et une Séance ou un préavis de la fenêtre peut avoir des documents sur n'importe quelle page. Lire moins
+    réécrirait l'élément avec une partie de ses documents."""
     site = source.site
     assert site is not None
     documents: list[_Document] = []
@@ -345,8 +349,6 @@ def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> lis
         lus, fin, total = _page_de_resultats(source.nom, reponse.texte, reponse.url)
         documents += lus
         if not lus or fin >= total:
-            break
-        if depuis is not None and all(_quand(d) is not None and _quand(d) < depuis for d in lus):
             break
     return documents
 
@@ -521,7 +523,9 @@ def _seances_et_preavis(
         if any(p["number"] == numero for p in preavis):
             _journal(nom, f"Objet {numero} en double, le premier du site gardé : {d.titre}")
             continue
-        voisins = par_seance[(d.jour, d.seance)] if d.jour is not None and d.seance is not None else dans_la_fenetre
+        # Les documents qui citent le même Objet : ceux de sa Séance s'il en a une, sinon tous ceux lus, même hors de
+        # la fenêtre (un rapport de 2021 reste au préavis qui revient en 2026, Rolle).
+        voisins = par_seance[(d.jour, d.seance)] if d.jour is not None and d.seance is not None else documents
         lies = [d] + [x for x in voisins if x is not d and _ref(d) is not None and _ref(x) == _ref(d)]
         preavis.append(
             {
@@ -612,7 +616,7 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
             continue
         if "tplCCIBPublicOrdreJour" in texte:
             mesure.variante, mesure.seances = "conseil", url
-            conseillers = urljoin(url, "../conseillers")
+            conseillers = urljoin(url, "../conseillers/")  # avec sa barre : sans, le site redirige
             if pages.texte(conseillers) and "tplCCIBPublicConseillers" in (pages.texte(conseillers) or ""):
                 mesure.membres = conseillers
             return mesure

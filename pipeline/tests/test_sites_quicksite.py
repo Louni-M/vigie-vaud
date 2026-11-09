@@ -219,7 +219,9 @@ def test_les_preavis_d_une_commune_coreapi_sont_archives_avec_leur_numero_brut_e
     ]
 
 
-def test_le_passage_ordinaire_ne_lit_que_les_pages_de_resultats_de_la_fenetre(tmp_path, horloge):
+def test_le_passage_ordinaire_lit_toute_la_recherche_mais_n_importe_que_la_fenetre(tmp_path, horloge):
+    # La recherche n'est pas triée par mise en ligne : un document d'une Séance de la fenêtre peut être sur n'importe
+    # quelle page. Elle est donc lue en entier chaque jour, comme toute page de liste (spec, « Fenêtre »).
     reseau = _reseau(horloge)
     url = _founex_en_trois_pages(reseau)
 
@@ -230,12 +232,39 @@ def test_le_passage_ordinaire_ne_lit_que_les_pages_de_resultats_de_la_fenetre(tm
         (f"{FOUNEX}/robots.txt", "VigieVaud-sonde"),
         (f"{FOUNEX}/N640/documents.html", "VigieVaud-sonde"),  # la page vide, sondée, jamais importée
         (url, "VigieVaud-import"),
-        (_page_suivante(url, 2), "VigieVaud-import"),  # la deuxième finit avant la fenêtre : pas de troisième
+        (_page_suivante(url, 2), "VigieVaud-import"),
+        (_page_suivante(url, 3), "VigieVaud-import"),
     ]
-    # Le 20 avril et le 2 mars, avant la fenêtre (23 avril), ne sont pas importés.
+    # Le 20 avril, le 2 mars et décembre 2025, avant la fenêtre (23 avril), ne sont pas importés.
     assert not (tmp_path / "conseils/5717/seances/2026-04-20.json").exists()
+    assert not (tmp_path / "conseils/5717/seances/2025-12-08.json").exists()
     heures = reseau.heures("www.founex.ch")
     assert all(b - a >= timedelta(seconds=5) for a, b in zip(heures, heures[1:]))
+
+
+def test_un_preavis_de_la_fenetre_garde_ses_documents_anciens_d_une_page_suivante(tmp_path, horloge):
+    # Rolle, le 8 novembre : un préavis de 2021 revient en 2026 (sa clôture) ; son rapport de 2021 est sur une page de
+    # résultats plus loin. Le passage ordinaire qui suit le rattrapage ne doit pas le lui retirer.
+    reseau = _reseau(horloge)
+    url = _recherche(reseau, ROPRAZ)
+    reseau.pages[url] = Page(
+        '<div class="tplDocumentConseil"><div>1 à 1 sur 2 éléments trouvés</div>'
+        + _document_par_type(901, "Clôture du préavis 9", "Préavis", "Objet n° 2021-2026-9", "16 juin 2026")
+        + "</div>"
+    )
+    reseau.pages[_page_suivante(url, 2)] = Page(
+        '<div class="tplDocumentConseil"><div>2 à 2 sur 2 éléments trouvés</div>'
+        + _document_par_type(902, "Rapport de la commission des finances", "Rapport", "Objet n° 2021-2026-9",
+                             "14 décembre 2021")
+        + "</div>"
+    )
+    sources = _sources(_ropraz())
+    _passer(tmp_path, horloge, reseau, sources, rattrapage_cible="5798")
+
+    _passer(tmp_path, horloge, reseau, sources, heure=T0 + timedelta(days=1))
+
+    documents = _lire(tmp_path, "conseils/5798/objets/2021-2026-9.json")["documents"]
+    assert [d["lien"] for d in documents] == [f"{ROPRAZ}/n901", f"{ROPRAZ}/n902"]
 
 
 def test_le_rattrapage_lit_toutes_les_pages_de_resultats(tmp_path, horloge):
@@ -570,7 +599,7 @@ VEVEY = "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-
 def _montreux(**options):
     options.setdefault("donne", ("objets", "seances"))
     return _quicksite(
-        5886, "Montreux", f"{MONTREUX}/ordredujour/", variante="conseil", membres=f"{MONTREUX}/conseillers", **options
+        5886, "Montreux", f"{MONTREUX}/ordredujour/", variante="conseil", membres=f"{MONTREUX}/conseillers/", **options
     )
 
 
