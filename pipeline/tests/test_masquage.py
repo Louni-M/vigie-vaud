@@ -264,6 +264,11 @@ def test_un_nom_partiel_ne_reste_qu_avec_un_contexte_d_elu_et_un_homonyme_connu(
         ("Préavis 15/2026 - Succession de Paul Exemple : acceptation", "Préavis 15/2026 - Succession de [particulier] : acceptation"),
         ("Acceptation de la succession d'Albert Modèle", "Acceptation de la succession d'[particulier]"),
         ("Succession de Swisscom SA : reprise du bail", None),
+        # Un nom composé avec un tiret et une particule (Founex, 2026), une particule au milieu du nom : tout est masqué.
+        ("Succession répudiée de Mme Anne Exemple - Van Modèle", "Succession répudiée de [particulier]"),
+        ("Legs de Mme Anne de Montexemple - Van der Exemple", "Legs de [particulier]"),
+        # Sans particule après le tiret, le nom s'arrête au tiret.
+        ("Opposition de M. Paul Exemple - Rapport de la commission", "Opposition de [particulier] - Rapport de la commission"),
         ("Succession de Jean Dupont à la présidence du conseil", None),
         ("Succession de Mme Zoé Modèle : acceptation", "Succession de [particulier] : acceptation"),
         # Hoirie
