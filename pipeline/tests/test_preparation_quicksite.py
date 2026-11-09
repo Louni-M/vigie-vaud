@@ -145,7 +145,7 @@ def test_le_brouillon_trouve_la_variante_de_chaque_site_quicksite_et_ses_paramet
             {
                 "variante": "conseil",
                 "seances": f"{MONTREUX}/conseilcommunal/public/ordredujour/",
-                "membres": f"{MONTREUX}/conseilcommunal/public/conseillers",
+                "membres": f"{MONTREUX}/conseilcommunal/public/conseillers/",
             },
         ),
         _declaration(5890, "Vevey", VEVEY, ["seances"], {"variante": "conseil-externe", "seances": VEVEY}),

@@ -835,7 +835,7 @@
 				"plateforme": "quicksite",
 				"variante": "conseil",
 				"seances": "https://www.roche-vd.ch/conseilcommunal/public/ordredujour/",
-				"membres": "https://www.roche-vd.ch/conseilcommunal/public/conseillers"
+				"membres": "https://www.roche-vd.ch/conseilcommunal/public/conseillers/"
 			}
 		},
 		{
@@ -1541,7 +1541,7 @@
 				"plateforme": "quicksite",
 				"variante": "conseil",
 				"seances": "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/",
-				"membres": "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers"
+				"membres": "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers/"
 			}
 		},
 		{
