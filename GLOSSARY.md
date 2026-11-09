@@ -138,7 +138,8 @@ _À éviter_ : tiers, sous-traitant, prestataire
 Le logiciel d'un éditeur sur lequel tournent les sites de plusieurs communes (i-web, Quicksite…). Les communes d'une
 plateforme se lisent de la même façon ; la source reste le site de chaque commune, qui porte l'attribution et la
 Couverture. Chaque commune emploie l'une des **variantes** de sa plateforme, qui dit où sont ses Séances et ses Objets
-(i-web : module Séances, module Objets ou pages ; Quicksite : ancienne génération, `coreapi` ou module Conseil).
+(i-web : module Séances, module Objets ou pages ; Quicksite : ancienne génération, `coreapi`, module Conseil, ou
+module Conseil dont la liste des Séances est sur le site de la Ville, à Vevey).
 _À éviter_ : CMS, éditeur (pour la plateforme) ; registre des communes scrapées (ce sont leurs sources déclarées)
 
 **Voie d'accès** :
