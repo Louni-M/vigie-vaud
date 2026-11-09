@@ -31,7 +31,8 @@ ni ordre du jour structuré ; ses documents sont tous ceux de la Séance, préav
 « séances et préavis ») : un document dont le titre commence par « Préavis <numéro> » ; le numéro brut est pris là
 seulement (`005_2026-2031`, `06/2025`), le type est « Préavis », la date celle de sa Séance ; ses documents sont le
 préavis et ceux de la même Séance qui citent le même Objet (« 072: … »). Un préavis sans numéro n'est pas importé ; de deux
-préavis de même numéro, le premier du site (le plus récent) l'emporte ; l'un et l'autre sont notés dans le journal.
+préavis de même numéro, le plus ancien (le plus petit nœud) l'emporte ; l'un et l'autre sont notés dans le journal. Les
+documents sont rangés par nœud : la recherche ne range pas toujours de la même façon des documents à égalité de tri.
 
 Variante **`conseil`** (module « Conseil communal » de Quicksite, sur un site à part : Montreux) : la liste des
 Séances (`site.seances`, `ordredujour/`) donne l'année en cours en pastilles (jour, mois ; les Séances annoncées
@@ -495,6 +496,10 @@ def _seances_et_preavis(
 ) -> tuple[list[dict], list[dict]]:
     """Les Séances (*meetings*) et les préavis (*affairs*) des documents, dans l'ordre du site, ceux de la fenêtre
     seulement."""
+    # La recherche range d'une lecture à l'autre différemment les documents à égalité de tri (Lully, Oron) : ils sont
+    # remis dans l'ordre de leur nœud, celui de leur mise en ligne, pour qu'un passage ne réécrive pas ce qu'il a lu
+    # la veille. De deux préavis de même numéro, le plus ancien l'emporte donc.
+    documents = sorted(documents, key=_noeud)
     dans_la_fenetre = [d for d in documents if depuis is None or _quand(d) is None or _quand(d) >= depuis]
     par_seance: dict[tuple[date, str], list[_Document]] = {}
     for d in dans_la_fenetre:
@@ -550,6 +555,12 @@ def _seances_et_preavis(
             }
         )
     return seances, preavis
+
+
+def _noeud(d: _Document) -> int:
+    """Le nœud du document (`/n<id>`), qui croît avec sa mise en ligne."""
+    m = _LIEN_NOEUD.search(d.lien)
+    return int(m[0][2:]) if m else 0
 
 
 def _ref(d: _Document) -> str | None:

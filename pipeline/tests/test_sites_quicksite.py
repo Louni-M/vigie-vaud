@@ -312,10 +312,11 @@ def test_une_fausse_seance_du_1er_janvier_est_importee_telle_quelle_avec_ses_pre
 
     seance = _lire(tmp_path, "conseils/5798/seances/2025-01-01.json")
     assert seance["nom"] == "Séance du 1 janvier 2025"
+    # Dans l'ordre de leurs nœuds (794, 804, 805), celui de leur mise en ligne.
     assert [(d["titre"], d["date"]) for d in seance["documents"]] == [
+        ("Préavis 01/2025", "2025-01-01"),
         ("Préavis 06/2025", "2025-01-01"),
         ("Décision", "2025-01-01"),
-        ("Préavis 01/2025", "2025-01-01"),
     ]
     preavis = _lire(tmp_path, "conseils/5798/objets/06-2025.json")
     assert (preavis["numero"], preavis["titre"], preavis["depose"]) == ("06/2025", "Préavis 06/2025", "2025-01-01")
@@ -438,6 +439,20 @@ def test_le_numero_d_un_preavis_garde_son_annee_et_un_rapport_n_est_pas_un_preav
     numeros = sorted(_lire(tmp_path, f"conseils/5798/objets/{p.name}")["numero"]
                      for p in (tmp_path / "conseils/5798/objets").iterdir())
     assert numeros == ["01-2026", "3 /2025", "3 /2026"]
+
+
+def test_deux_preavis_de_meme_numero_donnent_le_meme_objet_quel_que_soit_l_ordre_du_site(tmp_path, horloge):
+    # Lully : « 00-2026 » pour les comptes et pour la gestion, que la recherche range tantôt dans un ordre, tantôt
+    # dans l'autre. Le plus ancien (le plus petit nœud) l'emporte, chaque jour.
+    reseau = _reseau(horloge)
+    url = _recherche(reseau, ROPRAZ)
+    comptes = _document_par_type(1493, "Comptes 2025", "Préavis", "Objet n° 00-2026", "6 octobre 2026")
+    gestion = _document_par_type(1489, "Rapport de gestion 2025", "Préavis", "Objet n° 00-2026", "6 octobre 2026")
+    sources = _sources(_ropraz())
+    for jour, documents in enumerate((comptes + gestion, gestion + comptes)):
+        reseau.pages[url] = Page(f'<div class="tplDocumentConseil"><div>1 à 2 sur 2 éléments trouvés</div>{documents}</div>')
+        _passer(tmp_path, horloge, reseau, sources, heure=T0 + timedelta(days=jour))
+        assert _lire(tmp_path, "conseils/5798/objets/00-2026.json")["titre"] == "Rapport de gestion 2025"
 
 
 def test_une_recherche_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):
