@@ -21,6 +21,7 @@ from datetime import date
 from typing import Protocol
 
 import lecture_iweb
+import lecture_quicksite
 from bruts import Bruts
 from mesure_sites import Mesure, PagesLues
 from robot_communal import Robot
@@ -49,7 +50,7 @@ class ModuleDeLecture(Protocol):
 
 
 # Le module de lecture de chaque plateforme.
-LECTEURS: dict[str, ModuleDeLecture] = {"i-web": lecture_iweb}
+LECTEURS: dict[str, ModuleDeLecture] = {"i-web": lecture_iweb, "quicksite": lecture_quicksite}
 
 
 def mois_plus_tot(jour: date, mois: int) -> date:

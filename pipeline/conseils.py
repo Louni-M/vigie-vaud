@@ -79,6 +79,7 @@ from schema import (
     Objet,
     PointOrdreDuJour,
     Seance,
+    Source,
     Statut,
     lire_sources,
 )
@@ -337,7 +338,19 @@ def vers_archive(
         if seance is not None:
             cle = f"{conseil}/{seance.date[:10]}"
             seances[cle] = _fusionner(seances[cle], seance) if cle in seances else seance
-    return elements | seances
+    return {cle: _garder_les_documents(e, archive.get(cle)) for cle, e in (elements | seances).items()}
+
+
+def _garder_les_documents(element: Element, ancien: Element | None) -> Element:
+    """Un élément scrapé (`id` nul) garde les documents de sa version archivée que la lecture du jour n'a pas vus,
+    après les siens : rien ne s'efface de l'archive (ADR-0017), et un site peut ne pas tout montrer d'un jour à
+    l'autre (une recherche Quicksite à égalité de tri d'une page à l'autre, un document retiré). Les éléments
+    d'OpenParlData, qui donne tous leurs documents, ne changent pas."""
+    if element.id is not None or type(ancien) is not type(element) or not ancien.documents:
+        return element
+    liens = {d.lien for d in element.documents}
+    manquants = [d for d in ancien.documents if d.lien not in liens]
+    return element.model_copy(update={"documents": element.documents + manquants}) if manquants else element
 
 
 def _fusionner(premiere: Seance, seconde: Seance) -> Seance:
@@ -636,7 +649,8 @@ def importer_conseils(
     dont la clé est dans `dus`. Un conseil d'OpenParlData repart du jour de son dernier import réussi moins un jour
     de recouvrement (`depuis` l'impose à tous), ou de tout l'historique s'il n'a jamais été importé ou pour un
     `rattrapage`. Un conseil dont la source a un bloc `site` est lu sur le site de sa commune par `robot`
-    (`lire_site`), dans la fenêtre du jour à Lausanne, ou en entier pour un `rattrapage`. Un conseil en échec est
+    (`lire_site`), dans la fenêtre du jour à Lausanne, ou en entier pour un `rattrapage` ; les sites sont lus d'abord,
+    un fil par réseau /24 (`Robot.en_alternance`), puis traités dans l'ordre de `sources`. Un conseil en échec est
     signalé, garde sa date, et les autres continuent ; un `rattrapage` réussi est aussi noté dans `rattrapages`.
     Le commit et le push sont l'affaire de l'appelant.
 
@@ -654,9 +668,9 @@ def importer_conseils(
     archive = lire_archive(depot)
     nouveaux: dict[str, Element] = {}
     membres: dict[str, MembresConseil] = {}
-    for source in sources.sources:
-        if source.conseil is None or (dus is not None and source.conseil.cle not in dus):
-            continue
+    a_importer = [s for s in sources.sources if s.conseil is not None and (dus is None or s.conseil.cle in dus)]
+    lus = _lire_les_sites(robot, [s for s in a_importer if s.site is not None], sources, jour, rattrapage)
+    for source in a_importer:
         cle = source.conseil.cle
         if rattrapage:
             debut = None
@@ -664,9 +678,9 @@ def importer_conseils(
             debut = depuis or (imports[cle].date() - RECOUVREMENT if cle in imports else None)
         try:
             if source.site is not None:
-                if robot is None:
-                    raise ValueError("aucun robot communal pour lire le site de la commune")
-                bruts = lire_site(robot, source, sources, jour, rattrapage)
+                if isinstance(lus[source.id], Exception):
+                    raise lus[source.id]
+                bruts = lus[source.id]
             else:
                 bruts = importer(opd, source.conseil, debut)
             connus = lire_membres(depot, cle) if source.site is not None else []
@@ -704,6 +718,31 @@ def importer_conseils(
     ecrire(depot, documents, genere)
     supprimer_perimes(depot, documents)
     return etat
+
+
+def _lire_les_sites(
+    robot: Robot | None,
+    sites: list[Source],
+    sources: FichierSources,
+    jour: date,
+    rattrapage: bool,
+) -> dict[str, Bruts | Exception]:
+    """Les `Bruts` de chaque source communale, ou l'erreur qui a interrompu sa lecture, lus un fil par réseau /24 :
+    les communes d'un même réseau à la suite, les réseaux en même temps (le robot n'envoie jamais deux requêtes à la
+    fois)."""
+    if not sites:
+        return {}
+    if robot is None:
+        return {s.id: ValueError("aucun robot communal pour lire le site de la commune") for s in sites}
+
+    def lire(source: Source) -> Bruts | Exception:
+        try:
+            return lire_site(robot, source, sources, jour, rattrapage)
+        except Exception as e:  # rendue au fil principal, qui la traite comme tout échec d'un conseil
+            return e
+
+    lus = robot.en_alternance(sites, lambda s: s.site.seances if s.site else None, lire)
+    return {s.id: r for s, r in zip(sites, lus, strict=True)}
 
 
 def reconstruire(depot: Path, sources: FichierSources, horloge: Callable[[], datetime]) -> list[str]:

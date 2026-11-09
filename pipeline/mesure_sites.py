@@ -1,7 +1,7 @@
 """Ce que les modules de lecture des plateformes partagent pour mesurer un site, sans rien savoir d'une plateforme :
 la mémoire des pages lues par le robot pendant un lancement du script de préparation des sources
-(`preparation_sources.py`), la mesure qu'un module en tire, et la lecture sans réseau qui compte les requêtes d'un
-passage ordinaire.
+(`preparation_sources.py`), la mesure qu'un module en tire, et le robot qui rejoue la lecture d'un module pour
+compter les requêtes d'un passage ordinaire (`RobotCompteur`, sans réseau : `RobotSansReseau`).
 
 Chaque module de lecture (`sites_communaux.LECTEURS`) mesure les sites de sa plateforme par deux opérations, à côté
 de `lire` : `mesurer` (la plateforme réelle, la variante et les pages d'une commune, d'après sa page du conseil et
@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import contextlib
 import io
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
 
 from robot_communal import PageNonLue, Reponse, Robot
+from schema import Coreapi
 
 
 class PagesLues:
@@ -53,31 +54,43 @@ class Mesure:
     seances: str | None = None
     objets: str | None = None
     membres: str | None = None
+    coreapi: Coreapi | None = None  # la recherche Quicksite (`site.coreapi`), pour la variante `coreapi`
     niveau: list[str] | None = None
     requetes: int | None = None
     remarques: list[str] = field(default_factory=list)
 
 
-class RobotSansReseau:
-    """Un robot qui rend les pages déjà lues et compte les requêtes que le passage ordinaire ferait : deux pour une
-    page lue redirigée, une sinon ; une page jamais lue est rendue vide et coûte ce que dit `cout` (le module de
-    lecture sait si ses liens stables sont redirigés)."""
+class RobotCompteur:
+    """Un robot qui rend les pages que lui donne `lire` et compte les requêtes que le passage ordinaire ferait pour
+    elles : deux pour une page redirigée, une sinon, une aussi pour une page non lue. Avec `PagesLues.lire`, une page
+    qui manque est lue par le robot du script, une fois par lancement."""
 
-    def __init__(self, pages: dict[str, Reponse | PageNonLue], cout: Callable[[str], int]) -> None:
-        self._pages = pages
-        self._cout = cout
+    def __init__(self, lire: Callable[[str], Reponse | PageNonLue]) -> None:
+        self._lire = lire
         self.requetes = 0
 
     def lire(self, url: str, role: str) -> Reponse:
-        page = self._pages.get(url)
+        page = self._lire(url)
+        self.requetes += 1 if isinstance(page, PageNonLue) or page.url == url else 2
         if isinstance(page, PageNonLue):
-            self.requetes += 1
             raise page
-        if page is None:
-            self.requetes += self._cout(url)
-            return Reponse(url, 200, "", {})
-        self.requetes += 1 if page.url == url else 2
         return page
+
+
+class RobotSansReseau(RobotCompteur):
+    """Le `RobotCompteur` des seules pages déjà lues, sans réseau : une page jamais lue est rendue vide et coûte ce
+    que dit `cout` (le module de lecture sait si ses liens stables sont redirigés)."""
+
+    def __init__(self, pages: Mapping[str, Reponse | PageNonLue], cout: Callable[[str], int]) -> None:
+        super().__init__(pages.__getitem__)
+        self._pages = pages
+        self._cout = cout
+
+    def lire(self, url: str, role: str) -> Reponse:
+        if url in self._pages:
+            return super().lire(url, role)
+        self.requetes += self._cout(url)
+        return Reponse(url, 200, "", {})
 
 
 def sans_journal(lire: Callable[[], object]) -> object:

@@ -53,8 +53,20 @@ COMPTE_RE = re.compile(
     re.I,
 )
 NOM = r"[A-ZÀ-Ý](?:\.(?:-[A-ZÀ-Ý]\.)?|[\w’'´-]*)"  # « Dupont », « J. », « J.-P. »
-# Les mêmes correspondances que `CIVILITE_RE` du site, la ou les civilités (groupe 1) séparées des noms (groupe 2).
-CIVILITE_RE = re.compile(rf"\b({CIVILITE}(?:\s+(?:et|&)\s+{CIVILITE})*\s+)({NOM}(?:\s+(?:et\s+|&\s+)?{NOM})*)")
+# Une particule au milieu d'un nom, après une civilité (« Mme Anne de Montexemple ») ; `PARTICULE`, plus bas, sert aux
+# pétitionnaires sans civilité.
+PARTICULE_DE_NOM = r"(?:(?:de|du|des|von|van|der|da|dos|di|del)\s+|d[’'])"
+# La suite d'un nom composé écrit avec un tiret entre espaces, quand elle commence par une particule (« Zwart - Van
+# Blooijs ») ; « Dupont - Rapport de la commission » n'en a pas, et s'arrête au tiret.
+SUITE_DE_NOM = (
+    r"(?:\s+-\s+(?:[Vv]an|[Vv]on|[Dd]e|[Dd]u|[Dd]a|[Dd]i|[Dd]el|[Dd]er|[Ll]e|[Ll]a)(?:\s+(?:der|den|de|la|le))?"
+    rf"\s+{NOM}(?:\s+{NOM})*)?"
+)
+# Les correspondances de `CIVILITE_RE` du site, la ou les civilités (groupe 1) séparées des noms (groupe 2), et en plus
+# la suite d'un nom composé (le site ne masque que les permis).
+CIVILITE_RE = re.compile(
+    rf"\b({CIVILITE}(?:\s+(?:et|&)\s+{CIVILITE})*\s+)({NOM}(?:\s+(?:et\s+|&\s+|{PARTICULE_DE_NOM})?{NOM})*{SUITE_DE_NOM})"
+)
 ENTRE_PERSONNES = re.compile(r"(\s+(?:et|&)\s+)")
 LIAISONS = {"et", "&", "de", "du", "des", "da", "dos", "von", "van", "der", "le", "la"}
 # L'auteur·e d'une pétition, sans civilité : une suite de noms propres, les particules comprises (« Paul de

@@ -265,7 +265,11 @@ export const RAISONS: Record<RaisonNonCouvert, { cellule: string; onglet: (de: s
 		onglet: (de) => `la commune ${de} a demandé que son site ne soit plus lu.`
 	},
 	refus_robots: { cellule: 'le site refuse les robots', onglet: (de) => `le site ${de} refuse les robots.` },
-	nouveau_site: { cellule: 'nouveau site pas encore lu', onglet: (de) => `le nouveau site ${de} n’est pas encore lu.` }
+	nouveau_site: { cellule: 'nouveau site pas encore lu', onglet: (de) => `le nouveau site ${de} n’est pas encore lu.` },
+	forme_non_lue: {
+		cellule: 'forme pas encore lue',
+		onglet: (de) => `le site ${de} publie son conseil sous une forme que Vigie Vaud ne lit pas encore.`
+	}
 };
 
 const jour = new Intl.DateTimeFormat('fr-CH', { day: 'numeric', month: 'short', timeZone: 'Europe/Zurich' });

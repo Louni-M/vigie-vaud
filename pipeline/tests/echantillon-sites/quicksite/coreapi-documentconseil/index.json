@@ -1,0 +1,30 @@
+{
+ "plateforme": "quicksite",
+ "variante": "coreapi",
+ "commune": "Ropraz",
+ "ofs": 5798,
+ "pages": [
+  {
+   "sorte": "seances",
+   "url": "https://www.ropraz.ch/documents-du-conseil",
+   "finale": "https://www.ropraz.ch/documents-du-conseil",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seances.html"
+  },
+  {
+   "sorte": "recherche",
+   "url": "https://www.ropraz.ch/coreapi/elasticsearch/projects/ropraz26/documentconseil/search?q=&elasticsearchProject=&elasticsearchNode=748&elasticsearchPagesize=200&elasticsearchNodetype=&elasticsearchParentnode=748&elasticsearchSort=date_extid_desc_rank&elasticsearchView=documentconseil&elasticsearchQuery=input.query-full&elasticsearchResult=%23search-result-list-full&elasticsearchFiltertags=&elasticsearchInitresult=true&query=&date_from=&date_to=",
+   "finale": "https://www.ropraz.ch/coreapi/elasticsearch/projects/ropraz26/documentconseil/search?q=&elasticsearchProject=&elasticsearchNode=748&elasticsearchPagesize=200&elasticsearchNodetype=&elasticsearchParentnode=748&elasticsearchSort=date_extid_desc_rank&elasticsearchView=documentconseil&elasticsearchQuery=input.query-full&elasticsearchResult=%23search-result-list-full&elasticsearchFiltertags=&elasticsearchInitresult=true&query=&date_from=&date_to=",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; charset=utf-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "recherche.html"
+  }
+ ]
+}

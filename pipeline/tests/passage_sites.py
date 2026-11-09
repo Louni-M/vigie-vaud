@@ -14,7 +14,7 @@ import httpx
 
 from cron import passage
 from faux_openparldata import Affaire, Monde
-from faux_sites import Page, Reseau, echantillon
+from faux_sites import Ordonnanceur, Page, Reseau, echantillon
 from schema import FichierSources
 from test_cron import IssuesFactices
 
@@ -136,12 +136,13 @@ def _monde(horloge):
 def _passer(depot, horloge, reseau, sources=SOURCES, *, monde=None, heure=None, issues=None, **options):
     """Un passage du cron, le seul seam des tests des sites (spec de J3, « Décisions de test ») : `cron.passage` sur
     le dépôt de données `depot`, avec un seul transport qui sert les sites de `reseau` et, pour tout autre hôte, le
-    faux OpenParlData de `monde` (par défaut, `_monde`), la résolution d'adresse du faux réseau, et une attente qui
-    fait avancer l'horloge, mise d'abord à `heure` s'il y en a une. `options` : celles de `passage` (rattrapages).
+    faux OpenParlData de `monde` (par défaut, `_monde`), la résolution d'adresse du faux réseau, et l'attente et
+    l'alternance entre réseaux d'un `Ordonnanceur`, qui fait avancer l'horloge, mise d'abord à `heure` s'il y en a une. `options` : celles de `passage` (rattrapages).
     Rend le client d'issues, factice par défaut."""
     horloge.heure = heure or horloge.heure
     monde = monde if monde is not None else _monde(horloge)
     issues = issues if issues is not None else IssuesFactices()
+    ordonnanceur = Ordonnanceur(horloge)
     with httpx.Client(transport=reseau.transport(repli=monde.transport())) as client:
         passage(
             depot,
@@ -149,8 +150,9 @@ def _passer(depot, horloge, reseau, sources=SOURCES, *, monde=None, heure=None, 
             client,
             horloge=horloge,
             issues=issues,
-            attendre=horloge.attendre,
+            attendre=ordonnanceur.attendre,
             resoudre=reseau.resoudre,
+            alternance=ordonnanceur.alterner,
             **options,
         )
     return issues

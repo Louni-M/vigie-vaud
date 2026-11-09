@@ -1,0 +1,63 @@
+{
+ "plateforme": "quicksite",
+ "variante": "conseil",
+ "commune": "Montreux",
+ "ofs": 5886,
+ "pages": [
+  {
+   "sorte": "seances",
+   "url": "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/",
+   "finale": "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seances.html"
+  },
+  {
+   "sorte": "seance",
+   "url": "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/?ID=4312",
+   "finale": "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/?ID=4312",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seance.html"
+  },
+  {
+   "sorte": "objet",
+   "url": "https://www.conseilmontreux.ch/conseilcommunal/public/documents/recherche/?id=3403",
+   "finale": "https://www.conseilmontreux.ch/conseilcommunal/public/documents/recherche/?id=3403",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "objet.html"
+  },
+  {
+   "sorte": "membres",
+   "url": "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers",
+   "finale": "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers/",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "membres.html"
+  },
+  {
+   "sorte": "membres-2",
+   "url": "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers/?page=2",
+   "finale": "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers/?page=2",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "membres-2.html"
+  }
+ ]
+}

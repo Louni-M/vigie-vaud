@@ -171,7 +171,6 @@ def _mesurer(pages: PagesLues, candidat: Candidat, plateforme: Plateforme, jour:
 
 def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure, niveau: Sequence[str]) -> Source:
     """La source que déclarerait la mesure, au `niveau` donné : de quoi rejouer le module de lecture."""
-    pages = {"seances": mesure.seances, "objets": mesure.objets, "membres": mesure.membres}
     return Source.model_validate(
         {
             "id": f"site-{candidat.ofs}",
@@ -181,9 +180,23 @@ def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure
             "voie_acces": "cron",
             "fraicheur": "import",
             "conseil": {"body_key": str(candidat.ofs), "donne": list(niveau)},
-            "site": {"plateforme": plateforme.id, "variante": mesure.variante} | pages,
+            "site": _site_mesure(plateforme, mesure),
         }
     )
+
+
+def _site_mesure(plateforme: Plateforme, mesure: Mesure) -> dict:
+    """Le bloc `site` que déclarerait la mesure, au format de `sources.json` : sa variante, les pages trouvées et,
+    pour une recherche `coreapi`, ses paramètres."""
+    site = Site(
+        plateforme=plateforme.id,
+        variante=mesure.variante,
+        seances=mesure.seances,
+        objets=mesure.objets,
+        membres=mesure.membres,
+        coreapi=mesure.coreapi,
+    )
+    return site.model_dump(exclude_none=True)
 
 
 # --- Vérification -----------------------------------------------------------------------------------------------
@@ -236,6 +249,9 @@ def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: Plate
         ecarts.append(f"niveau déclaré {_niveau(source.conseil.donne)}, mesuré {_niveau(mesure.niveau)}{pourquoi}")
     ecarts += ecart("page des Objets", site.objets, mesure.objets)
     ecarts += ecart("page des membres", site.membres, mesure.membres)
+    if site.coreapi != mesure.coreapi:
+        declaree, mesuree = (c.model_dump() if c else "aucune" for c in (site.coreapi, mesure.coreapi))
+        ecarts.append(f"recherche coreapi déclarée {declaree}, mesurée {mesuree}")
     return ecarts
 
 
@@ -305,10 +321,7 @@ def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> 
         return source
     source["couverture"] = {"communes": [candidat.ofs], "mode": "scrape"}
     source["conseil"] = {"body_key": str(candidat.ofs), "donne": mesure.niveau or list(variante.niveaux[-1])}
-    pages = {"seances": mesure.seances, "objets": mesure.objets, "membres": mesure.membres}
-    source["site"] = {"plateforme": plateforme.id, "variante": mesure.variante} | {
-        k: v for k, v in pages.items() if v is not None
-    }
+    source["site"] = _site_mesure(plateforme, mesure)
     return source
 
 
@@ -316,7 +329,7 @@ def candidats_du_recensement(chemin: Path, id_plateforme: str) -> list[Candidat]
     """Les communes que le recensement des sites communaux (#118, `sites-communaux.csv`) met sur la plateforme, sauf
     celles qui disparaissent au 1er janvier 2027. Sans page du conseil relevée, la page d'accueil en tient lieu."""
     with chemin.open(encoding="utf-8", newline="") as f:
-        lignes = [r for r in csv.DictReader(f) if r["plateforme"] == id_plateforme]
+        lignes = [r for r in csv.DictReader(f) if r["plateforme"].lower() == id_plateforme]
     return [
         Candidat(
             int(r["ofs"]),

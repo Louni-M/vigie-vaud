@@ -15,17 +15,20 @@ import socket
 import ssl
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
-from typing import Literal
+from typing import Literal, TypeVar
 
 import httpx
 
 from schema import RACINE, EtatReseau, FichierSources
 
 Role = Literal["sonde", "import"]
+T = TypeVar("T")
+R = TypeVar("R")
 INTERVALLE = 5.0  # secondes, au moins, entre deux requêtes vers un même /24
 DELAI = 30.0  # secondes, au plus, pour une requête
 REDIRECTIONS = 5  # redirections suivies, au plus, pour une page
@@ -163,12 +166,25 @@ def _fin_demandee(retry_after: str | None, maintenant: datetime) -> datetime | N
     return fin if fin > maintenant else None
 
 
+Alternance = Callable[[Sequence[Sequence[Callable[[], object]]]], list[list[object]]]
+
+
+def alterner(groupes: Sequence[Sequence[Callable[[], object]]]) -> list[list[object]]:
+    """Fait les tâches de chaque groupe dans l'ordre, chaque groupe dans son fil, et rend leurs résultats, groupe par
+    groupe. Le robot en fait un par réseau /24 (`Robot.en_alternance`) : n'envoyant qu'une requête à la fois, un
+    réseau lit pendant que les autres attendent leurs 5 s. Une tâche ne doit pas lever : elle rend son erreur."""
+    if len(groupes) <= 1:
+        return [[tache() for tache in groupe] for groupe in groupes]
+    with ThreadPoolExecutor(max_workers=len(groupes), thread_name_prefix="reseau") as fils:
+        return list(fils.map(lambda groupe: [tache() for tache in groupe], groupes))
+
+
 class Robot:
     """Une requête à la fois, même appelé de plusieurs fils, et au moins `INTERVALLE` secondes entre deux requêtes
     vers un même réseau /24 (IPv6 : /64), mesurées depuis la fin de la précédente ; plus pour un réseau ralenti à la
     main (`intervalles`) ou un hôte dont le `Crawl-delay` est plus grand. Les réseaux ne s'attendent pas entre eux :
-    l'appelant qui alterne entre les réseaux n'attend que le sien. Le réseau d'un hôte est résolu à sa première
-    requête et gardé pour la vie du robot (un passage).
+    `en_alternance` fait le travail de chaque réseau dans son fil (`alternance`), et un fil n'attend que son réseau. Le
+    réseau d'un hôte est résolu à sa première requête et gardé pour la vie du robot (un passage).
 
     **`robots.txt`** est lu avant la première page de chaque hôte, une fois pour la vie du robot, sous le nom
     `VigieVaud` (sinon `*`) : une page interdite n'est jamais demandée (`PageInterdite`). Un `Crawl-delay` est suivi
@@ -185,7 +201,7 @@ class Robot:
     **Plafond** : avec `plafond`, une commune n'envoie pas plus de `plafond` requêtes (`robots.txt`, sonde et import
     compris) par ses vues `pour(commune)`.
 
-    Le client HTTP, l'horloge, l'attente et la résolution d'adresse sont reçus, jamais créés."""
+    Le client HTTP, l'horloge, l'attente, la résolution d'adresse et l'alternance sont reçus, jamais créés."""
 
     def __init__(
         self,
@@ -197,11 +213,13 @@ class Robot:
         intervalles: Mapping[str, float] | None = None,
         bloques: Mapping[str, EtatReseau] | None = None,
         plafond: int | None = None,
+        alternance: Alternance = alterner,
     ) -> None:
         self._http = http
         self._horloge = horloge
         self._attendre = attendre
         self._resoudre = resoudre
+        self._alternance = alternance
         self._intervalles = dict(intervalles or {})  # réseau → intervalle ralenti à la main
         self._plafond = plafond
         # L'état partagé par le robot et ses vues (`pour`) : jamais réaffecté, seulement modifié.
@@ -259,6 +277,16 @@ class Robot:
             return False
         return reseau in self._bloques and reseau not in self._fermes
 
+    def en_alternance(self, elements: Sequence[T], url: Callable[[T], str | None], tache: Callable[[T], R]) -> list[R]:
+        """`tache` faite pour chaque élément, un fil par réseau /24 de son `url` (`par_reseau`) : les éléments d'un
+        même réseau à la suite, les réseaux en même temps (`alternance`). Les résultats sont rendus dans l'ordre des
+        `elements`, pour que l'appelant les applique dans l'ordre de `sources.json`. Une tâche ne doit pas lever :
+        elle rend son erreur."""
+        groupes = par_reseau(self, range(len(elements)), lambda i: url(elements[i]))
+        resultats = self._alternance([[lambda i=i: tache(elements[i]) for i in groupe] for groupe in groupes])
+        rangs = {i: r for groupe, rs in zip(groupes, resultats, strict=True) for i, r in zip(groupe, rs, strict=True)}
+        return [rangs[i] for i in range(len(elements))]
+
     def reseaux_bloques(self) -> dict[str, EtatReseau]:
         """Les réseaux encore bloqués, ou bloqués et pas encore testés de nouveau, à transmettre au robot suivant."""
         return dict(self._bloques)
@@ -288,17 +316,14 @@ class Robot:
     def _requete(self, url: str, role: Role) -> httpx.Response:
         hote = httpx.URL(url).host
         reseau = self._reseau(hote)
-        if reseau in self._fermes:
-            raise ReseauBloque(f"{url} : réseau {reseau} bloqué ({self._bloques[reseau].motif})")
-        if reseau in self._bloques and role != "sonde":
-            raise ReseauBloque(f"{url} : réseau {reseau} bloqué au passage précédent, pas encore testé par une sonde")
-        if hote in self._sites_lents:
-            raise SiteBloque(f"{url} : site bloqué jusqu'à la fin du passage (délai dépassé)")
+        self._verifier_ouvert(url, reseau, hote, role)
         if self._commune is not None and self._plafond is not None:
             if self._comptes.get(self._commune, 0) >= self._plafond:
                 raise PlafondAtteint(f"{url} : plafond de {self._plafond} requêtes atteint ({self._commune})")
+        if self._patienter(reseau, hote):
+            self._verifier_ouvert(url, reseau, hote, role)  # un autre fil a pu bloquer le réseau pendant l'attente
+        if self._commune is not None and self._plafond is not None:
             self._comptes[self._commune] = self._comptes.get(self._commune, 0) + 1
-        self._patienter(reseau, hote)
         try:
             reponse = self._http.get(
                 url, headers={"User-Agent": user_agent(role)}, timeout=DELAI, follow_redirects=False
@@ -322,6 +347,23 @@ class Robot:
         else:
             self._bloques.pop(reseau, None)  # le site répond : le réseau, s'il était à tester, est rouvert
         return reponse
+
+    def _verifier_ouvert(self, url: str, reseau: str, hote: str, role: Role) -> None:
+        if reseau in self._fermes:
+            raise ReseauBloque(f"{url} : réseau {reseau} bloqué ({self._bloques[reseau].motif})")
+        if reseau in self._bloques and role != "sonde":
+            raise ReseauBloque(f"{url} : réseau {reseau} bloqué au passage précédent, pas encore testé par une sonde")
+        if hote in self._sites_lents:
+            raise SiteBloque(f"{url} : site bloqué jusqu'à la fin du passage (délai dépassé)")
+
+    def reseau_de(self, url: str) -> str | None:
+        """Le réseau /24 (IPv6 : /64) de l'hôte de `url`, pour regrouper les communes par réseau ; `None` si l'hôte
+        ne se résout pas."""
+        with self._verrou:
+            try:
+                return self._reseau(httpx.URL(url).host)
+            except Injoignable:
+                return None
 
     def _delai_depasse(self, reseau: str, hote: str) -> None:
         """Un premier délai dépassé sur un réseau ne bloque que son site ; le second, venu d'un autre site du même
@@ -379,18 +421,41 @@ class Robot:
             self._reseaux[hote] = str(ipaddress.ip_network(f"{adresse}/{prefixe}", strict=False))
         return self._reseaux[hote]
 
-    def _patienter(self, reseau: str, hote: str) -> None:
+    def _patienter(self, reseau: str, hote: str) -> bool:
         """Attend que l'intervalle du réseau soit passé depuis sa dernière requête : 5 s, ou plus si la section
-        `reseaux` ou le `Crawl-delay` de l'hôte le demandent."""
-        derniere = self._dernieres.get(reseau)
-        if derniere is None:
-            return
-        regles = self._robots.get(hote)
-        delai = regles.crawl_delay if isinstance(regles, Regles) and regles.crawl_delay else 0.0
-        intervalle = max(INTERVALLE, self._intervalles.get(reseau, 0.0), delai)
-        ecart = (self._horloge() - derniere).total_seconds()
-        if ecart < intervalle:
-            self._attendre(intervalle - ecart)
+        `reseaux` ou le `Crawl-delay` de l'hôte le demandent. Le verrou est rendu pendant l'attente : un autre fil lit
+        un autre réseau pendant ce temps (alternance), mais jamais deux requêtes ne partent à la fois. Rend `True` si
+        le robot a attendu."""
+        attendu = False
+        while True:
+            derniere = self._dernieres.get(reseau)
+            if derniere is None:
+                return attendu
+            regles = self._robots.get(hote)
+            delai = regles.crawl_delay if isinstance(regles, Regles) and regles.crawl_delay else 0.0
+            intervalle = max(INTERVALLE, self._intervalles.get(reseau, 0.0), delai)
+            ecart = (self._horloge() - derniere).total_seconds()
+            if ecart >= intervalle:
+                return attendu
+            attendu = True
+            self._verrou.release()
+            try:
+                self._attendre(intervalle - ecart)
+            finally:
+                self._verrou.acquire()
+            if self._dernieres.get(reseau) == derniere:
+                return attendu  # personne n'a lu ce réseau pendant l'attente : l'intervalle est passé
+
+
+def par_reseau(robot: Robot, elements: Sequence[T], url: Callable[[T], str | None]) -> list[list[T]]:
+    """Les `elements` groupés par le réseau de leur `url`, dans l'ordre de leur première apparition ; un élément sans
+    URL, ou dont l'hôte ne se résout pas, forme son propre groupe."""
+    groupes: dict[object, list[T]] = {}
+    for i, element in enumerate(elements):
+        adresse = url(element)
+        reseau = robot.reseau_de(adresse) if adresse else None
+        groupes.setdefault(reseau if reseau is not None else ("seul", i), []).append(element)
+    return list(groupes.values())
 
 
 def robot_des_sources(
@@ -402,10 +467,12 @@ def robot_des_sources(
     *,
     rattrapage: bool = False,
     bloques: Mapping[str, EtatReseau] | None = None,
+    alternance: Alternance = alterner,
 ) -> Robot:
     """Le robot communal réglé par `sources.json`, le seul qu'utilisent le cron, l'import seul et les scripts de
     préparation : les réseaux ralentis à la main (section `reseaux`), et `PLAFOND` requêtes par commune au passage
-    ordinaire, aucun au `rattrapage`. `bloques` : les réseaux bloqués aux passages précédents (`etat-sources.json`)."""
+    ordinaire, aucun au `rattrapage`. `bloques` : les réseaux bloqués aux passages précédents (`etat-sources.json`) ;
+    `alternance` : les fils par réseau du robot (`alterner`)."""
     return Robot(
         http,
         horloge,
@@ -414,6 +481,7 @@ def robot_des_sources(
         intervalles={r.reseau: r.intervalle for r in sources.reseaux},
         bloques=bloques,
         plafond=None if rattrapage else PLAFOND,
+        alternance=alternance,
     )
 
 

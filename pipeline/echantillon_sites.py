@@ -17,11 +17,15 @@ Les identifiants sont choisis pour porter les cas à couvrir **sans nommer aucun
 enregistrement, on relit l'échantillon. Un bloc ou un identifiant qui manque arrête le script : la page a changé, la
 déclaration est à revoir. Une page non lue (erreur HTTP, refus, délai) l'arrête aussi, sans nouvel essai.
 
+Un échantillon par variante, et non par commune (ADR 0010) : la commune choisie ne fait que montrer sa variante.
 Chaque variante a son dossier (`<plateforme>/<variante>/`), avec ses pages réduites, encodées comme le site les a
 servies, et `index.json` (URL demandée et finale, statut, en-têtes utiles de chaque page ; le corps enregistré est
-décompressé, un faux transport qui sert son `content-encoding` le recompresse). Les pages entières
-restent hors du dépôt, dans le dossier `--brut` : relancé avec `--hors-ligne`, le script refait la réduction sans
-aucune requête et produit les mêmes fichiers.
+décompressé, un faux transport qui sert son `content-encoding` le recompresse). Seule exception, une variante que son
+module de lecture lit sous plusieurs formes : la recherche `coreapi` de Quicksite a deux vues du conseil
+(`site.coreapi.vue`), et la seconde, `documentconseil`, porte des cas que la première ne montre pas (une Séance par
+document, les fausses « Séance du 1 janvier ») ; elle a son propre échantillon, dans le dossier de sa vue
+(`quicksite/coreapi-documentconseil/`). Les pages entières restent hors du dépôt, dans le dossier `--brut` : relancé
+avec `--hors-ligne`, le script refait la réduction sans aucune requête et produit les mêmes fichiers.
 
 Lancé à la main, jamais par le cron : au début de chaque étape de J3 pour sa plateforme, puis dans la PR qui corrige
 une refonte si elle touche la commune d'un échantillon. Usage (depuis `pipeline/`) :
@@ -62,6 +66,7 @@ class PageEchantillon:
     ids: tuple[str, ...] = ()  # identifiants des lignes gardées ; vide : toutes
     lignes: str | None = None  # sélecteur des lignes d'une liste HTML (`tr`, `tbody>tr`…)
     sans: tuple[str, ...] = ()  # sélecteurs des éléments retirés des blocs (bouton d'archive, contact…)
+    garder: tuple[str, ...] = ()  # balises retirées d'ordinaire mais lues ici (le `button` d'un libellé de Séance)
 
 
 @dataclass(frozen=True)
@@ -71,10 +76,12 @@ class Echantillon:
     commune: str
     ofs: int
     pages: tuple[PageEchantillon, ...]
+    vue: str | None = None  # la vue `coreapi` d'un second échantillon de la variante, qui a alors son dossier
 
     @property
     def nom(self) -> str:
-        return f"{self.plateforme}/{self.variante}"
+        """Le dossier de l'échantillon : `<plateforme>/<variante>`, ou `<plateforme>/<variante>-<vue>`."""
+        return f"{self.plateforme}/{self.variante}" + (f"-{self.vue}" if self.vue else "")
 
 
 _SEANCES_IWEB = ("table#icmsTableFutureSitzungen", "table#icmsTablePastSitzungen")
@@ -152,6 +159,117 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             **_SEANCE_IWEB,
         ),
     )),
+    # Quicksite, ancienne génération : la bibliothèque de documents rendue côté serveur (`/documents`), une page de
+    # 20 documents typés, avec leur date de mise en ligne ; les Séances se lisent dans les titres des ordres du jour
+    # et des procès-verbaux.
+    Echantillon("quicksite", "ancienne", "Aigle", 5401, (
+        PageEchantillon(
+            "seances", "https://www.aigle.ch/documents", ("div.tplListDocumentSummary",),
+            (
+                "20354", "20308",  # procès-verbaux du 1er octobre et du 3 septembre 2026
+                "20310", "20249", "20248",  # ordres du jour du 29 octobre et du 1er octobre (deux fois, l'un sans type)
+                "20338", "20301", "20302",  # préavis 2026-14 et 2026-12, l'annexe de ce dernier
+                "20280",  # extrait de décision, daté d'une Séance
+                "20349",  # interpellation sans numéro
+                "20348",  # rapport de commission, numéro d'Objet dans `strBusinessID`
+            ),
+            lignes="div.tplDocumentSummaryItem",
+        ),
+    )),
+    # Quicksite, nouvelle génération : la page est vide, la liste vient de la recherche `coreapi` (fragment HTML
+    # paginé, paramètres `data-elasticsearch-*` de la page). Vue `documentconseildates` : documents groupés par Séance.
+    Echantillon("quicksite", "coreapi", "Founex", 5717, (
+        PageEchantillon("seances", "https://www.founex.ch/N640/documents.html", ("section.tplDeepsearch",)),
+        PageEchantillon(
+            "recherche",
+            "https://www.founex.ch/coreapi/elasticsearch/projects/founex25/documentconseildates/search?q="
+            "&elasticsearchProject=&elasticsearchNode=640&elasticsearchPagesize=60&elasticsearchNodetype="
+            "&elasticsearchParentnode=640&elasticsearchSort=date_extid&elasticsearchView=documentconseildates"
+            "&elasticsearchQuery=input.query-full&elasticsearchResult=%23search-result-list-full"
+            "&elasticsearchFiltertags=&elasticsearchInitresult=true&query=&date_from=&date_to=",
+            ("div.tplDocumentConseil",),
+            (
+                "n2227", "n2228", "n2229",  # Séance à venir du 9 novembre : ordre du jour, PV, préavis 005
+                "n2190", "n2208", "n2207",  # 28 septembre : ordre du jour, préavis 001 et 072 (législature passée)
+                "n2201", "n2200",  # un postulat et la réponse de la Municipalité
+                "n1910", "n2144", "n1918",  # 15 juin : ordre du jour, préavis 072 de nouveau, plans de ce préavis
+            ),
+            lignes="div.qs-edit",
+            garder=("button",),  # le libellé de chaque Séance (« Séance du 9 novembre 2026 »)
+        ),
+    )),
+    # La même recherche, vue `documentconseil` : documents typés (Décisions, Préavis, Procès-verbaux), chacun avec sa
+    # Séance, dont les fausses « Séance du 1 janvier » qui rassemblent les préavis d'une année. Ropraz est la commune
+    # qui la montre, mais le dossier est celui de la vue.
+    Echantillon("quicksite", "coreapi", "Ropraz", 5798, (
+        PageEchantillon("seances", "https://www.ropraz.ch/documents-du-conseil", ("section.tplDeepsearch",)),
+        PageEchantillon(
+            "recherche",
+            "https://www.ropraz.ch/coreapi/elasticsearch/projects/ropraz26/documentconseil/search?q="
+            "&elasticsearchProject=&elasticsearchNode=748&elasticsearchPagesize=200&elasticsearchNodetype="
+            "&elasticsearchParentnode=748&elasticsearchSort=date_extid_desc_rank&elasticsearchView=documentconseil"
+            "&elasticsearchQuery=input.query-full&elasticsearchResult=%23search-result-list-full"
+            "&elasticsearchFiltertags=&elasticsearchInitresult=true&query=&date_from=&date_to=",
+            ("div.tplDocumentConseil",),
+            (
+                "n1115",  # préavis sans type, nommé par son fichier
+                "n1061", "n1060",  # Séance du 11 décembre 2025 : préavis sans numéro, extrait de procès-verbal
+                "n714",  # procès-verbal du 28 avril 2025
+                "n804", "n805", "n794",  # fausse Séance du 1 janvier 2025 : préavis 06/2025 et 01/2025, décision
+            ),
+            lignes="div.qs-edit",
+        ),
+    ), vue="documentconseil"),
+    # Module Conseil de Quicksite (« Vision Citoyenne »), sur un site à part : la liste des Séances (année en cours,
+    # années précédentes en onglets), une page par Séance (`?ID=`) dont les points citent leur Objet, une fiche par
+    # Objet (`?id=`) avec son auteur·e et ses documents datés, les conseillers en deux pages.
+    Echantillon("quicksite", "conseil", "Montreux", 5886, (
+        PageEchantillon(
+            "seances", "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/",
+            ("div#publicordrejour",),
+            ("4311", "4312", "4313", "4157", "4156"),  # septembre, octobre (page lue), novembre 2026 ; fin 2025
+            lignes="div.date-past, div.date-nextmeeting, div.date-future, div.table-row-body",
+        ),
+        PageEchantillon(
+            "seance", "https://www.conseilmontreux.ch/conseilcommunal/public/ordredujour/?ID=4312",
+            ("div.tplDetailBlade",),
+            ("8636", "8637", "3434", "3403"),  # ordre du jour, PV provisoire, deux points reliés à leur préavis
+            lignes="div.card",
+        ),
+        PageEchantillon(
+            "objet", "https://www.conseilmontreux.ch/conseilcommunal/public/documents/recherche/?id=3403",
+            ("div.tplDetailBlade",),
+        ),
+        PageEchantillon(
+            "membres", "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers",
+            ("div.tplCCIBPublicConseillers",),
+            ("383", "1395"),  # un vice-président et un conseiller de même nom de famille
+            lignes="div.table-row-body",
+        ),
+        PageEchantillon(
+            "membres-2", "https://www.conseilmontreux.ch/conseilcommunal/public/conseillers/?page=2",
+            ("div.tplCCIBPublicConseillers",),
+            ("318", "392"),  # le président, le rapporteur du préavis 29/2026
+            lignes="div.table-row-body",
+        ),
+    )),
+    # Le module Conseil dont la liste des Séances est sur le site de la Ville (Drupal), à Vevey : des liens vers
+    # `conseil.vevey.ch` souvent cassés ; la page d'une Séance y est en ISO-8859-1, et son `robots.txt` n'autorise
+    # que `/ConseilCommunal/seances/` (à la casse près) et les documents.
+    Echantillon("quicksite", "conseil-externe", "Vevey", 5890, (
+        PageEchantillon(
+            "seances", "https://www.vevey.ch/vie-politique/conseil-communal/seances-passees-et-videos",
+            ("div.border-top",),
+            ("157", "156"),  # 1er octobre (page lue) et 3 septembre 2026
+            lignes="div.teaser-agenda",
+        ),
+        PageEchantillon(
+            "seance", "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=157", ("div.mainDiv",),
+            # Points 2 (ordre du jour) et 9 (deux préavis), et le point 10.1, qui cite son préavis entre parenthèses.
+            ("6244", "6220", "6199"),
+            lignes="div.centerGroup",
+        ),
+    )),
 )
 
 
@@ -196,7 +314,7 @@ def enregistrer(
 ) -> list[Path]:
     """Lit les pages de `echantillon` (par `robot`, ou depuis `brut` si elles y sont déjà ; sans robot, seulement
     depuis `brut`), écrit leur réduction et l'index de la variante dans `dossier`, et rend les fichiers écrits."""
-    sortie = dossier / echantillon.plateforme / echantillon.variante
+    sortie = dossier / echantillon.nom
     lues = [(page, _lire(robot, page.url, brut, horloge)) for page in echantillon.pages]
     reduites = [_provenance(echantillon, page, brute) + reduire(brute.texte, page) for page, brute in lues]
     sortie.mkdir(parents=True, exist_ok=True)
@@ -293,7 +411,10 @@ _SELECTEUR = re.compile(r"^(?P<tag>[a-z][a-z0-9]*)?(?:#(?P<id>[\w-]+))?(?:\.(?P<
 
 
 def _correspond(noeud: _Noeud, selecteur: str) -> bool:
-    """`tag`, `#id`, `.classe` et leurs combinaisons, ou `parent>enfant` (enfant direct)."""
+    """`tag`, `#id`, `.classe` et leurs combinaisons, `parent>enfant` (enfant direct), ou plusieurs sélecteurs
+    séparés par des virgules (l'un ou l'autre)."""
+    if "," in selecteur:
+        return any(_correspond(noeud, s.strip()) for s in selecteur.split(","))
     if ">" in selecteur:
         parent, enfant = selecteur.rsplit(">", 1)
         return (
@@ -312,8 +433,9 @@ def _correspond(noeud: _Noeud, selecteur: str) -> bool:
 
 
 def _porte(valeur: object, identifiant: str) -> bool:
-    """Une valeur porte un identifiant si elle l'égale ou si un lien y finit par `/<identifiant>`. Une ligne HTML
-    le porte aussi si son texte le contient comme un mot (un numéro de préavis dans une ligne sans lien)."""
+    """Une valeur porte un identifiant si elle l'égale, si un lien y finit par `/<identifiant>` ou si l'un de ses
+    paramètres le vaut (`?ID=<identifiant>`, `&d=<identifiant>`, Quicksite). Une ligne HTML le porte aussi si son
+    texte le contient comme un mot (un numéro de préavis dans une ligne sans lien)."""
     if isinstance(valeur, _Noeud):
         texte = " ".join(_texte_de(valeur).split())
         if re.search(rf"(?<![\w-]){re.escape(identifiant)}(?![\w-])", texte):
@@ -324,7 +446,8 @@ def _porte(valeur: object, identifiant: str) -> bool:
     if isinstance(valeur, list):
         return any(_porte(v, identifiant) for v in valeur)
     texte = str(valeur)
-    return texte == identifiant or re.search(rf"/{re.escape(identifiant)}(?![\w-])", texte) is not None
+    i = re.escape(identifiant)
+    return texte == identifiant or re.search(rf"/{i}(?![\w-])|[?&]\w+={i}(?![^&#])", texte) is not None
 
 
 def reduire(texte: str, page: PageEchantillon) -> str:
@@ -364,7 +487,10 @@ def _filtrer(bloc: _Noeud, page: PageEchantillon, vus: set[str]) -> None:
     for noeud in [bloc, *bloc.elements()]:
         noeud.enfants = [
             e for e in noeud.enfants
-            if not (isinstance(e, _Noeud) and (e.tag in RETIRES or any(_correspond(e, x) for x in page.sans)))
+            if not (
+                isinstance(e, _Noeud)
+                and ((e.tag in RETIRES and e.tag not in page.garder) or any(_correspond(e, x) for x in page.sans))
+            )
         ]
         noeud.attrs = [(k, v) for k, v in noeud.attrs if k != "style" and not k.startswith("on")]
         entites = noeud.attr("data-entities")

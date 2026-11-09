@@ -1,0 +1,19 @@
+{
+ "plateforme": "quicksite",
+ "variante": "ancienne",
+ "commune": "Aigle",
+ "ofs": 5401,
+ "pages": [
+  {
+   "sorte": "seances",
+   "url": "https://www.aigle.ch/documents",
+   "finale": "https://www.aigle.ch/documents",
+   "statut": 200,
+   "entetes": {
+    "content-type": "text/html; Charset=UTF-8",
+    "content-encoding": "gzip"
+   },
+   "fichier": "seances.html"
+  }
+ ]
+}

@@ -61,7 +61,7 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
-from robot_communal import CrawlDelayTropLong, Robot, erreur_tls, robot_des_sources
+from robot_communal import Alternance, CrawlDelayTropLong, Robot, alterner, erreur_tls, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
     FUSEAU,
@@ -397,6 +397,7 @@ def passage(
     rattrapage: bool = False,
     resoudre: Callable[[str], str] = socket.gethostbyname,
     rattrapage_cible: str | None = None,
+    alternance: Alternance = alterner,
 ) -> EtatSources:
     """Sonde chaque source qui a un bloc `sonde` et le site de chaque commune due (`sonder_les_sites`), puis écrit
     `etat-sources.json` et copie `schema/` dans `depot`, un clone du dépôt de données. L'état précédent est relu
@@ -407,7 +408,10 @@ def passage(
     tout le passage, sur le même client HTTP, avec la même horloge et la même attente, et `resoudre` pour le /24 de
     chaque hôte ; il ralentit les réseaux de la section `reseaux` de `sources.json`, plafonne chaque commune à
     `PLAFOND` requêtes hors rattrapage ciblé, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
-    (`reseaux`) pour que le passage suivant les teste d'abord. Le commit et le push sont l'affaire de l'appelant.
+    (`reseaux`) pour que le passage suivant les teste d'abord. Les sondes, puis les lectures des sites, se font un
+    fil par réseau /24 (`alternance`, que reçoit le robot) : un réseau lit pendant que les autres attendent leurs
+    5 s ; leurs résultats sont appliqués dans l'ordre de `sources.json`. Le commit et le push sont l'affaire de
+    l'appelant.
 
     Un `rattrapage` relit tout l'historique des conseils d'OpenParlData, à toute heure, sans toucher aux sites des
     communes. Un `rattrapage_cible` (une plateforme ou le n° OFS d'une commune scrapée, lancé à la main) relit tout
@@ -437,6 +441,7 @@ def passage(
         resoudre,
         rattrapage=rattrapage_cible is not None,
         bloques=lu.reseaux if lu else {},
+        alternance=alternance,
     )
     sondes, sautes = sonder_les_sites(robot, sources, precedent, lire_imports(depot), horloge, rattrapes)
     etats |= sondes
@@ -703,21 +708,32 @@ def sonder_les_sites(
     etats: dict[str, EtatSource] = {}
     lents: dict[str, str] = {}  # les conseils des sites au `Crawl-delay` trop long, et ce motif
 
-    def sonder(source: Source) -> None:
+    def sonde(source: Source) -> tuple[str | None, datetime] | CrawlDelayTropLong:
+        """La sonde d'une commune, et son heure ; sans état modifié, pour pouvoir passer dans le fil de son réseau."""
         try:
             motif = sonder_site(robot, source, sources)
         except CrawlDelayTropLong as e:
-            lents[source.conseil.cle] = e.motif
+            return e
+        return motif, _a_la_seconde(horloge())
+
+    def appliquer(source: Source, resultat: tuple[str | None, datetime] | CrawlDelayTropLong) -> None:
+        if isinstance(resultat, CrawlDelayTropLong):
+            lents[source.conseil.cle] = resultat.motif
             if source.id in precedent:
                 etats[source.id] = precedent[source.id]
             return
-        etats[source.id] = _suivant(precedent.get(source.id), _a_la_seconde(horloge()), motif)
+        motif, quand = resultat
+        etats[source.id] = _suivant(precedent.get(source.id), quand, motif)
+
+    def sonder(source: Source) -> None:
+        appliquer(source, sonde(source))
 
     # Un réseau bloqué à un passage précédent est d'abord testé par une seule sonde, celle de sa première commune
     # due, même si elle a déjà été sondée ce jour : elle le rouvre aux autres, ou il reste bloqué.
     for source in sites:
         if source.conseil.cle in dus and robot.a_tester(source.site.seances):
             sonder(source)
+    a_sonder = []
     for source in sites:
         if source.id in etats:
             continue
@@ -727,7 +743,12 @@ def sonder_les_sites(
             if avant is not None:
                 etats[source.id] = avant
             continue
-        sonder(source)
+        a_sonder.append(source)
+    # Un fil par réseau ; les états sont ensuite écrits dans l'ordre des sources.
+    resultats = robot.en_alternance(a_sonder, lambda s: s.site.seances, sonde)
+    for source, resultat in zip(a_sonder, resultats, strict=True):
+        appliquer(source, resultat)
+    etats = {s.id: etats[s.id] for s in sites if s.id in etats}
     sautes = {
         s.conseil.cle: f"sonde en échec : {etats[s.id].motif}"
         for s in sites
@@ -767,7 +788,13 @@ def importer_les_conseils(
     if dus:
         try:
             apres = importer_conseils(
-                depot, sources, opd, horloge, dus=dus, rattrapage=rattrapes is not None, robot=robot
+                depot,
+                sources,
+                opd,
+                horloge,
+                dus=dus,
+                rattrapage=rattrapes is not None,
+                robot=robot,
             ).conseils
         except Exception:
             # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus : l'état des

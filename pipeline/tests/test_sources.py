@@ -206,7 +206,7 @@ def test_une_source_sans_couverture_qui_donne_un_conseil_est_lue(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "raison", ["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site"]
+    "raison", ["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site", "forme_non_lue"]
 )
 def test_une_commune_non_couverte_a_sa_raison_et_ni_conseil_ni_sonde(tmp_path, raison):
     declaree = _non_couverte(couverture={"communes": [5555], "mode": "non_couvert", "raison": raison})

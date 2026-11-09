@@ -122,8 +122,10 @@ describe('sources de la couche Conseils', () => {
 			'site-5458',
 			'site-5487' // Lussery-Villars, non couverte
 		]);
-		expect(ids).toHaveLength(3 + 28);
+		expect(ids).toHaveLength(3 + 28 + 38);
 		expect(ids).toContain('site-5568');
+		expect(ids.slice(3 + 28, 3 + 28 + 2)).toEqual(['site-5401', 'site-5402']); // Quicksite, après i-web
+		expect(ids).toContain('site-5886'); // Montreux, module Conseil
 	});
 });
 
@@ -137,7 +139,8 @@ describe('message « Non couvert » d’une commune', () => {
 		['rien_en_ligne', 'le site de Sainte-Croix ne publie pas les séances de son conseil.'],
 		['demande_commune', 'la commune de Sainte-Croix a demandé que son site ne soit plus lu.'],
 		['refus_robots', 'le site de Sainte-Croix refuse les robots.'],
-		['nouveau_site', 'le nouveau site de Sainte-Croix n’est pas encore lu.']
+		['nouveau_site', 'le nouveau site de Sainte-Croix n’est pas encore lu.'],
+		['forme_non_lue', 'le site de Sainte-Croix publie son conseil sous une forme que Vigie Vaud ne lit pas encore.']
 	] as const)('d’une plateforme retenue, en %s : la raison et le lien vers le conseil', (raison, texte) => {
 		const sources = avecSources(SOURCES, sourceNonCouverte(raison));
 

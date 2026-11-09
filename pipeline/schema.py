@@ -82,7 +82,8 @@ VoieAcces = TypeAliasType("VoieAcces", Literal["direct", "cron", "worker", "prep
 SorteFraicheur = TypeAliasType("SorteFraicheur", Literal["donnee", "requete", "millesime", "import"])
 ModeCouverture = TypeAliasType("ModeCouverture", Literal["api", "scrape", "non_couvert"])
 RaisonNonCouvert = TypeAliasType(
-    "RaisonNonCouvert", Literal["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site"]
+    "RaisonNonCouvert",
+    Literal["preavis_seuls", "rien_en_ligne", "demande_commune", "refus_robots", "nouveau_site", "forme_non_lue"],
 )
 
 
@@ -233,6 +234,23 @@ class Site(Modele):
     membres: Lien | None = Field(
         default=None, description="Page des membres du conseil, en HTML ; absente si le site n'en a pas."
     )
+    coreapi: Coreapi | None = Field(
+        default=None,
+        description="Paramètres de la recherche `coreapi` d'un site Quicksite de nouvelle génération, dont la page "
+        "`seances` est vide et remplie par le navigateur.",
+    )
+
+
+class Coreapi(Modele):
+    """La recherche `coreapi` d'une page Quicksite de nouvelle génération : les attributs `data-elasticsearch-*` de
+    sa section `tplDeepsearch`, et le projet de son script. Le cron demande le fragment HTML de cette recherche
+    (`/coreapi/elasticsearch/projects/<projet>/<vue>/search?…`), page par page, au lieu de la page elle-même."""
+
+    projet: str = Field(min_length=1, pattern=r"^[\w-]+$", description="Projet du site (`founex25`).")
+    vue: str = Field(min_length=1, pattern=r"^[\w-]+$", description="Vue de la recherche (`documentconseildates`).")
+    noeud: int = Field(ge=1, description="Nœud de la page des documents (`data-elasticsearch-node`).")
+    taille: int = Field(ge=1, le=500, description="Documents par page de résultats (`data-elasticsearch-pagesize`).")
+    tri: str = Field(min_length=1, pattern=r"^\w+$", description="Tri des résultats (`date_extid`).")
 
 
 class Variante(Modele):
