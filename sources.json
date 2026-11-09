@@ -1232,7 +1232,7 @@
 			"voie_acces": "cron",
 			"fraicheur": "import",
 			"couverture": { "communes": [5719], "mode": "scrape" },
-			"conseil": { "body_key": "5719", "donne": ["preavis", "seances"] },
+			"conseil": { "body_key": "5719", "donne": ["seances"] },
 			"site": {
 				"plateforme": "quicksite",
 				"variante": "coreapi",

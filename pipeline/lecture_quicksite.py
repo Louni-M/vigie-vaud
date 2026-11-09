@@ -31,7 +31,8 @@ ni ordre du jour structuré ; ses documents sont tous ceux de la Séance, préav
 « séances et préavis ») : un document dont le titre commence par « Préavis <numéro> » ; le numéro brut est pris là
 seulement (`005_2026-2031`, `06/2025`), le type est « Préavis », la date celle de sa Séance ; ses documents sont le
 préavis et ceux de la même Séance qui citent le même Objet (« 072: … »). Un préavis sans numéro n'est pas importé ; de deux
-préavis de même numéro, le premier du site (le plus récent) l'emporte ; l'un et l'autre sont notés dans le journal.
+préavis de même numéro, le plus ancien (le plus petit nœud) l'emporte ; l'un et l'autre sont notés dans le journal. Les
+documents sont rangés par nœud : la recherche ne range pas toujours de la même façon des documents à égalité de tri.
 
 Variante **`conseil`** (module « Conseil communal » de Quicksite, sur un site à part : Montreux) : la liste des
 Séances (`site.seances`, `ordredujour/`) donne l'année en cours en pastilles (jour, mois ; les Séances annoncées
@@ -462,9 +463,16 @@ _OBJET_NUMERO = re.compile(r"^(?:Objet\s+n[°o]\.?\s*)?(?P<numero>[\w/.-]*\d[\w/
 
 # --- Séances et préavis -------------------------------------------------------------------------------------------
 
-# « Préavis 005_2026-2031 », « Préavis n° 06/2025 » : le numéro est le premier mot qui suit « Préavis », quand il
-# porte un chiffre et n'est pas une date.
-_NUMERO_PREAVIS = re.compile(r"^préavis(?:\s+municipal)?\s+(?:n[°o]\.?\s*)?(?P<numero>\S*\d\S*)", re.I)
+# Le numéro qui suit « Préavis » : des chiffres et leurs séparateurs (« 005_2026-2031 », « 06/2025 », « 2026-14 »),
+# l'année comprise quand elle suit après une barre ou une espace (« N°3 /2023 », « N° 1 / 2022 », « 04 2026 ») ; ce
+# qui suit, lettres comprises, n'en est pas (« 01-2026-Comptes 2025.pdf » donne « 01-2026 »). Tel que le site l'écrit.
+_NUMERO_PREAVIS = re.compile(
+    r"^préavis(?:\s+municipal)?\s*(?:n[°o]\.?\s*)?"
+    r"(?P<numero>(?:\d[\d/._-]*\d|\d)(?:\s*/\s*\d{2,4}\b|\s+(?:19|20)\d{2}\b)?)",
+    re.I,
+)
+# Un document qui cite un Objet sans en être le préavis : son rapport, sa convocation, la réponse de la Municipalité.
+_PAS_UN_PREAVIS = re.compile(r"^(rapport|convocation|r[ée]ponses?|amendement|annexe|plan|extrait|d[ée]cision)", re.I)
 _DATE_CHIFFRES = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
 _MOIS = "janvier février mars avril mai juin juillet août septembre octobre novembre décembre".split()
 _DATE_LETTRES = re.compile(rf"\b(\d{{1,2}})(?:er)?\s+({'|'.join(_MOIS)})\s+(\d{{4}})\b", re.I)
@@ -488,6 +496,10 @@ def _seances_et_preavis(
 ) -> tuple[list[dict], list[dict]]:
     """Les Séances (*meetings*) et les préavis (*affairs*) des documents, dans l'ordre du site, ceux de la fenêtre
     seulement."""
+    # La recherche range d'une lecture à l'autre différemment les documents à égalité de tri (Lully, Oron) : ils sont
+    # remis dans l'ordre de leur nœud, celui de leur mise en ligne, pour qu'un passage ne réécrive pas ce qu'il a lu
+    # la veille. De deux préavis de même numéro, le plus ancien l'emporte donc.
+    documents = sorted(documents, key=_noeud)
     dans_la_fenetre = [d for d in documents if depuis is None or _quand(d) is None or _quand(d) >= depuis]
     par_seance: dict[tuple[date, str], list[_Document]] = {}
     for d in dans_la_fenetre:
@@ -510,7 +522,9 @@ def _seances_et_preavis(
     for d in dans_la_fenetre:
         par_l_objet = _OBJET_NUMERO.match(d.objet or "")
         titre_de_preavis = d.titre.lower().startswith("préavis")
-        type_de_preavis = (d.type or "").lower() in ("", "préavis", "preavis")
+        type_de_preavis = (d.type or "").lower() in ("préavis", "preavis") or (
+            not d.type and not _PAS_UN_PREAVIS.match(d.titre)
+        )
         if not titre_de_preavis and not (par_l_objet and type_de_preavis):
             continue
         numero = _numero(d.titre) if titre_de_preavis else None
@@ -541,6 +555,12 @@ def _seances_et_preavis(
             }
         )
     return seances, preavis
+
+
+def _noeud(d: _Document) -> int:
+    """Le nœud du document (`/n<id>`), qui croît avec sa mise en ligne."""
+    m = _LIEN_NOEUD.search(d.lien)
+    return int(m[0][2:]) if m else 0
 
 
 def _ref(d: _Document) -> str | None:
