@@ -404,6 +404,26 @@ def test_la_vue_par_annees_donne_la_seance_de_son_en_tete_et_le_preavis_de_sa_re
     assert sorted(p.name for p in (tmp_path / "conseils/5798/objets").iterdir()) == ["04-2026.json"]
 
 
+def test_le_numero_d_un_preavis_garde_son_annee_et_un_rapport_n_est_pas_un_preavis(tmp_path, horloge):
+    # Jouxtens-Mézery numérote « N°3 /2023 », Mies écrit le nom du fichier (« 01-2026-Comptes 2025.pdf ») ; à Oron,
+    # le rapport de la commission, sans type, cite l'Objet de son préavis.
+    reseau = _reseau(horloge)
+    reseau.pages[_recherche(reseau, ROPRAZ)] = Page(
+        '<div class="tplDocumentConseil"><div>1 à 4 sur 4 éléments trouvés</div>'
+        + _document_par_type(901, "Rapport de la Commission ad hoc", "", "Objet n° 11-2026", "6 octobre 2026")
+        + _document_par_type(902, "Préavis N°3 /2026: Demande de crédit", "Préavis", "", "6 octobre 2026")
+        + _document_par_type(903, "Préavis N°3 /2025: Comptes", "Préavis", "", "6 octobre 2026")
+        + _document_par_type(904, "Préavis 01-2026-Comptes 2025.pdf", "Préavis", "", "6 octobre 2026")
+        + "</div>"
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz()))
+
+    numeros = sorted(_lire(tmp_path, f"conseils/5798/objets/{p.name}")["numero"]
+                     for p in (tmp_path / "conseils/5798/objets").iterdir())
+    assert numeros == ["01-2026", "3 /2025", "3 /2026"]
+
+
 def test_une_recherche_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):
     # Un conseil général qui n'a encore rien publié : « 0 éléments trouvés » n'est pas un échec.
     reseau = _reseau(horloge)

@@ -462,9 +462,16 @@ _OBJET_NUMERO = re.compile(r"^(?:Objet\s+n[°o]\.?\s*)?(?P<numero>[\w/.-]*\d[\w/
 
 # --- Séances et préavis -------------------------------------------------------------------------------------------
 
-# « Préavis 005_2026-2031 », « Préavis n° 06/2025 » : le numéro est le premier mot qui suit « Préavis », quand il
-# porte un chiffre et n'est pas une date.
-_NUMERO_PREAVIS = re.compile(r"^préavis(?:\s+municipal)?\s+(?:n[°o]\.?\s*)?(?P<numero>\S*\d\S*)", re.I)
+# Le numéro qui suit « Préavis » : des chiffres et leurs séparateurs (« 005_2026-2031 », « 06/2025 », « 2026-14 »),
+# l'année comprise quand elle suit après une barre ou une espace (« N°3 /2023 », « N° 1 / 2022 », « 04 2026 ») ; ce
+# qui suit, lettres comprises, n'en est pas (« 01-2026-Comptes 2025.pdf » donne « 01-2026 »). Tel que le site l'écrit.
+_NUMERO_PREAVIS = re.compile(
+    r"^préavis(?:\s+municipal)?\s*(?:n[°o]\.?\s*)?"
+    r"(?P<numero>(?:\d[\d/._-]*\d|\d)(?:\s*/\s*\d{2,4}\b|\s+(?:19|20)\d{2}\b)?)",
+    re.I,
+)
+# Un document qui cite un Objet sans en être le préavis : son rapport, sa convocation, la réponse de la Municipalité.
+_PAS_UN_PREAVIS = re.compile(r"^(rapport|convocation|r[ée]ponses?|amendement|annexe|plan|extrait|d[ée]cision)", re.I)
 _DATE_CHIFFRES = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
 _MOIS = "janvier février mars avril mai juin juillet août septembre octobre novembre décembre".split()
 _DATE_LETTRES = re.compile(rf"\b(\d{{1,2}})(?:er)?\s+({'|'.join(_MOIS)})\s+(\d{{4}})\b", re.I)
@@ -510,7 +517,9 @@ def _seances_et_preavis(
     for d in dans_la_fenetre:
         par_l_objet = _OBJET_NUMERO.match(d.objet or "")
         titre_de_preavis = d.titre.lower().startswith("préavis")
-        type_de_preavis = (d.type or "").lower() in ("", "préavis", "preavis")
+        type_de_preavis = (d.type or "").lower() in ("préavis", "preavis") or (
+            not d.type and not _PAS_UN_PREAVIS.match(d.titre)
+        )
         if not titre_de_preavis and not (par_l_objet and type_de_preavis):
             continue
         numero = _numero(d.titre) if titre_de_preavis else None
