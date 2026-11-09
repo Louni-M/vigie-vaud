@@ -616,15 +616,22 @@ VUES_DU_CONSEIL = ("documentconseil", "documentconseildates", "documentconseilye
 def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
     """Le site d'une commune mesuré pour le script de préparation des sources, d'après sa page du conseil (déjà lue)
     et ses pages déjà déclarées : une page sans trace de Quicksite l'écarte (« autre ») ; puis, parmi les pages
-    déclarées, la page du conseil et `ESSAIS` liens de son menu au plus, la première qui porte la liste d'une
-    variante : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers
-    le module (`conseil-externe`), la bibliothèque de l'ancienne génération (`ancienne`), ou la recherche `coreapi`
+    déclarées, la page du conseil et `ESSAIS` liens de son menu au plus, la première qui porte le marqueur de sonde
+    d'une variante, tel que `plateforme` le déclare (section `plateformes` de `sources.json`), et la liste qui va
+    avec : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers le
+    module (`conseil-externe`), la bibliothèque de l'ancienne génération (`ancienne`), ou la recherche `coreapi`
     d'une vue du conseil (`coreapi`, avec ses paramètres) ; le fragment de la recherche est lu pour que `requetes`
     rejoue la lecture. Le niveau et les requêtes du passage ordinaire sont l'affaire du script (`requetes`)."""
     conseil = pages.texte(page_du_conseil) or ""
     if not _TRACE.search(conseil):
         return Mesure("autre", remarques=[f"aucune trace de Quicksite sur {page_du_conseil}"])
     mesure = Mesure(plateforme.id)
+    marqueurs = {v.id: v.marqueur for v in plateforme.variantes}
+
+    def porte(texte: str, variante: str) -> bool:
+        """La page porte le marqueur de sonde de `variante` ; une variante que `plateforme` ne déclare pas, aucun."""
+        return variante in marqueurs and marqueurs[variante] in texte
+
     tous = [(u, f"{u} {t}") for u, t in liens(conseil, page_du_conseil) if not _HORS_SUJET.search(t)]
     menu = [u for motif in _LIENS_DU_MENU for u, texte in tous if motif.search(texte)]
     module = [urljoin(page_du_conseil, h) for h in re.findall(r'href="([^"]*/conseilcommunal/public/ordredujour/)"', conseil)]
@@ -634,18 +641,20 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
         texte = pages.texte(url)
         if texte is None:
             continue
-        if "tplCCIBPublicOrdreJour" in texte:
+        if porte(texte, "conseil"):
             mesure.variante, mesure.seances = "conseil", url
             conseillers = urljoin(url, "../conseillers/")  # avec sa barre : sans, le site redirige
             if pages.texte(conseillers) and "tplCCIBPublicConseillers" in (pages.texte(conseillers) or ""):
                 mesure.membres = conseillers
             return mesure
-        if "teaser-agenda" in texte and _ID_DU_MODULE.search(texte):
+        if porte(texte, "conseil-externe") and _ID_DU_MODULE.search(texte):
             mesure.variante, mesure.seances = "conseil-externe", url
             return mesure
-        if "tplListDocumentSummary" in texte:
+        if porte(texte, "ancienne"):
             mesure.variante, mesure.seances = "ancienne", url
             return mesure
+        if not porte(texte, "coreapi"):
+            continue
         coreapi = _parametres_coreapi(texte)
         if coreapi is not None:
             mesure.variante, mesure.seances, mesure.coreapi = "coreapi", url, coreapi
