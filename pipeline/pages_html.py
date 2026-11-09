@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import html
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
@@ -20,6 +21,20 @@ class Noeud:
 
     def attr(self, nom: str) -> str | None:
         return self.attrs.get(nom)
+
+    def classes(self) -> list[str]:
+        """Les classes de l'élément (son attribut `class`)."""
+        return (self.attr("class") or "").split()
+
+    def premier(self, condition: Callable[[Noeud], bool]) -> Noeud | None:
+        """Le premier élément descendant qui remplit `condition`, dans l'ordre du document, sinon `None`."""
+        return next((n for n in self.elements() if condition(n)), None)
+
+    def texte_du_premier(self, condition: Callable[[Noeud], bool]) -> str:
+        """Le texte, espaces réduites, du premier élément descendant qui remplit `condition` ; vide s'il n'y en a
+        pas."""
+        premier = self.premier(condition)
+        return espaces(premier.texte()) if premier else ""
 
     def elements(self, sauf: list[Noeud] | None = None):
         """Les éléments descendants, dans l'ordre du document, sans ceux de `sauf` ni leurs descendants."""

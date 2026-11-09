@@ -125,7 +125,7 @@ def _journal(nom: str, message: str) -> None:
     print(f"{nom} : élément sauté, {message}", file=sys.stderr)
 
 
-def _page_suivante(robot: Robot, source: Source, url: str, page: int) -> Reponse | None:
+def _page_de_liste(robot: Robot, source: Source, url: str, page: int) -> Reponse | None:
     """La page `page` d'une liste paginée. La première doit se lire (sinon l'import est en échec) ; une suivante
     qui ne se lit pas finit la liste, notée dans le journal (un réseau bloqué interrompt quand même l'import)."""
     if page == 1:
@@ -142,12 +142,76 @@ def _liste_tronquee(nom: str) -> None:
     _journal(nom, f"liste tronquée : {PAGES_MAX} pages lues sans en voir la fin, les suivantes ne le sont pas")
 
 
+def _meeting(
+    nom: str,
+    jour: date,
+    documents: list[dict],
+    *,
+    heure: str | None = None,
+    lien: str | None = None,
+    points: list[dict] | None = None,
+) -> dict:
+    """Une Séance à la forme d'un *meeting* d'OpenParlData, sans identifiant (ADR 0010) : son nom brut, son jour et
+    son heure (« 19:30 ») si le site la donne, sa page propre si elle en a une, les points de son ordre du jour s'il
+    est structuré, et ses documents."""
+    return {
+        "id": None,
+        "name": {"fr": nom},
+        "begin_date": jour.isoformat() + (f"T{heure}:00" if heure else ""),
+        "url_external": {"fr": lien} if lien else None,
+        "agendas": {"data": points or []},
+        "docs": {"data": documents},
+    }
+
+
+def _affair(
+    numero: str,
+    titre: str,
+    type_: str,
+    depose: str | None,
+    documents: list[dict],
+    *,
+    lien: str | None = None,
+    contributeurs: list[dict] | None = None,
+) -> dict:
+    """Un Objet à la forme d'une *affair* d'OpenParlData, sans identifiant (ADR 0010) ni statut (aucune variante de
+    Quicksite n'en publie) : son numéro brut, son titre, son type, sa date, sa page propre si elle en a une, ses
+    auteur·e·s s'ils sont publiés, et ses documents."""
+    return {
+        "id": None,
+        "number": numero,
+        "title": {"fr": titre},
+        "type_name": {"fr": type_},
+        "state_name": None,
+        "begin_date": depose,
+        "url_external": {"fr": lien} if lien else None,
+        "contributors": {"data": contributeurs or []},
+        "docs": {"data": documents},
+    }
+
+
+def _en_double(nom: str, objets: list[dict], numero: str, titre: str, regle: str) -> bool:
+    """Un Objet de numéro `numero` est déjà parmi `objets` : celui de titre `titre` est sauté, noté dans le journal
+    avec celui que `regle` a gardé (« le premier du site », « le plus ancien »)."""
+    garde = next((o for o in objets if o["number"] == numero), None)
+    if garde is not None:
+        _journal(nom, f"Objet {numero} en double, {regle} gardé (« {garde['title']['fr']} ») : {titre}")
+    return garde is not None
+
+
+def _doc(d: _DocumentDeBibliotheque | _DocumentDeRecherche) -> dict:
+    """Un document d'une liste, à la forme d'un document d'OpenParlData : son titre, son lien stable, sa
+    publication et son type."""
+    return {"name": d.titre, "url": d.lien, "date": d.publie.isoformat() if d.publie else None, "category": d.type}
+
+
 # --- Bibliothèque (ancienne génération) ----------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
-class _Piece:
-    """Un document de la bibliothèque de l'ancienne génération."""
+class _DocumentDeBibliotheque:
+    """Un document de la bibliothèque de l'ancienne génération : la référence de son Objet et sa description, mais
+    pas de Séance (elle se lit dans son titre)."""
 
     lien: str  # lien stable `Home.asp?N=<id>&DocAction=Download`, absolu
     titre: str
@@ -171,139 +235,109 @@ def _url_de_page(site: Site, page: int) -> str:
     return f"{site.seances}{'&' if '?' in site.seances else '?'}Page_0={page}"
 
 
-def _documents_bibliotheque(robot: Robot, source: Source, depuis: date | None) -> list[_Piece]:
+def _documents_bibliotheque(robot: Robot, source: Source, depuis: date | None) -> list[_DocumentDeBibliotheque]:
     """Les documents de la bibliothèque, dans l'ordre du site, page après page : jusqu'à une page vide ou qui ne
     donne rien de nouveau, et, au passage ordinaire, jusqu'à la première page mise en ligne avant la fenêtre."""
     site = source.site
     assert site is not None
-    pieces: list[_Piece] = []
+    documents: list[_DocumentDeBibliotheque] = []
     vus: set[str] = set()
     for page in range(1, PAGES_MAX + 1):
-        reponse = _page_suivante(robot, source, _url_de_page(site, page), page)
+        reponse = _page_de_liste(robot, source, _url_de_page(site, page), page)
         if reponse is None:
             break
-        lues = _page_de_bibliotheque(source.nom, reponse.texte, reponse.url)
-        nouvelles = [p for p in lues if p.lien not in vus]
-        if not nouvelles:
+        lus = _page_de_bibliotheque(source.nom, reponse.texte, reponse.url)
+        nouveaux = [d for d in lus if d.lien not in vus]
+        if not nouveaux:
             break
-        vus.update(p.lien for p in nouvelles)
-        pieces += nouvelles
-        if depuis is not None and all(p.publie is not None and p.publie < depuis for p in nouvelles):
+        vus.update(d.lien for d in nouveaux)
+        documents += nouveaux
+        if depuis is not None and all(d.publie is not None and d.publie < depuis for d in nouveaux):
             break
     else:
         _liste_tronquee(source.nom)
-    return pieces
+    return documents
 
 
-def _page_de_bibliotheque(nom: str, texte: str, url: str) -> list[_Piece]:
+def _page_de_bibliotheque(nom: str, texte: str, url: str) -> list[_DocumentDeBibliotheque]:
     """Les documents d'une page de la bibliothèque. Lève `ValueError` pour une page sans bibliothèque, ou dont
     aucun document ne se lit."""
-    racine = arbre(texte)
-    liste = next((n for n in racine.elements() if "tplListDocumentSummary" in _classes(n)), None)
+    liste = arbre(texte).premier(lambda n: "tplListDocumentSummary" in n.classes())
     if liste is None:
         raise ValueError(f"{url} : aucune bibliothèque de documents (tplListDocumentSummary)")
-    pieces: list[_Piece] = []
+    documents: list[_DocumentDeBibliotheque] = []
     illisibles = 0
-    for noeud in (n for n in liste.elements() if "tplDocumentSummaryItem" in _classes(n)):
-        piece = _piece(noeud, url)
-        if isinstance(piece, str):
+    for noeud in (n for n in liste.elements() if "tplDocumentSummaryItem" in n.classes()):
+        document = _document_de_bibliotheque(noeud, url)
+        if isinstance(document, str):
             illisibles += 1
-            _journal(nom, f"document illisible ({piece})")
+            _journal(nom, f"document illisible ({document})")
         else:
-            pieces.append(piece)
-    if illisibles and not pieces:
+            documents.append(document)
+    if illisibles and not documents:
         raise ValueError(f"{url} : aucun document lisible dans la bibliothèque")
-    return pieces
+    return documents
 
 
-def _piece(noeud: Noeud, url: str) -> _Piece | str:
-    def texte_de(condition) -> str:
-        return next((espaces(n.texte()) for n in noeud.elements() if condition(n)), "")
-
-    titre = texte_de(lambda n: "strNodeName" in _classes(n))
-    lien = next(
-        (a.attr("href") or "" for a in noeud.elements() if a.tag == "a" and "DocAction=Download" in (a.attr("href") or "")),
-        None,
-    )
-    if not lien:
+def _document_de_bibliotheque(noeud: Noeud, url: str) -> _DocumentDeBibliotheque | str:
+    """Un document de la bibliothèque, ou la raison pour laquelle il ne se lit pas."""
+    titre = noeud.texte_du_premier(lambda n: "strNodeName" in n.classes())
+    lien = noeud.premier(lambda n: n.tag == "a" and "DocAction=Download" in (n.attr("href") or ""))
+    if lien is None:
         return f"sans lien vers le document : {titre or url}"
-    reference = texte_de(lambda n: "strBusinessID" in _classes(n)).rstrip(": ")
-    return _Piece(
-        lien=urljoin(url, lien),
+    reference = noeud.texte_du_premier(lambda n: "strBusinessID" in n.classes()).rstrip(": ")
+    return _DocumentDeBibliotheque(
+        lien=urljoin(url, lien.attr("href") or ""),
         titre=titre or "Document",
-        type=texte_de(lambda n: n.attr("id") == "doctype") or None,
+        type=noeud.texte_du_premier(lambda n: n.attr("id") == "doctype") or None,
         reference=reference or None,
-        description=texte_de(lambda n: "strDescription" in _classes(n)),
-        publie=_date_ecrite(texte_de(lambda n: "dtmDocLastUpdate" in _classes(n))),
+        description=noeud.texte_du_premier(lambda n: "strDescription" in n.classes()),
+        publie=_date_ecrite(noeud.texte_du_premier(lambda n: "dtmDocLastUpdate" in n.classes())),
     )
 
 
 def _bibliotheque(
-    nom: str, pieces: list[_Piece], depuis: date | None, avec_preavis: bool
+    nom: str, documents: list[_DocumentDeBibliotheque], depuis: date | None, avec_preavis: bool
 ) -> tuple[list[dict], list[dict]]:
     """Les Séances, tirées des ordres du jour, procès-verbaux et décisions datés, et les préavis de la bibliothèque,
     dans l'ordre du site, ceux de la fenêtre seulement."""
-    par_seance: dict[date, list[_Piece]] = {}
-    for p in pieces:
-        if p.type not in TYPES_DE_SEANCE and not (p.type is None and _TITRES_DE_SEANCE.match(p.titre)):
+    par_seance: dict[date, list[_DocumentDeBibliotheque]] = {}
+    for d in documents:
+        if d.type not in TYPES_DE_SEANCE and not (d.type is None and _TITRES_DE_SEANCE.match(d.titre)):
             continue
-        jour = _date_ecrite(p.titre) or _date_ecrite(p.description)
+        jour = _date_ecrite(d.titre) or _date_ecrite(d.description)
         if jour is None:
-            _journal(nom, f"document de Séance sans date : {p.titre}")
+            _journal(nom, f"document de Séance sans date : {d.titre}")
             continue
         if depuis is None or jour >= depuis:
-            par_seance.setdefault(jour, []).append(p)
+            par_seance.setdefault(jour, []).append(d)
     seances = [
-        {
-            "id": None,
-            "name": {"fr": f"Séance du {_jour_en_lettres(jour)}"},
-            "begin_date": jour.isoformat(),
-            "url_external": None,
-            "agendas": {"data": []},
-            "docs": {"data": [_doc_de_piece(p) for p in docs]},
-        }
+        _meeting(f"Séance du {_jour_en_lettres(jour)}", jour, [_doc(d) for d in docs])
         for jour, docs in par_seance.items()
     ]
     if not avec_preavis:
         return seances, []
     preavis: list[dict] = []
-    for p in pieces:
-        if p.type != TYPE_PREAVIS or (depuis is not None and p.publie is not None and p.publie < depuis):
+    for d in documents:
+        if d.type != TYPE_PREAVIS or (depuis is not None and d.publie is not None and d.publie < depuis):
             continue
-        numero = _numero(p.titre)
+        numero = _numero(d.titre)
         if numero is None:
-            _journal(nom, f"Objet sans numéro, non importé : {p.titre}")
+            _journal(nom, f"Objet sans numéro, non importé : {d.titre}")
             continue
-        garde = next((o for o in preavis if o["number"] == numero), None)
-        if garde is not None:
-            _journal(nom, f"Objet {numero} en double, le premier du site gardé (« {garde['title']['fr']} ») : {p.titre}")
+        if _en_double(nom, preavis, numero, d.titre, "le premier du site"):
             continue
-        lies = [p] + [x for x in pieces if x is not p and x.type != TYPE_PREAVIS and numero in _cites(x)]
-        suite = p.titre[p.titre.index(numero) + len(numero) :].strip(" -–—:")
-        preavis.append(
-            {
-                "id": None,
-                "number": numero,
-                "title": {"fr": suite or p.titre},
-                "type_name": {"fr": TYPE_PREAVIS},
-                "state_name": None,
-                "begin_date": p.publie.isoformat() if p.publie else None,
-                "url_external": None,
-                "contributors": {"data": []},
-                "docs": {"data": [_doc_de_piece(x) for x in lies]},
-            }
-        )
+        lies = [d] + [x for x in documents if x is not d and x.type != TYPE_PREAVIS and numero in _cites(x)]
+        suite = d.titre[d.titre.index(numero) + len(numero) :].strip(" -–—:")
+        depose = d.publie.isoformat() if d.publie else None
+        preavis.append(_affair(numero, suite or d.titre, TYPE_PREAVIS, depose, [_doc(x) for x in lies]))
     return seances, preavis
 
 
-def _cites(p: _Piece) -> set[str]:
+def _cites(d: _DocumentDeBibliotheque) -> set[str]:
     """Les numéros d'Objet qu'un document cite : sa référence, et les préavis que son titre nomme."""
-    cites = set(_CITE_UN_PREAVIS.findall(p.titre))
-    return cites | {p.reference} if p.reference else cites
-
-
-def _doc_de_piece(p: _Piece) -> dict:
-    return {"name": p.titre, "url": p.lien, "date": p.publie.isoformat() if p.publie else None, "category": p.type}
+    cites = set(_CITE_UN_PREAVIS.findall(d.titre))
+    return cites | {d.reference} if d.reference else cites
 
 
 def _jour_en_lettres(jour: date) -> str:
@@ -345,7 +379,9 @@ def _url_de_recherche(site: Site, page: int = 1) -> str:
 
 
 @dataclass(frozen=True)
-class _Document:
+class _DocumentDeRecherche:
+    """Un document de la recherche `coreapi` : sa Séance et l'Objet qu'il cite, s'il en a, mais pas de description."""
+
     lien: str  # lien stable `/n<id>`, absolu
     titre: str
     type: str | None  # le type du site (« Préavis », « Décisions »), s'il en donne un
@@ -358,7 +394,7 @@ class _Document:
 _TOTAL = re.compile(r"(\d+)\s*à\s*(\d+)\s*sur\s*(\d+)\s*éléments?")
 
 
-def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> list[_Document]:
+def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> list[_DocumentDeRecherche]:
     """Les documents de la recherche `coreapi`, dans l'ordre du site, page de résultats après page de résultats,
     toutes, même au passage ordinaire (`depuis` n'y change rien) : la recherche n'est pas triée par mise en ligne,
     et une Séance ou un préavis de la fenêtre peut avoir des documents sur n'importe quelle page. Lire moins
@@ -367,10 +403,10 @@ def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> lis
     qu'une page reprend d'une autre, sous la même Séance, n'est lu qu'une fois."""
     site = source.site
     assert site is not None
-    documents: list[_Document] = []
-    vus: set[_Document] = set()
+    documents: list[_DocumentDeRecherche] = []
+    vus: set[_DocumentDeRecherche] = set()
     for page in range(1, PAGES_MAX + 1):
-        reponse = _page_suivante(robot, source, _url_de_recherche(site, page), page)
+        reponse = _page_de_liste(robot, source, _url_de_recherche(site, page), page)
         if reponse is None:
             break
         lus, fin, total = _page_de_resultats(source.nom, reponse.texte, reponse.url)
@@ -384,30 +420,27 @@ def _documents_coreapi(robot: Robot, source: Source, depuis: date | None) -> lis
     return documents
 
 
-def _quand(d: _Document) -> date | None:
+def _quand(d: _DocumentDeRecherche) -> date | None:
     """Le jour d'un document : celui de sa Séance, sinon sa publication."""
     return d.jour or d.publie
 
 
-def _page_de_resultats(nom: str, texte: str, url: str) -> tuple[list[_Document], int, int]:
+def _page_de_resultats(nom: str, texte: str, url: str) -> tuple[list[_DocumentDeRecherche], int, int]:
     """Les documents d'une page de résultats, et la position de sa fin dans le total (« 1 à 60 sur 399 éléments
     trouvés »). Lève `ValueError` pour un fragment sans liste de documents, ou dont aucun document ne se lit."""
     racine = arbre(texte)
     # La liste du thème de 2023 (`tplDocumentConseil`), ou celle d'un thème plus ancien (Rolle, Trélex).
-    liste = next(
-        (n for n in racine.elements() if "tplDocumentConseil" in _classes(n) or n.attr("id") == "search-standard-result"),
-        None,
-    )
+    liste = racine.premier(lambda n: "tplDocumentConseil" in n.classes() or n.attr("id") == "search-standard-result")
     if liste is None:
         raise ValueError(f"{url} : aucune liste de documents (tplDocumentConseil, search-standard-result)")
     position = _TOTAL.search(espaces(racine.texte()))
     debut, fin, total = (int(x) for x in position.groups()) if position else (0, 0, 0)
-    documents: list[_Document] = []
+    documents: list[_DocumentDeRecherche] = []
     illisibles = 0
-    groupes = [n for n in liste.elements() if "accordion-item" in _classes(n)]
+    groupes = [n for n in liste.elements() if "accordion-item" in n.classes()]
     for groupe, seance in [(g, _libelle_du_groupe(g)) for g in groupes] or [(liste, None)]:
         for noeud, entete in _documents_et_entetes(groupe):
-            document = _document(noeud, seance or entete, url)
+            document = _document_de_recherche(noeud, seance or entete, url)
             if isinstance(document, str):
                 illisibles += 1
                 _journal(nom, f"document illisible ({document})")
@@ -428,7 +461,7 @@ def _documents_et_entetes(racine: Noeud):
     pile = list(reversed(racine.enfants_elements()))
     while pile:
         noeud = pile.pop()
-        if "qs-edit" in _classes(noeud) and noeud.attr("data-qsedit-editnode") is not None:
+        if "qs-edit" in noeud.classes() and noeud.attr("data-qsedit-editnode") is not None:
             yield noeud, entete
             continue
         enfants = noeud.enfants_elements()
@@ -439,21 +472,17 @@ def _documents_et_entetes(racine: Noeud):
 
 def _libelle_du_groupe(groupe: Noeud) -> str | None:
     """Le libellé de la Séance d'un groupe de documents : l'en-tête du groupe (son bouton), « Séance du … »."""
-    entete = next((n for n in groupe.elements() if "accordion-header" in _classes(n) or n.tag == "button"), None)
+    entete = groupe.premier(lambda n: "accordion-header" in n.classes() or n.tag == "button")
     return espaces(entete.texte()) if entete else None
-
-
-def _classes(noeud: Noeud) -> list[str]:
-    return (noeud.attr("class") or "").split()
 
 
 _LIEN_NOEUD = re.compile(r"/n\d+$")
 
 
-def _document(noeud: Noeud, seance: str | None, url: str) -> _Document | str:
+def _document_de_recherche(noeud: Noeud, seance: str | None, url: str) -> _DocumentDeRecherche | str:
     """Un document de la recherche, ou la raison pour laquelle il ne se lit pas."""
     liens = [a for a in noeud.elements() if a.tag == "a" and _LIEN_NOEUD.search(a.attr("href") or "")]
-    titre = next((espaces(n.texte()) for n in noeud.elements() if n.tag in ("h5", "h6")), "")
+    titre = noeud.texte_du_premier(lambda n: n.tag in ("h5", "h6"))
     titre = titre or next((espaces(a.texte()) for a in liens if espaces(a.texte())), "")
     if not liens:
         return f"sans lien vers le document : {titre or url}"
@@ -474,7 +503,7 @@ def _document(noeud: Noeud, seance: str | None, url: str) -> _Document | str:
         seance = None
     publie = re.search(r"Publié le\s+(.+)", espaces(noeud.texte()))
     objet = filtres["ext_id"].attr("data-filter-value") if "ext_id" in filtres else None
-    return _Document(
+    return _DocumentDeRecherche(
         lien=liens[0].attr("href") or "",
         titre=titre or (liens[0].attr("href") or "").rsplit("/", 1)[-1],
         type=type_ or None,
@@ -530,30 +559,20 @@ def _date_ecrite(texte: str) -> date | None:
 
 
 def _seances_et_preavis(
-    nom: str, documents: list[_Document], depuis: date | None, avec_preavis: bool
+    nom: str, documents: list[_DocumentDeRecherche], depuis: date | None, avec_preavis: bool
 ) -> tuple[list[dict], list[dict]]:
     """Les Séances (*meetings*) et les préavis (*affairs*) des documents, dans l'ordre de leurs nœuds, ceux de la
     fenêtre seulement."""
     # La recherche range d'une lecture à l'autre différemment les documents à égalité de tri (Lully, Oron) : ils sont
     # remis dans l'ordre de leur nœud, celui de leur mise en ligne, pour qu'un passage ne réécrive pas ce qu'il a lu
     # la veille. De deux préavis de même numéro, le plus ancien l'emporte donc, et non le premier du site.
-    documents = sorted(documents, key=_noeud)
+    documents = sorted(documents, key=_numero_de_noeud)
     dans_la_fenetre = [d for d in documents if depuis is None or _quand(d) is None or _quand(d) >= depuis]
-    par_seance: dict[tuple[date, str], list[_Document]] = {}
+    par_seance: dict[tuple[date, str], list[_DocumentDeRecherche]] = {}
     for d in dans_la_fenetre:
         if d.jour is not None and d.seance is not None:
             par_seance.setdefault((d.jour, d.seance), []).append(d)
-    seances = [
-        {
-            "id": None,
-            "name": {"fr": libelle},
-            "begin_date": jour.isoformat(),
-            "url_external": None,
-            "agendas": {"data": []},
-            "docs": {"data": [_doc(d) for d in docs]},
-        }
-        for (jour, libelle), docs in par_seance.items()
-    ]
+    seances = [_meeting(libelle, jour, [_doc(d) for d in docs]) for (jour, libelle), docs in par_seance.items()]
     if not avec_preavis:
         return seances, []
     preavis: list[dict] = []
@@ -564,31 +583,19 @@ def _seances_et_preavis(
         if numero is None:
             _journal(nom, f"Objet sans numéro, non importé : {d.titre}")
             continue
-        garde = next((p for p in preavis if p["number"] == numero), None)
-        if garde is not None:
-            _journal(nom, f"Objet {numero} en double, le plus ancien gardé (« {garde['title']['fr']} ») : {d.titre}")
+        if _en_double(nom, preavis, numero, d.titre, "le plus ancien"):
             continue
         # Les documents qui citent le même Objet : ceux de sa Séance s'il en a une, sinon tous ceux lus, même hors de
         # la fenêtre (un rapport de 2021 reste au préavis qui revient en 2026, Rolle).
         voisins = par_seance[(d.jour, d.seance)] if d.jour is not None and d.seance is not None else documents
         lies = [d] + [x for x in voisins if x is not d and _ref(d) is not None and _ref(x) == _ref(d)]
-        preavis.append(
-            {
-                "id": None,
-                "number": numero,
-                "title": {"fr": _titre_du_preavis(d, numero)},
-                "type_name": {"fr": TYPE_PREAVIS},
-                "state_name": None,
-                "begin_date": _quand(d).isoformat() if _quand(d) else None,
-                "url_external": None,
-                "contributors": {"data": []},
-                "docs": {"data": [_doc(x) for x in lies]},
-            }
-        )
+        quand = _quand(d)
+        depose = quand.isoformat() if quand else None
+        preavis.append(_affair(numero, _titre_du_preavis(d, numero), TYPE_PREAVIS, depose, [_doc(x) for x in lies]))
     return seances, preavis
 
 
-def _est_un_preavis(d: _Document) -> bool:
+def _est_un_preavis(d: _DocumentDeRecherche) -> bool:
     """Un préavis : un document dont le titre commence par « Préavis », ou qui, typé « Préavis » ou sans type, cite
     son Objet par un numéro seul (« Objet n° 05-2026 », La Rippe, Juriens) ; jamais un document que son titre dit être
     autre chose (`_PAS_UN_PREAVIS`), quel que soit son type."""
@@ -599,7 +606,7 @@ def _est_un_preavis(d: _Document) -> bool:
     return _reference_seule(d) is not None and (d.type is None or d.type.lower() in _TYPES_DE_PREAVIS)
 
 
-def _reference_seule(d: _Document) -> str | None:
+def _reference_seule(d: _DocumentDeRecherche) -> str | None:
     """La référence d'Objet d'un document quand elle n'est qu'un numéro (« Objet n° 05-2026 », « 05-2026 »). Le
     numéro d'un préavis est celui de son titre (`_numero`) ; cette référence ne le donne que si le titre n'en porte
     pas (Etoy, La Rippe, Juriens)."""
@@ -607,13 +614,13 @@ def _reference_seule(d: _Document) -> str | None:
     return m["numero"] if m else None
 
 
-def _noeud(d: _Document) -> int:
-    """Le nœud du document (`/n<id>`), qui croît avec sa mise en ligne."""
+def _numero_de_noeud(d: _DocumentDeRecherche) -> int:
+    """Le numéro du nœud Quicksite du document (`/n<id>`), qui croît avec sa mise en ligne."""
     m = _LIEN_NOEUD.search(d.lien)
     return int(m[0][2:]) if m else 0
 
 
-def _ref(d: _Document) -> str | None:
+def _ref(d: _DocumentDeRecherche) -> str | None:
     """La référence de l'Objet qu'un document cite, sans son texte (« 072: Plans Port de Founex » donne « 072 »)."""
     if not d.objet:
         return None
@@ -628,7 +635,7 @@ def _numero(titre: str) -> str | None:
     return None if _DATE_CHIFFRES.fullmatch(numero) else numero
 
 
-def _titre_du_preavis(d: _Document, numero: str) -> str:
+def _titre_du_preavis(d: _DocumentDeRecherche, numero: str) -> str:
     """Le texte de l'Objet que le préavis cite (« 005: Demande de crédit… » donne « Demande de crédit… »), sinon la
     suite de son titre (« Préavis 04/2024 - Budget 2025 » donne « Budget 2025 »), sinon son titre."""
     if d.objet and ":" in d.objet:
@@ -639,10 +646,6 @@ def _titre_du_preavis(d: _Document, numero: str) -> str:
         return d.titre  # le titre est déjà le texte de l'Objet
     suite = d.titre[d.titre.index(numero) + len(numero) :].strip(" -–—:")
     return suite or d.titre
-
-
-def _doc(d: _Document) -> dict:
-    return {"name": d.titre, "url": d.lien, "date": d.publie.isoformat() if d.publie else None, "category": d.type}
 
 
 # --- Mesure du site, pour le script de préparation des sources ------------------------------------------------------
@@ -760,10 +763,16 @@ def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | Non
 
 @dataclass(frozen=True)
 class _SeanceListee:
+    """Une Séance de la liste d'un module Conseil : son nom, son jour, son heure s'il la donne, et sa page."""
+
     nom: str
     jour: date
     heure: str | None  # « 19:30 »
     lien: str | None  # page de la Séance ; `None` pour une Séance annoncée sans page
+
+    def meeting(self, points: list[dict] | None = None, documents: list[dict] | None = None) -> dict:
+        """La Séance à la forme d'un *meeting*, avec les points et les documents de sa page."""
+        return _meeting(self.nom, self.jour, documents or [], heure=self.heure, lien=self.lien, points=points)
 
 
 _MOIS_COURTS = {m: i for i, m in enumerate(_MOIS, start=1)}
@@ -786,14 +795,14 @@ def _module_conseil(robot: Robot, source: Source, depuis: date | None, avec_obje
         if depuis is not None and ligne.jour < depuis:
             continue
         if ligne.lien is None:
-            seances.append(_meeting(ligne, [], []))
+            seances.append(ligne.meeting())
             continue
         try:
             page = robot.lire(ligne.lien, "import")
         except PageNonLue as e:
             _journal(source.nom, f"Séance {ligne.lien} non lue ({e})")
             continue
-        titre = next((espaces(n.texte()) for n in arbre(page.texte).elements() if n.tag == "h1"), "")
+        titre = arbre(page.texte).texte_du_premier(lambda n: n.tag == "h1")
         ligne = _SeanceListee(titre or ligne.nom, ligne.jour, ligne.heure, ligne.lien)  # le nom brut, celui de sa page
         points, documents = [], []
         for point in _points_du_module(page.texte, page.url):
@@ -810,45 +819,26 @@ def _module_conseil(robot: Robot, source: Source, depuis: date | None, avec_obje
                 # pas restent à son Objet, qui les retrouvera au passage où elle se relit : à la Séance, l'import, qui
                 # garde les documents archivés, les y laisserait pour toujours.
                 documents += point.documents
-        seances.append(_meeting(ligne, points, documents))
+        seances.append(ligne.meeting(points, documents))
     for objet in fiches.values():
-        if objet is None:
-            continue
-        garde = next((o for o in objets if o["number"] == objet["number"]), None)
-        if garde is not None:
-            _journal(
-                source.nom,
-                f"Objet {objet['number']} en double, le premier du site gardé (« {garde['title']['fr']} ») : "
-                f"{objet['title']['fr']}",
-            )
+        if objet is None or _en_double(source.nom, objets, objet["number"], objet["title"]["fr"], "le premier du site"):
             continue
         objets.append(objet)
     return seances, objets
-
-
-def _meeting(ligne: _SeanceListee, points: list[dict], documents: list[dict]) -> dict:
-    return {
-        "id": None,
-        "name": {"fr": ligne.nom},
-        "begin_date": ligne.jour.isoformat() + (f"T{ligne.heure}:00" if ligne.heure else ""),
-        "url_external": {"fr": ligne.lien} if ligne.lien else None,
-        "agendas": {"data": points},
-        "docs": {"data": documents},
-    }
 
 
 def _liste_du_module(texte: str, url: str) -> list[_SeanceListee | str]:
     """Les Séances de la liste du module, dans l'ordre du site : l'année en cours (pastilles), puis les années
     précédentes (onglets). Lève `ValueError` pour une page sans liste."""
     racine = arbre(texte)
-    bloc = next((n for n in racine.elements() if "tplCCIBPublicOrdreJour" in _classes(n)), None)
+    bloc = racine.premier(lambda n: "tplCCIBPublicOrdreJour" in n.classes())
     if bloc is None:
         raise ValueError(f"{url} : aucune liste de Séances (tplCCIBPublicOrdreJour)")
-    titre = next((espaces(n.texte()) for n in bloc.elements() if n.tag == "h1"), "")
+    titre = bloc.texte_du_premier(lambda n: n.tag == "h1")
     annee = _ANNEE.search(titre)
     lignes: list[_SeanceListee | str] = []
     for noeud in racine.elements():
-        classes = _classes(noeud)
+        classes = noeud.classes()
         if any(c in classes for c in ("date-past", "date-nextmeeting", "date-future")):
             lignes.append(_pastille(noeud, int(annee[1]) if annee else None, url))
         elif "table-row-body" in classes and any(
@@ -859,19 +849,17 @@ def _liste_du_module(texte: str, url: str) -> list[_SeanceListee | str]:
 
 
 def _pastille(noeud: Noeud, annee: int | None, url: str) -> _SeanceListee | str:
-    jour = next((espaces(n.texte()) for n in noeud.elements() if "day" in _classes(n)), "")
-    mois = next((espaces(n.texte()) for n in noeud.elements() if n.tag == "label"), "")
+    jour = noeud.texte_du_premier(lambda n: "day" in n.classes())
+    mois = noeud.texte_du_premier(lambda n: n.tag == "label")
     if annee is None or not jour.isdigit() or mois.lower() not in _MOIS_COURTS:
         return f"date illisible « {jour} {mois} »"
     try:
         quand = date(annee, _MOIS_COURTS[mois.lower()], int(jour))
     except ValueError:
         return f"date impossible « {jour} {mois} {annee} »"
-    lien = next(
-        (urljoin(url, a.attr("href") or "") for a in noeud.elements() if a.tag == "a" and "ID=" in (a.attr("href") or "")),
-        None,
-    )
-    return _SeanceListee(f"Séance du {_jour_en_lettres(quand)}", quand, None, lien)
+    lien = noeud.premier(lambda n: n.tag == "a" and "ID=" in (n.attr("href") or ""))
+    page = urljoin(url, lien.attr("href") or "") if lien else None
+    return _SeanceListee(f"Séance du {_jour_en_lettres(quand)}", quand, None, page)
 
 
 def _ligne_d_annee(noeud: Noeud, url: str) -> _SeanceListee | str:
@@ -892,11 +880,9 @@ class _PointDuModule:
 def _points_du_module(texte: str, url: str) -> list[_PointDuModule]:
     """Les points de la page d'une Séance du module Conseil, dans l'ordre du site."""
     points = []
-    for carte in (n for n in arbre(texte).elements() if n.tag == "div" and "card" in _classes(n)):
-        fiche = next(
-            (a for a in carte.elements() if a.tag == "a" and "/documents/recherche/" in (a.attr("href") or "")), None
-        )
-        description = next((n for n in carte.elements() if "description" in _classes(n)), None)
+    for carte in (n for n in arbre(texte).elements() if n.tag == "div" and "card" in n.classes()):
+        fiche = carte.premier(lambda n: n.tag == "a" and "/documents/recherche/" in (n.attr("href") or ""))
+        description = carte.premier(lambda n: "description" in n.classes())
         titre = espaces(description.texte()) if description else ""
         points.append(
             _PointDuModule(
@@ -941,7 +927,7 @@ def _texte_sans_taille(a: Noeud) -> str:
     morceaux = [
         e if isinstance(e, str) else e.texte()
         for e in a.enfants
-        if isinstance(e, str) or not {"info-file", "badge"} & set(_classes(e))
+        if isinstance(e, str) or not {"info-file", "badge"} & set(e.classes())
     ]
     return espaces(" ".join(morceaux))
 
@@ -955,17 +941,17 @@ def _fiche_d_objet(robot: Robot, source: Source, url: str) -> dict | None:
         _journal(source.nom, f"Objet {url} non lu ({e}), ses documents avec lui")
         return None
     racine = arbre(page.texte)
-    bloc = next((n for n in racine.elements() if "tplDetailBlade" in _classes(n)), racine)
-    entete = next((espaces(n.texte()) for n in bloc.elements() if n.tag == "h1"), "")
+    bloc = racine.premier(lambda n: "tplDetailBlade" in n.classes()) or racine
+    entete = bloc.texte_du_premier(lambda n: n.tag == "h1")
     m = re.match(r"^(?P<type>\D+?)\s+(?:n[°o]\.?\s*)?(?P<numero>\d[\w/.-]*)", entete)
     if m is None:
         _journal(source.nom, f"Objet sans numéro, non importé : {entete or url}")
         return None
-    texte = next((espaces(n.texte()) for n in bloc.elements() if n.tag == "h5"), "")
-    auteur = re.search(r"Auteur\s*:\s*(.+)", next((espaces(n.texte()) for n in bloc.elements() if n.tag == "small"), ""))
+    texte = bloc.texte_du_premier(lambda n: n.tag == "h5")
+    auteur = re.search(r"Auteur\s*:\s*(.+)", bloc.texte_du_premier(lambda n: n.tag == "small"))
     documents = []
-    for ligne in (n for n in bloc.elements() if "table-row-body" in _classes(n)):
-        lien = next((a for a in ligne.elements() if a.tag == "a" and "download.asp" in (a.attr("href") or "")), None)
+    for ligne in (n for n in bloc.elements() if "table-row-body" in n.classes()):
+        lien = ligne.premier(lambda n: n.tag == "a" and "download.asp" in (n.attr("href") or ""))
         if lien is None:
             continue
         colonnes = [espaces(c.texte()) for c in ligne.enfants_elements() if c.tag == "div"]
@@ -981,17 +967,9 @@ def _fiche_d_objet(robot: Robot, source: Source, url: str) -> dict | None:
         groupe = re.match(r"^(municipalit[ée]|commission|bureau|groupe)", nom, re.I) is not None
         contributeurs.append({"type": "organization" if groupe else "person", "fullname": nom})
     dates = [d["date"] for d in documents if d["date"]]
-    return {
-        "id": None,
-        "number": m["numero"].rstrip(".,;:"),
-        "title": {"fr": texte or entete},
-        "type_name": {"fr": m["type"].strip()},
-        "state_name": None,
-        "begin_date": min(dates) if dates else None,
-        "url_external": {"fr": page.url},
-        "contributors": {"data": contributeurs},
-        "docs": {"data": documents},
-    }
+    numero, type_ = m["numero"].rstrip(".,;:"), m["type"].strip()
+    depose = min(dates) if dates else None
+    return _affair(numero, texte or entete, type_, depose, documents, lien=page.url, contributeurs=contributeurs)
 
 
 def _conseillers(robot: Robot, source: Source) -> list[str]:
@@ -1008,15 +986,15 @@ def _conseillers(robot: Robot, source: Source) -> list[str]:
             _journal(source.nom, f"page des membres {url} non lue ({e})")
             break
         racine = arbre(page.texte)
-        for ligne in (n for n in racine.elements() if "table-row-body" in _classes(n)):
-            a = next((a for a in ligne.elements() if a.tag == "a" and any(b.tag == "b" for b in a.elements())), None)
+        for ligne in (n for n in racine.elements() if "table-row-body" in n.classes()):
+            a = ligne.premier(lambda n: n.tag == "a" and n.premier(lambda b: b.tag == "b") is not None)
             if a is None:
                 continue
-            nom = espaces(next(b for b in a.elements() if b.tag == "b").texte())
+            nom = a.texte_du_premier(lambda b: b.tag == "b")
             prenom = espaces(a.texte())[len(nom) :].strip()
             if nom:
                 membres.append(f"{prenom} {nom}".strip())
-        suivante = next((a for a in racine.elements() if a.tag == "a" and a.attr("rel") == "next"), None)
+        suivante = racine.premier(lambda n: n.tag == "a" and n.attr("rel") == "next")
         url = urljoin(page.url, suivante.attr("href") or "") if suivante else None
     return membres
 
@@ -1035,11 +1013,11 @@ def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -
     assert site is not None and site.seances is not None
     liste = robot.lire(site.seances, "import")
     seances = []
-    lignes = [n for n in arbre(liste.texte).elements() if "teaser-agenda" in _classes(n)]
+    lignes = [n for n in arbre(liste.texte).elements() if "teaser-agenda" in n.classes()]
     illisibles = 0
     pages_a_ouvrir = pages_lues = 0
     for noeud in lignes:
-        titre = next((espaces(a.texte()) for a in noeud.elements() if a.tag == "a"), "")
+        titre = noeud.texte_du_premier(lambda n: n.tag == "a")
         quand = _date_ecrite(titre)
         if quand is None:
             illisibles += 1
@@ -1052,7 +1030,7 @@ def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -
         lien = next((p for p in map(_page_du_module, liens) if p), None)
         ligne = _SeanceListee(titre, quand, f"{int(heure[1]):02d}:{heure[2]}" if heure else None, lien)
         if lien is None:
-            seances.append(_meeting(ligne, [], []))
+            seances.append(ligne.meeting())
             continue
         pages_a_ouvrir += 1
         try:
@@ -1065,7 +1043,7 @@ def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -
             _journal(source.nom, f"Séance {lien} illisible (aucun point centerGroup)")
             continue
         pages_lues += 1
-        seances.append(_meeting(ligne, *ordre_du_jour))
+        seances.append(ligne.meeting(*ordre_du_jour))
     if lignes and illisibles == len(lignes):
         raise ValueError(f"{liste.url} : aucune ligne de Séance lisible")
     if pages_a_ouvrir and not pages_lues:
@@ -1090,19 +1068,19 @@ def _page_du_module(lien: str) -> str | None:
 def _ordre_du_jour_du_module(texte: str, url: str) -> tuple[list[dict], list[dict]] | None:
     """Les points numérotés de l'ordre du jour d'une Séance du module (« 9. », « 9.1 »), et ses documents ; `None`
     pour une page sans points (`div.centerGroup`)."""
-    groupes = [n for n in arbre(texte).elements() if "centerGroup" in _classes(n)]
+    groupes = [n for n in arbre(texte).elements() if "centerGroup" in n.classes()]
     if not groupes:
         return None
     points, documents = [], []
     for groupe in groupes:
-        numero = next((espaces(n.texte()) for n in groupe.elements() if "number" in _classes(n)), "").rstrip(".")
-        titre = next((espaces(n.texte()) for n in groupe.elements() if "title" in _classes(n)), "")
+        numero = groupe.texte_du_premier(lambda n: "number" in n.classes()).rstrip(".")
+        titre = groupe.texte_du_premier(lambda n: "title" in n.classes())
         sous = [n for n in groupe.elements() if n.tag == "li"]
         if not sous:
             points.append({"item_number_display": numero or None, "item_title": titre, "item_affair_number": None})
         for li in sous:
-            num = next((espaces(n.texte()) for n in li.elements() if "theme-num" in _classes(n)), "")
-            sujet = next((espaces(n.texte()) for n in li.elements() if "theme" in _classes(n)), "")
+            num = li.texte_du_premier(lambda n: "theme-num" in n.classes())
+            sujet = li.texte_du_premier(lambda n: "theme" in n.classes())
             points.append({"item_number_display": num or None, "item_title": sujet, "item_affair_number": None})
         documents += _documents_du_module(groupe, url)
     return points, documents
