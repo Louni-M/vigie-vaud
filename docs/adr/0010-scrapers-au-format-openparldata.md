@@ -15,10 +15,12 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
   sans regroupement ; statut, auteur·e·s et étapes ne figurent que si le site les publie. Le numéro d'un Objet est
   brut, fautes de saisie comprises, sans le mot qui le précède (« Préavis n° »), et pris à un seul endroit par
   variante ; un Objet sans numéro n'est pas importé (noté dans le journal), et une commune dont les préavis n'ont
-  pas de numéro est déclarée en Séances seules. Sa date est celle que le site lui donne, sinon la mise en ligne de
-  son premier document. Un document a pour nom le texte de son lien, sinon le nom du fichier, et pour date celle
-  affichée, sinon sa mise en ligne. Le lien d'un élément est sa page propre sous sa forme stable
-  (`/_rte/anlass/<id>` plutôt que la redirection), sinon rien.
+  pas de numéro est déclarée en Séances seules. Dans la recherche `coreapi` de Quicksite, c'est le titre du préavis
+  (« Préavis 005_2026-2031 »), et sa référence d'Objet (« Objet n° 05-2026 ») seulement quand ce titre n'a pas de
+  numéro ; un rapport de commission ou de minorité n'y est jamais un préavis, quel que soit le type que le site lui
+  donne. Sa date est celle que le site lui donne, sinon la mise en ligne de son premier document. Un document a pour
+  nom le texte de son lien, sinon le nom du fichier, et pour date celle affichée, sinon sa mise en ligne. Le lien
+  d'un élément est sa page propre sous sa forme stable (`/_rte/anlass/<id>` plutôt que la redirection), sinon rien.
 - Une Séance porte ses documents (ordre du jour, procès-verbal, convocation), comme les `docs` d'un *meeting*. Ses
   points ne sont remplis que si le site structure l'ordre du jour en HTML ; sinon son PDF est un document de la
   Séance. Le scraper relie un point à son Objet par le numéro (`item_affair_number`), qu'il tire lui-même des listes
@@ -28,7 +30,9 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
 - Un élément scrapé n'a pas d'identifiant OpenParlData (`id` nul) et ne garde pas celui de sa plateforme, qui reste
   dans son lien quand il en a un : son identité est sa clé dans l'archive (ADR-0017). Un nom de fichier ou une
   empreinte (COMMUNEapp) n'identifie qu'un document. Si un site donne deux Objets de même numéro, le premier dans
-  l'ordre du site l'emporte et l'autre est noté dans le journal. Écartée : une empreinte entière tirée de
+  l'ordre du site l'emporte et l'autre est noté dans le journal ; dans la recherche `coreapi` de Quicksite, qui ne
+  range pas toujours de la même façon deux documents à égalité de tri, c'est le plus ancien (le plus petit nœud
+  `/n<id>`), pour qu'un passage ne remplace pas l'Objet lu la veille. Écartée : une empreinte entière tirée de
   l'identifiant de la plateforme (un faux identifiant OpenParlData, qui ne survit pas à une refonte).
 - La réponse d'OpenParlData sur une contribution (forme, licence) est inconnue au 23 octobre 2026 : J3 ne construit
   ni flux ni export pour eux. Leur réponse ouvrira un ticket à part.

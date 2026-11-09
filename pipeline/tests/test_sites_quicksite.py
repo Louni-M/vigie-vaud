@@ -15,6 +15,7 @@ import pytest
 
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
+from lecture_quicksite import PAGES_MAX
 from passage_sites import T0, _lire, _opendata, _passer
 from schema import FichierSources
 
@@ -294,6 +295,40 @@ def test_le_rattrapage_lit_toutes_les_pages_de_resultats(tmp_path, horloge):
     assert (tmp_path / "conseils/5717/seances/2026-03-02.json").exists()
 
 
+def test_une_pagination_sans_fin_est_tronquee_au_garde_fou_et_notee_dans_le_journal(tmp_path, horloge, capsys):
+    # Une recherche qui annonce toujours plus de documents qu'elle n'en a donné : le rattrapage, sans plafond de
+    # requêtes, la lit jusqu'au garde-fou, bien au-delà des quelques dizaines de pages d'un historique réel, et le
+    # journal dit que la liste est tronquée.
+    reseau = _reseau(horloge)
+    url = _recherche(reseau, ROPRAZ)
+    for page in range(1, PAGES_MAX + 2):
+        reseau.pages[url if page == 1 else _page_suivante(url, page)] = Page(
+            f'<div class="tplDocumentConseil"><div>{page} à {page} sur 999999 éléments trouvés</div>'
+            + _document_par_type(10000 + page, f"Document {page}")
+            + "</div>"
+        )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz()), rattrapage_cible="5798")
+
+    lues = [r.url for r in reseau.journal if "/coreapi/" in r.url]
+    assert len(lues) == PAGES_MAX > 200
+    assert _page_suivante(url, PAGES_MAX + 1) not in lues
+    assert f"élément sauté, liste tronquée : {PAGES_MAX} pages lues sans en voir la fin" in capsys.readouterr().err
+    assert "5798" in _lire(tmp_path, "conseils/import.json")["conseils"]
+
+
+def test_une_recherche_qui_ignore_la_page_demandee_s_arrete_a_la_page_qui_ne_donne_rien_de_nouveau(tmp_path, horloge):
+    reseau = _reseau(horloge)
+    url = _founex_en_trois_pages(reseau)
+    reseau.pages[_page_suivante(url, 2)] = reseau.pages[url]
+
+    _passer(tmp_path, horloge, reseau, _sources(_founex()), rattrapage_cible="quicksite")
+
+    assert [r.url for r in reseau.journal if "/coreapi/" in r.url] == [url, _page_suivante(url, 2)]
+    liens = [d["lien"] for d in _lire(tmp_path, "conseils/5717/seances/2026-11-09.json")["documents"]]
+    assert liens == [f"{FOUNEX}/n2227", f"{FOUNEX}/n2228", f"{FOUNEX}/n2229"]  # chacun une fois
+
+
 def test_une_commune_coreapi_en_seances_seulement_n_importe_aucun_preavis(tmp_path, horloge):
     reseau = _reseau(horloge)
     _founex_en_trois_pages(reseau)
@@ -441,9 +476,29 @@ def test_le_numero_d_un_preavis_garde_son_annee_et_un_rapport_n_est_pas_un_preav
     assert numeros == ["01-2026", "3 /2025", "3 /2026"]
 
 
-def test_deux_preavis_de_meme_numero_donnent_le_meme_objet_quel_que_soit_l_ordre_du_site(tmp_path, horloge):
+def test_un_rapport_que_le_site_type_preavis_n_est_pas_un_preavis_et_reste_a_sa_seance(tmp_path, horloge):
+    # Pompaples type « Préavis » le rapport de minorité d'un préavis, avec sa propre référence d'Objet : il ne devient
+    # pas l'Objet « 12-2025-2-b », et reste un document de sa Séance.
+    reseau = _reseau(horloge)
+    reseau.pages[_recherche(reseau, ROPRAZ)] = Page(
+        '<div class="tplDocumentConseil">1 à 3 sur 3 éléments trouvés<div id="search-standard-result">'
+        '<div class="bg-light">Séance du 6 octobre 2026</div>'
+        + _document_par_type(901, "Préavis 12-2025-2 - Patinoire", "Préavis", "Objet n° 12-2025-2")
+        + _document_par_type(902, "Rapport de minorité - Préavis 12-2025-2", "Préavis", "Objet n° 12-2025-2-b")
+        + _document_par_type(903, "Annexe plan", "Préavis", "Objet n° 12/2025/2")
+        + "</div></div>"
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_ropraz()))
+
+    assert sorted(p.name for p in (tmp_path / "conseils/5798/objets").iterdir()) == ["12-2025-2.json"]
+    seance = _lire(tmp_path, "conseils/5798/seances/2026-10-06.json")
+    assert [d["lien"] for d in seance["documents"]] == [f"{ROPRAZ}/n901", f"{ROPRAZ}/n902", f"{ROPRAZ}/n903"]
+
+
+def test_deux_preavis_de_meme_numero_donnent_le_meme_objet_quel_que_soit_l_ordre_du_site(tmp_path, horloge, capsys):
     # Lully : « 00-2026 » pour les comptes et pour la gestion, que la recherche range tantôt dans un ordre, tantôt
-    # dans l'autre. Le plus ancien (le plus petit nœud) l'emporte, chaque jour.
+    # dans l'autre. Le plus ancien (le plus petit nœud) l'emporte, chaque jour, et le journal nomme l'un et l'autre.
     reseau = _reseau(horloge)
     url = _recherche(reseau, ROPRAZ)
     comptes = _document_par_type(1493, "Comptes 2025", "Préavis", "Objet n° 00-2026", "6 octobre 2026")
@@ -453,6 +508,10 @@ def test_deux_preavis_de_meme_numero_donnent_le_meme_objet_quel_que_soit_l_ordre
         reseau.pages[url] = Page(f'<div class="tplDocumentConseil"><div>1 à 2 sur 2 éléments trouvés</div>{documents}</div>')
         _passer(tmp_path, horloge, reseau, sources, heure=T0 + timedelta(days=jour))
         assert _lire(tmp_path, "conseils/5798/objets/00-2026.json")["titre"] == "Rapport de gestion 2025"
+        assert (
+            "Objet 00-2026 en double, le plus ancien gardé (« Rapport de gestion 2025 ») : Comptes 2025"
+            in capsys.readouterr().err
+        )
 
 
 def test_une_recherche_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):
@@ -617,7 +676,10 @@ def test_le_rattrapage_lit_la_bibliotheque_jusqu_a_sa_derniere_page(tmp_path, ho
     assert (tmp_path / "conseils/5401/seances/2026-03-12.json").exists()
     journal = capsys.readouterr().err
     # Le premier du site, le plus récent, l'emporte ; un procès-verbal sans date n'a pas de Séance.
-    assert "Objet 2026-12 en double, le premier du site gardé : Préavis 2026-12 première version" in journal
+    assert (
+        "Objet 2026-12 en double, le premier du site gardé (« Transition numérique ») : "
+        "Préavis 2026-12 première version"
+    ) in journal
     assert "document de Séance sans date : Procès-verbal Installation des autorités communales" in journal
     assert _lire(tmp_path, "conseils/5401/objets/2026-12.json")["depose"] == "2026-10-14"
 
@@ -698,11 +760,11 @@ def test_une_seance_du_module_conseil_a_ses_points_relies_a_leurs_objets_et_le_r
         ("Préavis 27/2026 renvoi commission Sur la", None),  # sa fiche n'a pas pu être lue
         ("Préavis 29/2026 relatif à la fixation de", "5886/29-2026"),
     ]
-    # Les documents du point relié à son Objet restent à l'Objet ; ceux des autres vont à la Séance.
+    # Les documents d'un point qui cite un Objet restent à l'Objet, même quand sa fiche ne se lit pas (27/2026) ;
+    # ceux des points sans Objet vont à la Séance.
     assert [d["titre"] for d in seance["documents"]] == [
         "AG_OJCC_Seance_20261007_VF.pdf",
         "PV_9_SEPTEMBRE_2026_provisoire-VF.pdf",
-        "Rapport-renvoi-en-commission-pour-complement-d-information-le-preavis-No-27-2026-relatif-a-l-octro_6_39_56.pdf",
     ]
 
 
@@ -721,6 +783,55 @@ def test_un_objet_du_module_conseil_a_son_auteur_ses_documents_dates_et_pas_de_s
         ("9_1_Preavis_29_2026_Indemnites", "2026-09-08"),
         ("Rapport-relatif-a-la-fixation-", "2026-09-28"),
     ]
+
+
+def test_les_documents_d_un_point_dont_la_fiche_ne_se_lit_pas_attendent_leur_objet(tmp_path, horloge, capsys):
+    # La fiche du préavis 29/2026 en 404 un jour : ses documents ne vont pas à la Séance, où l'import, qui garde les
+    # documents archivés, les laisserait pour toujours ; ils vont à l'Objet le jour où sa fiche se relit.
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+    fiche = f"{MONTREUX}/documents/recherche/?id=3403"
+    lisible = reseau.pages[fiche]
+    reseau.pages[fiche] = Page("introuvable", statut=404)
+    sources = _sources(_montreux())
+
+    _passer(tmp_path, horloge, reseau, sources)
+
+    assert f"élément sauté, Objet {fiche} non lu" in capsys.readouterr().err
+    assert not (tmp_path / "conseils/5886/objets/29-2026.json").exists()
+    reseau.pages[fiche] = lisible
+    _passer(tmp_path, horloge, reseau, sources, heure=T0 + timedelta(days=1))
+
+    seance = _lire(tmp_path, "conseils/5886/seances/2026-10-07.json")
+    assert [d["titre"] for d in seance["documents"]] == [
+        "AG_OJCC_Seance_20261007_VF.pdf",
+        "PV_9_SEPTEMBRE_2026_provisoire-VF.pdf",
+    ]
+    assert [p["objet"] for p in seance["ordre_du_jour"]][-1] == "5886/29-2026"
+    documents = _lire(tmp_path, "conseils/5886/objets/29-2026.json")["documents"]
+    assert [d["lien"].rsplit("=", 1)[-1] for d in documents] == ["8614", "8622"]
+
+
+def test_un_document_du_module_conseil_est_nomme_par_le_texte_de_son_lien_sinon_par_son_fichier(tmp_path, horloge):
+    # ADR 0010 : le texte du lien (sans la taille du fichier), sinon le nom du fichier quand ce texte ne nomme rien.
+    reseau = _reseau(horloge)
+    _montreux_complet(reseau)
+    telecharger = "https://www.conseilmontreux.ch/conseilcommunal/download.asp?d={}"
+    reseau.pages[f"{MONTREUX}/ordredujour/?ID=4313"] = Page(
+        '<div class="tplDetailBlade"><h1>séance du 11 novembre 2026</h1><div class="card"><div class="card-body">'
+        '<div class="box"><div class="description"><p>Ordre du jour</p></div></div>'
+        f'<a href="{telecharger.format(43130)}" class="docname" title="OJ_4313.pdf">Ordre du jour du 11 novembre '
+        '<span class="badge badge-secondary ml-2">120.4 Kb</span></a>'
+        f'<a href="{telecharger.format(43131)}" class="docname" title="PV_4313.pdf">'
+        '<span class="badge badge-secondary ml-2">2.1 Mb</span></a>'
+        f'<a href="{telecharger.format(43132)}" class="docname" title="Annexe_4313.pdf">Télécharger</a>'
+        "</div></div></div>"
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_montreux()))
+
+    titres = [d["titre"] for d in _lire(tmp_path, "conseils/5886/seances/2026-11-11.json")["documents"]]
+    assert titres == ["Ordre du jour du 11 novembre", "PV_4313.pdf", "Annexe_4313.pdf"]
 
 
 def test_le_module_conseil_lit_ses_conseillers_page_apres_page_et_les_epargne_dans_les_titres(tmp_path, horloge):
@@ -815,5 +926,59 @@ def test_vevey_ne_demande_que_ce_que_son_robots_txt_autorise_a_la_casse_pres(tmp
         "https://conseil.vevey.ch/robots.txt",
         "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=157",
         "https://conseil.vevey.ch/ConseilCommunal/seances/?ID=156",
+    ]
+    assert (tmp_path / "conseils/5890/seances/2026-10-01.json").exists()
+
+
+SEANCE_VEVEY = "https://conseil.vevey.ch/ConseilCommunal/seances/?ID={}"
+
+
+def test_une_page_de_seance_de_vevey_sans_points_est_sautee_et_notee_dans_le_journal(tmp_path, horloge, capsys):
+    reseau = _reseau(horloge)
+    page = reseau.pages[SEANCE_VEVEY.format(157)]
+    reseau.pages[SEANCE_VEVEY.format(156)] = page  # le 3 septembre se lit
+    reseau.pages[SEANCE_VEVEY.format(157)] = Page(
+        '<html><body><div class="mainDiv"><h1>Ordre du jour</h1></div></body></html>', entetes=page.entetes
+    )
+
+    _passer(tmp_path, horloge, reseau, _sources(_vevey()))
+
+    assert f"élément sauté, Séance {SEANCE_VEVEY.format(157)} illisible" in capsys.readouterr().err
+    assert [s["cle"] for s in _lire(tmp_path, "conseils/5890/seances.json")["seances"]] == ["5890/2026-09-03"]
+
+
+def test_une_refonte_du_module_de_vevey_que_la_sonde_ne_voit_pas_met_l_import_en_echec(tmp_path, horloge, capsys):
+    # La sonde lit la liste sur le site de la Ville : si aucune page de Séance du module ne se lit (le 1er octobre sans
+    # points, le 3 septembre absent de l'échantillon), c'est l'import qui le dit, comme une liste illisible.
+    reseau = _reseau(horloge)
+    reseau.pages[SEANCE_VEVEY.format(157)] = Page('<html><body><main><h1>Nouveau site</h1></main></body></html>')
+
+    _passer(tmp_path, horloge, reseau, _sources(_vevey()))
+
+    assert "Import en échec : Conseil communal de Vevey (site de la commune)" in capsys.readouterr().err
+    assert "5890" not in _lire(tmp_path, "conseils/import.json")["conseils"]
+    assert _lire(tmp_path, "etat-sources.json")["sources"]["site-5890"]["etat"] == "disponible"  # pas une panne
+
+
+def test_l_hote_du_module_se_lit_dans_le_lien_de_l_ordre_du_jour(tmp_path, horloge):
+    # Rien n'est propre à Vevey : une ville dont la liste mène au module par un lien direct (le 1er octobre) donne
+    # son hôte ; par un lien cassé qui le met en tête de son chemin (`www.ville.ch/conseil.ville.ch/…`, le
+    # 3 septembre), le premier segment de ce chemin. L'un et l'autre sont récrits à la casse que `robots.txt` autorise.
+    reseau = _reseau(horloge)
+    reseau.adresses |= {"www.ville.ch": "5.102.147.10", "conseil.ville.ch": "5.102.147.20"}
+    page = reseau.pages[VEVEY]
+    liste = page.corps.replace(
+        b"http://www.vevey.ch/conseil.vevey.ch/conseilcommunal/seances/?ID=157",
+        b"https://conseil.ville.ch/conseilcommunal/seances/?ID=157",
+    ).replace(b"http://www.vevey.ch/conseil.vevey.ch/", b"https://www.ville.ch/conseil.ville.ch/")
+    reseau.pages["https://www.ville.ch/seances"] = Page(liste, entetes=page.entetes)
+    reseau.pages["https://conseil.ville.ch/ConseilCommunal/seances/?ID=157"] = reseau.pages[SEANCE_VEVEY.format(157)]
+    ville = _quicksite(5890, "Vevey", "https://www.ville.ch/seances", variante="conseil-externe", donne=("seances",))
+
+    _passer(tmp_path, horloge, reseau, _sources(ville))
+
+    assert [r.url for r in reseau.journal if "/seances/?ID=" in r.url] == [
+        "https://conseil.ville.ch/ConseilCommunal/seances/?ID=157",
+        "https://conseil.ville.ch/ConseilCommunal/seances/?ID=156",
     ]
     assert (tmp_path / "conseils/5890/seances/2026-10-01.json").exists()

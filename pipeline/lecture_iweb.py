@@ -249,7 +249,7 @@ def _lignes_d_objets(nom: str, texte: str, url: str) -> list[_LigneObjet]:
     date, titre et lien stable. Un Objet sans numéro n'est pas gardé, ni le second de deux Objets de même numéro ; une
     ligne sans lien est illisible ; tous sont notés dans le journal. Une liste sans son tableau ou dont aucune ligne
     ne se lit lève `ValueError`."""
-    tableau = next((n for n in arbre(texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_OBJETS), None)
+    tableau = arbre(texte).premier(lambda n: n.tag == "table" and n.attr("id") == TABLEAU_OBJETS)
     if tableau is None:
         raise ValueError(f"{url} : aucun tableau d'Objets ({TABLEAU_OBJETS})")
     try:
@@ -351,7 +351,7 @@ def _preavis_rediges(nom: str, texte: str, url: str) -> list[dict]:
     « Titre » et « Statut » de l'en-tête (sinon la deuxième, et pas de statut) le titre et le statut ; les liens de la
     ligne sont ses documents. Un préavis sans numéro n'est pas importé, ni le second de deux préavis de même
     numéro ; l'un et l'autre sont notés dans le journal. Une page sans tableau rédigé lève `ValueError`."""
-    redige = [n for n in arbre(texte).elements() if "icms-wysiwyg" in (n.attr("class") or "").split()]
+    redige = [n for n in arbre(texte).elements() if "icms-wysiwyg" in n.classes()]
     tableaux = [t for r in redige for t in r.elements() if t.tag == "table"]
     if not tableaux:
         raise ValueError(f"{url} : aucun tableau de préavis rédigé dans la page")
@@ -439,9 +439,7 @@ def _membres(robot: Robot, source: Source) -> list[str]:
     except PageNonLue as e:
         _journal(source.nom, f"page des membres {url} non lue ({e})")
         return []
-    tableau = next(
-        (n for n in arbre(page.texte).elements() if n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES), None
-    )
+    tableau = arbre(page.texte).premier(lambda n: n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES)
     try:
         lignes = json.loads(tableau.attr("data-entities") or "")["data"] if tableau else None
     except (ValueError, KeyError, TypeError):
