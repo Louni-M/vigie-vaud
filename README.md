@@ -188,13 +188,14 @@ seule fois, dans `config.json` à la racine. Le site les lit par `web/src/lib/co
 
 ## Contrôles et publication
 
-Le workflow `ci.yml` se lance sur chaque PR : `svelte-check`, la construction (qui valide `sources.json`), la
-vérification qu'aucune donnée CAMAC n'est dans le site construit, la régénération du schéma commun (qui doit ne rien
-changer) et les tests du pipeline (pytest).
+Le workflow `ci.yml` se lance sur chaque PR et sur chaque push vers `main` : `svelte-check`, les tests du site
+(Vitest), la construction (qui valide `sources.json`), la vérification qu'aucune donnée CAMAC n'est dans le site
+construit, la régénération du schéma commun (qui doit ne rien changer) et les tests du pipeline (pytest).
 
-Le workflow `publier.yml` se lance à la main. Il construit le site, sans aucun fichier de données cantonales, et le
-publie sur GitHub Pages si la variable `PUBLIER` vaut `true`. Variables : `BASE_PATH` (ex. `/vigie-vaud` sans
-domaine propre), `GOATCOUNTER` (facultatif).
+Le workflow `publier.yml` se lance à la main. Il lance `svelte-check` et les tests du site, et s'arrête avant tout
+déploiement si l'un échoue. Il construit ensuite le site, sans aucun fichier de données cantonales, et le publie sur
+GitHub Pages si la variable `PUBLIER` vaut `true`. Variables : `BASE_PATH` (ex. `/vigie-vaud` sans domaine propre),
+`GOATCOUNTER` (facultatif).
 
 ## Données et licence
 
