@@ -1,4 +1,5 @@
 import { asset } from '$app/paths';
+import { memoPromesse, requeteAvecDelai } from '#lib/chargement.js';
 import { inscrireEtat } from '#lib/fraicheur.js';
 import type { Commune } from '#lib/types.js';
 import millesimes from '#lib/millesimes.json';
@@ -17,19 +18,14 @@ type Fetch = typeof fetch;
 /** Polygones d'une commune : [polygone][anneau][point] = [lon, lat]. */
 export type Limites = number[][][][];
 
-const cache = new Map<string, Promise<unknown>>();
-function getJson<T>(f: Fetch, path: string): Promise<T> {
-	let p = cache.get(path) as Promise<T> | undefined;
-	if (!p) {
-		p = f(asset(path as Parameters<typeof asset>[0])).then((r) => {
-			if (!r.ok) throw new Error(`${path} : ${r.status}`);
-			return r.json() as Promise<T>;
-		});
-		p.catch(() => cache.delete(path));
-		cache.set(path, p);
-	}
-	return p;
-}
+/** Chaque fichier, et le rattachement qui en est tiré, une fois par visite ; un échec est redemandé. */
+const cache = memoPromesse<string>();
+const getJson = <T>(f: Fetch, path: string): Promise<T> =>
+	cache(path, async () => {
+		const r = await requeteAvecDelai(f, asset(path as Parameters<typeof asset>[0]));
+		if (!r.ok) throw new Error(`${path} : ${r.status}`);
+		return r.json() as Promise<T>;
+	});
 
 export const getCommunes = (f: Fetch) => getJson<Commune[]>(f, 'communes.json');
 /** Limites des communes, par n° OFS. */
@@ -78,9 +74,8 @@ export interface Rattachement {
  * sinon la plus proche (lacs, imprécisions).
  */
 export const getRattachement = (f: Fetch): Promise<Rattachement> =>
-	(cache.get('rattachement') as Promise<Rattachement>) ??
-	(() => {
-		const p = Promise.all([getCommunes(f), getLimites(f)]).then(([communes, limites]) => {
+	cache('rattachement', () =>
+		Promise.all([getCommunes(f), getLimites(f)]).then(([communes, limites]) => {
 			const parBfs = communes.map((c) => ({ c, l: limites[c.bfs] ?? [] }));
 			return {
 				communeDe(lon: number, lat: number) {
@@ -95,8 +90,5 @@ export const getRattachement = (f: Fetch): Promise<Rattachement> =>
 				},
 				limites: (c: Commune) => limites[c.bfs] ?? []
 			};
-		});
-		p.catch(() => cache.delete('rattachement'));
-		cache.set('rattachement', p);
-		return p;
-	})();
+		})
+	);

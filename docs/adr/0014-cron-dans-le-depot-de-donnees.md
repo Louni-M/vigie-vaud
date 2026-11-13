@@ -1,12 +1,12 @@
 # Le cron tourne dans le dépôt de données
 
 Le workflow planifié du cron vit dans `vigie-vaud-donnees`, et non à côté de `pipeline/` dans le dépôt principal. Son
-`GITHUB_TOKEN` suffit ainsi pour écrire les données et publier le dépôt sur Pages : il n'y a aucun secret à garder ni à
-renouveler. Et comme le cron committe à chaque passage dans le dépôt qui le porte, GitHub ne désactive pas son
-`schedule` après 60 jours sans activité, ce qui arriverait au dépôt principal entre deux jalons. Le dépôt de données ne
-contient qu'un déclencheur (`schedule`, `workflow_dispatch`, `concurrency`, `permissions`) qui appelle le workflow
-réutilisable `.github/workflows/cron.yml@main` du dépôt principal. La logique évolue donc avec `pipeline/`, dans les
-mêmes PR.
+`GITHUB_TOKEN` suffit ainsi pour écrire les données et publier le dépôt sur Pages, sans secret à renouveler : le seul
+secret passé au workflow est `RETRAITS_CLE` (facultatif, ADR 0007). Et comme le cron committe à chaque passage dans le
+dépôt qui le porte, GitHub ne désactive pas son `schedule` après 60 jours sans activité, ce qui arriverait au dépôt
+principal entre deux jalons. Le dépôt de données ne contient qu'un déclencheur (`schedule`, `workflow_dispatch`,
+`concurrency`, `permissions`) qui appelle le workflow réutilisable `.github/workflows/cron.yml@main` du dépôt principal.
+La logique évolue donc avec `pipeline/`, dans les mêmes PR.
 
 ## Considered Options
 

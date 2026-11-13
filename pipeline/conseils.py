@@ -54,7 +54,7 @@ from pydantic import ValidationError
 from bruts import Bruts
 from lecture_conseils import MOTIFS_LECTURE, lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
-from retraits import appliquer_retraits, lire_retraits
+from retraits import appliquer_retraits, cle_des_retraits, lire_retraits
 from rattachement import (
     COMMUNES_JSON,
     Repertoire,
@@ -660,13 +660,16 @@ def importer_conseils(
     Le commit et le push sont l'affaire de l'appelant.
 
     Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; les
-    retraits de `retraits.json` (ADR 0007) sont réappliqués à toute l'archive après les imports. Un
-    `corrections.json` ou un `retraits.json` invalide lève `pydantic.ValidationError` avant tout import."""
+    retraits de `retraits.json` (ADR 0007) sont réappliqués à toute l'archive après les imports, avec la clé des
+    empreintes de `RETRAITS_CLE` (sans elle, un retrait à empreinte vaut pour le point de son rang). Un
+    `corrections.json` ou un `retraits.json` invalide lève `pydantic.ValidationError`, et une `RETRAITS_CLE` trop
+    courte `ValueError`, avant tout import."""
     genere = horloge().astimezone(UTC).replace(microsecond=0)
     jour = genere.astimezone(FUSEAU).date()
     repertoire = Repertoire.lire(communes)
     corrections = lire_corrections(depot)
     retraits = lire_retraits(depot)
+    cle_retraits = cle_des_retraits()
     imports = lire_imports(depot)
     premiers = lire_premiers_imports(depot)
     rattrapages = lire_rattrapages(depot)
@@ -714,7 +717,7 @@ def importer_conseils(
 
     # Les retraits passent après le masquage, sur toute l'archive : un élément relu avec son texte d'origine
     # reprend le texte corrigé, et un retrait nouveau vaut dès ce passage.
-    retires = appliquer_retraits(archive, retraits)
+    retires = appliquer_retraits(archive, retraits, cle_retraits)
     nouveaux |= retires
     archive = {**archive, **retires}
 

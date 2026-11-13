@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { delaiExpire, sansReponse } from '#tests/sans-reponse.js';
 import {
 	dateHeure,
 	deduireCouverture,
@@ -680,5 +681,21 @@ describe("chargement de l'état des sources", () => {
 		expect(await chargerEtatSources(async () => reponse('Not found', 404), 'https://d')).toBeNull();
 		expect(await chargerEtatSources(async () => reponse('{', 200), 'https://d')).toBeNull();
 		expect(await chargerEtatSources(() => Promise.reject(new TypeError('réseau')), 'https://d')).toBeNull();
+	});
+
+	it('donne null quand le dépôt de données ne répond pas à temps', async () => {
+		const delai = delaiExpire();
+		try {
+			expect(await chargerEtatSources(sansReponse, 'https://d')).toBeNull();
+			expect(delai).toHaveBeenCalledWith(20_000);
+		} finally {
+			vi.restoreAllMocks();
+		}
+	});
+
+	it('relit le fichier sans se fier au cache du navigateur', async () => {
+		const f = vi.fn(async (_e: RequestInfo | URL, _i?: RequestInit) => reponse(etat({ camac: disponible })));
+		await chargerEtatSources(f, 'https://d');
+		expect(f).toHaveBeenCalledWith('https://d/etat-sources.json', expect.objectContaining({ cache: 'no-cache' }));
 	});
 });
