@@ -29,6 +29,7 @@ import { avisIntrouvable, avisNonCherche } from './avis.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
 import { zoneDuFil } from '#lib/fil/fil.js';
 import type { Navigateur, OptionsNavigation } from './navigateur.js';
+import { memoPromesse } from '#lib/chargement.js';
 
 export { FIL };
 
@@ -170,19 +171,12 @@ export function creerRegistre(
 
 	/* ---- Composants, importés une seule fois chacun, à la demande ---- */
 
-	const charges = new Map<string, ReturnType<Chargeur<unknown>>>();
+	const charges = memoPromesse<string>();
 	/** L'`Apercu` reçoit aussi `voir` : celui qui le rend lui donne ce type. */
 	function composant(c: CoucheInscrite, nom: NomComposant) {
 		const chargeur = c.composants[nom] as Chargeur<unknown> | undefined;
 		if (!chargeur) return null;
-		const cle = `${c.id}:${nom}`;
-		let p = charges.get(cle);
-		if (!p) {
-			p = chargeur();
-			p.catch(() => charges.delete(cle));
-			charges.set(cle, p);
-		}
-		return p;
+		return charges(`${c.id}:${nom}`, chargeur);
 	}
 
 	/* ---- Actions ---- */
