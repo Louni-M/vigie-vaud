@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { delaiDepasse } from './chargement.js';
 import { delaiExpire, sansReponse } from '#tests/sans-reponse.js';
 import { chargerImports, dernierImport } from './imports-conseils.js';
 import type { ImportConseils } from './schema.js';
@@ -32,19 +33,20 @@ describe('dernier import des conseils (conseils/import.json)', () => {
 		expect(dernierImport(null, source('openparldata-vd'))).toBeNull();
 	});
 
-	it('donne null si le fichier manque, est illisible, injoignable ou d’une version inconnue', async () => {
-		expect(await chargerImports(async () => reponse('Not found', 404), 'https://d')).toBeNull();
-		expect(await chargerImports(async () => reponse('{', 200), 'https://d')).toBeNull();
-		expect(await chargerImports(() => Promise.reject(new TypeError('réseau')), 'https://d')).toBeNull();
-		expect(await chargerImports(async () => reponse({ ...IMPORTS, version: 2 }), 'https://d')).toBeNull();
+	it('rejette si le fichier manque, est illisible, injoignable ou d’une version inconnue, pour être relu', async () => {
+		await expect(chargerImports(async () => reponse('Not found', 404), 'https://d')).rejects.toThrow('HTTP 404');
+		await expect(chargerImports(async () => reponse('Erreur', 503), 'https://d')).rejects.toThrow('HTTP 503');
+		await expect(chargerImports(async () => reponse('{', 200), 'https://d')).rejects.toThrow();
+		await expect(chargerImports(() => Promise.reject(new TypeError('réseau')), 'https://d')).rejects.toThrow('réseau');
+		await expect(chargerImports(async () => reponse({ ...IMPORTS, version: 2 }), 'https://d')).rejects.toThrow('version');
 	});
 
 	describe('délai d’attente', () => {
 		afterEach(() => vi.restoreAllMocks());
 
-		it('donne null quand le dépôt de données ne répond pas à temps', async () => {
+		it('rejette quand le dépôt de données ne répond pas à temps', async () => {
 			const delai = delaiExpire();
-			expect(await chargerImports(sansReponse, 'https://d')).toBeNull();
+			await expect(chargerImports(sansReponse, 'https://d')).rejects.toSatisfy(delaiDepasse);
 			expect(delai).toHaveBeenCalledWith(20_000);
 		});
 	});

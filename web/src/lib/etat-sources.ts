@@ -13,13 +13,12 @@ export const VERSION_ETAT = 1;
 export const lireEtatSources = (json: unknown): EtatSources | null => contenuVersionne(json, VERSION_ETAT);
 
 /**
- * Charge l'état des sources à l'adresse de base `donnees`. Absent, injoignable, trop lent, illisible ou d'une
- * version inconnue, il vaut `null` : la Couverture dit alors l'état « inconnu », sans jamais lever d'erreur.
+ * Charge l'état des sources à l'adresse de base `donnees`. Rejette s'il est absent, injoignable, trop lent, illisible
+ * ou d'une version inconnue : `couverture-courante` le relit alors plus tard, et la Couverture dit l'état « inconnu »
+ * en attendant.
  */
-export const chargerEtatSources = (f: typeof fetch, donnees: string = DONNEES): Promise<EtatSources | null> =>
-	lireJsonVersionne<EtatSources>(f, `${donnees}/etat-sources.json`, VERSION_ETAT, { init: { cache: 'no-cache' } }).catch(
-		() => null
-	);
+export const chargerEtatSources = (f: typeof fetch, donnees: string = DONNEES): Promise<EtatSources> =>
+	lireJsonVersionne<EtatSources>(f, `${donnees}/etat-sources.json`, VERSION_ETAT, { init: { cache: 'no-cache' } });
 
 /** Recherche des issues `panne-source` ouvertes du dépôt de données qui portent ce titre. */
 function rechercherPannes(titre: string): string {

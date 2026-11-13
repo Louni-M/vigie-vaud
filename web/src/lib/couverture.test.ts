@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { delaiDepasse } from './chargement.js';
 import { delaiExpire, sansReponse } from '#tests/sans-reponse.js';
 import {
 	dateHeure,
@@ -677,16 +678,18 @@ describe("chargement de l'état des sources", () => {
 		expect(url.searchParams.get('q')).toBe('is:issue is:open label:panne-source in:title "Panne : i-web"');
 	});
 
-	it('donne null si le fichier est absent, illisible ou injoignable', async () => {
-		expect(await chargerEtatSources(async () => reponse('Not found', 404), 'https://d')).toBeNull();
-		expect(await chargerEtatSources(async () => reponse('{', 200), 'https://d')).toBeNull();
-		expect(await chargerEtatSources(() => Promise.reject(new TypeError('réseau')), 'https://d')).toBeNull();
+	it('rejette si le fichier est absent, illisible, injoignable ou d’une version inconnue, pour être relu', async () => {
+		await expect(chargerEtatSources(async () => reponse('Not found', 404), 'https://d')).rejects.toThrow('HTTP 404');
+		await expect(chargerEtatSources(async () => reponse('Erreur', 503), 'https://d')).rejects.toThrow('HTTP 503');
+		await expect(chargerEtatSources(async () => reponse('{', 200), 'https://d')).rejects.toThrow();
+		await expect(chargerEtatSources(() => Promise.reject(new TypeError('réseau')), 'https://d')).rejects.toThrow('réseau');
+		await expect(chargerEtatSources(async () => reponse({ version: 2 }), 'https://d')).rejects.toThrow('version');
 	});
 
-	it('donne null quand le dépôt de données ne répond pas à temps', async () => {
+	it('rejette quand le dépôt de données ne répond pas à temps', async () => {
 		const delai = delaiExpire();
 		try {
-			expect(await chargerEtatSources(sansReponse, 'https://d')).toBeNull();
+			await expect(chargerEtatSources(sansReponse, 'https://d')).rejects.toSatisfy(delaiDepasse);
 			expect(delai).toHaveBeenCalledWith(20_000);
 		} finally {
 			vi.restoreAllMocks();
