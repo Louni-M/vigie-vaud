@@ -530,6 +530,10 @@ export interface Retrait {
 	 */
 	cible: string;
 	/**
+	 * Pour un `point:<n>` seulement : HMAC-SHA256, en hexadécimal, du titre d'origine du point, sous la clé secrète du dépôt de données (`RETRAITS_CLE`, ADR 0007). Le cron corrige chaque point qui a cette empreinte, au rang `<n>` ou ailleurs si la source a inséré ou retiré des points. Absente : le point au rang `<n>`.
+	 */
+	empreinte?: string | null;
+	/**
 	 * Le texte qui remplace celui de la source, sans le nom retiré.
 	 */
 	texte: string;

@@ -640,8 +640,21 @@ class Retrait(Modele):
         description="Le champ corrigé : `titre` (d'un Objet), `nom` (d'une Séance), `point:<n>` (titre du n-ième "
         "point de l'ordre du jour d'une Séance, à partir de 1) ou `document:<lien>` (titre du document qui a ce lien)."
     )
+    empreinte: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")] | None = Field(
+        default=None,
+        description="Pour un `point:<n>` seulement : HMAC-SHA256, en hexadécimal, du titre d'origine du point, sous la "
+        "clé secrète du dépôt de données (`RETRAITS_CLE`, ADR 0007). Le cron corrige chaque point qui a cette "
+        "empreinte, au rang `<n>` ou ailleurs si la source a inséré ou retiré des points. Absente : le point au rang "
+        "`<n>`.",
+    )
     texte: str = Field(min_length=1, description="Le texte qui remplace celui de la source, sans le nom retiré.")
     date: dt.date = Field(description="Jour du retrait.")
+
+    @model_validator(mode="after")
+    def _empreinte_d_un_point(self) -> Retrait:
+        if self.empreinte is not None and not self.cible.startswith("point:"):
+            raise ValueError("une empreinte ne vise qu'un point d'ordre du jour (`point:<n>`)")
+        return self
 
 
 class Retraits(RootModel[list[Retrait]]):

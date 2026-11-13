@@ -62,6 +62,32 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
   règle, on corrige aussi le masquage. Écartés : la règle seule (un cas isolé qu'aucune règle générale n'attrape
   reviendrait) ; une liste de noms à masquer (elle publierait les noms qu'on veut cacher). Une demande se fait par
   courriel, jamais par une issue, qui publierait le nom.
+- Un point d'ordre du jour n'a pas d'identifiant stable : son rang bouge quand la source insère un point, et son
+  numéro affiché avec lui. Le retrait d'un point porte donc, en plus du rang, une **empreinte** du titre d'origine
+  (#199) : un HMAC-SHA256 du titre tel que l'archive le tient (masqué, Unicode NFC, espaces réduits), sous une clé
+  secrète du dépôt de données, `RETRAITS_CLE`, que le workflow du cron reçoit comme secret. Le cron corrige chaque
+  point qui a cette empreinte, au rang indiqué ou ailleurs ; un point qui porte déjà le texte corrigé compte comme
+  corrigé (la Séance n'a pas été relue). Un retrait sans empreinte, écrit avant, garde la règle du rang.
+  Le texte corrigé est public, et le nom retiré y a laissé sa place (« Vente de la parcelle 412 à [particulier] ») :
+  avec un simple hachage, il suffirait d'y remettre chaque nom d'un dictionnaire et de comparer. La clé l'empêche :
+  sans elle, aucune empreinte ne se recalcule. Elle a au moins 32 caractères aléatoires (le cron refuse une clé plus
+  courte), n'existe que dans les secrets du dépôt de données et une copie hors ligne de la personne qui tient le
+  projet, et ne s'écrit jamais dans un fichier, un commit, une issue ni une ligne de commande. La changer impose de
+  recalculer chaque empreinte depuis le titre de la source, que l'archive ne garde plus. Une clé divulguée rend les
+  empreintes attaquables par dictionnaire : la changer, puis recalculer.
+  Écartés : viser le point par son texte d'origine (il publierait le nom dans `retraits.json`) ; un hachage simple
+  ou salé avec un sel publié (dictionnaire) ; un hachage lent, scrypt ou Argon2 (il ralentit l'essai d'un
+  dictionnaire de noms, qui reste petit, sans l'empêcher) ; le numéro affiché du point (il bouge avec le rang, et
+  manque souvent).
+  Un retrait sans effet (cible introuvable, ou empreinte qu'aucun point n'a plus parce que la source a changé le
+  titre) ouvre ou complète l'issue `retrait-sans-effet` du dépôt de données, que le cron ferme quand chaque retrait
+  a de nouveau effet. Elle ne donne que la clé de l'élément et la cible (`document` sans son lien, qui peut porter le
+  nom), jamais un texte. Le prix de l'empreinte : quand la source change le titre du point, plus rien ne le
+  corrige, et le nouveau titre, avec le nom, entre dans l'archive jusqu'à ce que l'issue soit traitée (nouvelle
+  empreinte, puis réécriture de l'historique) ; le rang seul l'aurait recouvert, mais il recouvre aussi le mauvais
+  point dès qu'un point est inséré, en silence. Sans `RETRAITS_CLE` (secret absent ou vide), un retrait à empreinte
+  vaut pour le point de son rang, comme avant, sauf si un point porte déjà le texte corrigé (rien ne bouge) : le
+  cron le signale dans son journal et dans la même issue.
 - La liste des élu·e·s connu·e·s de chaque conseil est publique, en clair, dans le dépôt de données, et sans limite
   de durée (ADR-0008) : elle vient de pages publiques et d'un mandat public, et un·e ancien·ne élu·e doit rester
   lisible dans les titres de son mandat. Les mentions faites dans l'exercice du mandat restent après sa fin ; une
