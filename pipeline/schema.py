@@ -149,7 +149,7 @@ DonneeConseil = TypeAliasType("DonneeConseil", Literal["objets", "preavis", "sea
 
 
 class Niveau(NamedTuple):
-    """Un niveau (CONTEXT.md) : ce que donne un conseil scrapé, tel que `conseil.donne` l'écrit (ADR-0010)."""
+    """Un niveau (GLOSSARY.md) : ce que donne un conseil scrapé, tel que `conseil.donne` l'écrit (ADR-0010)."""
 
     donne: frozenset[str]
     libelle: str  # « objets et séances »

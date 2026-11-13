@@ -1,7 +1,7 @@
 name: Publication du site (API en direct)
 
-# Prototype « API en direct » : aucune donnée CAMAC n'est téléchargée, construite ni publiée.
-# Le navigateur des visiteurs interroge lui-même ogc.vd.ch ; seul le site statique est déployé.
+# Construit le site statique et le publie sur GitHub Pages. Aucune donnée CAMAC ni DGMR n'est téléchargée,
+# construite ni publiée : le navigateur des visiteurs interroge lui-même www.ogc.vd.ch (norme DCG 8401).
 on:
   workflow_dispatch:
 
