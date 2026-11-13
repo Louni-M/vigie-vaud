@@ -2,8 +2,8 @@
 table de cas (spec de J1, « Décisions de test », point 3)."""
 
 import pytest
-
 from cas_partages import cas_partages
+
 from masquage import masquer
 
 ELUS = frozenset({"Loris Socchi", "Jean Dupont", "Anne-Laure Métraux"})
