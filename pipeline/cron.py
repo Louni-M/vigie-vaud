@@ -33,7 +33,8 @@ d'une commune scrapée et rouvre toutes les pages de son site ou de ceux de la p
 6 mois et sans plafond de requêtes, au même débit, sans toucher à OpenParlData ni aux autres communes ; il note
 l'heure de chaque rattrapage dans `conseils/import.json` (`rattrapages`). En production, le workflow réutilisable
 `.github/workflows/cron.yml` lance la même commande sans `--sans-push`, avec le `GITHUB_TOKEN` et le
-`GITHUB_REPOSITORY` du dépôt de données dans l'environnement, puis publie le dépôt sur Pages ; un lancement manuel
+`GITHUB_REPOSITORY` du dépôt de données dans l'environnement, et son secret `RETRAITS_CLE` (la clé des empreintes des
+retraits, ADR 0007 ; sans elle, l'issue `retrait-sans-effet` le dit), puis publie le dépôt sur Pages ; un lancement manuel
 (`workflow_dispatch`) y ajoute `--rattrapage` avec l'entrée `rattrapage`, ou `--rattrapage-cible` avec l'entrée
 `rattrapage_cible`.
 """
@@ -61,6 +62,7 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
+from retraits import FICHIER_RETRAITS, ConstatRetraits, cible_affichee, cle_des_retraits, constat_des_retraits
 from robot_communal import Alternance, CrawlDelayTropLong, Robot, alterner, erreur_tls, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
@@ -102,8 +104,8 @@ Touchee = tuple[Source, str]
 
 
 class ClientIssues(Protocol):
-    """Les issues `panne-source`, `import-conseils` et `a-verifier` du dépôt de données : `IssuesGitHub` en
-    production, `IssuesAffichees` sans push. Une erreur de l'API lève `httpx.HTTPError`."""
+    """Les issues `panne-source`, `import-conseils`, `a-verifier` et `retrait-sans-effet` du dépôt de données :
+    `IssuesGitHub` en production, `IssuesAffichees` sans push. Une erreur de l'API lève `httpx.HTTPError`."""
 
     def signalees(self, sources: list[Source]) -> set[str] | None:
         """Identifiants des `sources` qui ont une issue `panne-source` ouverte, ou `None` pour un client qui ne voit
@@ -147,6 +149,20 @@ class ClientIssues(Protocol):
     def import_retour(self, conseil: Source, dernier: datetime) -> None:
         """Le conseil qui a une issue ouverte a de nouveau été importé, à `dernier`."""
 
+    def retraits_signales(self) -> set[str] | None:
+        """Ce que liste l'issue `retrait-sans-effet` ouverte (`identifiants_retraits`), un ensemble vide sans issue
+        ouverte, ou `None` pour un client qui ne voit pas les issues : le passage lui signale alors le constat à
+        chaque passage."""
+
+    def retraits_sans_effet(self, constat: ConstatRetraits) -> None:
+        """Des retraits sont sans effet ou non vérifiés, sans issue ouverte."""
+
+    def liste_retraits(self, constat: ConstatRetraits) -> None:
+        """L'issue ouverte liste d'autres retraits que `constat` : la liste change."""
+
+    def retraits_en_effet(self) -> None:
+        """Chaque retrait de l'issue ouverte a de nouveau effet."""
+
 
 class IssuesAffichees:
     """Client d'issues du mode local : il affiche ce qu'il signalerait, sans rien ouvrir."""
@@ -183,6 +199,18 @@ class IssuesAffichees:
 
     def import_retour(self, conseil: Source, dernier: datetime) -> None:
         print(f"Import de retour : {conseil.nom} (importé {dernier:%Y-%m-%d %H:%M}Z)")
+
+    def retraits_signales(self) -> None:
+        return None
+
+    def retraits_sans_effet(self, constat: ConstatRetraits) -> None:
+        print(commentaire_retraits(constat))
+
+    def liste_retraits(self, constat: ConstatRetraits) -> None:
+        self.retraits_sans_effet(constat)
+
+    def retraits_en_effet(self) -> None:
+        print(RETRAITS_EN_EFFET)
 
 
 ETIQUETTE_PANNE = "panne-source"
@@ -313,6 +341,23 @@ class IssuesGitHub:
         commentaire = f"{conseil.nom} est de nouveau importé : import réussi le {dernier:%Y-%m-%d à %H:%M} UTC."
         self._fermer(ETIQUETTE_IMPORT, titre_import(conseil), commentaire)
 
+    def retraits_signales(self) -> set[str]:
+        ouvertes = [i for i in self._issues_ouvertes(ETIQUETTE_RETRAITS) if i["title"] == TITRE_RETRAITS]
+        return set().union(*(_retraits_listes(i.get("body") or "") for i in ouvertes))
+
+    def retraits_sans_effet(self, constat: ConstatRetraits) -> None:
+        corps = {"title": TITRE_RETRAITS, "body": corps_retraits(constat), "labels": [ETIQUETTE_RETRAITS]}
+        self._requete("POST", self._api, json=corps)
+
+    def liste_retraits(self, constat: ConstatRetraits) -> None:
+        ouvertes = [i["number"] for i in self._issues_ouvertes(ETIQUETTE_RETRAITS) if i["title"] == TITRE_RETRAITS]
+        for numero in ouvertes:
+            self._requete("PATCH", f"{self._api}/{numero}", json={"body": corps_retraits(constat)})
+            self._requete("POST", f"{self._api}/{numero}/comments", json={"body": commentaire_retraits(constat)})
+
+    def retraits_en_effet(self) -> None:
+        self._fermer(ETIQUETTE_RETRAITS, TITRE_RETRAITS, RETRAITS_EN_EFFET)
+
     def _fermer(self, etiquette: str, titre: str, commentaire: str) -> None:
         """Commente puis ferme les issues ouvertes `etiquette` de ce titre."""
         for numero in [i["number"] for i in self._issues_ouvertes(etiquette) if i["title"] == titre]:
@@ -373,6 +418,73 @@ def corps_plateforme(sorte: SorteIssue, plateforme: Plateforme, communes: list[T
         f"{sorte.constat.format(plateforme=plateforme.nom)} :\n\n{lignes}\n\n{sorte.suite}\n\n"
         f"<!-- sources : {' '.join(s.id for s, _ in communes)} -->"
     )
+
+
+# --- Issue `retrait-sans-effet` (ADR 0007) : la clé de l'élément et la cible de chaque retrait, jamais un texte ---
+
+ETIQUETTE_RETRAITS = "retrait-sans-effet"
+TITRE_RETRAITS = "Retraits sans effet"
+RETRAITS_EN_EFFET = "Chaque retrait de `retraits.json` a de nouveau effet."
+_CLE_ABSENTE = "cle-absente"
+_RETRAITS_LISTES = re.compile(r"<!-- retraits : ([^>]*) -->")
+
+
+def _retraits_listes(corps: str) -> set[str]:
+    m = _RETRAITS_LISTES.search(corps)
+    return set(m[1].split()) if m else set()
+
+
+def identifiants_retraits(constat: ConstatRetraits) -> set[str]:
+    """Ce que l'issue liste, pour que le passage suivant la compare au constat : `<élément>|<cible>` de chaque
+    retrait sans effet, et `cle-absente` s'il y a des retraits non vérifiés."""
+    ids = {f"{r.element}|{cible_affichee(r)}" for r in constat.sans_effet}
+    return ids | ({_CLE_ABSENTE} if constat.non_verifies else set())
+
+
+def _liste_retraits(constat: ConstatRetraits) -> list[str]:
+    return list(dict.fromkeys(f"`{r.element}` : `{cible_affichee(r)}`" for r in constat.sans_effet))
+
+
+def _phrase_cle_absente(constat: ConstatRetraits) -> str:
+    n = len(constat.non_verifies)
+    return (
+        f"`RETRAITS_CLE` absente : {n} retrait{'s' if n > 1 else ''} à empreinte "
+        f"{'sont corrigés' if n > 1 else 'est corrigé'} au point de {'leur' if n > 1 else 'son'} rang, sans "
+        "vérification ; un point inséré par la source décale la correction et le nom retiré revient. Donner le secret "
+        "`RETRAITS_CLE` du dépôt de données au workflow du cron (ADR 0007)."
+    )
+
+
+def commentaire_retraits(constat: ConstatRetraits) -> str:
+    """Une ligne : les retraits sans effet, et la clé absente s'il y a lieu."""
+    phrases = []
+    if constat.sans_effet:
+        phrases.append(f"{TITRE_RETRAITS} : {', '.join(_liste_retraits(constat))}.")
+    if constat.non_verifies:
+        phrases.append(_phrase_cle_absente(constat))
+    return " ".join(phrases)
+
+
+def corps_retraits(constat: ConstatRetraits) -> str:
+    """Le corps de l'issue : les retraits sans effet, la clé absente s'il y a lieu, la suite, puis les identifiants
+    pour le passage suivant. Ni le texte corrigé ni le lien d'un document : seulement la clé et la cible."""
+    parties = []
+    if constat.sans_effet:
+        lignes = "\n".join(f"- {ligne}" for ligne in _liste_retraits(constat))
+        parties.append(
+            "Ces retraits de `retraits.json` sont sans effet : leur cible est introuvable dans l'élément de l'archive, "
+            "ou aucun point n'a plus l'empreinte du titre d'origine (la source l'a changé). Le nom retiré peut être "
+            f"revenu.\n\n{lignes}"
+        )
+    if constat.non_verifies:
+        parties.append(_phrase_cle_absente(constat))
+    parties.append(
+        "Marche à suivre : `docs/retrait.md` du dépôt principal (vérifier l'élément, recalculer l'empreinte ou le "
+        "rang). Le cron tient cette issue à jour à chaque passage et la fermera quand chaque retrait aura de nouveau "
+        "effet."
+    )
+    parties.append(f"<!-- retraits : {' '.join(sorted(identifiants_retraits(constat)))} -->")
+    return "\n\n".join(parties)
 
 
 def titre_import(conseil: Source) -> str:
@@ -802,6 +914,10 @@ def importer_les_conseils(
             print("Import des conseils en échec, le passage suivant réessaiera :", file=sys.stderr)
             traceback.print_exc()
 
+    try:
+        _accorder_issue_retraits(issues, depot)
+    except httpx.HTTPError as e:
+        print(f"Issue retrait-sans-effet non mise à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
     if rattrapes is not None:
         # Un rattrapage ne lit que les conseils visés : les autres, qu'il ne tente pas, n'y sont pas en échec. Le
         # passage ordinaire suivant accorde les issues.
@@ -839,6 +955,31 @@ def _accorder_issues_a_verifier(issues: ClientIssues, depot: Path, sources: Fich
             if premier <= seuil:
                 touchees[site.id] = f"aucune Séance depuis le premier import, le {premier:%Y-%m-%d}"
     _accorder_issues_plateformes(issues, A_VERIFIER, sources, touchees, ())
+
+
+def _accorder_issue_retraits(issues: ClientIssues, depot: Path) -> None:
+    """L'issue `retrait-sans-effet` : ouverte au premier retrait sans effet (ou non vérifié faute de `RETRAITS_CLE`),
+    complétée quand la liste change, fermée quand chaque retrait a de nouveau effet. Le constat porte sur l'archive
+    écrite, à chaque passage : un retrait n'est appliqué qu'à l'import, mais l'archive ne change qu'avec lui. Sans
+    `retraits.json`, rien à faire ; un `retraits.json` illisible fait déjà échouer l'import, qui le dit."""
+    if not (depot / FICHIER_RETRAITS).is_file():
+        return
+    try:
+        constat = constat_des_retraits(depot, cle_des_retraits())
+    except ValueError as e:  # `ValidationError` compris ; son message citerait le texte corrigé
+        print(f"Retraits non vérifiés : {type(e).__name__}", file=sys.stderr)
+        return
+    courants = identifiants_retraits(constat)
+    signales = issues.retraits_signales()
+    if signales is None:
+        if courants:
+            issues.retraits_sans_effet(constat)
+    elif courants and not signales:
+        issues.retraits_sans_effet(constat)
+    elif courants and courants != signales:
+        issues.liste_retraits(constat)
+    elif signales and not courants:
+        issues.retraits_en_effet()
 
 
 DELAI_AVANT_ISSUE_IMPORT = timedelta(hours=24)

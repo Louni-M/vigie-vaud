@@ -104,6 +104,19 @@ class IssuesFactices:
     def import_retour(self, conseil, dernier):
         self.signalements.append(("import_retour", conseil.id, dernier.isoformat()))
 
+    def retraits_signales(self):
+        return None
+
+    def retraits_sans_effet(self, constat):
+        elements = [r.element for r in constat.sans_effet]
+        self.signalements.append(("retraits_sans_effet", elements, len(constat.non_verifies)))
+
+    def liste_retraits(self, constat):
+        self.retraits_sans_effet(constat)
+
+    def retraits_en_effet(self):
+        self.signalements.append(("retraits_en_effet",))
+
 
 def _sans_attente(secondes):
     """L'horloge de ces passages est figée : l'import des conseils n'a pas à attendre entre deux requêtes."""

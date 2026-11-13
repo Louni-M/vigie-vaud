@@ -21,6 +21,19 @@
           "$ref": "#/$defs/CibleRetrait",
           "description": "Le champ corrigé : `titre` (d'un Objet), `nom` (d'une Séance), `point:<n>` (titre du n-ième point de l'ordre du jour d'une Séance, à partir de 1) ou `document:<lien>` (titre du document qui a ce lien)."
         },
+        "empreinte": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Pour un `point:<n>` seulement : HMAC-SHA256, en hexadécimal, du titre d'origine du point, sous la clé secrète du dépôt de données (`RETRAITS_CLE`, ADR 0007). Le cron corrige chaque point qui a cette empreinte, au rang `<n>` ou ailleurs si la source a inséré ou retiré des points. Absente : le point au rang `<n>`."
+        },
         "texte": {
           "description": "Le texte qui remplace celui de la source, sans le nom retiré.",
           "minLength": 1,

@@ -146,7 +146,8 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 - `pipeline/lecture_conseils.py` : fichiers de lecture que le site liste (`conseils/index.json`, `fil.json`…) ;
 - `pipeline/masquage.py` : masquage des noms de particuliers avant tout commit (ADR 0007) ;
 - `pipeline/rattachement.py` : rattachement par le nom des Objets du Grand Conseil (ADR 0016) ;
-- `pipeline/retraits.py` : retraits de `retraits.json`, réappliqués à chaque import (ADR 0007).
+- `pipeline/retraits.py` : retraits de `retraits.json`, réappliqués à chaque import, et empreinte du titre d'un
+  point d'ordre du jour sous la clé `RETRAITS_CLE` (ADR 0007).
 
 **Sites communaux** (ADR 0006 et 0010) :
 
