@@ -9,7 +9,6 @@ import {
 	entreeFil,
 	fauxDepotConseils,
 	filConseils,
-	grandConseil,
 	indexConseils,
 	ligneObjet,
 	objet,
