@@ -38,7 +38,8 @@ function verifier(racine: string) {
 	return { code: r.status, erreur: r.stderr };
 }
 
-describe('garde contre la rediffusion des données CAMAC et DGMR', () => {
+// Lancer bash prend jusqu'à une seconde sous Windows : le délai par défaut de 5 s ne suffit pas toujours.
+describe('garde contre la rediffusion des données CAMAC et DGMR', { timeout: 20_000 }, () => {
 	it('accepte un site sans donnée des sources', () => {
 		expect(verifier(site()).code).toBe(0);
 	});
