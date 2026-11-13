@@ -78,7 +78,9 @@ source rapporte le titre d'origine ou insère un point avant celui qui est corri
 l'import (rien n'est écrit). Une cible introuvable, ou une empreinte qu'aucun point n'a plus (la source a changé le
 titre), est signalée par « Retrait sans effet » dans le journal du cron et dans l'issue `retrait-sans-effet` du
 dépôt de données, qui ne donne que la clé de l'élément et la cible : vérifier l'élément, recalculer l'empreinte
-(étape 2) ou corriger le rang. Le cron ferme l'issue quand chaque retrait a de nouveau effet. La même issue signale
+(étape 2) ou corriger le rang. Quand la source a changé le titre, le nouveau titre, avec le nom, est déjà dans
+l'archive et dans son historique : après la correction, refaire l'étape 4. Le cron ferme l'issue quand chaque
+retrait a de nouveau effet. La même issue signale
 une `RETRAITS_CLE` absente du workflow : les retraits à empreinte y sont corrigés à leur rang, sans vérification.
 
 Si le cas révèle une règle (un mot déclencheur, une forme de nom), corriger aussi `pipeline/masquage.py` et

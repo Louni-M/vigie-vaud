@@ -14,7 +14,7 @@ import pytest
 from pydantic import ValidationError
 
 from faux_openparldata import HorlogeFactice, Point
-from retraits import appliquer_retraits, lire_retraits
+from retraits import appliquer_retraits, constat_des_retraits, lire_retraits
 from retraits import main as retraits_main
 from test_import_conseils import T0, _lire, _monde, _passer
 
@@ -156,6 +156,42 @@ def test_un_point_insere_avant_le_point_vise_ne_deplace_pas_la_correction(tmp_pa
         assert _titres(tmp_path) == ["Appel", "Postulat - Préaux ouverts", TEXTE_CORRIGE]
     assert "sans effet" not in capsys.readouterr().err
     assert not [f for f in tmp_path.rglob("*.json") if "Rochat" in f.read_text(encoding="utf-8")]
+
+    # Sans la clé, la Séance non relue garde sa correction déplacée : le rang n'écrase pas le point 2.
+    monkeypatch.delenv("RETRAITS_CLE")
+    horloge.heure = T0 + timedelta(days=5)
+    _passer(tmp_path, monde, horloge)
+    assert _titres(tmp_path) == ["Appel", "Postulat - Préaux ouverts", TEXTE_CORRIGE]
+
+
+def test_un_titre_change_par_la_source_rend_le_retrait_sans_effet(tmp_path, monkeypatch, capsys):
+    """L'empreinte ne correspond plus à aucun point : le nom revient, et le retrait est signalé (issue du cron)."""
+    monkeypatch.setenv("RETRAITS_CLE", CLE)
+    horloge = HorlogeFactice(T0)
+    monde, lausanne = _monde_avec_vente(horloge)
+    _passer(tmp_path, monde, horloge)
+    retrait = {
+        "element": "5586/2026-10-06",
+        "cible": "point:2",
+        "empreinte": _empreinte(tmp_path, "5586/2026-10-06", "point:2", capsys),
+        "texte": TEXTE_CORRIGE,
+        "date": "2026-10-16",
+    }
+    _retirer(tmp_path, retrait)
+    horloge.heure = T0 + timedelta(days=1)
+    _passer(tmp_path, monde, horloge)
+
+    lausanne.points[1].titre = f"{TITRE_NOMME} (rectifié)"
+    lausanne.updated_at = "2026-10-17"
+    horloge.heure = T0 + timedelta(days=2)
+    capsys.readouterr()
+    _passer(tmp_path, monde, horloge)
+
+    assert _titres(tmp_path) == ["Postulat - Préaux ouverts", f"{TITRE_NOMME} (rectifié)"]
+    assert "Retrait sans effet : 5586/2026-10-06, cible « point:2 » introuvable" in capsys.readouterr().err
+    constat = constat_des_retraits(tmp_path, CLE.encode())
+    assert [(r.element, r.cible) for r in constat.sans_effet] == [("5586/2026-10-06", "point:2")]
+    assert constat.non_verifies == []
 
 
 def test_on_ne_retrouve_pas_le_nom_retire_en_essayant_des_noms_sans_la_cle(tmp_path, monkeypatch, capsys):

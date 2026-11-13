@@ -82,8 +82,12 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
   Un retrait sans effet (cible introuvable, ou empreinte qu'aucun point n'a plus parce que la source a changé le
   titre) ouvre ou complète l'issue `retrait-sans-effet` du dépôt de données, que le cron ferme quand chaque retrait
   a de nouveau effet. Elle ne donne que la clé de l'élément et la cible (`document` sans son lien, qui peut porter le
-  nom), jamais un texte. Sans `RETRAITS_CLE` (secret absent ou vide), un retrait à empreinte vaut pour le point de son
-  rang, comme avant, jamais moins : le cron le signale dans son journal et dans la même issue.
+  nom), jamais un texte. Le prix de l'empreinte : quand la source change le titre du point, plus rien ne le
+  corrige, et le nouveau titre, avec le nom, entre dans l'archive jusqu'à ce que l'issue soit traitée (nouvelle
+  empreinte, puis réécriture de l'historique) ; le rang seul l'aurait recouvert, mais il recouvre aussi le mauvais
+  point dès qu'un point est inséré, en silence. Sans `RETRAITS_CLE` (secret absent ou vide), un retrait à empreinte
+  vaut pour le point de son rang, comme avant, sauf si un point porte déjà le texte corrigé (rien ne bouge) : le
+  cron le signale dans son journal et dans la même issue.
 - La liste des élu·e·s connu·e·s de chaque conseil est publique, en clair, dans le dépôt de données, et sans limite
   de durée (ADR-0008) : elle vient de pages publiques et d'un mandat public, et un·e ancien·ne élu·e doit rester
   lisible dans les titres de son mandat. Les mentions faites dans l'exercice du mandat restent après sa fin ; une

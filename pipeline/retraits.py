@@ -70,14 +70,22 @@ def empreinte(titre: str, cle: bytes) -> str:
 def _rangs(seance: Seance, retrait: Retrait, cle: bytes | None) -> list[int] | None:
     """Les rangs (à partir de 0) des points que `retrait` corrige, `[]` s'il a déjà corrigé le sien, `None` s'il est
     sans effet. Avec une empreinte et la clé, chaque point qui a cette empreinte, quel que soit son rang : le même
-    titre deux fois porte deux fois le nom. Sans empreinte, ou sans la clé pour la vérifier, le point du rang."""
+    titre deux fois porte deux fois le nom. Sans empreinte, ou sans la clé pour la vérifier, le point du rang ; mais
+    un retrait à empreinte dont un point porte déjà le texte corrigé ne touche à rien, même sans la clé."""
     points = seance.ordre_du_jour
-    if retrait.empreinte is not None and cle is not None:
-        vises = [i for i, p in enumerate(points) if hmac.compare_digest(empreinte(p.titre, cle), retrait.empreinte)]
-        if vises:
-            return vises
-        # Un point qui porte déjà le texte corrigé : un passage précédent l'a corrigé, la Séance n'a pas été relue.
-        return [] if any(p.titre == retrait.texte for p in points) else None
+    # Un point qui porte déjà le texte corrigé : un passage précédent l'a corrigé, la Séance n'a pas été relue.
+    deja_corrige = any(p.titre == retrait.texte for p in points)
+    if retrait.empreinte is not None:
+        if cle is not None:
+            vises = [
+                i for i, p in enumerate(points) if hmac.compare_digest(empreinte(p.titre, cle), retrait.empreinte)
+            ]
+            if vises:
+                return vises
+            return [] if deja_corrige else None
+        if deja_corrige:
+            # Sans la clé, le point corrigé, peut-être déplacé, reste où il est : le rang écraserait un autre point.
+            return []
     rang = int(retrait.cible.removeprefix("point:")) - 1
     return [rang] if rang < len(points) else None
 
