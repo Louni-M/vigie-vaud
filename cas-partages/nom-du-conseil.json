@@ -1,0 +1,11 @@
+{
+	"description": "Nom d'un conseil, tiré du nom de sa source : `nom_du_conseil(nom_source)` de `pipeline/schema.py`, qui écrit le nom de l'index, et `nomDuConseil(nomSource)` de `web/src/lib/sources.ts`, qui l'affiche.",
+	"cas": [
+		{"nom_source": "Grand Conseil (OpenParlData)", "nom": "Grand Conseil"},
+		{"nom_source": "Conseil communal de Lausanne (OpenParlData)", "nom": "Conseil communal de Lausanne"},
+		{"nom_source": "Conseil communal d'Yverdon-les-Bains (OpenParlData)", "nom": "Conseil communal d’Yverdon-les-Bains"},
+		{"nom_source": "Conseil général de Nyon (OpenParlData, essai)", "nom": "Conseil général de Nyon"},
+		{"nom_source": "Conseil communal (CC) de Morges", "nom": "Conseil communal (CC) de Morges"},
+		{"nom_source": "Conseil communal de Pully", "nom": "Conseil communal de Pully"}
+	]
+}

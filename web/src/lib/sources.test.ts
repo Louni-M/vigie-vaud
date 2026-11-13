@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import casNiveaux from '../../../cas-partages/niveaux.json';
+import casNomDuConseil from '../../../cas-partages/nom-du-conseil.json';
 import { sourceNonCouverte, sourceSite } from '#tests/faux-conseils.js';
 import { sourcesDeLaCouche } from '#lib/couches/conseils/source.js';
 import {
@@ -8,9 +10,10 @@ import {
 	grouperSources,
 	phraseSitesLus,
 	listerConseils,
+	niveauDe,
 	nomDuConseil
 } from './sources.js';
-import type { Conseil, Plateforme, Source } from './schema.js';
+import type { Conseil, DonneeConseil, Plateforme, Source } from './schema.js';
 
 const source = (id: string): Source => ({
 	id,
@@ -266,16 +269,15 @@ describe('clé, commune et nom d’un conseil, comme le cron', () => {
 		expect([cleConseil(conseil), communeDuConseil(conseil)]).toEqual([cle, commune]);
 	});
 
-	// Les mêmes cas que `nom_du_conseil` du cron (`pipeline/tests/test_sources.py`), qui écrit le nom de l'index :
-	// un cas ajouté d'un côté s'ajoute de l'autre.
-	it.each([
-		['Grand Conseil (OpenParlData)', 'Grand Conseil'],
-		['Conseil communal de Lausanne (OpenParlData)', 'Conseil communal de Lausanne'],
-		["Conseil communal d'Yverdon-les-Bains (OpenParlData)", 'Conseil communal d’Yverdon-les-Bains'],
-		['Conseil général de Nyon (OpenParlData, essai)', 'Conseil général de Nyon'],
-		['Conseil communal (CC) de Morges', 'Conseil communal (CC) de Morges'],
-		['Conseil communal de Pully', 'Conseil communal de Pully']
-	])('« %s » → « %s »', (nomSource, nom) => {
+	// Les cas de `cas-partages/nom-du-conseil.json`, que lit aussi `nom_du_conseil` du cron, qui écrit le nom de l'index.
+	it.each(casNomDuConseil.cas)('« $nom_source » → « $nom »', ({ nom_source: nomSource, nom }) => {
 		expect(nomDuConseil(nomSource)).toBe(nom);
+	});
+
+	// Les cas de `cas-partages/niveaux.json`, que lit aussi `niveau_de` du cron : ce que donne un conseil, dans
+	// n'importe quel ordre, est l'un des trois niveaux (`null` : aucun).
+	it.each(casNiveaux.cas)('donne $donne → $niveau',({ donne, niveau }) => {
+		const lu = niveauDe({ donne: donne as DonneeConseil[] });
+		expect(lu ? { libelle: lu.libelle, objets: lu.objets } : null).toEqual(niveau);
 	});
 });

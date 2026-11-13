@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import casCleObjet from '../../../../../cas-partages/cle-objet.json';
 import type { Source } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
 import { lireCle, numeroObjet } from './cles.js';
@@ -35,20 +36,10 @@ describe('numéros d’Objet et sources.json', () => {
 	});
 });
 
-// Les mêmes cas que `cle_objet` du cron (`pipeline/tests/test_import_conseils.py`), qui nomme le fichier d'archive
-// que le site ouvre par cette clé : un cas ajouté d'un côté s'ajoute de l'autre.
+// Les cas de `cas-partages/cle-objet.json`, que lit aussi `cle_objet` du cron : il nomme le fichier d'archive que le
+// site ouvre par cette clé.
 describe('clé d’un Objet, comme le cron', () => {
-	it.each([
-		['vd', '26_INT_140', 'vd/26_INT_140'],
-		['vd', '8_LEG_124', 'vd/8_LEG_124'],
-		['vd', 'V 1.9.2026', 'vd/V_1.9.2026'],
-		['vd', '  21_POS_3 ', 'vd/21_POS_3'],
-		['5586', 'POS25/115', '5586/POS25-115'],
-		['5586', 'INT26/056', '5586/INT26-056'],
-		['5586', 'PR 25/3/bis', '5586/PR_25-3-bis'],
-		['5586', 'INT \t 26/056', '5586/INT_26-056'],
-		['5586', 'INT 26/056', '5586/INT_26-056']
-	])('%s, « %s » → %s', (conseil, numero, cle) => {
+	it.each(casCleObjet.cas)('$conseil, « $numero » → $cle', ({ conseil, numero, cle }) => {
 		expect(cleObjet(conseil, numero)).toBe(cle);
 	});
 

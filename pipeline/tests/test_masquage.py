@@ -3,6 +3,7 @@ table de cas (spec de J1, « Décisions de test », point 3)."""
 
 import pytest
 
+from cas_partages import cas_partages
 from masquage import masquer
 
 ELUS = frozenset({"Loris Socchi", "Jean Dupont", "Anne-Laure Métraux"})
@@ -122,44 +123,10 @@ def test_masquer(titre, attendu):
     assert masquer(titre, ELUS) == (titre if attendu is None else attendu)
 
 
-# La même table que `web/src/lib/masquage.test.ts` (`masquerNoms`), cas pour cas : sans élu·e connu·e, le cron
-# masque comme le site, sauf là où une règle des conseils seulement s'en écarte (`ECARTS_DU_CRON`) : les auteur·e·s de
-# pétition et les noms après un déclencheur, masqué·e·s sans civilité. Un cas ajouté d'un côté s'ajoute de l'autre.
-CAS_DU_SITE = [
-    ("Construction d’une villa pour le compte de Dupont Jean", "Construction d’une villa pour le compte de [particulier]"),
-    ("Recours pour le compte de Swisscom SA", None),
-    ("Transformation pour le compte de Immobilière Rive S.A.", "Transformation pour le compte de Immobilière Rive SA"),
-    (
-        "Pétition de M. Paul Exemple et consorts (312 signatures) : « Pour un parc à chiens »",
-        "Pétition de [particulier] et consorts (312 signatures) : « Pour un parc à chiens »",
-    ),
-    ("Pétition de Mme et M. Exemple pour un trottoir", "Pétition de [particulier] pour un trottoir"),
-    ("Pétition de Madame Exemple", "Pétition de [particulier]"),
-    ("Postulat de M. Loris SOCCHI : « Nos beaux murs gris»", "Postulat de [particulier] : « Nos beaux murs gris»"),
-    ("Postulat de MM. Jean Dupont et Loris Socchi : « Des bancs »", "Postulat de [particulier] : « Des bancs »"),
-    ("Interpellation de Mme Anne-Laure Métraux : « Quel avenir ? »", "Interpellation de [particulier] : « Quel avenir ? »"),
-    ("Villa pour le compte de M. J.-P. Martin", "Villa pour le compte de [particulier]"),
-    ("Agrandissement pour le compte de Commune de Lutry", None),
-    ("Abri pour le compte de la Fondation Les Oliviers", None),
-    ("Rénovation pour le compte de l’Hoirie Favre", None),
-    ("Pose d’un velux pour compte d’Ébéniste Rochat S.à r.l.", "Pose d’un velux pour compte d’Ébéniste Rochat Sàrl"),
-    ("Garage pour le compte de Rossi Marco - Bianchi Anna", "Garage pour le compte de [particulier] - [particulier]"),
-    ("Garage pour le compte de Rossi Marco, architecte", "Garage pour le compte de [particulier], architecte"),
-    ("Couvert pour le compte de Dupont Jean avec garage", "Couvert pour le compte de [particulier] avec garage"),
-    ("Recours pour le compte des Époux Rochat", "Recours pour le compte des [particulier]"),
-    ("Simple question Laurence Cretegny et consorts - Galère La Liberté", None),
-    ("Covid 2020 six ans pour revenir en arrière", None),
-]
-
-
-# Après « hoirie », un nom est masqué dans les titres des conseils ; le site, qui ne masque que les permis, y voit une
-# entité.
-ECARTS_DU_CRON = {"Rénovation pour le compte de l’Hoirie Favre": "Rénovation pour le compte de l’Hoirie [particulier]"}
-
-
-@pytest.mark.parametrize(("titre", "attendu"), CAS_DU_SITE)
+# Les cas de `cas-partages/masquage.json`, que lit aussi `masquerNoms` du site : sans élu·e connu·e, le cron masque
+# comme le site. Une règle des conseils seulement (ADR 0007) a ses cas ici, dans les tables suivantes.
+@pytest.mark.parametrize(("titre", "attendu"), [(c["titre"], c["attendu"]) for c in cas_partages("masquage")])
 def test_sans_elu_connu_le_cron_masque_comme_le_site(titre, attendu):
-    attendu = ECARTS_DU_CRON.get(titre, attendu)
     assert masquer(titre) == (titre if attendu is None else attendu)
 
 
@@ -273,6 +240,8 @@ def test_un_nom_partiel_ne_reste_qu_avec_un_contexte_d_elu_et_un_homonyme_connu(
         ("Succession de Mme Zoé Modèle : acceptation", "Succession de [particulier] : acceptation"),
         # Hoirie
         ("Hoirie Exemple - vente de la parcelle 88", "Hoirie [particulier] - vente de la parcelle 88"),
+        # Le site, qui ne masque que les permis, y voit une entité (`web/src/lib/masquage.test.ts`).
+        ("Rénovation pour le compte de l’Hoirie Favre", "Rénovation pour le compte de l’Hoirie [particulier]"),
         ("Accord avec l'hoirie de feu Paul Exemple", "Accord avec l'hoirie de feu [particulier]"),
         ("Hoirie Rive Immobilière SA : vente de la parcelle 88", None),
         ("Rachat de la parcelle 88 à l'hoirie Loris Socchi", None),
