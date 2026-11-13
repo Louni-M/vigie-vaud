@@ -93,6 +93,11 @@ def _rangs(seance: Seance, retrait: Retrait, cle: bytes | None) -> list[int] | N
     return [rang] if rang < len(points) else None
 
 
+def _non_verifie(retrait: Retrait, cle: bytes | None) -> bool:
+    """Un retrait à empreinte, sans la clé pour la vérifier : il vaut pour le point de son rang."""
+    return retrait.empreinte is not None and cle is None
+
+
 def _corriger(element: Objet | Seance, retrait: Retrait, cle: bytes | None) -> Objet | Seance | None:
     """`element` avec le champ que vise `retrait` remplacé, ou `None` si la cible n'existe pas dans cet élément."""
     cible = retrait.cible
@@ -140,7 +145,7 @@ def appliquer_retraits(
         nouveau = element
         for retrait in liste:
             cible = cible_affichee(retrait)
-            if retrait.empreinte is not None and cle is None:
+            if _non_verifie(retrait, cle):
                 print(
                     f"Retrait non vérifié : {cle_element}, « {cible} » corrigé au rang, {VARIABLE_CLE} absente",
                     file=sys.stderr,
@@ -183,7 +188,7 @@ def constat_des_retraits(depot: Path, cle: bytes | None) -> ConstatRetraits:
     for cle_element, liste in lire_retraits(depot).items():
         element = _lire_element(depot, cle_element)
         for retrait in liste:
-            if retrait.empreinte is not None and cle is None:
+            if _non_verifie(retrait, cle):
                 non_verifies.append(retrait)
             if element is not None and _corriger(element, retrait, cle) is None:
                 sans_effet.append(retrait)
