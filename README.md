@@ -300,8 +300,15 @@ seule fois, dans `config.json` à la racine. Le site les lit par `web/src/lib/co
 
 Le workflow `ci.yml` se lance sur chaque PR et sur chaque push vers `main` : `svelte-check`, le linter du site
 (ESLint), les tests du site (Vitest), la construction (qui valide `sources.json`), la vérification qu'aucune donnée
-CAMAC ni DGMR n'est dans le site construit, la régénération du schéma commun (qui doit ne rien changer), le linter
-du pipeline (ruff) et ses tests (pytest).
+CAMAC ni DGMR n'est dans le site construit, les scénarios dans un navigateur (Playwright), la régénération du schéma
+commun (qui doit ne rien changer), le linter du pipeline (ruff) et ses tests (pytest).
+
+Les scénarios Playwright (`web/e2e/`) tournent sur bureau et en vue téléphone contre le site construit, avec des
+services factices : toute requête qui quitterait la machine fait échouer le scénario.
+
+```bash
+cd web && pnpm test:e2e   # construit le site puis lance Playwright (une fois : pnpm exec playwright install chromium)
+```
 
 `svelte-check` vérifie les types du site, de ses tests et de ses scripts (`web/scripts/`), et signale les variables
 et paramètres inutilisés. ESLint tourne sans formateur, avec les configurations recommandées d'ESLint, de
