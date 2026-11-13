@@ -121,6 +121,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 | `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) : pages dans `src/routes/`, couches dans `src/lib/couches/`, registre (adresse, volets, fiches) dans `src/lib/registre/`, carte et recherche dans `src/lib/socle/`, fil cantonal dans `src/lib/fil/` |
 | `pipeline/` | Python (uv) : préparation des communes, cron, import des conseils, robot communal, schéma commun (voir ci-dessous) |
 | `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
+| `cas-partages/` | Cas de test des règles écrites en Python et en TypeScript (Masquage, nom du conseil, clé d'un Objet, niveaux), lus par les deux suites |
 | `sources.json` | Déclaration de chaque source (attribution, voie d'accès, fraîcheur, Couverture, sonde, site d'une commune scrapée) et des plateformes, lue par le site et le cron |
 | `config.json` | Adresses du dépôt, du courriel de contact, du site public et des Pages du dépôt de données |
 | `docs/` | ADR, inventaire des sources, marches à suivre, recherches, feuille de route provisoire |

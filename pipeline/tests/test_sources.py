@@ -5,9 +5,9 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
 import pytest
+from cas_partages import cas_partages
 from pydantic import ValidationError
 
-from cas_partages import cas_partages
 from schema import Conseil, lire_sources, niveau_de, nom_du_conseil
 
 RACINE = Path(__file__).resolve().parents[2]

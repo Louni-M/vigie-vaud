@@ -9,7 +9,7 @@ from pathlib import Path
 
 RACINE = Path(__file__).resolve().parents[2]
 
-RACINES = ("web/", "pipeline/", "docs/", ".github/", "schema/", "scripts/")
+RACINES = ("web/", "pipeline/", "docs/", ".github/", "schema/", "scripts/", "cas-partages/")
 LIEN = re.compile(r"\]\(([^)\s]+)\)")
 CODE = re.compile(r"`([^`\n]+)`")
 BLOC = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
