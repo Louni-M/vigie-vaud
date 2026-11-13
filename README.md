@@ -190,7 +190,17 @@ seule fois, dans `config.json` à la racine. Le site les lit par `web/src/lib/co
 
 Le workflow `ci.yml` se lance sur chaque PR et sur chaque push vers `main` : `svelte-check`, les tests du site
 (Vitest), la construction (qui valide `sources.json`), la vérification qu'aucune donnée CAMAC n'est dans le site
-construit, la régénération du schéma commun (qui doit ne rien changer) et les tests du pipeline (pytest).
+construit, la régénération du schéma commun (qui doit ne rien changer), le linter du pipeline (ruff) et ses tests
+(pytest).
+
+ruff tourne sans formateur, avec ses règles par défaut plus E4, E7 et E9. Les constats présents à son ajout sont
+gelés fichier par fichier dans `[tool.ruff.lint.per-file-ignores]` de `pipeline/pyproject.toml` : tout nouveau
+constat fait échouer la CI. On réduit cet état de référence en retirant une règle d'un fichier puis en corrigeant ce
+que ruff signale ; on n'y ajoute rien pour du code nouveau.
+
+```bash
+cd pipeline && uv run ruff check   # linter du pipeline
+```
 
 Le workflow `publier.yml` se lance à la main. Il lance `svelte-check` et les tests du site, et s'arrête avant tout
 déploiement si l'un échoue. Il construit ensuite le site, sans aucun fichier de données cantonales, et le publie sur
