@@ -1,0 +1,14 @@
+{
+	"description": "Clé d'un Objet dans le dépôt de données : `cle_objet(conseil, numero)` de `pipeline/conseils.py`, qui nomme le fichier d'archive, et `cleObjet(conseil, numero)` de `web/src/lib/couches/conseils/numeros.ts`, qui l'ouvre.",
+	"cas": [
+		{"conseil": "vd", "numero": "26_INT_140", "cle": "vd/26_INT_140"},
+		{"conseil": "vd", "numero": "8_LEG_124", "cle": "vd/8_LEG_124"},
+		{"conseil": "vd", "numero": "V 1.9.2026", "cle": "vd/V_1.9.2026"},
+		{"conseil": "vd", "numero": "  21_POS_3 ", "cle": "vd/21_POS_3"},
+		{"conseil": "5586", "numero": "POS25/115", "cle": "5586/POS25-115"},
+		{"conseil": "5586", "numero": "INT26/056", "cle": "5586/INT26-056"},
+		{"conseil": "5586", "numero": "PR 25/3/bis", "cle": "5586/PR_25-3-bis"},
+		{"conseil": "5586", "numero": "INT \t 26/056", "cle": "5586/INT_26-056"},
+		{"conseil": "5586", "numero": "INT 26/056", "cle": "5586/INT_26-056"}
+	]
+}
