@@ -56,6 +56,14 @@ jobs:
         working-directory: .
         run: .github/scripts/verifier-sans-rediffusion.sh web/build
 
+      # Scénarios dans un navigateur (web/e2e) contre le site construit ci-dessus, servi par vite preview. Les services
+      # (fond de carte, canton, dépôt de données, recherche d'adresses) sont factices : aucune requête ne quitte la machine.
+      - name: Installer Chromium pour Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Tests dans un navigateur (Playwright)
+        run: pnpm exec playwright test
+
   # Schéma commun (ADR 0013) : les modèles Pydantic sont la seule source. Le JSON Schema et les types TypeScript
   # versionnés doivent être ceux qu'une nouvelle génération produit.
   schema:

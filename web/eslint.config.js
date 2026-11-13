@@ -50,7 +50,7 @@ const ETAT_DE_REFERENCE = {
 };
 
 export default defineConfig(
-	globalIgnores(['build/', '.svelte-kit/', 'static/', 'src/lib/schema.ts']),
+	globalIgnores(['build/', '.svelte-kit/', 'static/', 'src/lib/schema.ts', 'test-results/', 'playwright-report/']),
 	js.configs.recommended,
 	ts.configs.recommended,
 	svelte.configs.recommended,
