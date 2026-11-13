@@ -317,3 +317,24 @@ describe('vue du téléphone', () => {
 		expect(nav.historique).toEqual(['/commune/pully']);
 	});
 });
+
+describe('composants des couches', () => {
+	it('importe chaque composant une fois, et réimporte celui dont l’import a échoué', async () => {
+		let essais = 0;
+		const volet = async () => {
+			if (++essais === 1) throw new Error('import raté');
+			return { default: (() => {}) as never };
+		};
+		const couche: CoucheInscrite = { ...COUCHES[0], composants: { Carte: composant, Volet: volet } };
+		const nav = creerFauxNavigateur('/');
+		let registre!: Registre;
+		fins.push($effect.root(() => void (registre = creerRegistre([couche], () => [PULLY], nav.navigateur))));
+
+		await expect(registre.composant(couche, 'Volet')).rejects.toThrow('import raté');
+		const p = registre.composant(couche, 'Volet');
+		await p;
+		expect(registre.composant(couche, 'Volet')).toBe(p);
+		expect(essais).toBe(2);
+		expect(registre.composant(couche, 'Onglet')).toBeNull();
+	});
+});

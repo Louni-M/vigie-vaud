@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { delaiExpire, sansReponse } from '#tests/sans-reponse.js';
 import { chargerImports, dernierImport } from './imports-conseils.js';
 import type { ImportConseils } from './schema.js';
 import { source } from './sources.js';
@@ -36,5 +37,21 @@ describe('dernier import des conseils (conseils/import.json)', () => {
 		expect(await chargerImports(async () => reponse('{', 200), 'https://d')).toBeNull();
 		expect(await chargerImports(() => Promise.reject(new TypeError('réseau')), 'https://d')).toBeNull();
 		expect(await chargerImports(async () => reponse({ ...IMPORTS, version: 2 }), 'https://d')).toBeNull();
+	});
+
+	describe('délai d’attente', () => {
+		afterEach(() => vi.restoreAllMocks());
+
+		it('donne null quand le dépôt de données ne répond pas à temps', async () => {
+			const delai = delaiExpire();
+			expect(await chargerImports(sansReponse, 'https://d')).toBeNull();
+			expect(delai).toHaveBeenCalledWith(20_000);
+		});
+	});
+
+	it('relit le fichier sans se fier au cache du navigateur', async () => {
+		const f = vi.fn(async (_e: RequestInfo | URL, _i?: RequestInit) => reponse(IMPORTS));
+		await chargerImports(f, 'https://d');
+		expect(f).toHaveBeenCalledWith('https://d/conseils/import.json', expect.objectContaining({ cache: 'no-cache' }));
 	});
 });

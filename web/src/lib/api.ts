@@ -1,4 +1,5 @@
 import { browser } from '$app/env';
+import { delaiDepasse, memoPromesse, requeteAvecDelai } from './chargement.js';
 import type { CauseEchec } from './fraicheur.js';
 import type { Emprise } from './types.js';
 
@@ -19,7 +20,6 @@ export const SERVICE = `${MAPSERVER}/537`;
 export const PAGE = 2000;
 /** Requêtes simultanées au plus vers le canton : par politesse, et les navigateurs en limitent le nombre. */
 const SIMULTANEES = 6;
-const DELAI_MS = 20_000;
 /** Délai avant l'unique nouvelle tentative automatique d'un chargement raté. */
 const RETENTE_MS = 5_000;
 /** Au-delà, la requête part en POST (polygone d'une commune, longue liste de numéros). */
@@ -80,9 +80,9 @@ export async function appelArcgis<R>(f: Fetch, nom: NomService, adresse: string,
 	if (!browser) throw new Error(`${nom.sujet} : appel réservé au navigateur.`);
 	let r: Response;
 	try {
-		r = await f(adresse, { ...init, signal: AbortSignal.timeout(DELAI_MS) });
+		r = await requeteAvecDelai(f, adresse, init);
 	} catch (e) {
-		const delai = e instanceof DOMException && e.name === 'TimeoutError';
+		const delai = delaiDepasse(e);
 		throw new ErreurApi(
 			delai ? `${nom.sujet} ne répond pas.` : `${nom.sujet} est injoignable.`,
 			!delai && globalThis.navigator?.onLine === false
@@ -165,16 +165,7 @@ export function creerClientCanton(f: Fetch): ClientCanton {
 
 	/* ---- Cache mémoire : une même requête n'est envoyée qu'une fois par visite ; les échecs sont oubliés. ---- */
 
-	const cache = new Map<string, Promise<unknown>>();
-	function enCache<T>(cle: string, g: () => Promise<T>): Promise<T> {
-		let p = cache.get(cle) as Promise<T> | undefined;
-		if (!p) {
-			p = g();
-			cache.set(cle, p);
-			p.catch(() => cache.delete(cle));
-		}
-		return p;
-	}
+	const enCache = memoPromesse<string>();
 
 	function compter(q: Requete): Promise<number> {
 		const p = parametres({ ...q, returnCountOnly: true, returnGeometry: false });
