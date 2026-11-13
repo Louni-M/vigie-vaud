@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,8 +33,20 @@ function site(fichiers: Record<string, string> = {}): string {
 	return racine;
 }
 
+/**
+ * Le bash de Git sous Windows, où `bash` est souvent absent du PATH ou désigne le lanceur de WSL : il est à côté de
+ * `git` (`…/Git/mingw64/libexec/git-core` → `…/Git/bin/bash.exe`). Ailleurs, celui du PATH.
+ */
+function bash(): string {
+	if (process.platform !== 'win32') return 'bash';
+	const git = spawnSync('git', ['--exec-path'], { encoding: 'utf8' }).stdout?.trim() ?? '';
+	return [join(git, '../../../bin/bash.exe'), join(git, '../../../usr/bin/bash.exe')].find((b) => existsSync(b)) ?? 'bash';
+}
+const BASH = bash();
+
 function verifier(racine: string) {
-	const r = spawnSync('bash', [SCRIPT, racine], { encoding: 'utf8' });
+	const r = spawnSync(BASH, [SCRIPT, racine], { encoding: 'utf8' });
+	expect(r.error, `bash introuvable (${BASH})`).toBeUndefined();
 	return { code: r.status, erreur: r.stderr };
 }
 

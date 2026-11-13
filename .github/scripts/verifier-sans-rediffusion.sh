@@ -22,19 +22,21 @@ if [ -e "$build/data" ]; then
 	exit 1
 fi
 
-# Champs propres à chaque source (sonde de sources.json) ; les noms génériques (OBJECTID, NOM, TYPE, URL, ETAT…) sont exclus.
-declare -A champs=(
-	[CAMAC]='NO_CAMAC|NO_FAO|DATE_ENQUETE|DECISION_COMMUNALE|DATE_DECISION'
-	[DGMR]='RHRC|WEEK_END|HEURE_DEBUT|HEURE_FIN'
+# Champs propres à chaque source (sonde de sources.json), « SOURCE=champ|champ » ; les noms génériques (OBJECTID,
+# NOM, TYPE, URL, ETAT…) sont exclus.
+marqueurs=(
+	'CAMAC=NO_CAMAC|NO_FAO|DATE_ENQUETE|DECISION_COMMUNALE|DATE_DECISION'
+	'DGMR=RHRC|WEEK_END|HEURE_DEBUT|HEURE_FIN'
 )
 # Guillemet éventuel autour du champ : ", ', `, \" (JSON dans une chaîne) ou &quot; (JSON dans un attribut HTML).
 guillemet='(\\?["'"'"'`]|&quot;)?'
 
 export LC_ALL=C
 trouve=0
-for source in CAMAC DGMR; do
+for marqueur in "${marqueurs[@]}"; do
+	source="${marqueur%%=*}"
 	# Ni précédé d'un point ni d'un caractère d'identifiant : `e.NO_CAMAC` (y compris `a?e.NO_CAMAC:b`) est du code.
-	motif="(^|[^.[:alnum:]_\$])${guillemet}(${champs[$source]})${guillemet}[[:space:]]*:"
+	motif="(^|[^.[:alnum:]_\$])${guillemet}(${marqueur#*=})${guillemet}[[:space:]]*:"
 	fichiers=$(grep -rlE -- "$motif" "$build") && statut=0 || statut=$?
 	case $statut in
 	0)
