@@ -1,4 +1,4 @@
-name: Publication du site (API en direct)
+name: Publication du site
 
 # Construit le site statique et le publie sur GitHub Pages. Aucune donnée CAMAC ni DGMR n'est téléchargée,
 # construite ni publiée : le navigateur des visiteurs interroge lui-même www.ogc.vd.ch (norme DCG 8401).
