@@ -1,0 +1,24 @@
+{
+	"description": "Masquage des noms de particuliers commun au cron et au site : `masquer(titre)` de `pipeline/masquage.py`, sans élu·e connu·e ni pétitionnaire, et `masquerNoms(titre)` de `web/src/lib/masquage.ts`. `attendu` : le texte masqué ; `null` : il ne change pas. Seules les règles communes : celles des conseils (ADR 0007 : élu·e·s connu·e·s, pétitions, déclencheurs, coordonnées) restent dans `pipeline/tests/test_masquage.py`.",
+	"cas": [
+		{"titre": "Construction d’une villa pour le compte de Dupont Jean", "attendu": "Construction d’une villa pour le compte de [particulier]"},
+		{"titre": "Recours pour le compte de Swisscom SA", "attendu": null},
+		{"titre": "Transformation pour le compte de Immobilière Rive S.A.", "attendu": "Transformation pour le compte de Immobilière Rive SA"},
+		{"titre": "Pétition de M. Paul Exemple et consorts (312 signatures) : « Pour un parc à chiens »", "attendu": "Pétition de [particulier] et consorts (312 signatures) : « Pour un parc à chiens »"},
+		{"titre": "Pétition de Mme et M. Exemple pour un trottoir", "attendu": "Pétition de [particulier] pour un trottoir"},
+		{"titre": "Pétition de Madame Exemple", "attendu": "Pétition de [particulier]"},
+		{"titre": "Postulat de M. Loris SOCCHI : « Nos beaux murs gris»", "attendu": "Postulat de [particulier] : « Nos beaux murs gris»"},
+		{"titre": "Postulat de MM. Jean Dupont et Loris Socchi : « Des bancs »", "attendu": "Postulat de [particulier] : « Des bancs »"},
+		{"titre": "Interpellation de Mme Anne-Laure Métraux : « Quel avenir ? »", "attendu": "Interpellation de [particulier] : « Quel avenir ? »"},
+		{"titre": "Villa pour le compte de M. J.-P. Martin", "attendu": "Villa pour le compte de [particulier]"},
+		{"titre": "Agrandissement pour le compte de Commune de Lutry", "attendu": null},
+		{"titre": "Abri pour le compte de la Fondation Les Oliviers", "attendu": null},
+		{"titre": "Pose d’un velux pour compte d’Ébéniste Rochat S.à r.l.", "attendu": "Pose d’un velux pour compte d’Ébéniste Rochat Sàrl"},
+		{"titre": "Garage pour le compte de Rossi Marco - Bianchi Anna", "attendu": "Garage pour le compte de [particulier] - [particulier]"},
+		{"titre": "Garage pour le compte de Rossi Marco, architecte", "attendu": "Garage pour le compte de [particulier], architecte"},
+		{"titre": "Couvert pour le compte de Dupont Jean avec garage", "attendu": "Couvert pour le compte de [particulier] avec garage"},
+		{"titre": "Recours pour le compte des Époux Rochat", "attendu": "Recours pour le compte des [particulier]"},
+		{"titre": "Simple question Laurence Cretegny et consorts - Galère La Liberté", "attendu": null},
+		{"titre": "Covid 2020 six ans pour revenir en arrière", "attendu": null}
+	]
+}
