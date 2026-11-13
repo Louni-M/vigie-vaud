@@ -6,6 +6,7 @@ intercepte aussi les `socket.gethostbyname` liés comme valeur par défaut (`pas
 communal attrape `OSError`), et note l'hôte : le test qui a tenté la résolution échoue à son démontage.
 """
 
+import importlib.util
 import ipaddress
 import os
 import sys
@@ -40,6 +41,25 @@ def _garde_dns(evenement: str, args: tuple) -> None:
 
 
 sys.addaudithook(_garde_dns)
+
+# Tests de la préparation des communes : ils importent la pile géographique (groupe `geo` de pyproject.toml), que le
+# cron n'installe pas. Sans elle, ils ne sont pas collectés et le reste de la suite passe ; avec elle, ils portent
+# le marqueur `geo` (`uv run --group geo pytest -m geo` ne lance qu'eux, et échoue s'il n'en trouve aucun).
+TESTS_GEO = ["test_communes.py", "test_hotels_de_ville.py"]
+GEO_INSTALLE = importlib.util.find_spec("geopandas") is not None
+collect_ignore = [] if GEO_INSTALLE else TESTS_GEO
+
+
+def pytest_report_header():
+    if not GEO_INSTALLE:
+        return f"groupe geo absent : {', '.join(TESTS_GEO)} non collectés (uv run --group geo pytest pour les lancer)"
+    return None
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if item.path.name in TESTS_GEO:
+            item.add_marker(pytest.mark.geo)
 
 
 @pytest.fixture(autouse=True)

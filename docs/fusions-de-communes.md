@@ -77,7 +77,7 @@ nom : rien ne dit encore s'ils gardent leur numéro.
 ## 3. Liste des communes
 
 ```bash
-cd pipeline && uv run python communes.py
+cd pipeline && uv run --group geo python communes.py
 ```
 
 Attendus : 294 communes écrites ; un avertissement « n'est plus une commune, ligne ignorée » pour chaque commune
@@ -93,7 +93,7 @@ de 2027. Une commune qui garde son nom (Lucens, Gimel) n'apparaît pas dans ses 
 ## 4. Hôtels de ville
 
 ```bash
-cd pipeline && uv run python hotels_de_ville.py
+cd pipeline && uv run --group geo python hotels_de_ville.py
 ```
 
 L'outil réécrit `hotels-de-ville.csv` et `hotels-de-ville-a-revoir.csv` pour les communes actuelles ; les lignes
@@ -134,7 +134,7 @@ répertoire des adresses ; noter alors dans l'issue de la fusion de relancer l'o
   `communes.json`.
 
 ```bash
-cd pipeline && uv run pytest
+cd pipeline && uv run --group geo pytest
 cd web && pnpm test && pnpm build
 ```
 

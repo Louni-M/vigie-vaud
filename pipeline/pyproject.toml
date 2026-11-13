@@ -3,13 +3,14 @@ name = "pipeline"
 version = "0.1.0"
 description = "Préparation des données et cron de Vigie Vaud"
 requires-python = ">=3.11"
+# Ce que le cron importe, rien de plus : il les installe à chaque passage (`uv sync --no-dev`).
 dependencies = [
-    "geopandas>=1.2.0",
     "httpx>=0.28.1",
     "pydantic>=2.14.1",
-    "pyogrio>=0.13.0",
-    "pyproj>=3.7.2",
-    "shapely>=2.2.0",
+    "pydantic-core>=2.50.1",
+    "typing-extensions>=4.16.0",
+    # Base des fuseaux horaires pour `zoneinfo`, là où le système n'en a pas (Windows).
+    "tzdata>=2026.5",
 ]
 
 [dependency-groups]
@@ -18,10 +19,19 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.17.5",
 ]
+# Pile géographique : seulement pour la préparation des communes (voie d'accès Préparée : communes.py,
+# hotels_de_ville.py), hors du cron. À installer à la demande : « uv run --group geo python communes.py ».
+geo = [
+    "geopandas>=1.2.0",
+    "pyogrio>=0.13.0",
+    "pyproj>=3.7.2",
+    "shapely>=2.2.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["geo: demande la pile géographique (groupe geo), posé par tests/conftest.py"]
 
 # Linter seulement : pas de formateur (décision de #184, pour éviter un reformatage massif).
 # Règles par défaut de ruff, plus E4, E7 et E9 (imports, comparaisons, lambdas nommées, erreurs de syntaxe).
