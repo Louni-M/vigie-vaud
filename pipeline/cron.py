@@ -3,7 +3,9 @@
 Le passage relit `sources.json` et l'état précédent dans un clone du dépôt de données, sonde chaque source qui a
 un bloc `sonde` et le site de chaque commune due (`sonde_sites.py`, par le robot communal), écrit
 `etat-sources.json`, copie `schema/`, importe les conseils dus (`conseils.py` : OpenParlData, et les sites des
-communes par le robot communal), puis committe (l'historique sert d'archive) et pousse. Il ouvre l'issue
+communes par le robot communal). Il committe (l'historique sert d'archive) et pousse après chaque phase : les
+sondes, puis l'import d'OpenParlData, puis celui des sites des communes ; un passage arrêté au délai du job ne perd
+que la phase en cours, et une phase qui n'a rien changé ne committe rien. Il ouvre l'issue
 `panne-source` d'une source en panne et ferme celle d'une source disponible, dans le dépôt de données ; pour les
 communes scrapées, l'issue est celle de leur plateforme (« Panne : i-web »), avec la liste des communes en panne,
 ouverte avec la première et fermée au retour de la dernière. Une erreur de l'API des issues ne fait pas échouer le
@@ -398,6 +400,7 @@ def passage(
     resoudre: Callable[[str], str] = socket.gethostbyname,
     rattrapage_cible: str | None = None,
     alternance: Alternance = alterner,
+    fin_de_phase: Callable[[str], None] = lambda message: None,
 ) -> EtatSources:
     """Sonde chaque source qui a un bloc `sonde` et le site de chaque commune due (`sonder_les_sites`), puis écrit
     `etat-sources.json` et copie `schema/` dans `depot`, un clone du dépôt de données. L'état précédent est relu
@@ -410,8 +413,13 @@ def passage(
     `PLAFOND` requêtes hors rattrapage ciblé, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
     (`reseaux`) pour que le passage suivant les teste d'abord. Les sondes, puis les lectures des sites, se font un
     fil par réseau /24 (`alternance`, que reçoit le robot) : un réseau lit pendant que les autres attendent leurs
-    5 s ; leurs résultats sont appliqués dans l'ordre de `sources.json`. Le commit et le push sont l'affaire de
-    l'appelant.
+    5 s ; leurs résultats sont appliqués dans l'ordre de `sources.json`.
+
+    Le passage appelle `fin_de_phase` avec un message de commit (« Passage du cron du 2026-11-13 06:17Z : sondes »)
+    à la fin de chaque phase : les sondes (l'état écrit et le schéma copié), puis l'import des conseils
+    d'OpenParlData, puis celui des sites des communes, puis, s'il y a lieu, l'écriture des réseaux bloqués pendant
+    l'import. `main` y committe et pousse ce que la phase a écrit (`publier`), pour qu'un dépassement du délai du job
+    ne perde que la phase en cours ; par défaut, rien n'est committé.
 
     Un `rattrapage` relit tout l'historique des conseils d'OpenParlData, à toute heure, sans toucher aux sites des
     communes. Un `rattrapage_cible` (une plateforme ou le n° OFS d'une commune scrapée, lancé à la main) relit tout
@@ -450,6 +458,11 @@ def passage(
     shutil.rmtree(depot / "schema", ignore_errors=True)
     shutil.copytree(DOSSIER_SCHEMA, depot / "schema")
 
+    def phase_finie(phase: str) -> None:
+        fin_de_phase(f"Passage du cron du {genere:%Y-%m-%d %H:%M}Z : {phase}")
+
+    phase_finie("sondes")
+
     try:
         sondees = [s for s in sources.sources if s.sonde is not None and s.id in etats]
         _accorder_issues(issues, sondees, precedent, etats)
@@ -458,11 +471,12 @@ def passage(
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
 
     opd = OpenParlData(client, horloge, attendre)
-    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes)
+    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes, phase_finie)
     if robot.reseaux_bloques() != etat.reseaux:
         # Un réseau bloqué pendant l'import : le passage suivant doit le savoir pour le tester d'abord.
         etat = etat.model_copy(update={"reseaux": robot.reseaux_bloques()})
         (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        phase_finie("réseaux bloqués")
     return etat
 
 
@@ -766,8 +780,11 @@ def importer_les_conseils(
     issues: ClientIssues,
     rattrapes: Collection[str] | None = None,
     sautes: Mapping[str, str] | None = None,
+    phase_finie: Callable[[str], None] = lambda phase: None,
 ) -> None:
-    """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique), puis, hors
+    """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique) en deux phases,
+    chacune suivie de `phase_finie` : ceux d'OpenParlData, puis ceux des sites des communes, lus ensemble, un fil par
+    réseau (les séparer par plateforme ferait attendre l'un après l'autre des réseaux qui lisent en même temps). Hors
     rattrapage, accorde les issues `import-conseils` et `a-verifier` aux dates d'import. `sautes` donne, par clé, les conseils dont le site n'est pas lu
     à ce passage et pourquoi (sonde en échec, `Crawl-delay` trop long) : leur import du jour est sauté, ce qui vaut un
     import en échec ordinaire. Seules les sondes
@@ -785,22 +802,29 @@ def importer_les_conseils(
             print(f"Import sauté : {conseil.nom} ({sautes[conseil.conseil.cle]})", file=sys.stderr)
     dus -= sautes.keys()
     apres = avant
-    if dus:
+    phases = {
+        "conseils d'OpenParlData": {s.conseil.cle for s in conseils if s.site is None} & dus,
+        "sites des communes": {s.conseil.cle for s in conseils if s.site is not None} & dus,
+    }
+    for phase, dus_de_la_phase in phases.items():
+        if not dus_de_la_phase:
+            continue
         try:
             apres = importer_conseils(
                 depot,
                 sources,
                 opd,
                 horloge,
-                dus=dus,
+                dus=dus_de_la_phase,
                 rattrapage=rattrapes is not None,
                 robot=robot,
             ).conseils
         except Exception:
-            # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus : l'état des
-            # sources est tout de même publié, et l'issue `import-conseils` s'ouvrira au-delà de 24 h.
-            print("Import des conseils en échec, le passage suivant réessaiera :", file=sys.stderr)
+            # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus de la phase :
+            # l'état des sources est tout de même publié, et l'issue `import-conseils` s'ouvrira au-delà de 24 h.
+            print(f"Import des conseils en échec ({phase}), le passage suivant réessaiera :", file=sys.stderr)
             traceback.print_exc()
+        phase_finie(phase)
 
     if rattrapes is not None:
         # Un rattrapage ne lit que les conseils visés : les autres, qu'il ne tente pas, n'y sont pas en échec. Le
@@ -902,10 +926,14 @@ def _git(depot: Path, *args: str, verifier: bool = True) -> subprocess.Completed
         ) from None
 
 
-def committer(depot: Path, etat: EtatSources) -> None:
+def committer(depot: Path, message: str) -> bool:
+    """Committe l'état, le schéma et les conseils sous `message` ; rien, et rend `False`, si rien n'a changé."""
     chemins = [FICHIER_ETAT, "schema"] + (["conseils"] if (depot / "conseils").is_dir() else [])
     _git(depot, "add", "--all", "--", *chemins)
-    _git(depot, "commit", "--quiet", "-m", f"Passage du cron du {etat.genere:%Y-%m-%d %H:%M}Z")
+    if _git(depot, "diff", "--cached", "--quiet", verifier=False).returncode == 0:
+        return False
+    _git(depot, "commit", "--quiet", "-m", message)
+    return True
 
 
 def pousser(depot: Path) -> None:
@@ -921,6 +949,13 @@ def pousser(depot: Path) -> None:
             _git(depot, "rebase", "--abort", verifier=False)
             break
     raise SystemExit("Push refusé : le passage échoue, le suivant repartira de l'état relu.")
+
+
+def publier(depot: Path, message: str, pousse: bool = True) -> None:
+    """La fin d'une phase du passage (`passage(fin_de_phase=...)`) : committe ce qu'elle a écrit sous `message` et le
+    pousse (sauf si `pousse` est faux) ; une phase qui n'a rien changé ne committe ni ne pousse rien."""
+    if committer(depot, message) and pousse:
+        pousser(depot)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -955,15 +990,12 @@ def main(argv: list[str] | None = None) -> None:
             issues,
             rattrapage=args.rattrapage,
             rattrapage_cible=args.rattrapage_cible or None,
+            fin_de_phase=lambda message: publier(depot, message, pousse=not args.sans_push),
         )
     for id_source, e in etat.sources.items():
         print(f"{id_source} : {e.etat}" + (f" ({e.motif}, {e.echecs_consecutifs} échec(s))" if e.motif else ""))
-
-    committer(depot, etat)
     if args.sans_push:
         print("Commit fait, sans push (--sans-push).")
-        return
-    pousser(depot)
 
 
 if __name__ == "__main__":
