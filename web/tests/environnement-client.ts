@@ -1,4 +1,4 @@
-import type { Environment } from 'vitest/environments';
+import type { Environment } from 'vitest/runtime';
 
 /**
  * Environnement des tests `*.svelte.test.ts` : Node, mais les modules compilés pour le navigateur. Les runes y

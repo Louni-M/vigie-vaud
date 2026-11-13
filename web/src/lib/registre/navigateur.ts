@@ -1,8 +1,9 @@
 import { afterNavigate, goto } from '$app/navigation';
 import { page } from '$app/state';
+import type { Lecteur } from './types.js';
 
 /** Une adresse, telle que le registre la lit. */
-type Url = Pick<URL, 'pathname' | 'search' | 'searchParams'>;
+type Url = Pick<URL, 'pathname' | 'search'> & { readonly searchParams: Lecteur };
 
 /**
  * Ce que le registre lit de la page de SvelteKit (`page` de `$app/state`) : un objet stable, dont les propriétés

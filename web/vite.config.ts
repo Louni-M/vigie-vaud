@@ -19,6 +19,8 @@ export default defineConfig({
 	// par erreur en heure locale y décale de 1 ou 2 h, et le test échoue même sur une machine en UTC (la CI).
 	test: {
 		env: { TZ: 'Europe/Zurich' },
+		// Les tests `*.svelte.test.ts` (le registre) compilent les runes pour le navigateur, où `$effect` s'exécute ;
+		// les autres gardent la compilation par défaut de Node.
 		projects: [
 			{ extends: true, test: { name: 'serveur', exclude: ['**/node_modules/**', 'src/**/*.svelte.test.ts'] } },
 			{
