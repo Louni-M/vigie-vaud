@@ -28,14 +28,25 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
+      - name: Installer les dépendances
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      # Contrôles du site avant toute construction : un échec arrête le job avant le déploiement.
+      - name: svelte-check
+        working-directory: web
+        run: pnpm check
+
+      - name: Tests (Vitest)
+        working-directory: web
+        run: pnpm test
+
       - name: Construire le site
         working-directory: web
         env:
           BASE_PATH: ${{ vars.BASE_PATH }}
           VITE_GOATCOUNTER: ${{ vars.GOATCOUNTER }}
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
+        run: pnpm build
 
       - name: Vérifier qu'aucune donnée CAMAC ni DGMR n'est publiée
         run: .github/scripts/verifier-sans-rediffusion.sh web/build
