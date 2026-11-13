@@ -897,7 +897,8 @@ def _git(depot: Path, *args: str, verifier: bool = True) -> subprocess.Completed
         return subprocess.run(["git", "-C", str(depot), *args], check=verifier, text=True, timeout=DELAI_GIT)
     except subprocess.TimeoutExpired:
         raise SystemExit(
-            f"git {args[0]} : sans réponse après {DELAI_GIT} s, le passage échoue ; le suivant repartira de l'état relu."
+            f"git {args[0]} : sans réponse après {DELAI_GIT} s, le passage échoue ; "
+            "le suivant repartira de l'état relu."
         ) from None
 
 
