@@ -358,6 +358,25 @@ describe('vue du téléphone', () => {
 		expect(nav.adresse).toBe('/');
 	});
 
+	it('compte l’entrée de la Recherche dans celles que remonte la fermeture du dossier', async () => {
+		const { nav, registre } = await arriver('/commune/pully?affichage=carte', { telephone: true });
+		registre.ouvrir(DOSSIER);
+		await calme();
+		registre.ouvrirRecherche();
+		await calme();
+		expect(nav.historique).toHaveLength(3);
+
+		// Refermée par le précédent ; le suivant mène à son entrée, d’où fermer le dossier ramène à la fiche.
+		await nav.precedent();
+		await calme();
+		await nav.suivant();
+		await calme();
+		registre.fermer();
+		await calme();
+		expect(nav.index).toBe(0);
+		expect(registre.ouvert).toBeNull();
+	});
+
 	it('n’écrit pas la vue du téléphone sur bureau', async () => {
 		const { nav, registre } = await arriver('/commune/pully');
 		registre.affichage = 'carte';
