@@ -380,7 +380,7 @@ def test_un_objet_modifie_seul_son_fichier_est_reecrit_et_rien_n_est_supprime(tm
     assert _lire(tmp_path, "conseils/vd/objets/26_INT_140.json")["numero"] == "26_INT_140"
 
 
-def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path):
+def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path, capsys):
     horloge = HorlogeFactice(T0)
     monde = _monde(horloge)
     _passer(tmp_path, monde, horloge)
@@ -402,6 +402,9 @@ def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path)
     }
     assert (tmp_path / "conseils/5586/seances/2026-10-13.json").exists()
     assert not (tmp_path / "conseils/vd/objets/26_MOT_20.json").exists()
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil VD (OpenParlData) (HTTPStatusError" in journal
+    assert "Traceback" not in journal  # une erreur HTTP garde sa ligne courte
 
 
 def test_une_erreur_imprevue_d_un_conseil_n_empeche_pas_d_ecrire_les_autres(tmp_path, capsys):
@@ -429,7 +432,9 @@ def test_une_erreur_imprevue_d_un_conseil_n_empeche_pas_d_ecrire_les_autres(tmp_
         "5938": "2026-10-17T07:05:00Z",
     }
     assert (tmp_path / "conseils/5586/seances/2026-10-13.json").exists()
-    assert "Import en échec : Conseil VD (OpenParlData)" in capsys.readouterr().err
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil VD (OpenParlData)" in journal
+    assert "Traceback (most recent call last)" in journal  # une erreur imprévue montre où chercher
 
 
 def _schema_du_fichier(chemin):

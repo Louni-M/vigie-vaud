@@ -41,6 +41,7 @@ import json
 import re
 import sys
 import time
+import traceback
 import unicodedata
 from collections.abc import Callable, Collection, Iterable, Mapping
 from datetime import UTC, date, datetime, timedelta
@@ -63,7 +64,7 @@ from rattachement import (
     porte_sur_le_canton,
     rattacher_objet,
 )
-from robot_communal import Robot, robot_des_sources
+from robot_communal import PageNonLue, Robot, robot_des_sources
 from schema import (
     FUSEAU,
     RACINE,
@@ -90,6 +91,10 @@ _CONFIG = json.loads((RACINE / "config.json").read_text())
 USER_AGENT = f"VigieVaud-import (+{_CONFIG['depot']}; {_CONFIG['courriel']})"
 INTERVALLE = 1.0  # secondes, au moins, entre deux requêtes
 TAILLE_PAGE = 200
+# Les échecs prévus d'un conseil, que le journal du passage dit en une ligne : une erreur HTTP d'OpenParlData, une
+# page du site non lue, une valeur invalide (réponse sans `data`, relation tronquée, liste illisible). Toute autre
+# exception est un bogue, et le journal en montre la trace d'appel.
+ECHECS_PREVUS = (httpx.HTTPError, PageNonLue, ValueError)
 # Plafond de chaque relation développée (`expand`) : au-delà, l'import du conseil échoue plutôt que de tronquer.
 TAILLE_RELATION = 1000
 RECOUVREMENT = timedelta(days=1)
@@ -686,9 +691,12 @@ def importer_conseils(
             connus = lire_membres(depot, cle) if source.site is not None else []
             elements = vers_archive(bruts, archive, genere, repertoire, corrections, connus)
         except Exception as e:
-            # Toute erreur, prévue (HTTP, relation tronquée) ou non (réponse d'une forme inattendue), ne vaut
-            # qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
+            # Toute erreur, prévue (HTTP, page non lue, relation tronquée) ou non (réponse d'une forme inattendue,
+            # bogue d'un lecteur), ne vaut qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
+            # Une erreur imprévue montre en plus sa trace d'appel, pour que le journal du passage dise où chercher.
             print(f"Import en échec : {source.nom} ({type(e).__name__} : {e})", file=sys.stderr)
+            if not isinstance(e, ECHECS_PREVUS):
+                traceback.print_exc()
             continue
         nouveaux |= elements
         archive = {**archive, **elements}

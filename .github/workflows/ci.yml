@@ -95,5 +95,9 @@ jobs:
       - name: Installer les dépendances
         run: uv sync --locked
 
+      # Constats gelés dans l'état de référence de pyproject.toml (per-file-ignores) : seul le nouveau code est tenu.
+      - name: ruff
+        run: uv run ruff check --output-format github
+
       - name: pytest
         run: uv run pytest
