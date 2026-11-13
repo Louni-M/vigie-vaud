@@ -266,12 +266,16 @@ cd pipeline && uv run python cron.py --depot ../../vigie-vaud-donnees --sans-pus
 
 ou dans le dépôt de données, par un lancement manuel du workflow « Cron » avec la case `rattrapage` cochée ou le
 champ `rattrapage_cible` rempli. Rattrapages et passages ordinaires partagent le même groupe `concurrency` : ils ne
-tournent jamais en même temps. Mais ce groupe ne garde qu'**une seule exécution en attente** : un rattrapage lancé
-pendant un passage attend sa fin, et si le passage planifié suivant (à :17 ou :47) arrive avant, il prend sa place
-dans la file et le rattrapage est annulé, sans autre trace que dans l'onglet Actions. On lance donc un rattrapage
-quand aucun passage ne tourne : quelques minutes après :17 ou :47, une fois le passage fini (hors du premier passage
-après 7 h à Lausanne, qui importe les sites et dure jusqu'à 45 minutes), puis on vérifie dans Actions qu'il a démarré
-et on le relance s'il a été annulé. Une fois lancé, c'est lui qui retient les passages planifiés jusqu'à sa fin.
+tournent jamais en même temps. Le groupe est une file d'attente (`queue: max`) : un rattrapage lancé pendant un
+passage attend sa fin, puis démarre, sans être remplacé par le passage planifié suivant (à :17 ou :47) ; on peut
+donc le lancer à toute heure. Une fois lancé, c'est lui qui retient les passages planifiés, qui tournent ensuite
+l'un après l'autre.
+
+Le passage committe et pousse après chaque phase : les sondes, puis l'import d'OpenParlData, puis celui des sites
+des communes (lus ensemble, un fil par réseau). Une phase qui n'a rien changé ne committe rien. Le job a 50 minutes
+(6 h pour un rattrapage), dont jusqu'à 15 pour la publication sur Pages ; l'étape du passage a duré jusqu'à
+35 minutes du 24 octobre au 13 novembre 2026, avant ce découpage. Un passage qui dépasse son délai ne perd donc que la
+phase en cours : les phases déjà poussées restent dans le dépôt de données, et Pages les publie au passage suivant.
 
 Les fichiers de lecture (`conseils/index.json`, `fil.json`, les listes par conseil et par commune) se reconstruisent
 seuls depuis l'archive, sans aucune requête à OpenParlData, après un changement de leur forme ou une réécriture à la
@@ -314,6 +318,9 @@ elle est écrite :
 
 - Retrait d'un nom à la demande d'une personne : [`docs/retrait.md`](docs/retrait.md).
 - Fusion de communes : [`docs/fusions-de-communes.md`](docs/fusions-de-communes.md), liste de contrôle à suivre dans l'ordre.
+- Déclencheur du cron changé dans `pipeline/depot-donnees/.github/workflows/cron.yml` (ex. la file d'attente des
+  rattrapages) : il n'agit qu'une fois recopié dans `.github/workflows/cron.yml` du dépôt de données et poussé, après
+  la fusion dans `main`.
 
 ## Données et licence
 

@@ -3,9 +3,9 @@ name: Passage du cron
 # Workflow réutilisable (ADR 0014). Il n'est lancé que par le déclencheur du dépôt de données `vigie-vaud-donnees`,
 # dont le contenu est dans `pipeline/depot-donnees/.github/workflows/cron.yml`. Il tourne donc avec le
 # `GITHUB_TOKEN` du dépôt de données, sans aucun secret, et `github.repository` y désigne le dépôt de données.
-# Un passage : sondes et état des sources, import quotidien des conseils dus (`pipeline/cron.py`), commit qui sert
-# d'archive, push (avec `pull --rebase` et deux nouveaux essais au plus), puis publication du dépôt de données sur
-# Pages. Lancé à la main depuis le déclencheur, l'entrée `rattrapage` importe tous les conseils d'OpenParlData depuis
+# Un passage : sondes et état des sources, import quotidien des conseils dus (`pipeline/cron.py`), avec un commit
+# qui sert d'archive et un push (`pull --rebase` et deux nouveaux essais au plus) après chaque phase (sondes,
+# OpenParlData, sites des communes), puis publication du dépôt de données sur Pages. Lancé à la main depuis le déclencheur, l'entrée `rattrapage` importe tous les conseils d'OpenParlData depuis
 # tout l'historique, sans toucher aux sites des communes ; l'entrée `rattrapage_cible` (une plateforme, `i-web`, ou le
 # n° OFS d'une commune scrapée) rouvre toutes les pages des sites visés, sans plafond, au même débit (ADR 0010).
 on:
@@ -23,10 +23,12 @@ on:
 jobs:
   passage:
     runs-on: ubuntu-24.04
-    # Un passage ordinaire sonde et importe au plus un jour de changements, sites des communes compris (environ
-    # 25 minutes à 5 s par requête), et laisse jusqu'à 15 minutes aux deux essais de publication sur Pages ; un
-    # rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à deux heures pour une plateforme).
-    # 360 minutes est le plus long délai d'un job hébergé par GitHub.
+    # Un passage ordinaire sonde et importe au plus un jour de changements, sites des communes compris (l'étape
+    # « Passage du cron » a duré jusqu'à 35 minutes du 24 octobre au 13 novembre 2026, à 5 s par requête), et laisse
+    # jusqu'à 15 minutes aux deux essais de publication sur Pages : la marge n'est que de quelques minutes. Chaque
+    # phase étant poussée dès sa fin, un dépassement ne perd que la phase en cours ; Pages attend alors le passage
+    # suivant. Un rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à deux heures pour une
+    # plateforme). 360 minutes est le plus long délai d'un job hébergé par GitHub.
     timeout-minutes: ${{ (inputs.rattrapage || inputs.rattrapage_cible != '') && 360 || 50 }}
     permissions:
       contents: write
