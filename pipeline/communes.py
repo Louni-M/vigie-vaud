@@ -39,8 +39,9 @@ import httpx
 from pyproj import Transformer
 from shapely.geometry import Point
 
+import reference
 from telechargement import telecharger
-from terre import LACS_URL, charger_lacs, partie_terrestre, point_repli
+from terre import charger_lacs, partie_terrestre, point_repli
 
 ICI = Path(__file__).resolve().parent
 ROOT = ICI.parent
@@ -50,16 +51,9 @@ MILLESIMES = ROOT / "web" / "src" / "lib" / "millesimes.json"
 CSV_HDV = ICI / "hotels-de-ville.csv"
 
 USER_AGENT = "vigie-vaud/0.1 (projet citoyen non commercial)"
-BOUNDARIES_URL = (
-    "https://data.geo.admin.ch/ch.swisstopo.swissboundaries3d/swissboundaries3d_2026-01/"
-    "swissboundaries3d_2026-01_2056_5728.gpkg.zip"
-)
 MUTATIONS_URL = "https://www.agvchapp.bfs.admin.ch/api/communes/mutations"
 # Le répertoire historisé des communes commence en 1960.
 DEPUIS = 1960
-# Année où l'outil d'initialisation (hotels_de_ville.py) a lu l'annuaire de l'UCV et le répertoire des adresses
-# pour écrire hotels-de-ville.csv : à mettre à jour quand on le relance.
-EDITION_HOTELS = 2026
 
 # Tolérance de simplification (m, LV95) : invisible à l'échelle d'une commune, fichier ~5 fois plus léger.
 TOLERANCE = 10
@@ -74,14 +68,26 @@ def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
 
+def edition_limites() -> str:
+    """L'édition de swissBOUNDARIES3D lue : l'état des communes au 1er janvier de l'année de référence."""
+    return f"swissboundaries3d_{reference.ANNEE}-01"
+
+
+def url_limites() -> str:
+    edition = edition_limites()
+    return f"https://data.geo.admin.ch/ch.swisstopo.swissboundaries3d/{edition}/{edition}_2056_5728.gpkg.zip"
+
+
 def charger_communes(client: httpx.Client, cache: Path = CACHE) -> gpd.GeoDataFrame:
-    """Les communes vaudoises de swissBOUNDARIES3D en LV95 (téléchargées une fois dans `cache`)."""
-    cache.mkdir(parents=True, exist_ok=True)
-    gpkgs = list(cache.glob("swissBOUNDARIES3D*.gpkg"))
+    """Les communes vaudoises de swissBOUNDARIES3D en LV95 (téléchargées une fois dans `cache`, rangées par
+    édition)."""
+    dossier = cache / edition_limites()
+    dossier.mkdir(parents=True, exist_ok=True)
+    gpkgs = list(dossier.glob("swissBOUNDARIES3D*.gpkg"))
     if not gpkgs:
-        with zipfile.ZipFile(telecharger(client, BOUNDARIES_URL, cache / "sb3d.gpkg.zip")) as z:
-            z.extractall(cache)
-        gpkgs = list(cache.glob("swissBOUNDARIES3D*.gpkg"))
+        with zipfile.ZipFile(telecharger(client, url_limites(), dossier / "sb3d.gpkg.zip")) as z:
+            z.extractall(dossier)
+        gpkgs = list(dossier.glob("swissBOUNDARIES3D*.gpkg"))
     gdf = gpd.read_file(gpkgs[0], layer="tlm_hoheitsgebiet")
     gdf = gdf[(gdf.kantonsnummer == 22) & (gdf.objektart == "Gemeindegebiet")]
     gdf = gdf[["bfs_nummer", "name", "einwohnerzahl", "geometry"]].copy()
@@ -165,12 +171,11 @@ def lire_hotels(chemin: Path) -> dict[int, dict]:
 
 def millesimes(jusqu_au: date) -> dict[str, int]:
     """Édition de chaque source Préparée lue ici, par identifiant de sources.json (badge de fraîcheur du site)."""
-    annee = lambda url: int(re.search(r"_(\d{4})", url)[1])  # noqa: E731
     return {
-        "swisstopo-limites": annee(BOUNDARIES_URL),
-        "swisstopo-lacs": annee(LACS_URL),
-        "ucv-annuaire": EDITION_HOTELS,
-        "swisstopo-adresses": EDITION_HOTELS,
+        "swisstopo-limites": reference.ANNEE,
+        "swisstopo-lacs": reference.EDITION_LACS,
+        "ucv-annuaire": reference.ANNEE,
+        "swisstopo-adresses": reference.ANNEE,
         "ofs-communes-historique": jusqu_au.year,
     }
 

@@ -312,6 +312,7 @@ Ce qu'il faut savoir pour faire tourner le projet, une ligne par sujet, avec un 
 elle est écrite :
 
 - Retrait d'un nom à la demande d'une personne : [`docs/retrait.md`](docs/retrait.md).
+- Fusion de communes : [`docs/fusions-de-communes.md`](docs/fusions-de-communes.md), liste de contrôle à suivre dans l'ordre.
 
 ## Données et licence
 
