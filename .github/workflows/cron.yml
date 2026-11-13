@@ -56,6 +56,7 @@ jobs:
           persist-credentials: false
 
       - uses: astral-sh/setup-uv@v10.3.0
+      # Les dépendances du projet seules : ni `dev` ni `geo` (pile géographique de la préparation des communes).
       - name: Installer le pipeline
         run: uv sync --locked --no-dev --project code/pipeline
 

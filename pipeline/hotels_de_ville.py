@@ -9,6 +9,9 @@ Ordre de position, pour chaque commune actuelle (swissBOUNDARIES3D) :
   3. à défaut, le repli : un point de la partie terrestre de la commune.
 
 OpenStreetMap (`amenity=townhall`) ne sert qu'au contrôle : rien d'OSM n'est écrit dans le CSV.
+
+Usage (depuis `pipeline/`), avec la pile géographique du groupe `geo`, que le cron n'installe pas :
+    uv run --group geo python hotels_de_ville.py
 """
 
 from __future__ import annotations
@@ -28,8 +31,17 @@ from pathlib import Path
 from urllib.parse import unquote, urljoin
 
 import httpx
-from pyproj import Transformer
-from shapely.geometry import Point
+
+try:
+    from pyproj import Transformer
+    from shapely.geometry import Point
+except ModuleNotFoundError as erreur:
+    # Pile géographique absente : elle est dans le groupe `geo` de pyproject.toml, que le cron n'installe pas.
+    raise ModuleNotFoundError(
+        f"{erreur.name} manque : la pile géographique est dans le groupe geo, à installer avec le script : "
+        "« uv run --group geo python hotels_de_ville.py » (depuis pipeline/)",
+        name=erreur.name,
+    ) from erreur
 
 from communes import CACHE, USER_AGENT, charger_communes
 from telechargement import telecharger

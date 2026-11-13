@@ -185,19 +185,22 @@ Tests du site (Vitest, sans navigateur ni appel au canton) :
 cd web && pnpm test
 ```
 
-Tests du pipeline (pytest, sans réseau) :
+Tests du pipeline (pytest, sans réseau). La pile géographique (geopandas, pyproj, shapely) est dans le groupe de
+dépendances `geo`, que ni le cron ni `uv sync` n'installent : sans lui, les tests de la préparation des communes ne
+sont pas collectés (l'en-tête de pytest le dit). `--group geo` l'installe et les lance tous :
 
 ```bash
-cd pipeline && uv run pytest
+cd pipeline && uv run pytest              # sans la pile géographique, comme le cron
+cd pipeline && uv run --group geo pytest  # toute la suite
 ```
 
-Préparation des communes, relancée à chaque fusion : limites, hôtels de ville (lus dans
+Préparation des communes, relancée à chaque fusion, avec le groupe `geo` : limites, hôtels de ville (lus dans
 `pipeline/hotels-de-ville.csv`), cadre de la partie terrestre et anciens noms (répertoire historisé de l'OFS). Elle
 échoue si un hôtel de ville du CSV tombe hors de la partie terrestre de sa commune, et place une commune absente du
 CSV en repli avec un avertissement. Elle télécharge environ 450 Mo dans `data/cache/` la première fois.
 
 ```bash
-cd pipeline && uv run python communes.py
+cd pipeline && uv run --group geo python communes.py
 ```
 
 Hôtels de ville, seulement pour une nouvelle commune : l'outil d'initialisation réécrit `pipeline/hotels-de-ville.csv`
@@ -205,7 +208,7 @@ Hôtels de ville, seulement pour une nouvelle commune : l'outil d'initialisation
 `pipeline/hotels-de-ville-a-revoir.csv`. Il télécharge environ 500 Mo dans `data/cache/hotels-de-ville/`.
 
 ```bash
-cd pipeline && uv run python hotels_de_ville.py
+cd pipeline && uv run --group geo python hotels_de_ville.py
 ```
 
 ## Sources et schéma commun
@@ -333,6 +336,8 @@ elle est écrite :
 
 - Retrait d'un nom à la demande d'une personne : [`docs/retrait.md`](docs/retrait.md).
 - Fusion de communes : [`docs/fusions-de-communes.md`](docs/fusions-de-communes.md), liste de contrôle à suivre dans l'ordre.
+- Pile géographique (groupe `geo`) : seuls `pipeline/communes.py` et `pipeline/hotels_de_ville.py` en ont besoin,
+  lancés avec `uv run --group geo` ; le cron s'installe sans elle (`uv sync --no-dev`), à chaque passage.
 - Déclencheur du cron changé dans `pipeline/depot-donnees/.github/workflows/cron.yml` (ex. la file d'attente des
   rattrapages) : il n'agit qu'une fois recopié dans `.github/workflows/cron.yml` du dépôt de données et poussé, après
   la fusion dans `main`.
