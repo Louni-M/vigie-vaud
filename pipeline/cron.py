@@ -884,13 +884,22 @@ def _accorder_issues_import(
             issues.import_retour(conseil, dernier)
 
 
-# --- Commit et push (hors du point de test : l'option sans push sert de vérification locale) -------------------
+# --- Commit et push (testés contre un dépôt nu local : `tests/test_cron_git.py`) --------------------------------
 
 NOUVEAUX_ESSAIS_PUSH = 2
+# Délai d'attente de chaque appel à git, en secondes : un git bloqué (réseau, verrou) fait échouer le passage avec
+# un message plutôt que d'attendre la fin du job.
+DELAI_GIT = 120
 
 
 def _git(depot: Path, *args: str, verifier: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(depot), *args], check=verifier, text=True)
+    try:
+        return subprocess.run(["git", "-C", str(depot), *args], check=verifier, text=True, timeout=DELAI_GIT)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"git {args[0]} : sans réponse après {DELAI_GIT} s, le passage échoue ; "
+            "le suivant repartira de l'état relu."
+        ) from None
 
 
 def committer(depot: Path, etat: EtatSources) -> None:
