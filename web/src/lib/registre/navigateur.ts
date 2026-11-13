@@ -56,6 +56,7 @@ export function navigateurSvelteKit(): Navigateur {
 		get emplacement() {
 			return location;
 		},
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- simple relais : l'adresse vient du registre, déjà construite
 		goto: (url, options) => goto(url, options),
 		reculer: (pas) => history.go(-pas),
 		apresNavigation: (f) => afterNavigate(f),
