@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { deCommune, PROCEDURE_PERMIS } from '#lib/labels.js';
+	import { PROCEDURE_PERMIS } from '#lib/labels.js';
+	import { deNom } from '#lib/registre/elision.js';
 
 	let { commune }: { commune: string } = $props();
 	const uid = $props.id();
@@ -14,7 +15,7 @@
 	<h4 id="{uid}-titre">Consulter le dossier</h4>
 	<p>
 		Pendant l’enquête publique, le dossier complet (plans, descriptif) peut être consulté à l’administration
-		communale {deCommune(commune)}, au greffe ou au service technique. Renseignez-vous auprès de la commune pour les
+		communale {deNom(commune)}, au greffe ou au service technique. Renseignez-vous auprès de la commune pour les
 		horaires.
 	</p>
 	<p>

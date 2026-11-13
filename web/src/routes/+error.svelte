@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { COUCHES } from '#lib/registre/couches.js';
+	import { deNom } from '#lib/registre/elision.js';
 	import { lienCommune, lienElement, lienFiche, lienVue } from '#lib/registre/liens.js';
 	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { ancienneAdresse } from '#lib/socle/anciens.js';
@@ -57,7 +58,7 @@
 	<h1>{titre}</h1>
 	{#if ancienne}
 		<p class="ancienne">
-			{ancienne.phrase}&nbsp;: <a href={lienCommune(ancienne.commune.slug)}>voir la fiche de {ancienne.commune.nom}</a>.
+			{ancienne.phrase}&nbsp;: <a href={lienCommune(ancienne.commune.slug)}>voir la fiche {deNom(ancienne.commune.nom)}</a>.
 		</p>
 	{:else if introuvable}
 		<p>Cette adresse ne correspond à aucune page du site.</p>

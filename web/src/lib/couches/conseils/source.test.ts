@@ -156,6 +156,15 @@ describe('message « Non couvert » d’une commune', () => {
 		);
 	});
 
+	it('contracte « de » devant « Le » : « du Chenit »', () => {
+		const chenit = { bfs: 5872, nom: 'Le Chenit', site: 'https://www.communeduchenit.ch' };
+		const sources = avecSources(SOURCES, sourceNonCouverte('refus_robots', chenit));
+
+		expect(nonCouvertConseils(commune(5872, 'Le Chenit', [6.1, 46.55, 6.3, 46.65]), sources).texte).toBe(
+			'le site du Chenit refuse les robots.'
+		);
+	});
+
 	it('hors de J3, sans lien : Vigie Vaud ne lit pas encore le site de la commune', () => {
 		const sources = avecSources(SOURCES, sourceNonCouverte());
 
