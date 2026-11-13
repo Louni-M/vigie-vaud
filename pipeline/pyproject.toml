@@ -16,8 +16,58 @@ dependencies = [
 dev = [
     "jsonschema>=4.26.0",
     "pytest>=9.1.1",
+    "ruff>=0.17.5",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+# Linter seulement : pas de formateur (décision de #184, pour éviter un reformatage massif).
+# Règles par défaut de ruff, plus E4, E7 et E9 (imports, comparaisons, lambdas nommées, erreurs de syntaxe).
+# Les défauts dépendent de la version de ruff : uv.lock la fige, une montée de version peut ajouter des constats.
+[tool.ruff.lint]
+extend-select = ["E4", "E7", "E9"]
+
+# État de référence : les constats présents à l'ajout de ruff (#194), gelés fichier par fichier.
+# Tout nouveau constat échoue, sauf s'il reprend une règle déjà gelée dans le même fichier.
+# Pour réduire : retirer une règle (ou toute la ligne) d'un fichier, lancer « uv run ruff check <fichier> »
+# (« --fix » corrige I001, FURB167, SIM905, UP012 et RUF100), corriger, committer.
+# Ne jamais ajouter d'entrée ici pour du code nouveau : le corriger, ou un « # noqa: <règle> » motivé sur sa ligne.
+[tool.ruff.lint.per-file-ignores]
+"communes.py" = ["FURB167"]
+"conseils.py" = ["BLE001", "I001", "TRY004"]
+"cron.py" = ["BLE001", "I001"]
+"echantillon_sites.py" = ["C408", "FURB167", "SIM905"]
+"hotels_de_ville.py" = ["E741", "FURB167", "SIM102"]
+"lecture_iweb.py" = ["FURB167", "I001", "RUF007", "SIM905"]
+"lecture_quicksite.py" = ["FURB167", "SIM905"]
+"masquage.py" = ["FURB167"]
+"pages_html.py" = ["SIM905"]
+"preparation_sources.py" = ["I001"]
+"rattachement.py" = ["I001"]
+"robot_communal.py" = ["SIM102"]
+"schema.py" = ["RUF100", "SIM102"]
+"tests/faux_services.py" = ["SIM905"]
+"tests/passage_sites.py" = ["I001"]
+"tests/test_alternance_reseaux.py" = ["I001", "RUF007"]
+"tests/test_communes.py" = ["I001"]
+"tests/test_cron.py" = ["I001"]
+"tests/test_echantillon_openparldata.py" = ["I001"]
+"tests/test_echantillon_sites.py" = ["I001", "UP012"]
+"tests/test_fichiers_lecture_conseils.py" = ["I001"]
+"tests/test_hotels_de_ville.py" = ["E741", "I001"]
+"tests/test_import_conseils.py" = ["I001", "RUF007"]
+"tests/test_issues_plateformes.py" = ["I001", "ISC004"]
+"tests/test_masquage.py" = ["ISC004"]
+"tests/test_membres_conseil.py" = ["I001"]
+"tests/test_preparation_quicksite.py" = ["I001", "ISC004"]
+"tests/test_preparation_sources.py" = ["I001", "ISC004"]
+"tests/test_rattachement_conseils.py" = ["I001"]
+"tests/test_rattrapage_cible.py" = ["I001"]
+"tests/test_regles_du_robot.py" = ["I001"]
+"tests/test_retraits.py" = ["I001"]
+"tests/test_sites_communaux.py" = ["I001"]
+"tests/test_sites_preavis_objets.py" = ["I001"]
+"tests/test_sites_quicksite.py" = ["I001", "RUF007", "RUF015"]
+"tests/test_sondes_sites.py" = ["F841", "I001"]

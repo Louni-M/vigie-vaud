@@ -1,5 +1,6 @@
 /**
- * Complément « de <nom> » d'une commune, pour les libellés (« Fermer la fiche de Pully ») : « d’ » devant une
+ * Complément « de <nom> » d'une commune, partout où le site la nomme après « de » (« Fermer la fiche de Pully »,
+ * « l'administration communale du Mont-sur-Lausanne », « le site des Clées ») : « d’ » devant une
  * voyelle ou un y (« d’Yverdon-les-Bains », « d’Echallens », « d’Ollon »), et l'article contracté devant « Le » et
  * « Les » (« du Chenit », « des Clées »). Le h initial est traité comme aspiré : les communes vaudoises en h
  * s'écrivent « de Hautemorges », « de Henniez », « de Hermenches ». « La » et « L’ » restent tels quels

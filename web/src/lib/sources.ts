@@ -33,7 +33,7 @@ export const SENS_VOIES: Record<VoieAcces, string> = {
 };
 
 /**
- * Un niveau (CONTEXT.md) : ce que donne un conseil, tel que `conseil.donne` l'écrit (ADR-0010), et tout ce que le
+ * Un niveau (GLOSSARY.md) : ce que donne un conseil, tel que `conseil.donne` l'écrit (ADR-0010), et tout ce que le
  * site en dit. Le seul endroit où un niveau s'interprète, côté site.
  */
 export interface Niveau {

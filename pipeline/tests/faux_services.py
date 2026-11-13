@@ -25,7 +25,7 @@ from shapely.geometry import Polygon, box
 import communes as prep
 import hotels_de_ville as hdv
 import terre
-from communes import BOUNDARIES_URL, MUTATIONS_URL
+from communes import MUTATIONS_URL, url_limites
 
 COLONNES_MUTATIONS = (
     "MutationNumber,MutationDate,InitialHistoricalCode,InitialCode,InitialName,InitialParentHistoricalCode,"
@@ -117,9 +117,9 @@ class Monde:
         url = str(requete.url)
         if url.startswith(MUTATIONS_URL + "?"):
             return httpx.Response(200, content=self._mutations().encode("utf-8"))
-        if url == BOUNDARIES_URL:
+        if url == url_limites():
             return httpx.Response(200, content=self._limites())
-        if url == terre.LACS_URL:
+        if url == terre.url_lacs():
             return httpx.Response(200, content=self._lacs())
         if url == hdv.ADRESSES_URL:
             return httpx.Response(200, content=self._adresses())

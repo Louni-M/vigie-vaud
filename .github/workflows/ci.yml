@@ -1,14 +1,19 @@
-name: Contrôles des PR
+name: Contrôles
 
-# Chaîne de contrôles de chaque PR, que les tickets suivants complètent (tests, schéma commun…).
+# Chaîne de contrôles de chaque PR, relancée sur chaque push vers main : une fusion fautive (conflit mal résolu,
+# PR fusionnée sans CI à jour) doit se voir avant le passage du cron et la prochaine publication.
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
+# Une PR annule son run précédent ; chaque commit de main garde le sien (groupe par SHA), pour que chaque fusion
+# soit contrôlée, même quand deux se suivent de près.
 concurrency:
-  group: ci-${{ github.event.pull_request.number }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -89,6 +94,10 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
       - name: Installer les dépendances
         run: uv sync --locked
+
+      # Constats gelés dans l'état de référence de pyproject.toml (per-file-ignores) : seul le nouveau code est tenu.
+      - name: ruff
+        run: uv run ruff check --output-format github
 
       - name: pytest
         run: uv run pytest

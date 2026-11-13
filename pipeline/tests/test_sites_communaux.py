@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+import lecture_iweb
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
 from passage_sites import (
@@ -280,9 +281,28 @@ def test_une_liste_dont_aucune_ligne_ne_se_lit_met_l_import_de_la_commune_en_ech
 
     _passer(tmp_path, horloge, reseau)
 
-    assert "Import en échec : Conseil communal de Préverenges (site de la commune)" in capsys.readouterr().err
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune) (ValueError" in journal
+    assert "Traceback" not in journal  # un échec prévu garde sa ligne courte
     assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
     assert not (tmp_path / "conseils/5643/seances").exists()
+
+
+def test_un_bogue_de_lecteur_imprime_sa_trace_d_appel_et_n_empeche_pas_les_autres(tmp_path, horloge, capsys, monkeypatch):
+    # Une exception imprévue levée dans le fil de lecture du site : le journal du passage montre où, sans attendre
+    # l'issue `import-conseils` du lendemain.
+    def lecteur_bogue(robot, source, depuis):
+        return source.inexistant
+
+    monkeypatch.setattr(lecture_iweb, "lire", lecteur_bogue)
+
+    _passer(tmp_path, horloge, _preverenges(horloge))
+
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune) (AttributeError" in journal
+    assert "Traceback (most recent call last)" in journal
+    assert "in lecteur_bogue" in journal and "source.inexistant" in journal
+    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
 
 
 def test_une_liste_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):
