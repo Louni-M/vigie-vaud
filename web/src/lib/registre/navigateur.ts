@@ -42,6 +42,11 @@ export interface Navigateur {
 	reculer(pas: number): void;
 	/** `f` est appelée après chaque navigation (`afterNavigate`) ; à brancher pendant l'initialisation d'un composant. */
 	apresNavigation(f: () => void): void;
+	/**
+	 * `f` est appelée chaque fois que le navigateur change d'entrée par le précédent ou le suivant (`popstate`), avant
+	 * que la page ne suive ; renvoie de quoi la débrancher.
+	 */
+	surParcours(f: () => void): () => void;
 }
 
 /** La navigation de SvelteKit et l'historique du navigateur, lus seulement à l'usage (les pages sont pré-générées). */
@@ -53,6 +58,10 @@ export function navigateurSvelteKit(): Navigateur {
 		},
 		goto: (url, options) => goto(url, options),
 		reculer: (pas) => history.go(-pas),
-		apresNavigation: (f) => afterNavigate(f)
+		apresNavigation: (f) => afterNavigate(f),
+		surParcours: (f) => {
+			addEventListener('popstate', f);
+			return () => removeEventListener('popstate', f);
+		}
 	};
 }

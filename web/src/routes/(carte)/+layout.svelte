@@ -25,9 +25,8 @@
 	import { fade, fly } from 'svelte/transition';
 	import { bulleEntree, bulleSortie } from '#lib/registre/bulle.js';
 	import { MediaQuery } from 'svelte/reactivity';
-	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { navigating, page } from '$app/state';
+	import { navigating } from '$app/state';
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
 	import Recherche from '#lib/socle/Recherche.svelte';
 	import { COUCHES } from '#lib/registre/couches.js';
@@ -181,12 +180,10 @@
 	/* ---- Recherche plein écran (téléphone) ---- */
 
 	/**
-	 * Ouverte, elle a poussé une entrée d'historique (même adresse) : le retour arrière du téléphone la retire et
-	 * referme la Recherche, sans fermer l'aperçu ni quitter la page. On suit l'événement du navigateur plutôt que
-	 * `page.state` : la carte qui finit un déplacement réécrit l'adresse, et SvelteKit abandonne alors la mise à jour.
+	 * Ouverte, elle a son entrée d'historique, tenue par le registre (`registre.recherche`) : le retour arrière du
+	 * téléphone la retire et referme la Recherche, sans fermer l'aperçu ni quitter la page.
 	 */
-	let ouverte = $state(false);
-	const pleine = $derived(recherchePleine(telephone.current, affichage, ouverte));
+	const pleine = $derived(recherchePleine(telephone.current, affichage, registre.recherche));
 	let texteRecherche = $state('');
 	/** Texte du champ de la carte à l'ouverture, rendu par « Annuler » et le retour arrière. */
 	let texteAvant = '';
@@ -194,25 +191,18 @@
 	let fin: { fin: Exclude<FinRecherche, 'retour'>; resultat?: Resultat } | null = null;
 
 	function ouvrirRecherche() {
-		if (ouverte || !recherchePleine(telephone.current, affichage, true)) return;
+		if (registre.recherche || !recherchePleine(telephone.current, affichage, true)) return;
 		// La Recherche s'ouvre vide, sur « Autour de moi » et la ligne d'aide ; « Annuler » rend le texte du champ.
 		texteAvant = texteRecherche;
 		texteRecherche = '';
-		ouverte = true;
-		goto(`${location.pathname}${location.search}`, { shallow: true, state: page.state });
+		registre.ouvrirRecherche();
 	}
-
-	$effect(() => {
-		const retour = () => (ouverte = false);
-		addEventListener('popstate', retour);
-		return () => removeEventListener('popstate', retour);
-	});
 
 	/** « Annuler » ou un résultat choisi retirent l'entrée de la Recherche : elle se referme au retour. */
 	function quitterRecherche(f: NonNullable<typeof fin>) {
 		if (fin) return;
 		fin = f;
-		history.back();
+		registre.fermerRecherche();
 	}
 
 	let pleineAvant = false;
@@ -232,10 +222,7 @@
 		const f = fin;
 		fin = null;
 		// Refermée sans retour (téléphone tourné au-delà de 760 px de large) : son entrée est retirée.
-		if (ouverte) {
-			ouverte = false;
-			history.back();
-		}
+		registre.fermerRecherche();
 		texteRecherche = texteApresRecherche(f?.fin ?? 'retour', texteAvant, texteRecherche);
 		// SvelteKit lance la navigation du retour quelques instants après lui : on la laisse partir.
 		if (f?.resultat) setTimeout(() => (choisi = f.resultat!));

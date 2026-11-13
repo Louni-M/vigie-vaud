@@ -7,9 +7,9 @@ import type { Navigateur, OptionsNavigation, PageCarte } from '#lib/registre/nav
  * - Une navigation superficielle (`shallow`) écrit l'adresse, puis met à jour `page.state` et `page.shallow` ; la page
  *   rendue (`page.url`, sa route) ne change pas.
  * - Une navigation vers une page met à jour l'adresse et la page ensemble, avec `page.shallow` à `null`.
- * - Au retour et à l'avance, le navigateur change d'entrée tout de suite, et la page suit plus tard, comme après
- *   `popstate` : entre deux entrées d'une même page, seuls l'état et `page.shallow` changent ; sinon la page change,
- *   et `afterNavigate` suit.
+ * - Au retour et à l'avance, le navigateur change d'entrée et prévient ses écouteurs (`popstate`) tout de suite, et la
+ *   page suit plus tard : entre deux entrées d'une même page, seuls l'état et `page.shallow` changent ; sinon la page
+ *   change, et `afterNavigate` suit. Le retour demandé par l'application (`reculer`) part dans une tâche à part.
  * - Toutes les navigations sont résolues après quelques micro-tâches, jamais tout de suite.
  */
 
@@ -78,6 +78,8 @@ export function creerFauxNavigateur(depart: string) {
 	};
 	const rappels: (() => void)[] = [];
 	const apresNavigation = () => rappels.forEach((f) => f());
+	/** Écouteurs de `popstate`. */
+	let parcours: (() => void)[] = [];
 
 	/** Ajoute `e` après l'entrée courante (les entrées suivantes sont perdues), ou la met à sa place. */
 	function ecrire(e: Entree, remplacer: boolean) {
@@ -95,6 +97,7 @@ export function creerFauxNavigateur(depart: string) {
 		const avant = entrees[index];
 		index = i;
 		const e = entrees[i];
+		parcours.forEach((f) => f());
 		await plusTard();
 		page = pageDe(e);
 		if (e.navigation !== avant.navigation) apresNavigation();
@@ -122,8 +125,13 @@ export function creerFauxNavigateur(depart: string) {
 			}
 			apresNavigation();
 		},
-		reculer: (pas) => void parcourir(-pas),
-		apresNavigation: (f) => void rappels.push(f)
+		// `history.go` ne parcourt l'historique que plus tard, dans une tâche à part.
+		reculer: (pas) => void setTimeout(() => parcourir(-pas)),
+		apresNavigation: (f) => void rappels.push(f),
+		surParcours(f) {
+			parcours.push(f);
+			return () => (parcours = parcours.filter((g) => g !== f));
+		}
 	};
 
 	return {
