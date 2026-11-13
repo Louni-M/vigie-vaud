@@ -2,7 +2,7 @@
 // fiche d'un Objet ou d'une Séance, et la note de niveau sous le nom du conseil (spec de J3, « Couche Conseils et
 // onglet Conseil », « Fiches »). Rien n'y est écrit en dur pour OpenParlData.
 import { RAISONS, declareNonCouverte } from '#lib/couverture.js';
-import { deCommune } from '#lib/labels.js';
+import { deNom } from '#lib/registre/elision.js';
 import type { MessageNonCouvert } from '#lib/registre/types.js';
 import type { Objet, Source } from '#lib/schema.js';
 import { SOURCES, niveauDe } from '#lib/sources.js';
@@ -92,7 +92,7 @@ export function nonCouvertConseils(
 	const raison = declaree?.couverture?.raison;
 	if (!declaree || !raison) return { texte: 'Vigie Vaud ne lit pas encore le site de cette commune.' };
 	return {
-		texte: RAISONS[raison].onglet(deCommune(commune.nom)),
+		texte: RAISONS[raison].onglet(deNom(commune.nom)),
 		lien: { texte: 'Le conseil sur le site de la commune ›', url: declaree.attribution.lien }
 	};
 }
