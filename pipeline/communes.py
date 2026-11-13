@@ -11,6 +11,9 @@ Sources :
     échoue ; une commune absente du CSV (fusion au 1ᵉʳ janvier) passe en repli, avec un avertissement ;
   - répertoire historisé des communes de l'OFS (OGD, depuis 1960) : anciennes communes et anciens noms.
 
+Usage (depuis `pipeline/`), avec la pile géographique du groupe `geo`, que le cron n'installe pas :
+    uv run --group geo python communes.py
+
 Fichiers écrits (versionnés) :
   web/static/communes.json          index : n° OFS, nom, slug, habitants, `bbox` (emprise complète, lac compris,
                                     pour le rattachement des dossiers), `cadre` (emprise de la partie terrestre,
@@ -34,10 +37,19 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
-import geopandas as gpd
 import httpx
-from pyproj import Transformer
-from shapely.geometry import Point
+
+try:
+    import geopandas as gpd
+    from pyproj import Transformer
+    from shapely.geometry import Point
+except ModuleNotFoundError as erreur:
+    # Pile géographique absente : elle est dans le groupe `geo` de pyproject.toml, que le cron n'installe pas.
+    raise ModuleNotFoundError(
+        f"{erreur.name} manque : la pile géographique est dans le groupe geo, à installer avec le script : "
+        "« uv run --group geo python communes.py » (depuis pipeline/)",
+        name=erreur.name,
+    ) from erreur
 
 import reference
 from telechargement import telecharger

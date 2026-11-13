@@ -56,6 +56,14 @@ jobs:
         working-directory: .
         run: .github/scripts/verifier-sans-rediffusion.sh web/build
 
+      # Scénarios dans un navigateur (web/e2e) contre le site construit ci-dessus, servi par vite preview. Les services
+      # (fond de carte, canton, dépôt de données, recherche d'adresses) sont factices : aucune requête ne quitte la machine.
+      - name: Installer Chromium pour Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Tests dans un navigateur (Playwright)
+        run: pnpm exec playwright test
+
   # Schéma commun (ADR 0013) : les modèles Pydantic sont la seule source. Le JSON Schema et les types TypeScript
   # versionnés doivent être ceux qu'une nouvelle génération produit.
   schema:
@@ -98,6 +106,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v10.3.0
+      # Sans le groupe `geo` (pile géographique de la préparation des communes), comme le cron.
       - name: Installer les dépendances
         run: uv sync --locked
 
@@ -105,5 +114,11 @@ jobs:
       - name: ruff
         run: uv run ruff check --output-format github
 
-      - name: pytest
+      # Dans l'ordre : `uv run` ajoute des paquets sans jamais en retirer. D'abord sans la pile géographique, où les
+      # tests marqués `geo` ne sont pas collectés (tests/conftest.py) ; puis seulement eux, avec elle. Le second
+      # échoue s'il ne trouve aucun test `geo`.
+      - name: pytest (sans le groupe geo, comme le cron)
         run: uv run pytest
+
+      - name: pytest (groupe geo)
+        run: uv run --locked --group geo pytest -m geo
