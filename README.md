@@ -171,8 +171,9 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 
 ## Lancer en local
 
-Prérequis : Node 24+, pnpm. [uv](https://docs.astral.sh/uv/) seulement pour régénérer les communes ou le schéma
-commun, et pour le cron et les tests du pipeline.
+Prérequis : Node 24+, pnpm 11+ (`engines` de `web/package.json` : une autre version fait échouer l'installation ;
+pnpm passe de lui-même à la version de `packageManager`). [uv](https://docs.astral.sh/uv/) seulement pour régénérer
+les communes ou le schéma commun, et pour le cron et les tests du pipeline.
 
 ```bash
 cd web && pnpm install && pnpm dev
@@ -289,10 +290,22 @@ seule fois, dans `config.json` à la racine. Le site les lit par `web/src/lib/co
 
 ## Contrôles et publication
 
-Le workflow `ci.yml` se lance sur chaque PR et sur chaque push vers `main` : `svelte-check`, les tests du site
-(Vitest), la construction (qui valide `sources.json`), la vérification qu'aucune donnée CAMAC ni DGMR n'est dans le
-site construit, la régénération du schéma commun (qui doit ne rien changer), le linter du pipeline (ruff) et ses
-tests (pytest).
+Le workflow `ci.yml` se lance sur chaque PR et sur chaque push vers `main` : `svelte-check`, le linter du site
+(ESLint), les tests du site (Vitest), la construction (qui valide `sources.json`), la vérification qu'aucune donnée
+CAMAC ni DGMR n'est dans le site construit, la régénération du schéma commun (qui doit ne rien changer), le linter
+du pipeline (ruff) et ses tests (pytest).
+
+`svelte-check` vérifie les types du site, de ses tests et de ses scripts (`web/scripts/`), et signale les variables
+et paramètres inutilisés. ESLint tourne sans formateur, avec les configurations recommandées d'ESLint, de
+typescript-eslint et d'eslint-plugin-svelte. Les constats présents à son ajout sont gelés fichier par fichier dans
+`ETAT_DE_REFERENCE` de `web/eslint.config.js` : tout nouveau constat fait échouer la CI. On le réduit comme celui de
+ruff, en retirant une règle d'un fichier puis en corrigeant ce qu'ESLint signale ; on n'y ajoute rien pour du code
+nouveau.
+
+```bash
+cd web && pnpm check   # types (svelte-check)
+cd web && pnpm lint    # linter du site
+```
 
 ruff tourne sans formateur, avec ses règles par défaut plus E4, E7 et E9. Les constats présents à son ajout sont
 gelés fichier par fichier dans `[tool.ruff.lint.per-file-ignores]` de `pipeline/pyproject.toml` : tout nouveau

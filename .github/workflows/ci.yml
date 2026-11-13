@@ -25,9 +25,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Version de pnpm : celle de « packageManager » dans web/package.json, dans chaque workflow.
+      # Node doit satisfaire « engines » du même fichier, sinon l'installation échoue (engineStrict).
       - uses: pnpm/action-setup@v6
         with:
-          version: 11
+          package_json_file: web/package.json
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -38,6 +40,10 @@ jobs:
 
       - name: svelte-check
         run: pnpm check
+
+      # Constats gelés dans l'état de référence de web/eslint.config.js : seul le nouveau code est tenu.
+      - name: ESLint
+        run: pnpm lint
 
       - name: Tests (Vitest)
         run: pnpm test
@@ -60,7 +66,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.0
       - uses: pnpm/action-setup@v6
         with:
-          version: 11
+          package_json_file: web/package.json
       - uses: actions/setup-node@v7
         with:
           node-version: 24
