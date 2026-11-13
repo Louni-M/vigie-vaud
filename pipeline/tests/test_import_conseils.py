@@ -12,6 +12,7 @@ import httpx
 import jsonschema
 import pytest
 
+from cas_partages import cas_partages
 from conseils import OpenParlData, cle_objet, importer_conseils
 from schema import DOSSIER_SCHEMA, FichierSources
 from faux_openparldata import (
@@ -243,21 +244,10 @@ def test_un_numero_a_espaces_donne_une_cle_sans_espace(tmp_path):
     assert _lire(tmp_path, "conseils/vd/seances/2026-10-06.json")["ordre_du_jour"][-1]["objet"] == "vd/V_1.9.2026"
 
 
-# Les mêmes cas que `cleObjet` du site (`web/src/lib/couches/conseils/numeros.test.ts`), qui ouvre un Objet par la
-# clé que le cron a donnée à son fichier : un cas ajouté d'un côté s'ajoute de l'autre.
+# Les cas de `cas-partages/cle-objet.json`, que lit aussi `cleObjet` du site : il ouvre un Objet par la clé que le
+# cron a donnée à son fichier.
 @pytest.mark.parametrize(
-    ("conseil", "numero", "cle"),
-    [
-        ("vd", "26_INT_140", "vd/26_INT_140"),
-        ("vd", "8_LEG_124", "vd/8_LEG_124"),
-        ("vd", "V 1.9.2026", "vd/V_1.9.2026"),
-        ("vd", "  21_POS_3 ", "vd/21_POS_3"),
-        ("5586", "POS25/115", "5586/POS25-115"),
-        ("5586", "INT26/056", "5586/INT26-056"),
-        ("5586", "PR 25/3/bis", "5586/PR_25-3-bis"),
-        ("5586", "INT \t 26/056", "5586/INT_26-056"),
-        ("5586", "INT 26/056", "5586/INT_26-056"),
-    ],
+    ("conseil", "numero", "cle"), [(c["conseil"], c["numero"], c["cle"]) for c in cas_partages("cle-objet")]
 )
 def test_la_cle_d_un_objet_est_celle_que_le_site_calcule(conseil, numero, cle):
     assert cle_objet(conseil, numero) == cle
