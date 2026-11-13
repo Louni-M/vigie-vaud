@@ -40,7 +40,6 @@ const ETAT_DE_REFERENCE = {
 	'src/lib/registre/navigateur.ts': ['svelte/no-navigation-without-resolve'],
 	'src/lib/registre/registre.svelte.ts': ['svelte/prefer-svelte-reactivity'],
 	'src/lib/socle/Recherche.svelte': ['svelte/prefer-svelte-reactivity'],
-	'src/routes/(carte)/+layout.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/routes/+error.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/routes/a-propos/+page.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/routes/couverture/+page.svelte': ['svelte/no-navigation-without-resolve'],

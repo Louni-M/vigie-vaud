@@ -310,10 +310,98 @@ describe('vue du téléphone', () => {
 		expect(registre.affichage).toBe('fil');
 	});
 
+	it('ouvre la Recherche plein écran dans une entrée de même adresse, que le précédent referme sans rien fermer d’autre', async () => {
+		const { nav, registre } = await arriver('/commune/pully?d=1&affichage=carte', { telephone: true });
+		expect(registre.recherche).toBe(false);
+
+		registre.ouvrirRecherche();
+		expect(registre.recherche).toBe(true);
+		await calme();
+		expect(nav.historique).toEqual(['/commune/pully?d=1&affichage=carte', '/commune/pully?d=1&affichage=carte']);
+		expect(nav.index).toBe(1);
+
+		await nav.precedent();
+		await calme();
+		expect(registre.recherche).toBe(false);
+		expect(nav.index).toBe(0);
+		expect(registre.fiche).toEqual({ commune: 'pully' });
+		expect(registre.ouvert).toEqual(DOSSIER);
+		expect(registre.affichage).toBe('carte');
+
+		// Le suivant ne la rouvre pas : il mène à son entrée, sans rien changer.
+		await nav.suivant();
+		await calme();
+		expect(registre.recherche).toBe(false);
+		expect(nav.adresse).toBe('/commune/pully?d=1&affichage=carte');
+		expect(registre.ouvert).toEqual(DOSSIER);
+
+		// Rouverte, elle remplace l’entrée laissée par le suivant.
+		await nav.precedent();
+		await calme();
+		registre.ouvrirRecherche();
+		await calme();
+		expect(nav.historique).toHaveLength(2);
+		expect(nav.index).toBe(1);
+	});
+
+	it('referme la Recherche en retirant son entrée, au retour', async () => {
+		const { nav, registre } = await arriver('/', { telephone: true });
+		registre.ouvrirRecherche();
+		await calme();
+
+		registre.fermerRecherche();
+		// Refermée au retour seulement : ce qu'on y a choisi s'ouvre une fois l'entrée retirée.
+		expect(registre.recherche).toBe(true);
+		await calme();
+		expect(registre.recherche).toBe(false);
+		expect(nav.index).toBe(0);
+		expect(nav.adresse).toBe('/');
+	});
+
+	it('compte l’entrée de la Recherche dans celles que remonte la fermeture du dossier', async () => {
+		const { nav, registre } = await arriver('/commune/pully?affichage=carte', { telephone: true });
+		registre.ouvrir(DOSSIER);
+		await calme();
+		registre.ouvrirRecherche();
+		await calme();
+		expect(nav.historique).toHaveLength(3);
+
+		// Refermée par le précédent ; le suivant mène à son entrée, d’où fermer le dossier ramène à la fiche.
+		await nav.precedent();
+		await calme();
+		await nav.suivant();
+		await calme();
+		registre.fermer();
+		await calme();
+		expect(nav.index).toBe(0);
+		expect(registre.ouvert).toBeNull();
+	});
+
 	it('n’écrit pas la vue du téléphone sur bureau', async () => {
 		const { nav, registre } = await arriver('/commune/pully');
 		registre.affichage = 'carte';
 		await calme();
 		expect(nav.historique).toEqual(['/commune/pully']);
+	});
+});
+
+describe('composants des couches', () => {
+	it('importe chaque composant une fois, et réimporte celui dont l’import a échoué', async () => {
+		let essais = 0;
+		const volet = async () => {
+			if (++essais === 1) throw new Error('import raté');
+			return { default: (() => {}) as never };
+		};
+		const couche: CoucheInscrite = { ...COUCHES[0], composants: { Carte: composant, Volet: volet } };
+		const nav = creerFauxNavigateur('/');
+		let registre!: Registre;
+		fins.push($effect.root(() => void (registre = creerRegistre([couche], () => [PULLY], nav.navigateur))));
+
+		await expect(registre.composant(couche, 'Volet')).rejects.toThrow('import raté');
+		const p = registre.composant(couche, 'Volet');
+		await p;
+		expect(registre.composant(couche, 'Volet')).toBe(p);
+		expect(essais).toBe(2);
+		expect(registre.composant(couche, 'Onglet')).toBeNull();
 	});
 });

@@ -3,6 +3,7 @@
 	import { normaliser } from '#lib/labels.js';
 	import type { Commune, Resultat } from '#lib/types.js';
 	import { typographier } from '#lib/almanach/typographie.js';
+	import { requeteAvecDelai } from '#lib/chargement.js';
 	import { ancienEtActuelle, avecAdresses, resultatsLocaux } from './recherche.js';
 
 	/*
@@ -130,7 +131,7 @@
 			limit: '20'
 		}).toString();
 		try {
-			const r = await fetch(url);
+			const r = await requeteAvecDelai(fetch, url);
 			const json = await r.json();
 			if (n !== requete) return;
 			const adresses: Resultat[] = ((json.results ?? []) as Lieu[]).filter(vaudois).map(({ attrs: a }) => ({
@@ -142,7 +143,7 @@
 			}));
 			resultats = avecAdresses(local, adresses);
 		} catch {
-			/* hors ligne : on garde les résultats locaux */
+			/* hors ligne ou trop lent : on garde les résultats locaux */
 		}
 		if (n === requete) vide = resultats.length === 0;
 	}

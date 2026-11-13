@@ -2,7 +2,8 @@ name: Passage du cron
 
 # Workflow réutilisable (ADR 0014). Il n'est lancé que par le déclencheur du dépôt de données `vigie-vaud-donnees`,
 # dont le contenu est dans `pipeline/depot-donnees/.github/workflows/cron.yml`. Il tourne donc avec le
-# `GITHUB_TOKEN` du dépôt de données, sans aucun secret, et `github.repository` y désigne le dépôt de données.
+# `GITHUB_TOKEN` du dépôt de données, avec pour seul secret `RETRAITS_CLE` (facultatif, ADR 0007), et `github.repository`
+# y désigne le dépôt de données.
 # Un passage : sondes et état des sources, import quotidien des conseils dus (`pipeline/cron.py`), avec un commit
 # qui sert d'archive et un push (`pull --rebase` et deux nouveaux essais au plus) après chaque phase (sondes,
 # OpenParlData, sites des communes), puis publication du dépôt de données sur Pages. Lancé à la main depuis le déclencheur, l'entrée `rattrapage` importe tous les conseils d'OpenParlData depuis
@@ -19,6 +20,10 @@ on:
         description: Plateforme (i-web) ou n° OFS d'une commune scrapée dont relire tout le site
         type: string
         default: ''
+    secrets:
+      RETRAITS_CLE:
+        description: Clé des empreintes des retraits (ADR 0007)
+        required: false
 
 jobs:
   passage:
@@ -71,6 +76,7 @@ jobs:
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           # La cible passe par l'environnement, jamais dans le script lui-même : c'est un texte saisi à la main.
           RATTRAPAGE_CIBLE: ${{ inputs.rattrapage_cible }}
+          RETRAITS_CLE: ${{ secrets.RETRAITS_CLE }}
         run: >-
           uv run --no-dev --project code/pipeline python code/pipeline/cron.py --depot donnees
           ${{ inputs.rattrapage && '--rattrapage' || '' }}

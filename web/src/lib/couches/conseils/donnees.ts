@@ -1,6 +1,7 @@
 // Module de données de la couche Conseils, partagé par ses composants : il lit les fichiers que le cron publie sur
 // les Pages du dépôt de données (fichiers de lecture et archive, ADR 0015). Le site n'y vérifie que `version` : le
 // contenu est valide au JSON Schema dès l'écriture, côté cron.
+import { lireJsonVersionne, memoPromesse } from '#lib/chargement.js';
 import { DONNEES } from '#lib/config.js';
 import type { EntreeFil, Fiche, Lieu } from '#lib/registre/types.js';
 import type {
@@ -103,8 +104,8 @@ const annees = (conseil: ConseilIndexe) =>
 		.sort((a, b) => b - a);
 
 /**
- * Chaque fichier est lu une fois par visite ; une lecture rejette s'il est injoignable, absent ou d'une version
- * inconnue, et la demande suivante le relit.
+ * Chaque fichier est lu une fois par visite ; une lecture rejette s'il est injoignable, trop lent, absent ou d'une
+ * version inconnue, et la demande suivante le relit.
  */
 export function creerDonneesConseils({
 	fetch: f,
@@ -112,33 +113,13 @@ export function creerDonneesConseils({
 	communes = communesDuSite,
 	sources = SOURCES
 }: Options): DonneesConseils {
+	const lus = memoPromesse<string>();
 	/**
-	 * Un fichier du dépôt de données, par son chemin ; rejette s'il n'est pas lisible dans une version connue.
-	 * `absent` : ce que vaut un fichier qui n'existe pas (404), au lieu de rejeter.
+	 * Un fichier du dépôt de données, par son chemin, lu une fois par visite ; rejette s'il n'est pas lisible dans une
+	 * version connue. `absent` : ce que vaut un fichier qui n'existe pas (404), au lieu de rejeter.
 	 */
-	async function lire<T>(chemin: string, absent?: { vaut: T }): Promise<T> {
-		const reponse = await f(`${donnees}/${chemin}`);
-		if (reponse.status === 404 && absent) return absent.vaut;
-		if (!reponse.ok) throw new Error(`${chemin} : HTTP ${reponse.status}`);
-		const contenu = (await reponse.json()) as { version?: unknown } | null;
-		if (contenu?.version !== VERSION_CONSEILS)
-			throw new Error(`${chemin} : version inconnue (${String(contenu?.version)})`);
-		return contenu as T;
-	}
-
-	const lus = new Map<string, Promise<unknown>>();
-	function lireUneFois<T>(chemin: string, absent?: { vaut: T }): Promise<T> {
-		let lecture = lus.get(chemin) as Promise<T> | undefined;
-		if (!lecture) {
-			const l = lire<T>(chemin, absent);
-			l.catch(() => {
-				if (lus.get(chemin) === l) lus.delete(chemin);
-			});
-			lus.set(chemin, l);
-			lecture = l;
-		}
-		return lecture;
-	}
+	const lireUneFois = <T>(chemin: string, absent?: { vaut: T }): Promise<T> =>
+		lus(chemin, () => lireJsonVersionne<T>(f, `${donnees}/${chemin}`, VERSION_CONSEILS, { absent }));
 
 	const objetsAnnee = (cle: string, annee: number) => lireUneFois<ListeObjets>(`conseils/${cle}/objets-${annee}.json`);
 

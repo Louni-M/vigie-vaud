@@ -1,7 +1,7 @@
 # Seul workflow du dépôt de données `vigie-vaud-donnees` (ADR 0014), à poser tel quel dans son
 # `.github/workflows/cron.yml` au passage public. GitHub ne lance pas ce fichier ici : il n'est que le modèle.
-# Il appelle le workflow réutilisable du dépôt principal avec le seul `GITHUB_TOKEN` du dépôt de données,
-# sans aucun secret. Pages doit y être publié « par GitHub Actions ».
+# Il appelle le workflow réutilisable du dépôt principal avec le `GITHUB_TOKEN` du dépôt de données et pour seul
+# secret `RETRAITS_CLE` (facultatif, ADR 0007). Pages doit y être publié « par GitHub Actions ».
 name: Cron
 
 on:
@@ -47,3 +47,5 @@ jobs:
       rattrapage: ${{ inputs.rattrapage == true }}
       # Vide aussi pour un passage planifié.
       rattrapage_cible: ${{ inputs.rattrapage_cible || '' }}
+    secrets:
+      RETRAITS_CLE: ${{ secrets.RETRAITS_CLE }}

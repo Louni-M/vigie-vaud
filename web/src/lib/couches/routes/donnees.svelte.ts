@@ -1,4 +1,5 @@
 import { causeEchec, retenterUneFois } from '#lib/api.js';
+import { memoPromesse } from '#lib/chargement.js';
 import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
 import { getCommunes, getLimites } from '#lib/socle/communes.js';
 import { creerClientDgmr, type EntiteDgmr } from './dgmr.js';
@@ -139,16 +140,8 @@ export interface DonneesRoutes {
  * promesse ; un échec est oublié, pour être redemandé au prochain appel. `demandee(cle)` : en cours ou réussie.
  */
 function retenue<K, T>(g: (cle: K) => Promise<T>): ((cle: K) => Promise<T>) & { demandee(cle: K): boolean } {
-	const promesses = new Map<K, Promise<T>>();
-	function obtenir(cle: K): Promise<T> {
-		let p = promesses.get(cle);
-		if (!p) {
-			promesses.set(cle, (p = g(cle)));
-			p.catch(() => promesses.delete(cle));
-		}
-		return p;
-	}
-	return Object.assign(obtenir, { demandee: (cle: K) => promesses.has(cle) });
+	const promesses = memoPromesse<K>();
+	return Object.assign((cle: K) => promesses(cle, () => g(cle)), { demandee: promesses.demandee });
 }
 
 export interface Options {

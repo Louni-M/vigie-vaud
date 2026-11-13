@@ -1,4 +1,5 @@
 import { causeEchec, creerClientCanton, retenterUneFois, sql, type Entite, type Requete } from '#lib/api.js';
+import { memoPromesse } from '#lib/chargement.js';
 import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fraicheur.js';
 import { getRattachement, type Rattachement } from '#lib/socle/communes.js';
 import { masquerNoms, nettoyer } from '#lib/masquage.js';
@@ -187,21 +188,19 @@ export function creerDonneesPermis({ fetch: f, maintenant = () => new Date() }: 
 		`(ETAT = ${sql(ETAT.procedure)} AND ${ANNEE_SQL} >= '${LIMITE_PROCEDURE.slice(0, 4)}'))`;
 
 	let actifs = $state.raw<Dossier[]>([]);
-	let chargementActifs: Promise<Dossier[]> | null = null;
-	function chargerActifs(): Promise<Dossier[]> {
-		if (chargementActifs) return chargementActifs;
-		const p = charge(() => dossiers({ where: EN_COURS_SQL })).then((ds) => {
-			const r = ds
-				.filter((d) => d.statut === 'enquete' || (d.debut ?? '') >= LIMITE_PROCEDURE)
-				.sort((a, b) => a.id - b.id);
-			retenir(ds);
-			actifs = r;
-			return r;
-		});
-		chargementActifs = p;
-		p.catch(() => (chargementActifs = null));
-		return p;
-	}
+	/** Le chargement des dossiers en cours, une fois par visite s'il réussit ; un échec est redemandé. */
+	const chargementActifs = memoPromesse<void>();
+	const chargerActifs = (): Promise<Dossier[]> =>
+		chargementActifs(undefined, () =>
+			charge(() => dossiers({ where: EN_COURS_SQL })).then((ds) => {
+				const r = ds
+					.filter((d) => d.statut === 'enquete' || (d.debut ?? '') >= LIMITE_PROCEDURE)
+					.sort((a, b) => a.id - b.id);
+				retenir(ds);
+				actifs = r;
+				return r;
+			})
+		);
 
 	/* ---- Fiches : à l'unité, ou par lots pour les listes. ---- */
 
