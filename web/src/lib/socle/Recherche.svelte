@@ -3,8 +3,7 @@
 	import { normaliser } from '#lib/labels.js';
 	import type { Commune, Resultat } from '#lib/types.js';
 	import { typographier } from '#lib/almanach/typographie.js';
-	import { requeteAvecDelai } from '#lib/chargement.js';
-	import { ancienEtActuelle, avecAdresses, resultatsLocaux } from './recherche.js';
+	import { ancienEtActuelle, avecAdresses, chercherAdresses, resultatsLocaux } from './recherche.js';
 
 	/*
 	 * Recherche flottante du socle : communes, résultats des couches (fiches propres et `chercher`), adresses et
@@ -82,34 +81,8 @@
 	// Communes actuelles, anciennes communes et anciens noms (« Cully → Bourg-en-Lavaux »), puis les couches.
 	const locaux = (q: string): Resultat[] => resultatsLocaux(communes, q, chercherCouches);
 
-	interface Lieu {
-		attrs: { origin: string; label: string; detail?: string; lat: number; lon: number };
-	}
-
-	const TYPES: Record<string, string> = { address: 'Adresse', zipcode: 'NPA', gazetteer: 'Lieu' };
-
-	/**
-	 * Le canton figure dans `detail` pour les adresses (« … ch vd ») et dans le libellé des lieux (« (VD) ») ;
-	 * pour les NPA, on vérifie que le point tombe dans le cadre d'une commune vaudoise.
-	 */
-	function vaudois({ attrs: a }: Lieu): boolean {
-		if (a.origin === 'address') return / ch vd$/.test(a.detail ?? '');
-		if (a.origin === 'gazetteer') return a.label.includes('(VD)');
-		return communes.some(({ bbox: [w, s, e, n] }) => a.lon >= w && a.lon <= e && a.lat >= s && a.lat <= n);
-	}
-
-	/**
-	 * « <i>Lieu</i> <b>Donatyre</b> (VD) - Avenches » → « Donatyre - Avenches », et « Avenches - Avenches » → « Avenches » :
-	 * le type est affiché à part.
-	 */
-	const nettoyer = (label: string) =>
-		label
-			.replace(/<i>.*?<\/i>/g, '')
-			.replace(/<[^>]+>/g, '')
-			.replace(' (VD)', '')
-			.replace(/\s+/g, ' ')
-			.trim()
-			.replace(/^(.+) - \1$/, '$1');
+	/** Les adresses n'ont pas pu être cherchées pour la dernière saisie : dit sous le champ, à la place de « Aucun résultat ». */
+	let erreurAdresses = $state('');
 
 	async function chercher(q: string) {
 		const n = ++requete;
@@ -117,35 +90,18 @@
 		resultats = local;
 		cherche = q;
 		vide = false;
+		erreurAdresses = '';
 		if (normaliser(q).length < 3) return;
-		// Recherche d'adresses swisstopo (geo.admin.ch) ; le filtre par cadre (bbox) vide les résultats.
-		const url = new URL('https://api3.geo.admin.ch/rest/services/api/SearchServer');
-		url.search = new URLSearchParams({
-			searchText: q,
-			type: 'locations',
-			// Pas de « gg25 » : les communes viennent de la liste locale (communes actuelles).
-			origins: 'address,zipcode,gazetteer',
-			sr: '4326',
-			lang: 'fr',
-			// Les résultats hors canton sont écartés ensuite : on en demande davantage.
-			limit: '20'
-		}).toString();
 		try {
-			const r = await requeteAvecDelai(fetch, url);
-			const json = await r.json();
+			const adresses = await chercherAdresses(fetch, q, communes);
 			if (n !== requete) return;
-			const adresses: Resultat[] = ((json.results ?? []) as Lieu[]).filter(vaudois).map(({ attrs: a }) => ({
-				type: 'adresse',
-				categorie: TYPES[a.origin] ?? 'Lieu',
-				libelle: nettoyer(a.label),
-				lon: a.lon,
-				lat: a.lat
-			}));
 			resultats = avecAdresses(local, adresses);
+			vide = resultats.length === 0;
 		} catch {
-			/* hors ligne ou trop lent : on garde les résultats locaux */
+			// Hors ligne, trop lent ou en erreur : les résultats locaux restent, et le visiteur sait qu'il manque les adresses.
+			if (n === requete)
+				erreurAdresses = 'La recherche d’adresses est indisponible pour le moment. Réessayez dans un instant.';
 		}
-		if (n === requete) vide = resultats.length === 0;
 	}
 
 	function saisie() {
@@ -359,7 +315,7 @@
 			Aucun résultat pour cette recherche. Essayez un nom de commune, une adresse ou un n°&nbsp;de dossier.
 		</p>
 	{/if}
-	<p class="erreur" role="status">{erreur}</p>
+	<p class="erreur" role="status">{erreur || (deroule ? erreurAdresses : '')}</p>
 </div>
 
 <style>

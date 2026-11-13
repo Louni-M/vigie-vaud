@@ -291,13 +291,18 @@
 			{#if registre.map}
 				<!-- Sous toutes les couches : le gris voile le fond, pas les éléments. -->
 				<Grisage map={registre.map} sous={ancre(COUCHES[0].id)} {grisees} />
-				{#each COUCHES as c (c.id)}
-					{#if registre.montee(c.id)}
-						{#await registre.composant(c, 'Carte') then module}
-							{#if module}<module.default ctx={registre.contexte(c)} />{/if}
-						{/await}
-					{/if}
-				{/each}
+				<!-- Les calques n'ont pas de balisage : seuls s'y lisent les messages des couches dont le code n'a pas pu être chargé. -->
+				<div class="echecs-calques" aria-live="polite">
+					{#each COUCHES as c (c.id)}
+						{#if registre.montee(c.id)}
+							{#await registre.composant(c, 'Carte') then module}
+								{#if module}<module.default ctx={registre.contexte(c)} />{/if}
+							{:catch}
+								<p>La couche «&nbsp;{c.nom}&nbsp;» n’a pas pu s’afficher sur la carte. Rechargez la page.</p>
+							{/await}
+						{/if}
+					{/each}
+				</div>
 			{/if}
 
 			<div class="recherche" bind:this={recherche}>
@@ -468,6 +473,30 @@
 	/* Pendant la saisie, les résultats passent devant l'aperçu (téléphone). */
 	.recherche:focus-within {
 		z-index: 5;
+	}
+	/* Couches qui n'ont pas pu s'afficher : en bas de la carte, l'une sous l'autre, sans gêner les clics sur la carte. */
+	.echecs-calques {
+		position: absolute;
+		z-index: 3;
+		left: 10px;
+		right: 10px;
+		bottom: 40px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		pointer-events: none;
+	}
+	.echecs-calques p {
+		margin: 0;
+		max-width: 360px;
+		padding: 8px 12px;
+		border-radius: 10px;
+		background: var(--surface);
+		box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+		font-size: 14px;
+		color: var(--erreur);
+		pointer-events: auto;
 	}
 	.avis:empty {
 		display: none;

@@ -9,13 +9,14 @@ import { cleConseil } from './sources.js';
 export const VERSION_IMPORTS = 1;
 
 /**
- * Charge `conseils/import.json` à l'adresse de base `donnees`. Absent, injoignable, trop lent, illisible ou d'une
- * version inconnue, il vaut `null` : le badge dit alors le dernier import inconnu, sans jamais lever d'erreur.
+ * Charge `conseils/import.json` à l'adresse de base `donnees`. Rejette s'il est absent, injoignable, trop lent,
+ * illisible ou d'une version inconnue : `imports-courants` le relit alors plus tard, et le badge dit le dernier
+ * import inconnu en attendant.
  */
-export const chargerImports = (f: typeof fetch, donnees: string = DONNEES): Promise<ImportConseils | null> =>
+export const chargerImports = (f: typeof fetch, donnees: string = DONNEES): Promise<ImportConseils> =>
 	lireJsonVersionne<ImportConseils>(f, `${donnees}/conseils/import.json`, VERSION_IMPORTS, {
 		init: { cache: 'no-cache' }
-	}).catch(() => null);
+	});
 
 /** Heure du dernier import réussi du conseil de cette source (par sa clé, `cleConseil`), ou `null`. */
 export function dernierImport(imports: ImportConseils | null, source: Source): Date | null {
