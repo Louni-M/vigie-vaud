@@ -43,10 +43,11 @@ uv run python retraits.py --depot ../../vigie-vaud-donnees --stdin 5607/2026-06-
 ```
 
 La commande le masque comme l'import (avec les élu·e·s connu·e·s du conseil, lu·e·s dans le clone) avant d'en
-calculer l'empreinte : ne rien masquer à la main. Limite : les pétitionnaires d'une pétition, que l'import masque
-d'après la source, ne sont pas dans le clone. Si le point nomme un·e pétitionnaire hors des règles ordinaires
-(sans civilité ni « Pétition de »), l'empreinte peut ne pas correspondre, ce que le cron signale (« Retrait sans
-effet », étape 3) : garder alors l'entrée sans empreinte, qui vise le rang.
+calculer l'empreinte : ne rien masquer à la main. Limite : les pétitionnaires, que l'import masque dans les points
+d'une pétition d'après la source, ne sont pas dans le clone, et l'empreinte d'un tel point peut ne pas correspondre.
+Rien ne le signalerait tant que la Séance n'est pas relue (le point porte déjà le texte corrigé), puis le nom
+reviendrait : si le point renvoie à une pétition (son `objet` dans la Séance du clone est un Objet de type
+« Pétition »), garder l'entrée **sans** empreinte, qui vise le rang.
 
 Première fois : créer la clé (au moins 32 caractères aléatoires) et la poser comme secret du dépôt de données,
 sans qu'elle passe par l'historique du terminal ni par un fichier :
