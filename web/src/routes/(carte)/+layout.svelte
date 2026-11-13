@@ -291,8 +291,8 @@
 			{#if registre.map}
 				<!-- Sous toutes les couches : le gris voile le fond, pas les éléments. -->
 				<Grisage map={registre.map} sous={ancre(COUCHES[0].id)} {grisees} />
-				<!-- Les calques n'ont pas de balisage : seuls s'y lisent les messages des couches dont le code n'a pas pu être chargé. -->
-				<div class="echecs-calques" aria-live="polite">
+				<!-- La carte d'une couche n'a pas de balisage : seuls s'y lisent les messages des couches dont le code n'a pas pu être chargé. -->
+				<div class="echecs-couches" aria-live="polite">
 					{#each COUCHES as c (c.id)}
 						{#if registre.montee(c.id)}
 							{#await registre.composant(c, 'Carte') then module}
@@ -475,7 +475,7 @@
 		z-index: 5;
 	}
 	/* Couches qui n'ont pas pu s'afficher : en bas de la carte, l'une sous l'autre, sans gêner les clics sur la carte. */
-	.echecs-calques {
+	.echecs-couches {
 		position: absolute;
 		z-index: 3;
 		left: 10px;
@@ -487,7 +487,7 @@
 		gap: 6px;
 		pointer-events: none;
 	}
-	.echecs-calques p {
+	.echecs-couches p {
 		margin: 0;
 		max-width: 360px;
 		padding: 8px 12px;

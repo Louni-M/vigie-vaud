@@ -53,6 +53,7 @@ const relative = (u: URL) => u.pathname + u.search;
 
 /** Un navigateur arrivé sur `depart` (« /?d=248845 »), avant que la coquille ne soit montée. */
 export function creerFauxNavigateur(depart: string) {
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- adresse figée d'une entrée, jamais modifiée
 	const premiere = new URL(depart, ORIGINE);
 	let entrees: Entree[] = [{ url: premiere, page: premiere, state: {}, superficielle: false, navigation: 0 }];
 	let index = 0;
@@ -109,6 +110,7 @@ export function creerFauxNavigateur(depart: string) {
 			return entrees[index].url;
 		},
 		async goto(url: string, o: OptionsNavigation) {
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- adresse figée d'une entrée, jamais modifiée
 			const cible = new URL(url, ORIGINE);
 			const state = structuredClone($state.snapshot(o.state ?? {}));
 			await plusTard();

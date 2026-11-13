@@ -73,7 +73,8 @@ Les élu·e·s sont nommé·e·s, puisqu'ils exercent un mandat public. Les noms
   sans elle, aucune empreinte ne se recalcule. Elle a au moins 32 caractères aléatoires (le cron refuse une clé plus
   courte), n'existe que dans les secrets du dépôt de données et une copie hors ligne de la personne qui tient le
   projet, et ne s'écrit jamais dans un fichier, un commit, une issue ni une ligne de commande. La changer impose de
-  recalculer chaque empreinte depuis le titre de la source, que l'archive ne garde plus. Une clé divulguée rend les
+  recalculer chaque empreinte depuis le titre de la source, que l'archive ne garde plus : l'outil le masque comme
+  l'import (élu·e·s connu·e·s du conseil lu·e·s dans le clone) avant de le hacher. Une clé divulguée rend les
   empreintes attaquables par dictionnaire : la changer, puis recalculer.
   Écartés : viser le point par son texte d'origine (il publierait le nom dans `retraits.json`) ; un hachage simple
   ou salé avec un sel publié (dictionnaire) ; un hachage lent, scrypt ou Argon2 (il ralentit l'essai d'un

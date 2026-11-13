@@ -37,15 +37,13 @@ const ETAT_DE_REFERENCE = {
 	'src/lib/masquage.ts': ['no-control-regex'],
 	'src/lib/registre/FicheOuverte.svelte': ['svelte/no-navigation-without-resolve', 'svelte/no-unused-svelte-ignore'],
 	'src/lib/registre/Volet.svelte': ['svelte/no-navigation-without-resolve', 'svelte/prefer-svelte-reactivity'],
-	'src/lib/registre/navigateur.ts': ['svelte/no-navigation-without-resolve'],
 	'src/lib/registre/registre.svelte.ts': ['svelte/prefer-svelte-reactivity'],
 	'src/lib/socle/Recherche.svelte': ['svelte/prefer-svelte-reactivity'],
 	'src/routes/+error.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/routes/a-propos/+page.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/routes/couverture/+page.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/routes/enquete-publique/+page.svelte': ['svelte/no-navigation-without-resolve'],
-	'src/routes/protection-des-donnees/+page.svelte': ['no-irregular-whitespace', 'svelte/no-navigation-without-resolve'],
-	'tests/faux-navigateur.svelte.ts': ['svelte/prefer-svelte-reactivity']
+	'src/routes/protection-des-donnees/+page.svelte': ['no-irregular-whitespace', 'svelte/no-navigation-without-resolve']
 };
 
 export default defineConfig(
