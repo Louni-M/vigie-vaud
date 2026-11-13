@@ -570,10 +570,10 @@ def passage(
     shutil.rmtree(depot / "schema", ignore_errors=True)
     shutil.copytree(DOSSIER_SCHEMA, depot / "schema")
 
-    def phase_finie(phase: str) -> None:
-        fin_de_phase(f"Passage du cron du {genere:%Y-%m-%d %H:%M}Z : {phase}")
+    def message(phase: str) -> str:
+        return f"Passage du cron du {genere:%Y-%m-%d %H:%M}Z : {phase}"
 
-    phase_finie("sondes")
+    fin_de_phase(message("sondes"))
 
     try:
         sondees = [s for s in sources.sources if s.sonde is not None and s.id in etats]
@@ -583,12 +583,14 @@ def passage(
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
 
     opd = OpenParlData(client, horloge, attendre)
-    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes, phase_finie)
+    importer_les_conseils(
+        depot, sources, opd, robot, horloge, issues, rattrapes, sautes, lambda phase: fin_de_phase(message(phase))
+    )
     if robot.reseaux_bloques() != etat.reseaux:
         # Un réseau bloqué pendant l'import : le passage suivant doit le savoir pour le tester d'abord.
         etat = etat.model_copy(update={"reseaux": robot.reseaux_bloques()})
         (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        phase_finie("réseaux bloqués")
+        fin_de_phase(message("réseaux bloqués"))
     return etat
 
 
@@ -892,10 +894,10 @@ def importer_les_conseils(
     issues: ClientIssues,
     rattrapes: Collection[str] | None = None,
     sautes: Mapping[str, str] | None = None,
-    phase_finie: Callable[[str], None] = lambda phase: None,
+    fin_de_phase: Callable[[str], None] = lambda phase: None,
 ) -> None:
     """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique) en deux phases,
-    chacune suivie de `phase_finie` : ceux d'OpenParlData, puis ceux des sites des communes, lus ensemble, un fil par
+    chacune suivie de `fin_de_phase`, appelé avec le nom de la phase : ceux d'OpenParlData, puis ceux des sites des communes, lus ensemble, un fil par
     réseau (les séparer par plateforme ferait attendre l'un après l'autre des réseaux qui lisent en même temps). Hors
     rattrapage, accorde les issues `import-conseils` et `a-verifier` aux dates d'import. `sautes` donne, par clé, les conseils dont le site n'est pas lu
     à ce passage et pourquoi (sonde en échec, `Crawl-delay` trop long) : leur import du jour est sauté, ce qui vaut un
@@ -936,7 +938,7 @@ def importer_les_conseils(
             # l'état des sources est tout de même publié, et l'issue `import-conseils` s'ouvrira au-delà de 24 h.
             print(f"Import des conseils en échec ({phase}), le passage suivant réessaiera :", file=sys.stderr)
             traceback.print_exc()
-        phase_finie(phase)
+        fin_de_phase(phase)
 
     try:
         _accorder_issue_retraits(issues, depot)
