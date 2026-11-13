@@ -7,6 +7,7 @@ import pytest
 from pyproj import Transformer
 from shapely.geometry import Point, box
 
+import reference
 from communes import HotelsHorsTerre
 from faux_services import Commune, Etat, Monde, Mutation, carre, hotel, preparer
 
@@ -32,17 +33,41 @@ def test_le_slug_d_une_commune_ne_change_pas_puisqu_il_sert_d_adresse(tmp_path, 
     assert commune["slug"] == slug
 
 
-def test_la_preparation_ecrit_l_edition_de_chaque_source_preparee(tmp_path):
-    preparer(Monde(communes=[ASSENS]), tmp_path, [hotel(5511, "Assens", 2537000, 1163000)], jusqu_au=date(2027, 1, 4))
+def test_changer_d_annee_de_reference_change_les_limites_lues_et_l_edition_ecrite(tmp_path, monkeypatch):
+    monkeypatch.setattr(reference, "ANNEE", 2027)
+    monkeypatch.setattr(reference, "EDITION_LACS", 2026)
+    monde = Monde(communes=[ASSENS])
 
+    preparer(monde, tmp_path, [hotel(5511, "Assens", 2537000, 1163000)], jusqu_au=date(2027, 1, 4))
+
+    urls = [str(r.url) for r in monde.requetes]
+    assert "https://data.geo.admin.ch/ch.swisstopo.swissboundaries3d/swissboundaries3d_2027-01/" \
+        "swissboundaries3d_2027-01_2056_5728.gpkg.zip" in urls
+    assert "https://data.geo.admin.ch/ch.swisstopo.swisstlmregio/swisstlmregio_2026/" \
+        "swisstlmregio_2026_2056.gpkg.zip" in urls
     millesimes = json.loads((tmp_path / "millesimes.json").read_text(encoding="utf-8"))
     assert millesimes == {
-        "swisstopo-limites": 2026,  # swissBOUNDARIES3D 2026-01
-        "swisstopo-lacs": 2026,  # swissTLMRegio 2026
-        "ucv-annuaire": 2026,  # lus par l'outil d'initialisation en octobre 2026
-        "swisstopo-adresses": 2026,
+        "swisstopo-limites": 2027,  # swissBOUNDARIES3D 2027-01
+        "swisstopo-lacs": 2026,  # swissTLMRegio paraît à l'automne : son édition ne suit pas l'année de référence
+        "ucv-annuaire": 2027,  # relus par l'outil d'initialisation à la fusion
+        "swisstopo-adresses": 2027,
         "ofs-communes-historique": 2027,  # répertoire lu jusqu'au jour de la préparation
     }
+
+
+def test_une_nouvelle_annee_de_reference_ne_reutilise_pas_les_fichiers_en_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(reference, "ANNEE", 2026)
+    monkeypatch.setattr(reference, "EDITION_LACS", 2026)
+    preparer(Monde(communes=[ASSENS]), tmp_path, [hotel(5511, "Assens", 2537000, 1163000)])
+    monkeypatch.setattr(reference, "ANNEE", 2027)
+    monkeypatch.setattr(reference, "EDITION_LACS", 2027)
+    monde = Monde(communes=[ASSENS])
+
+    preparer(monde, tmp_path, [hotel(5511, "Assens", 2537000, 1163000)])
+
+    urls = [str(r.url) for r in monde.requetes]
+    assert any("swissboundaries3d_2027-01" in u for u in urls)
+    assert any("swisstlmregio_2027" in u for u in urls)
 
 
 def test_l_hotel_de_ville_est_place_et_decrit_d_apres_le_csv(tmp_path):

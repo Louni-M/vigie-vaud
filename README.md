@@ -109,6 +109,8 @@ Hôtels de ville, seulement pour une nouvelle commune : l'outil d'initialisation
 cd pipeline && uv run python hotels_de_ville.py
 ```
 
+Une fusion de communes se déroule dans l'ordre de la liste de contrôle [`docs/fusions-de-communes.md`](docs/fusions-de-communes.md).
+
 ## Sources et schéma commun
 
 Chaque source est déclarée une seule fois, dans `sources.json` à la racine ; toutes les attributions affichées en
