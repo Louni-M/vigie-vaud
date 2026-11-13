@@ -99,10 +99,10 @@ def test_un_appel_a_git_qui_depasse_son_delai_fait_echouer_le_passage_avec_un_me
     depot_nu, tmp_path, monkeypatch
 ):
     clone = depot_nu.cloner("cron")
-    crochet(clone / ".git", "pre-commit", "sleep 3")
-    monkeypatch.setattr(cron, "DELAI_GIT", 0.5)
+    crochet(clone / ".git", "pre-commit", "sleep 10")
+    monkeypatch.setattr(cron, "DELAI_GIT", 2)  # assez pour le `git add` qui précède, même sur une machine chargée
 
-    with pytest.raises(SystemExit, match=r"^git commit : sans réponse après 0\.5 s, le passage échoue"):
+    with pytest.raises(SystemExit, match=r"^git commit : sans réponse après 2 s, le passage échoue"):
         main(["--depot", str(clone), "--sources", str(_sources_vides(tmp_path)), "--sans-push"])
 
     assert git(clone, "rev-list", "--count", "HEAD") == "1\n"
