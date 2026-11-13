@@ -4,10 +4,10 @@
 from datetime import UTC, datetime
 
 import pytest
+from faux_depot import crochet, git
 
 import cron
 from cron import committer, main, pousser
-from faux_depot import crochet, git
 from schema import EtatSources
 
 T0 = datetime(2026, 11, 13, 6, 30, tzinfo=UTC)

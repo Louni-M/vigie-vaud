@@ -11,7 +11,6 @@ import os
 import sys
 
 import pytest
-
 from faux_depot import IDENTITE, DepotNu
 
 _EVENEMENTS_DNS = {"socket.getaddrinfo", "socket.gethostbyname", "socket.gethostbyname_ex"}
