@@ -92,9 +92,11 @@ USER_AGENT = f"VigieVaud-import (+{_CONFIG['depot']}; {_CONFIG['courriel']})"
 INTERVALLE = 1.0  # secondes, au moins, entre deux requêtes
 TAILLE_PAGE = 200
 # Les échecs prévus d'un conseil, que le journal du passage dit en une ligne : une erreur HTTP d'OpenParlData, une
-# page du site non lue, une valeur invalide (réponse sans `data`, relation tronquée, liste illisible). Toute autre
-# exception est un bogue, et le journal en montre la trace d'appel.
-ECHECS_PREVUS = (httpx.HTTPError, PageNonLue, ValueError)
+# page du site non lue, une valeur invalide levée exprès par un lecteur (`ValueError` de ce type exact : réponse sans
+# `data`, relation tronquée, liste illisible). Toute autre exception est un bogue, et le journal en montre la trace
+# d'appel, y compris les sous-classes de `ValueError` (`pydantic.ValidationError`, `json.JSONDecodeError`,
+# `UnicodeDecodeError`) qu'aucun lecteur ne lève exprès.
+ECHECS_PREVUS = (httpx.HTTPError, PageNonLue)
 # Plafond de chaque relation développée (`expand`) : au-delà, l'import du conseil échoue plutôt que de tronquer.
 TAILLE_RELATION = 1000
 RECOUVREMENT = timedelta(days=1)
@@ -638,6 +640,11 @@ def lire_rattrapages(depot: Path) -> dict[str, datetime]:
     return dict(lu.rattrapages) if lu else {}
 
 
+def _echec_prevu(e: Exception) -> bool:
+    """Vrai si `e` est un échec prévu d'un conseil (ligne courte au journal), faux si c'est un bogue (trace)."""
+    return isinstance(e, ECHECS_PREVUS) or type(e) is ValueError
+
+
 def importer_conseils(
     depot: Path,
     sources: FichierSources,
@@ -698,7 +705,7 @@ def importer_conseils(
             # bogue d'un lecteur), ne vaut qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
             # Une erreur imprévue montre en plus sa trace d'appel, pour que le journal du passage dise où chercher.
             print(f"Import en échec : {source.nom} ({type(e).__name__} : {e})", file=sys.stderr)
-            if not isinstance(e, ECHECS_PREVUS):
+            if not _echec_prevu(e):
                 traceback.print_exc()
             continue
         nouveaux |= elements

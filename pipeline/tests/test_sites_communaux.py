@@ -8,9 +8,11 @@ horloge que l'attente fait avancer. On observe les fichiers écrits, le journal 
 les sites (URL, User-Agent, heure). Les cas instables sont fabriqués par de petites retouches de l'échantillon.
 """
 
+import json
 from datetime import timedelta
 from pathlib import Path
 
+import pydantic
 import pytest
 
 import lecture_iweb
@@ -302,6 +304,38 @@ def test_un_bogue_de_lecteur_imprime_sa_trace_d_appel_et_n_empeche_pas_les_autre
     assert "Import en échec : Conseil communal de Préverenges (site de la commune) (AttributeError" in journal
     assert "Traceback (most recent call last)" in journal
     assert "in lecteur_bogue" in journal and "source.inexistant" in journal
+    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
+
+
+class _Forme(pydantic.BaseModel):
+    nombre: int
+
+
+@pytest.mark.parametrize(
+    "casse",
+    [
+        lambda: _Forme.model_validate({"nombre": "pas un nombre"}),
+        lambda: json.loads("{pas du json"),
+        lambda: b"\xff".decode("utf-8"),
+    ],
+    ids=["ValidationError", "JSONDecodeError", "UnicodeDecodeError"],
+)
+def test_un_lecteur_casse_par_une_sous_classe_de_valueerror_imprime_sa_trace(
+    tmp_path, horloge, capsys, monkeypatch, casse
+):
+    # Ces sous-classes de `ValueError` ne sont pas levées exprès par un lecteur : elles disent qu'il est cassé, et le
+    # journal montre où, comme pour tout bogue. Seul un `ValueError` levé exprès garde la ligne courte.
+    def lecteur_casse(robot, source, depuis):
+        return casse()
+
+    monkeypatch.setattr(lecture_iweb, "lire", lecteur_casse)
+
+    _passer(tmp_path, horloge, _preverenges(horloge))
+
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune)" in journal
+    assert "Traceback (most recent call last)" in journal
+    assert "in lecteur_casse" in journal
     assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
 
 
