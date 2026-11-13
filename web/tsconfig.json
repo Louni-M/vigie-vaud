@@ -1,7 +1,10 @@
 {
 	"extends": "$app/tsconfig",
 	"compilerOptions": {
-		"strict": true
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true
+		// noUncheckedIndexedAccess n'est pas activé : il donnait 152 constats dans 45 fichiers à son essai (#195).
 	},
-	"include": ["src", "tests", "vite.config.ts"]
+	"include": ["src", "tests", "scripts", "vite.config.ts"]
 }
