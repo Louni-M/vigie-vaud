@@ -41,6 +41,8 @@ permissions:
 
 jobs:
   passage:
+    # Workflow du dépôt principal, pas une action tierce : sa référence (`@main`) relève de #187. Les actions
+    # tierces qu'il appelle y sont épinglées par SHA.
     uses: Louni-M/vigie-vaud/.github/workflows/cron.yml@main
     with:
       # `inputs.rattrapage` est vide pour un passage planifié, qui n'est donc pas un rattrapage.
