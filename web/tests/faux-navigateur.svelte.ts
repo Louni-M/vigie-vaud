@@ -7,8 +7,9 @@ import type { Navigateur, OptionsNavigation, PageCarte } from '#lib/registre/nav
  * - Une navigation superficielle (`shallow`) écrit l'adresse, puis met à jour `page.state` et `page.shallow` ; la page
  *   rendue (`page.url`, sa route) ne change pas.
  * - Une navigation vers une page met à jour l'adresse et la page ensemble, avec `page.shallow` à `null`.
- * - Le retour et l'avance sont asynchrones, comme `popstate` : entre deux entrées d'une même page, seuls l'état et
- *   `page.shallow` changent ; sinon la page change, et `afterNavigate` suit.
+ * - Au retour et à l'avance, le navigateur change d'entrée tout de suite, et la page suit plus tard, comme après
+ *   `popstate` : entre deux entrées d'une même page, seuls l'état et `page.shallow` changent ; sinon la page change,
+ *   et `afterNavigate` suit.
  * - Toutes les navigations sont résolues après quelques micro-tâches, jamais tout de suite.
  */
 
