@@ -12,6 +12,8 @@ describe('complément « de » d’une commune', () => {
 		['Hautemorges', 'de Hautemorges'],
 		['Le Chenit', 'du Chenit'],
 		['Le Mont-sur-Lausanne', 'du Mont-sur-Lausanne'],
+		['Le Lieu', 'du Lieu'],
+		['Le Vaud', 'du Vaud'],
 		['Les Clées', 'des Clées'],
 		['La Sarraz', 'de La Sarraz'],
 		["L'Abbaye", "de L'Abbaye"]
