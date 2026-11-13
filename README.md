@@ -123,7 +123,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 | `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
 | `sources.json` | Déclaration de chaque source (attribution, voie d'accès, fraîcheur, Couverture, sonde, site d'une commune scrapée) et des plateformes, lue par le site et le cron |
 | `config.json` | Adresses du dépôt, du courriel de contact, du site public et des Pages du dépôt de données |
-| `docs/` | ADR, inventaire des sources, marches à suivre, recherches |
+| `docs/` | ADR, inventaire des sources, marches à suivre, recherches, feuille de route provisoire |
 | `.github/` | Contrôles des PR, publication du site, workflow réutilisable du cron |
 | `scripts/` | Scripts ponctuels de mise en ligne des jalons |
 
@@ -295,9 +295,10 @@ Le workflow `publier.yml` se lance à la main. Il construit le site, sans aucune
 sur GitHub Pages si la variable `PUBLIER` vaut `true`. Variables : `BASE_PATH` (ex. `/vigie-vaud` sans domaine
 propre), `GOATCOUNTER` (facultatif).
 
-## Marches à suivre
+## Exploitation et marches à suivre
 
-Les procédures écrites, une ligne chacune :
+Ce qu'il faut savoir pour faire tourner le projet, une ligne par sujet, avec un renvoi à sa marche à suivre quand
+elle est écrite :
 
 - Retrait d'un nom à la demande d'une personne : [`docs/retrait.md`](docs/retrait.md).
 
