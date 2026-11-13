@@ -24,8 +24,9 @@ jobs:
   passage:
     runs-on: ubuntu-24.04
     # Un passage ordinaire sonde et importe au plus un jour de changements, sites des communes compris (l'étape
-    # « Passage du cron » a duré jusqu'à 35 minutes du 24 octobre au 13 novembre 2026, à 5 s par requête), et laisse
-    # jusqu'à 15 minutes aux deux essais de publication sur Pages : la marge n'est que de quelques minutes. Chaque
+    # « Passage du cron » a duré jusqu'à 35 minutes du 15 octobre au 13 novembre 2026, à 5 s par requête), et laisse
+    # jusqu'à 15 minutes aux deux essais de publication sur Pages : il reste 15 minutes de marge quand Pages publie en
+    # quelques secondes, presque rien quand ses deux essais vont jusqu'à leur délai. Chaque
     # phase étant poussée dès sa fin, un dépassement ne perd que la phase en cours ; Pages attend alors le passage
     # suivant. Un rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à deux heures pour une
     # plateforme). 360 minutes est le plus long délai d'un job hébergé par GitHub.

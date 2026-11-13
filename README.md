@@ -275,8 +275,9 @@ l'un après l'autre.
 Le passage committe et pousse après chaque phase : les sondes, puis l'import d'OpenParlData, puis celui des sites
 des communes (lus ensemble, un fil par réseau). Une phase qui n'a rien changé ne committe rien. Le job a 50 minutes
 (6 h pour un rattrapage), dont jusqu'à 15 pour la publication sur Pages ; l'étape du passage a duré jusqu'à
-35 minutes du 24 octobre au 13 novembre 2026, avant ce découpage. Un passage qui dépasse son délai ne perd donc que la
-phase en cours : les phases déjà poussées restent dans le dépôt de données, et Pages les publie au passage suivant.
+35 minutes du 15 octobre au 13 novembre 2026, avant ce découpage, soit 15 minutes de marge quand Pages publie en
+quelques secondes et presque rien quand ses deux essais vont jusqu'à leur délai. Un passage qui dépasse son délai ne
+perd donc que la phase en cours : les phases déjà poussées restent dans le dépôt de données, et Pages les publie au passage suivant.
 
 Les fichiers de lecture (`conseils/index.json`, `fil.json`, les listes par conseil et par commune) se reconstruisent
 seuls depuis l'archive, sans aucune requête à OpenParlData, après un changement de leur forme ou une réécriture à la
