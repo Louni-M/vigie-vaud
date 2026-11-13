@@ -203,6 +203,26 @@ export function creerRegistre(
 		return el ? { element: { ...el, pas: (el.pas ?? 1) + 1 } } : {};
 	};
 
+	/**
+	 * Recherche plein écran du téléphone, ouverte dans sa propre entrée d'historique, à la même adresse : le précédent
+	 * la referme sans rien fermer d'autre ni quitter la page. Elle se referme à tout changement d'entrée (`popstate`)
+	 * plutôt qu'au changement de `page.state` : la carte qui finit un déplacement réécrit l'adresse, et SvelteKit
+	 * abandonne alors la mise à jour de la page. Le suivant ne la rouvre pas.
+	 */
+	let recherche = $state(false);
+
+	function ouvrirRecherche() {
+		if (recherche) return;
+		recherche = true;
+		const { pathname, search } = navigateur.emplacement;
+		navigateur.goto(`${pathname}${search}`, { shallow: true, state: pardessus() });
+	}
+
+	/** Retire l'entrée de la Recherche : elle se referme au retour, une fois l'entrée retirée. */
+	function fermerRecherche() {
+		if (recherche) navigateur.reculer(1);
+	}
+
 	/** Change la vue du téléphone, dans une nouvelle entrée d'historique. */
 	function montrer(a: Affichage) {
 		if (a === affichage) return;
@@ -523,6 +543,9 @@ export function creerRegistre(
 			if (nouveau) corriger(e.ouvert!, m === 'element', initial);
 		}
 
+		// Précédent ou suivant : la Recherche plein écran est refermée (son entrée n'est plus la courante).
+		$effect(() => navigateur.surParcours(() => (recherche = false)));
+
 		navigateur.apresNavigation(() => {
 			if (synchro !== null) return;
 			const { pathname, search } = navigateur.emplacement;
@@ -638,6 +661,12 @@ export function creerRegistre(
 		set affichage(a: Affichage) {
 			montrer(a);
 		},
+		/** Recherche plein écran du téléphone ouverte : son entrée d'historique est la courante. */
+		get recherche() {
+			return recherche;
+		},
+		ouvrirRecherche,
+		fermerRecherche,
 		/** Onglet choisi dans la fiche commune ; `null` : le premier. En changer remplace l'adresse. */
 		get onglet() {
 			return onglet;
