@@ -36,9 +36,6 @@ export const NATURES: Record<string, string> = {
 
 export const natureLabel = (n: string) => NATURES[n] ?? n;
 
-/** « de Lausanne », « d’Aigle » */
-export const deCommune = (nom: string) => (/^[aeiouyàâäéèêëîïôöûüAEIOUYÀÂÉÈÊÎÔÛ]/.test(nom) ? `d’${nom}` : `de ${nom}`);
-
 /** Normalise un nom pour la recherche : sans accents, minuscules, ponctuation ramenée à des espaces. */
 export const normaliser = (s: string) =>
 	s
