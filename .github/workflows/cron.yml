@@ -46,21 +46,21 @@ jobs:
       url: ${{ steps.deploiement.outputs.page_url || steps.deploiement-2.outputs.page_url }}
     steps:
       - name: Cloner le dépôt de données
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: donnees
 
       # Le dépôt principal, à la même branche que l'appel `cron.yml@main` du déclencheur. Son adresse est aussi
       # dans `config.json` (`depot`), que ce workflow ne peut pas lire avant de l'avoir cloné.
       - name: Cloner le code du cron
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Louni-M/vigie-vaud
           ref: main
           path: code
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
       # Les dépendances du projet seules : ni `dev` ni `geo` (pile géographique de la préparation des communes).
       - name: Installer le pipeline
         run: uv sync --locked --no-dev --project code/pipeline
@@ -83,7 +83,7 @@ jobs:
           ${RATTRAPAGE_CIBLE:+--rattrapage-cible "$RATTRAPAGE_CIBLE"}
 
       # `upload-pages-artifact` laisse de côté `.git`, `.github` et, depuis sa v4, tout fichier caché.
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: donnees
       # Un déploiement prend d'ordinaire quelques secondes, mais Pages en laisse parfois un bloqué sur
@@ -92,17 +92,17 @@ jobs:
       # repart d'un artefact neuf avec le délai par défaut de 10 minutes : sans lui, le site attendrait le prochain
       # passage planifié, parfois plusieurs heures, alors que le commit d'archive est déjà poussé.
       - id: deploiement
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         continue-on-error: true
         with:
           timeout: 300000
       - if: steps.deploiement.outcome == 'failure'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: donnees
           name: github-pages-2
       - id: deploiement-2
         if: steps.deploiement.outcome == 'failure'
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
           artifact_name: github-pages-2
