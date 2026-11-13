@@ -13,7 +13,7 @@ from datetime import timedelta
 import pytest
 from pydantic import ValidationError
 
-from faux_openparldata import HorlogeFactice, Point
+from faux_openparldata import Affaire, Contributeur, HorlogeFactice, Point
 from retraits import appliquer_retraits, constat_des_retraits, lire_retraits
 from retraits import main as retraits_main
 from test_import_conseils import T0, _lire, _monde, _passer
@@ -227,13 +227,71 @@ def test_l_empreinte_se_calcule_aussi_d_un_titre_colle_et_jamais_sans_la_cle(tmp
     _passer(tmp_path, monde, horloge)
     du_depot = _empreinte(tmp_path, "5586/2026-10-06", "point:2", capsys)
 
-    monkeypatch.setattr("sys.stdin", io.StringIO(f"  {TITRE_NOMME}\n"))
-    retraits_main(["--stdin"])
-    assert capsys.readouterr().out.strip() == du_depot
+    assert _empreinte_collee(tmp_path, "5586/2026-10-06", f"  {TITRE_NOMME}\n", monkeypatch, capsys) == du_depot
 
     monkeypatch.delenv("RETRAITS_CLE")
     with pytest.raises(SystemExit, match="RETRAITS_CLE absente"):
         retraits_main(["--depot", str(tmp_path), "5586/2026-10-06", "point:2"])
+
+
+def _empreinte_collee(depot, element, titre, monkeypatch, capsys):
+    """L'empreinte que donne la commande de la procédure de retrait pour un titre de la source collé."""
+    capsys.readouterr()
+    monkeypatch.setattr("sys.stdin", io.StringIO(titre))
+    retraits_main(["--depot", str(depot), "--stdin", element])
+    return capsys.readouterr().out.strip()
+
+
+def test_un_titre_colle_est_masque_comme_l_import_avant_son_empreinte(tmp_path, monkeypatch, capsys):
+    """L'archive garde le titre masqué, et l'empreinte du retrait porte sur lui (ADR 0007) : le titre de la source,
+    collé tel quel, est masqué comme à l'import avant d'être haché."""
+    monkeypatch.setenv("RETRAITS_CLE", CLE)
+    horloge = HorlogeFactice(T0)
+    monde = _monde(horloge)
+    lausanne = next(r for r in monde.reunions if r.id == 33001)
+    source = "Préavis 7/2026 - Succession de Paul Exemple, parcelle 412 à Jeanne Rochat"
+    lausanne.points.append(Point(2, source))
+    _passer(tmp_path, monde, horloge)
+    assert _titres(tmp_path)[1] == "Préavis 7/2026 - Succession de [particulier], parcelle 412 à Jeanne Rochat"
+
+    archivee = _empreinte(tmp_path, "5586/2026-10-06", "point:2", capsys)
+    assert _empreinte_collee(tmp_path, "5586/2026-10-06", source, monkeypatch, capsys) == archivee
+
+
+def test_un_titre_colle_epargne_les_elus_connus_du_conseil_comme_l_import(tmp_path, monkeypatch, capsys):
+    """Le masquage de l'import épargne les élu·e·s connu·e·s du conseil : celui du titre collé aussi, lu·e·s dans le
+    clone (contributeur·rice·s de ses Objets, `membres.json`)."""
+    monkeypatch.setenv("RETRAITS_CLE", CLE)
+    horloge = HorlogeFactice(T0)
+    monde = _monde(horloge)
+    monde.affaires.append(
+        Affaire(
+            id=340950,
+            body_key="5586",
+            number="INT25/020",
+            title="Interpellation sur les préaux",
+            type_name="Interpellation",
+            contributeurs=[Contributeur("Léa Conseillère", "PS", "Auteur")],
+        )
+    )
+    lausanne = next(r for r in monde.reunions if r.id == 33001)
+    source = "Préavis 7/2026 - Vente à M. Paul Exemple, rapport de Mme Léa Conseillère"
+    lausanne.points.append(Point(2, source))
+    _passer(tmp_path, monde, horloge)
+    assert _titres(tmp_path)[1] == "Préavis 7/2026 - Vente à [particulier], rapport de Mme Léa Conseillère"
+
+    archivee = _empreinte(tmp_path, "5586/2026-10-06", "point:2", capsys)
+    assert _empreinte_collee(tmp_path, "5586/2026-10-06", source, monkeypatch, capsys) == archivee
+
+
+def test_un_titre_colle_sans_le_clone_ni_la_seance_est_refuse(tmp_path, monkeypatch):
+    # Sans le conseil, le titre ne se masque pas comme l'import : une empreinte fausse, que rien ne signalerait.
+    monkeypatch.setenv("RETRAITS_CLE", CLE)
+    monkeypatch.setattr("sys.stdin", io.StringIO(TITRE_NOMME))
+    with pytest.raises(SystemExit):
+        retraits_main(["--stdin"])
+    with pytest.raises(SystemExit, match="Aucune Séance 5586/2026-10-06"):
+        retraits_main(["--depot", str(tmp_path), "--stdin", "5586/2026-10-06"])
 
 
 def test_sans_la_cle_un_retrait_a_empreinte_corrige_le_point_de_son_rang_et_le_dit(tmp_path, monkeypatch, capsys):

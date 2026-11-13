@@ -7,12 +7,14 @@ l'archive après chaque import, pour tous les conseils, et renvoie les élément
 jamais : il disparaît de l'historique par une réécriture à la main (docs/retrait.md).
 
 Un point d'ordre du jour se vise par son rang, que la source peut décaler en insérant un point, et par l'empreinte
-de son titre d'origine : un HMAC-SHA256 sous la clé secrète du dépôt de données (`RETRAITS_CLE`), que personne ne
-peut recalculer pour essayer des noms sans cette clé. L'empreinte d'un point se calcule depuis le clone du dépôt de
-données, sans écrire le titre ni la clé sur la ligne de commande (depuis `pipeline/`, `RETRAITS_CLE` exportée) :
+de son titre d'origine, tel que l'archive le garde (masqué) : un HMAC-SHA256 sous la clé secrète du dépôt de données
+(`RETRAITS_CLE`), que personne ne peut recalculer pour essayer des noms sans cette clé. L'empreinte d'un point se
+calcule depuis le clone du dépôt de données, sans écrire le titre ni la clé sur la ligne de commande (depuis
+`pipeline/`, `RETRAITS_CLE` exportée) ; avec `--stdin`, le titre de la source, collé tel quel, est d'abord masqué
+comme l'import le masque, avec les élu·e·s connu·e·s du conseil de la Séance :
 
     uv run python retraits.py --depot ../../vigie-vaud-donnees 5607/2026-06-11 point:4
-    uv run python retraits.py --stdin      # le titre d'origine collé sur l'entrée standard, puis Ctrl-D
+    uv run python retraits.py --depot ../../vigie-vaud-donnees --stdin 5607/2026-06-11   # coller, puis Ctrl-D
 """
 
 from __future__ import annotations
@@ -28,7 +30,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from schema import Objet, Retrait, Retraits, Seance
+from masquage import elus_connus, masquer
+from schema import MembresConseil, Objet, Retrait, Retraits, Seance
 
 FICHIER_RETRAITS = "retraits.json"
 # La clé des empreintes : un secret du dépôt de données, passé au cron par l'environnement (ADR 0007).
@@ -187,6 +190,18 @@ def constat_des_retraits(depot: Path, cle: bytes | None) -> ConstatRetraits:
     return ConstatRetraits(sans_effet=sans_effet, non_verifies=non_verifies)
 
 
+def masquer_comme_l_import(titre: str, depot: Path, conseil: str) -> str:
+    """`titre`, tel que la source le donne, masqué comme l'import le masque (ADR 0007) : en épargnant les élu·e·s
+    connu·e·s du conseil que le clone `depot` connaît, contributeur·rice·s de ses Objets et `membres.json`. Les
+    pétitionnaires, que seule la source connaît, n'y sont pas."""
+    objets = [Objet.model_validate_json(f.read_bytes()) for f in sorted(depot.glob(f"conseils/{conseil}/objets/*.json"))]
+    try:
+        membres = MembresConseil.model_validate_json((depot / f"conseils/{conseil}/membres.json").read_bytes()).membres
+    except FileNotFoundError:
+        membres = []
+    return masquer(titre.strip(), elus_connus(objets) | frozenset(membres))
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description=f"Empreinte du titre d'origine d'un point d'ordre du jour, sous la clé {VARIABLE_CLE} (ADR 0007)."
@@ -194,7 +209,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--depot", type=Path, help="clone local du dépôt de données")
     parser.add_argument("element", nargs="?", help="clé de la Séance, `5607/2026-06-11`")
     parser.add_argument("cible", nargs="?", help="le point, `point:<n>`")
-    parser.add_argument("--stdin", action="store_true", help="lire le titre d'origine sur l'entrée standard")
+    parser.add_argument(
+        "--stdin",
+        action="store_true",
+        help="lire sur l'entrée standard le titre de la source, tel quel : il est masqué comme à l'import",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -204,7 +223,14 @@ def main(argv: list[str] | None = None) -> None:
     if cle is None:
         raise SystemExit(f"{VARIABLE_CLE} absente : l'exporter d'abord (docs/retrait.md)")
     if args.stdin:
-        print(empreinte(sys.stdin.read(), cle))
+        # Le masquage dépend du conseil (ses élu·e·s connu·e·s) : sans lui, l'empreinte serait fausse en silence.
+        if args.depot is None or args.element is None:
+            parser.error("--stdin avec --depot et la clé de la Séance")
+        depot = args.depot.resolve()
+        if not isinstance(_lire_element(depot, args.element), Seance):
+            raise SystemExit(f"Aucune Séance {args.element} dans le dépôt de données")
+        conseil = args.element.split("/", 1)[0]
+        print(empreinte(masquer_comme_l_import(sys.stdin.read(), depot, conseil), cle))
         return
     if args.depot is None or args.element is None or not re.fullmatch(r"point:[1-9][0-9]*", args.cible or ""):
         parser.error("--depot, la clé de la Séance et `point:<n>`, ou --stdin")

@@ -32,9 +32,21 @@ uv run python retraits.py --depot ../../vigie-vaud-donnees 5607/2026-06-11 point
 ```
 
 La commande lit le titre du 4ᵉ point dans le clone et affiche son empreinte (64 caractères hexadécimaux), sans
-jamais demander le titre ni la clé sur la ligne de commande. Si le point est déjà corrigé dans le clone (retrait
-ancien, sans empreinte), le titre d'origine vient de la source : `uv run python retraits.py --stdin`, coller le
-titre, puis Ctrl-D.
+jamais demander le titre ni la clé sur la ligne de commande. L'empreinte porte sur le titre tel que l'archive le
+garde, après le masquage de l'import.
+
+Si le point est déjà corrigé dans le clone (retrait ancien, sans empreinte), le titre d'origine vient de la source :
+coller le titre **de la source, tel quel**, puis Ctrl-D, après
+
+```bash
+uv run python retraits.py --depot ../../vigie-vaud-donnees --stdin 5607/2026-06-11
+```
+
+La commande le masque comme l'import (avec les élu·e·s connu·e·s du conseil, lu·e·s dans le clone) avant d'en
+calculer l'empreinte : ne rien masquer à la main. Limite : les pétitionnaires d'une pétition, que l'import masque
+d'après la source, ne sont pas dans le clone. Si le point nomme un·e pétitionnaire hors des règles ordinaires
+(sans civilité ni « Pétition de »), l'empreinte peut ne pas correspondre, ce que le cron signale (« Retrait sans
+effet », étape 3) : garder alors l'entrée sans empreinte, qui vise le rang.
 
 Première fois : créer la clé (au moins 32 caractères aléatoires) et la poser comme secret du dépôt de données,
 sans qu'elle passe par l'historique du terminal ni par un fichier :
@@ -44,8 +56,8 @@ python -c "import secrets; print(secrets.token_hex(32))"      # à copier dans l
 gh secret set RETRAITS_CLE -R Louni-M/vigie-vaud-donnees       # la coller à l'invite
 ```
 
-Changer la clé impose de recalculer chaque empreinte de `retraits.json` (avec `--stdin`, depuis le titre de la
-source).
+Changer la clé impose de recalculer chaque empreinte de `retraits.json` (avec `--stdin` et la clé de la Séance,
+depuis le titre de la source collé tel quel).
 
 ## 3. Écrire la correction dans `retraits.json`
 
