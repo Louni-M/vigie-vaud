@@ -34,6 +34,7 @@
 	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { ancre } from '#lib/registre/recouvrement.js';
 	import { creerRegistre, fournirRegistre, FIL, type VueCarte } from '#lib/registre/registre.svelte.js';
+	import { navigateurSvelteKit } from '#lib/registre/navigateur.js';
 	import Fil from '#lib/fil/Fil.svelte';
 	import { creerChargementFil } from '#lib/fil/chargement.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
@@ -57,7 +58,7 @@
 
 	let { data, children }: LayoutProps = $props();
 
-	const registre = creerRegistre(COUCHES, () => data.communes);
+	const registre = creerRegistre(COUCHES, () => data.communes, navigateurSvelteKit());
 	/** Entrées du fil cantonal, lues à sa première ouverture et gardées pendant la visite. */
 	const fil = creerChargementFil(COUCHES);
 	let carte: ReturnType<typeof Map> | undefined = $state();

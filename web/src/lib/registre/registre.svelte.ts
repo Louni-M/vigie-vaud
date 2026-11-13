@@ -1,8 +1,6 @@
 import { createContext, untrack } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
-import { afterNavigate, goto } from '$app/navigation';
 import { resolve } from '$app/paths';
-import { page } from '$app/state';
 import type { Map as MlMap } from 'maplibre-gl';
 import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
 import type { Chargeur, Cible, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert } from './types.js';
@@ -30,6 +28,7 @@ import { titreFiche } from './tete.js';
 import { avisIntrouvable, avisNonCherche } from './avis.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
 import { zoneDuFil } from '#lib/fil/fil.js';
+import type { Navigateur, OptionsNavigation } from './navigateur.js';
 
 export { FIL };
 
@@ -67,9 +66,15 @@ const ouvertureDe = (f: Fiche | null, o: Ouvert | null): Ouverture => ({
  * élément ouvert, volet ouvert, vue du téléphone et onglet de la fiche commune. Il est le seul maître de l'adresse :
  * `brancherAdresse` synchronise son état avec la requête (`replace` pour la vue, les réglages et l'onglet, `push` pour
  * l'ouverture d'un élément ou d'une fiche, d'un volet ou d'une vue du téléphone).
- * `communes` donne l'index des communes, connu dès le rendu de la page pré-générée.
+ * `communes` donne l'index des communes, connu dès le rendu de la page pré-générée. `navigateur` est son seul accès
+ * à la navigation, à l'adresse et à l'historique : celui de SvelteKit sur le site (`navigateurSvelteKit`).
  */
-export function creerRegistre(couches: readonly CoucheInscrite[], communes: () => readonly Commune[]) {
+export function creerRegistre(
+	couches: readonly CoucheInscrite[],
+	communes: () => readonly Commune[],
+	navigateur: Navigateur
+) {
+	const { page } = navigateur;
 	const depart = lireUrl(couches, new URLSearchParams());
 
 	let actives = $state<string[]>(depart.actives);
@@ -244,8 +249,8 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 	}
 
 	/** Change de page ; tant que la navigation n'a pas abouti, l'état n'écrit pas l'adresse (`creerNavigations`). */
-	const navigations = creerNavigations(goto);
-	const naviguer = (url: string, options: Parameters<typeof goto>[1]) => void navigations.naviguer(url, options);
+	const navigations = creerNavigations(navigateur.goto);
+	const naviguer = (url: string, options: OptionsNavigation) => void navigations.naviguer(url, options);
 
 	/**
 	 * Ouvrir une fiche, commune ou propre, crée une entrée d'historique. La nouvelle adresse garde les couches et
@@ -408,7 +413,7 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 		if (!ouvert) return;
 		if (fermeture(page.state, fiche) === 'retour') {
 			garde = { volet, affichage, onglet };
-			history.go(-(page.state.element?.pas ?? 1));
+			navigateur.reculer(page.state.element?.pas ?? 1);
 		} else ouvert = null;
 	}
 
@@ -524,10 +529,11 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 			if (nouveau) corriger(e.ouvert!, m === 'element', initial);
 		}
 
-		afterNavigate(() => {
+		navigateur.apresNavigation(() => {
 			if (synchro !== null) return;
-			synchro = location.pathname + location.search;
-			suivre(new URLSearchParams(location.search), true);
+			const { pathname, search } = navigateur.emplacement;
+			synchro = pathname + search;
+			suivre(new URLSearchParams(search), true);
 		});
 
 		/**
@@ -547,15 +553,16 @@ export function creerRegistre(couches: readonly CoucheInscrite[], communes: () =
 				if (enVol) return;
 				const push = nouvelleEntree;
 				nouvelleEntree = null;
-				if (synchro === null || navigations.enCours || q === location.search) return;
+				const { pathname, search } = navigateur.emplacement;
+				if (synchro === null || navigations.enCours || q === search) return;
 				// L'adresse a changé sous le registre (précédent, suivant) sans avoir encore été relue : l'adresse →
 				// état la suit d'abord. Sans cela, le changement de chemin, dont dépend `requete`, réécrirait l'état
 				// d'avant (l'élément qu'on vient de quitter) par-dessus l'adresse où l'on revient.
-				if (location.pathname + location.search !== synchro) return;
-				synchro = location.pathname + q;
+				if (pathname + search !== synchro) return;
+				synchro = pathname + q;
 				suivi = { fiche, ouvert };
 				enVol = true;
-				goto(`${location.pathname}${q}`, {
+				navigateur.goto(`${pathname}${q}`, {
 					shallow: true,
 					replace: !push,
 					state: push ?? page.state

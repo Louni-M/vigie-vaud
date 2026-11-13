@@ -17,7 +17,23 @@ const communes = readJson<{ slug: string }[]>('static/communes.json', []);
 export default defineConfig({
 	// Toute la suite de tests à l'heure de Lausanne : une heure DGMR (heure locale codée comme de l'UTC) lue
 	// par erreur en heure locale y décale de 1 ou 2 h, et le test échoue même sur une machine en UTC (la CI).
-	test: { env: { TZ: 'Europe/Zurich' } },
+	test: {
+		env: { TZ: 'Europe/Zurich' },
+		// Les tests `*.svelte.test.ts` (le registre) compilent les runes pour le navigateur, où `$effect` s'exécute ;
+		// les autres gardent la compilation par défaut de Node.
+		projects: [
+			{ extends: true, test: { name: 'serveur', exclude: ['**/node_modules/**', 'src/**/*.svelte.test.ts'] } },
+			{
+				extends: true,
+				resolve: { conditions: ['browser'] },
+				test: {
+					name: 'client',
+					include: ['src/**/*.svelte.test.ts'],
+					environment: './tests/environnement-client.ts'
+				}
+			}
+		]
+	},
 	// MapLibre 6 charge son worker par une URL relative au module : le pré-bundling de Vite la casse.
 	optimizeDeps: { exclude: ['maplibre-gl'] },
 	plugins: [
