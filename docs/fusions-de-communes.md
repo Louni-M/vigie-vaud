@@ -10,7 +10,8 @@ Quatre fusions, d'après la page du Canton
 [« Fusions au 1er janvier 2027 »](https://www.vd.ch/territoire-et-construction/cadastre-et-geoinformation/geodonnees/fusions-de-communes/fusions-au-1er-janvier-2027)
 (consultée le 13 novembre 2026). Le nom de chaque nouvelle commune vient de l'article 2 de la convention de fusion,
 cité dans l'exposé des motifs et projet de décret du Conseil d'État au Grand Conseil. Les n° OFS sont ceux
-d'aujourd'hui (`web/static/communes.json`) ; ceux des nouvelles communes ne sont pas encore publiés (étape 2).
+d'aujourd'hui (`web/static/communes.json`) ; ceux des nouvelles communes ne se lisent pas dans le service des
+mutations de l'OFS avant le 1er janvier 2027 (étape 1).
 
 | Nouvelle commune | Communes qui fusionnent (n° OFS actuel) | Source du nom |
 |---|---|---|
@@ -19,8 +20,7 @@ d'aujourd'hui (`web/static/communes.json`) ; ceux des nouvelles communes ne sont
 | Mathod-Suscévaz | Mathod (5919), Suscévaz (5930) | [25_LEG_172](https://www.vd.ch/fileadmin/user_upload/organisation/gc/fichiers_pdf/2022-2027/25_LEG_172_TexteCE.pdf), octobre 2025 |
 | Gimel | Gimel (5428), Saint-Oyens (5436), Saubraz (5437) | [25_LEG_173](https://www.vd.ch/fileadmin/user_upload/organisation/gc/fichiers_pdf/2022-2027/25_LEG_173_TexteCE.pdf), octobre 2025 |
 
-Dix communes en font quatre : le canton passe de 300 à **294 communes**. Les chiffres de la presse (297, 294) ne
-concordent pas : seul le décompte ci-dessus fait foi.
+Dix communes en font quatre : le canton passe de 300 à **294 communes**.
 
 Déjà prévu dans le code : `pipeline/preparation_sources.py` (`NON_DECLAREES`) ne déclare ni Le Lieu (i-web) ni
 Lucens (Quicksite), qui disparaissent (ADR 0010). Aucune source de `sources.json` ne cite aujourd'hui l'un des dix
@@ -62,7 +62,8 @@ OFS : il peut ne connaître les nouvelles communes qu'après cette date (étape 
 
 ## 2. Changer l'année des données de référence
 
-Le 1er janvier 2027 ou après, et une fois `swissboundaries3d_2027-01` paru : dans `pipeline/reference.py`, passer
+Quand `swissboundaries3d_2027-01` est paru **et** que la requête à l'OFS de l'étape 1 rend les mutations des quatre
+fusions vaudoises (pas seulement parce que la date est passée) : dans `pipeline/reference.py`, passer
 `ANNEE` à `2027`. Cette ligne change l'édition des limites lue par `communes.py` et l'édition des hôtels de ville
 écrite dans `web/src/lib/millesimes.json` (badge de fraîcheur). Ne pas toucher à `EDITION_LACS` (étape 1).
 
@@ -104,15 +105,18 @@ L'outil réécrit `hotels-de-ville.csv` et `hotels-de-ville-a-revoir.csv` pour l
   communes passent en repli et leur position est **approximative**. On peut attendre, ou écrire une ligne `manuel`
   d'après le site de la commune.
 
-Puis relancer `communes.py` (étape 3) : plus aucun avertissement de repli ne doit concerner les quatre communes.
+Puis relancer `communes.py` (étape 3) : une nouvelle commune ne reste en repli que si on a choisi d'attendre le
+répertoire des adresses ; noter alors dans l'issue de la fusion de relancer l'outil après le 19 février 2027.
 
 ## 5. Sources et Couverture
 
 - `sources.json` : la construction du site échoue si une source cite un n° OFS qui n'est plus une commune actuelle.
   Aucune n'en cite aujourd'hui (voir plus haut) ; le vérifier de nouveau, OpenParlData comprise.
-- `pipeline/preparation_sources.py`, `NON_DECLAREES` : retirer Le Lieu (5873) dès qu'il n'est plus une commune,
-  et Lucens (5675) seulement si la nouvelle commune reçoit un autre numéro. Mettre à jour le commentaire de
-  `pipeline/tests/test_declarations_sources.py` (`LE_LIEU`).
+- `pipeline/preparation_sources.py`, `NON_DECLAREES` : la vider après la fusion, avec son commentaire et la
+  docstring de `candidats_du_recensement`. Elle écarte du brouillon les lignes du recensement qui portent 5873 ou
+  5675 : si Lucens garde 5675, elle bloquerait sa mesure ; s'il change de numéro, elle ne sert plus à rien. Le
+  numéro attribué décide seulement des constantes de test à changer : `LE_LIEU` et son commentaire dans
+  `pipeline/tests/test_declarations_sources.py` (une commune déclarée ne doit pas porter ce n°).
 - Mesurer le site des deux nouvelles communes qui succèdent à une commune scrapée, La Vallée de Joux et Lucens, puis
   les déclarer couvertes ou non couvertes avec leur raison (ADR 0010) :
 
@@ -121,8 +125,9 @@ Puis relancer `communes.py` (étape 3) : plus aucun avertissement de repli ne do
   cd pipeline && uv run python preparation_sources.py quicksite --recensement sites.csv
   ```
 
-  (`sites.csv` : le recensement, une ligne par commune candidate avec son nouveau n° OFS.) La plateforme du site
-  de la nouvelle commune peut différer de celle de l'ancienne.
+  (`sites.csv` : le recensement des sites communaux, colonnes `ofs`, `commune`, `conseil`, `plateforme`,
+  `page_conseil` et `url_finale`, une ligne par nouvelle commune avec son nouveau n° OFS.) La plateforme du site de
+  la nouvelle commune peut différer de celle de l'ancienne.
 - Tests liés aux données de production, à remettre à 294 communes : `web/src/lib/couverture.test.ts`
   (`toHaveLength(300)`, `300 - 2 - 46`, « sur 300 ») ; relancer aussi `test_declarations_sources.py`,
   `test_rattachement.py`, `test_rattachement_conseils.py` et `test_jeu_annote_rattachement.py`, qui lisent
