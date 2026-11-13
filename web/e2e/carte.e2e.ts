@@ -9,14 +9,16 @@ import { arriver, expect, test } from './banc.js';
 const VUE = '46.56801,6.50968,14.00';
 
 /**
- * Clique au centre de la carte jusqu'à ce que `ouverte` soit visible : rien ne dit, dans la page, que la carte a fini
+ * Clique (ou touche) au centre de la carte jusqu'à ce que `ouverte` soit visible : rien ne dit, dans la page, que la carte a fini
  * de dessiner ses marqueurs.
  */
-async function cliquerAuCentre(page: Page, ouverte: ReturnType<Page['getByRole']>) {
+async function toucherAuCentre(page: Page, ouverte: ReturnType<Page['getByRole']>, auDoigt = false) {
 	const carte = page.locator('#carte');
 	await expect(async () => {
 		const b = (await carte.boundingBox())!;
-		await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+		// Au doigt sur téléphone, à la souris sur bureau.
+		const [x, y] = [b.x + b.width / 2, b.y + b.height / 2];
+		await (auDoigt ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
 		await expect(ouverte).toBeVisible({ timeout: 1000 });
 	}).toPass();
 }
@@ -25,7 +27,7 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 	test('un clic sur l’hôtel de ville ouvre la fiche de la commune ; le retour la referme', async ({ page }) => {
 		await arriver(page, `/?vue=${VUE}`);
 
-		await cliquerAuCentre(page, page.getByRole('heading', { name: 'Aclens', level: 2 }));
+		await toucherAuCentre(page, page.getByRole('heading', { name: 'Aclens', level: 2 }));
 		await expect(page).toHaveURL(/\/commune\/aclens(\?|$)/);
 		await expect(page.getByRole('button', { name: 'Fermer la fiche d’Aclens' })).toBeVisible();
 		await expect(page.getByRole('tab', { name: /Permis/ })).toBeVisible();
@@ -47,7 +49,7 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 		await arriver(page, `/?vue=${VUE}`);
 
 		const apercu = page.getByRole('button', { name: /Aclens · Voir la fiche/ });
-		await cliquerAuCentre(page, apercu);
+		await toucherAuCentre(page, apercu, true);
 		await expect(page).toHaveURL(/\/commune\/aclens(\?|$)/);
 
 		await apercu.click();
