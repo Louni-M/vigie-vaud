@@ -178,6 +178,25 @@ def test_un_second_passage_du_jour_sans_import_ne_committe_que_ses_sondes(depot_
     assert depot_nu.fichier("conseils/import.json") == import_du_jour
 
 
+def test_un_second_import_sans_changement_ne_committe_que_l_heure_du_dernier_import(depot_nu):
+    # Deux passages de suite, un jour d'écart, sources inchangées : le second importe, et seul `conseils/import.json`
+    # change, parce qu'il donne l'heure du dernier import réussi de chaque conseil (lue par le badge de fraîcheur du
+    # site, et point de départ de l'import suivant). Aucun Objet, aucune Séance, aucun fichier de lecture n'est réécrit.
+    clone = depot_nu.cloner("cron")
+    monde = _monde_conseils()
+    _passer_les_conseils(clone, monde, JOUR)
+    avant = git(clone, "rev-parse", "HEAD").strip()
+
+    _passer_les_conseils(clone, monde, JOUR + timedelta(days=1))
+
+    assert git(clone, "log", "--format=%s", f"{avant}..HEAD").splitlines() == [
+        "Passage du cron du 2026-10-17 05:17Z : conseils d'OpenParlData",
+        "Passage du cron du 2026-10-17 05:17Z : sondes",
+    ]
+    assert git(clone, "diff", "--name-only", "HEAD~1", "HEAD").splitlines() == ["conseils/import.json"]
+    assert git(clone, "status", "--porcelain") == ""
+
+
 def test_une_phase_sans_changement_ne_committe_rien(depot_nu):
     clone = depot_nu.cloner("cron")
     committer(clone, _passage_ecrit(clone))
