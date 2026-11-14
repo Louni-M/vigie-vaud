@@ -1,0 +1,19 @@
+{
+	"description": "Complément « de <nom> » d'une commune (« d’ » devant une voyelle ou un y, « du » et « des » devant « Le » et « Les », « de » sinon) : `de_nom(nom)` de `pipeline/preparation_sources.py`, qui nomme les sources communales du brouillon (« Site du Mont-sur-Lausanne »), et `deNom(nom)` de `web/src/lib/registre/elision.ts`. `de` est écrit comme le site l'affiche, avec l'apostrophe typographique ; le cron écrit l'apostrophe droite de `sources.json`, et ses tests comparent sans tenir compte de la forme de l'apostrophe.",
+	"cas": [
+		{"nom": "Pully", "de": "de Pully"},
+		{"nom": "Yverdon-les-Bains", "de": "d’Yverdon-les-Bains"},
+		{"nom": "Echallens", "de": "d’Echallens"},
+		{"nom": "Échallens", "de": "d’Échallens"},
+		{"nom": "Ollon", "de": "d’Ollon"},
+		{"nom": "Aigle", "de": "d’Aigle"},
+		{"nom": "Hautemorges", "de": "de Hautemorges"},
+		{"nom": "Le Chenit", "de": "du Chenit"},
+		{"nom": "Le Mont-sur-Lausanne", "de": "du Mont-sur-Lausanne"},
+		{"nom": "Le Lieu", "de": "du Lieu"},
+		{"nom": "Le Vaud", "de": "du Vaud"},
+		{"nom": "Les Clées", "de": "des Clées"},
+		{"nom": "La Sarraz", "de": "de La Sarraz"},
+		{"nom": "L'Abbaye", "de": "de L'Abbaye"}
+	]
+}

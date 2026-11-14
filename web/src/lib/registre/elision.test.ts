@@ -1,23 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import casElision from '../../../../cas-partages/elision.json';
 import { deNom } from './elision.js';
 
 describe('complément « de » d’une commune', () => {
-	it.each([
-		['Pully', 'de Pully'],
-		['Yverdon-les-Bains', 'd’Yverdon-les-Bains'],
-		['Echallens', 'd’Echallens'],
-		['Échallens', 'd’Échallens'],
-		['Ollon', 'd’Ollon'],
-		['Aigle', 'd’Aigle'],
-		['Hautemorges', 'de Hautemorges'],
-		['Le Chenit', 'du Chenit'],
-		['Le Mont-sur-Lausanne', 'du Mont-sur-Lausanne'],
-		['Le Lieu', 'du Lieu'],
-		['Le Vaud', 'du Vaud'],
-		['Les Clées', 'des Clées'],
-		['La Sarraz', 'de La Sarraz'],
-		["L'Abbaye", "de L'Abbaye"]
-	])('%s → %s', (nom, attendu) => {
-		expect(deNom(nom)).toBe(attendu);
+	// Les cas de `cas-partages/elision.json`, que lit aussi `de_nom` du cron : il nomme les sources communales de son
+	// brouillon (« Site du Mont-sur-Lausanne »).
+	it.each(casElision.cas)('$nom → $de', ({ nom, de }) => {
+		expect(deNom(nom)).toBe(de);
 	});
 });
