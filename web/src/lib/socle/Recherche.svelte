@@ -4,6 +4,7 @@
 	import type { Commune, Resultat } from '#lib/types.js';
 	import { typographier } from '#lib/almanach/typographie.js';
 	import { ancienEtActuelle, avecAdresses, chercherAdresses, resultatsLocaux } from './recherche.js';
+	import { derniereSaisie } from './saisie.js';
 
 	/*
 	 * Recherche flottante du socle : communes, résultats des couches (fiches propres et `chercher`), adresses et
@@ -167,16 +168,25 @@
 	}
 
 	/**
-	 * À la fermeture du plein écran, le focus revient au champ de la carte ; au toucher, le champ le quitte plutôt,
-	 * pour que le clavier se ferme sur la carte.
+	 * Rend le focus au champ, sans rouvrir la liste ni la Recherche plein écran. Après un toucher, le champ le quitte
+	 * plutôt, pour que le clavier de l'écran se ferme sur la carte : renvoie alors `false`.
 	 */
-	function fermerPlein() {
-		ouvert = false;
-		if (matchMedia('(pointer: coarse)').matches) champ?.blur();
-		else if (document.activeElement !== champ) {
+	export function rendreFocus(): boolean {
+		if (derniereSaisie() === 'toucher') {
+			champ?.blur();
+			return false;
+		}
+		if (document.activeElement !== champ) {
 			garderFerme = true;
 			champ?.focus();
 		}
+		return true;
+	}
+
+	/** À la fermeture du plein écran, le focus revient au champ de la carte (`rendreFocus`). */
+	function fermerPlein() {
+		ouvert = false;
+		rendreFocus();
 	}
 
 	const boutons = () => [...(liste?.querySelectorAll('button') ?? [])];

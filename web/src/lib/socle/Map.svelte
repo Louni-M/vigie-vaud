@@ -56,8 +56,16 @@
 	let vueParDefaut = false;
 	let maplibre: typeof import('maplibre-gl') | undefined;
 	let controle: AttributionControl | undefined;
-	/** Le prochain déplacement terminé mène à une vue par défaut (canton, commune cadrée) : elle n'entre pas dans l'adresse. */
-	let versDefaut = false;
+	/**
+	 * La vue de la carte est une vue par défaut (canton, commune cadrée), qui n'entre pas dans l'adresse. Chaque
+	 * déplacement demandé à la carte la fixe ; un geste du visiteur rend la vue sienne ; un changement de taille de la
+	 * carte (colonne de la fiche ouverte ou fermée, fenêtre tournée) la laisse telle qu'elle était.
+	 */
+	let actuelleParDefaut = false;
+	/** Pendant `preparer`, les fins de déplacement ne sont pas signalées. */
+	let muette = false;
+	/** Instant du dernier tour de molette (`performance.now()`) : voir l'écoute de `movestart`. */
+	let molette = -Infinity;
 
 	const STYLE = 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.lightbasemap.vt/style.json';
 	const SWISSIMAGE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg';
@@ -69,18 +77,36 @@
 		};
 	}
 
-	function emitView(parDefaut = false, parLaPersonne = false) {
-		if (!map || !onvue) return;
-		parDefaut ||= versDefaut;
-		versDefaut = false;
+	function emitView(parLaPersonne = false) {
+		if (!map || !onvue || muette) return;
+		if (parLaPersonne) actuelleParDefaut = false;
 		const b = map.getBounds();
 		const c = map.getCenter();
 		onvue(
 			[b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
 			{ lon: c.lng, lat: c.lat, zoom: map.getZoom() },
-			parDefaut,
+			actuelleParDefaut,
 			parLaPersonne
 		);
+	}
+
+	/**
+	 * Avant un déplacement demandé : arrête celui en cours et relit la taille de la carte, sans signaler la vue qu'on
+	 * quitte. Signalée, elle entrerait dans l'adresse avant que la carte ait bougé : après le précédent, l'adresse où
+	 * l'on revient prendrait un instant la vue de la fiche qu'on quitte, ou la perdrait. Le déplacement demandé
+	 * signale la sienne en finissant ; `parDefaut` : elle n'entrera pas dans l'adresse. Un tour de molette juste
+	 * avant n'en fait pas un geste du visiteur.
+	 */
+	function preparer(m: MlMap, parDefaut: boolean) {
+		molette = -Infinity;
+		muette = true;
+		try {
+			m.stop();
+			m.resize();
+		} finally {
+			muette = false;
+		}
+		actuelleParDefaut = parDefaut;
 	}
 
 	/**
@@ -95,7 +121,7 @@
 			vueParDefaut = parDefaut;
 			return;
 		}
-		versDefaut = parDefaut;
+		preparer(map, parDefaut);
 		const cible = Math.max(map.getZoom(), zoom);
 		const loin = cible - map.getZoom() > 4;
 		map.flyTo({
@@ -110,7 +136,7 @@
 
 	/*
 	 * `cadrer`, `vueCanton` et `aller` suivent l'adresse : la fiche commune vient peut-être d'ouvrir ou de fermer
-	 * sa colonne, et la carte relit sa taille avant de bouger, sans attendre son observateur de taille.
+	 * sa colonne, et la carte relit sa taille avant de bouger (`preparer`), sans attendre son observateur de taille.
 	 */
 
 	/**
@@ -124,16 +150,14 @@
 			enAttente = null;
 			return;
 		}
-		map.resize();
-		versDefaut = parDefaut;
+		preparer(map, parDefaut);
 		map.fitBounds(b, { padding: 40, duration: anime ? 600 : 0 });
 	}
 
 	/** Revient à la vue d'ensemble du canton, en un vol souple. */
 	export function vueCanton() {
-		if (!map) return cadrer(CANTON, false);
-		map.resize();
-		versDefaut = true;
+		if (!map) return cadrer(CANTON, false, true);
+		preparer(map, true);
 		map.fitBounds(CANTON, { padding: 20, duration: 1200, easing: (t) => 1 - Math.pow(1 - t, 3) });
 	}
 
@@ -145,7 +169,7 @@
 			cadreEnAttente = null;
 			return;
 		}
-		map.resize();
+		preparer(map, false);
 		map.easeTo({ center: [c.lon, c.lat], zoom: c.zoom, duration: anime ? 500 : 0 });
 	}
 
@@ -199,21 +223,20 @@
 				// MapLibre joint l'évènement du navigateur aux déplacements faits par le visiteur, pas aux vols demandés
 				// ni aux changements de taille. Il l'omet parfois pour la molette : un tour de molette juste avant compte.
 				let geste = false;
-				let molette = -Infinity;
 				container.addEventListener('wheel', () => (molette = performance.now()), { capture: true, passive: true });
 				m.on('movestart', (e) => (geste = !!e.originalEvent || performance.now() - molette < 500));
-				m.on('moveend', (e) => emitView(false, geste || !!e.originalEvent));
+				m.on('moveend', (e) => emitView(geste || !!e.originalEvent));
 				map = m;
 				// Vue demandée pendant le chargement du style.
 				// Une vue demandée (lien partagé) est un choix du visiteur : elle reste dans l'adresse.
-				const parDefaut = enAttente ? vueParDefaut : !cadreEnAttente || cadreParDefaut;
+				actuelleParDefaut = enAttente ? vueParDefaut : !cadreEnAttente || cadreParDefaut;
 				if (enAttente) m.jumpTo({ center: [enAttente.lon, enAttente.lat], zoom: enAttente.zoom });
 				else if (cadreEnAttente) m.fitBounds(cadreEnAttente, { padding: 40, duration: 0 });
 				enAttente = cadreEnAttente = null;
 				if (import.meta.env.DEV) (window as unknown as { __carte: MlMap }).__carte = m;
 				pret = true;
 				onpret?.(m);
-				emitView(parDefaut);
+				emitView();
 			});
 		})();
 		return () => {
