@@ -48,6 +48,13 @@ const plusTard = async () => {
 	for (let i = 0; i < 3; i++) await Promise.resolve();
 };
 
+/**
+ * Une tâche à part, comme le `setTimeout(0)` du navigateur, mais sans minuteur : sous Windows, Node n'en déclenche un
+ * qu'au pas de ~15 ms de l'horloge système, au lieu de ~1 ms sous Linux, et les tests du registre en attendent des
+ * dizaines.
+ */
+export const tache = () => new Promise<void>((r) => setImmediate(r));
+
 /** Le chemin et la requête d'une adresse (« /commune/pully?d=1 »). */
 const relative = (u: URL) => u.pathname + u.search;
 
@@ -128,7 +135,7 @@ export function creerFauxNavigateur(depart: string) {
 			apresNavigation();
 		},
 		// `history.go` ne parcourt l'historique que plus tard, dans une tâche à part.
-		reculer: (pas) => void setTimeout(() => parcourir(-pas)),
+		reculer: (pas) => void tache().then(() => parcourir(-pas)),
 		apresNavigation: (f) => void rappels.push(f),
 		surParcours(f) {
 			parcours.push(f);

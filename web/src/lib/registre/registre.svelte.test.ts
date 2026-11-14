@@ -3,7 +3,7 @@ import { flushSync } from 'svelte';
 import { creerRegistre, type Registre, type VueCarte } from './registre.svelte.js';
 import type { CoucheInscrite, Lieu } from './types.js';
 import { LUTRY, PULLY } from '#tests/faux-canton.js';
-import { creerFauxNavigateur, type FauxNavigateur } from '#tests/faux-navigateur.svelte.js';
+import { creerFauxNavigateur, tache, type FauxNavigateur } from '#tests/faux-navigateur.svelte.js';
 
 /*
  * Le registre par scénarios, sans navigateur ni SvelteKit : un faux navigateur tient l'historique, une fausse carte
@@ -69,7 +69,7 @@ afterEach(() => fins.splice(0).forEach((f) => f()));
 async function calme() {
 	for (let i = 0; i < 10; i++) {
 		flushSync();
-		await new Promise((r) => setTimeout(r));
+		await tache();
 	}
 	flushSync();
 }

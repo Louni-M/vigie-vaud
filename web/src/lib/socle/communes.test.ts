@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { delaiDepasse } from '#lib/chargement.js';
 import { delaiExpire, sansReponse } from '#tests/sans-reponse.js';
 import { LUTRY, PULLY } from '#tests/faux-canton.js';
+// Importé dès la collecte, hors du délai des tests : sa première transformation par Vite, qui prend des secondes sur
+// une machine chargée, est faite ; le module neuf de chaque test (`neuf`) n'est plus qu'évalué.
+import './communes.js';
 
 /** Le module neuf : son cache est celui de la visite. */
 async function neuf() {
