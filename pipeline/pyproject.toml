@@ -6,17 +6,17 @@ requires-python = ">=3.11"
 # Ce que le cron importe, rien de plus : il les installe à chaque passage (`uv sync --no-dev`).
 dependencies = [
     "httpx>=0.28.1",
-    "pydantic>=2.14.1",
+    "pydantic>=2.14.3",
     "pydantic-core>=2.50.1",
     "typing-extensions>=4.16.0",
     # Base des fuseaux horaires pour `zoneinfo`, là où le système n'en a pas (Windows).
-    "tzdata>=2026.5",
+    "tzdata>=2026.6",
 ]
 
 [dependency-groups]
 dev = [
     "jsonschema>=4.26.0",
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
     "ruff>=0.17.5",
 ]
 # Pile géographique : seulement pour la préparation des communes (voie d'accès Préparée : communes.py,
