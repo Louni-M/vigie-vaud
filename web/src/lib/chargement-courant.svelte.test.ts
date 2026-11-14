@@ -3,6 +3,10 @@ import { DELAIS_ESSAI } from './etat-source.svelte.js';
 import { estSondee } from './couverture.js';
 import type { EtatSources, ImportConseils } from './schema.js';
 import { SOURCES } from './sources.js';
+// Importés dès la collecte, hors du délai des tests : leur première transformation par Vite, qui prend des secondes
+// sur une machine chargée, est faite ; les modules neufs de chaque test ne sont plus qu'évalués.
+import './couverture-courante.svelte.js';
+import './imports-courants.svelte.js';
 
 /*
  * La Couverture courante et les imports courants, chargés une fois par visite dans le navigateur, se rétablissent

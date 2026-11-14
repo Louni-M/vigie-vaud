@@ -7,6 +7,9 @@ import { commune, LUTRY, PULLY } from '#tests/faux-canton.js';
 import { fauxDgmr, heureLocale, restriction, type FauxDgmr } from '#tests/faux-dgmr.js';
 import { coucheRoutes, FILTRES_INITIAUX } from './index.js';
 import type { Filtres } from './volet.js';
+// Importé dès la collecte, hors du délai des tests : la première transformation du module de données par Vite, qui
+// prend des secondes sur une machine chargée, est faite ; le module neuf de chaque test n'est plus qu'évalué.
+import './donnees.svelte.js';
 
 // Le module de données refuse d'interroger la DGMR ailleurs que dans un navigateur.
 vi.mock('$app/env', () => ({ browser: true }));

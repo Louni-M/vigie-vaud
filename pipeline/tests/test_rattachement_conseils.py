@@ -97,8 +97,8 @@ def test_les_fichiers_de_lecture_portent_les_communes_rattachees(tmp_path):
     assert [o["communes"] for o in index["conseils"][0]["recents"] if o["cle"] == "vd/26_INT_150"] == [rattachees]
     for fichier in sorted(tmp_path.rglob("*.json")):
         nom = _schema_du_fichier(fichier.relative_to(tmp_path))
-        schema = json.loads((DOSSIER_SCHEMA / f"{nom}.schema.json").read_text())
-        jsonschema.validate(json.loads(fichier.read_text()), schema)
+        schema = json.loads((DOSSIER_SCHEMA / f"{nom}.schema.json").read_text(encoding="utf-8"))
+        jsonschema.validate(json.loads(fichier.read_text(encoding="utf-8")), schema)
 
 
 def test_le_titre_est_lu_apres_masquage(tmp_path):

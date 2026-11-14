@@ -302,7 +302,9 @@ def test_au_moins_une_seconde_separe_deux_requetes_et_chacune_s_identifie(tmp_pa
 
 
 def _genere_de_chaque_fichier(depot):
-    return {str(p.relative_to(depot)): json.loads(p.read_text())["genere"] for p in depot.rglob("*.json")}
+    return {
+        p.relative_to(depot).as_posix(): json.loads(p.read_text(encoding="utf-8"))["genere"] for p in depot.rglob("*.json")
+    }
 
 
 def test_le_premier_import_demande_tout_l_historique_et_note_la_date_de_chaque_conseil(tmp_path):
@@ -448,8 +450,8 @@ def test_chaque_fichier_ecrit_est_valide_au_json_schema(tmp_path):
     assert len(fichiers) == 15  # 7 d'archive et d'import, 8 de lecture
     for fichier in fichiers:
         nom = _schema_du_fichier(fichier.relative_to(tmp_path))
-        schema = json.loads((DOSSIER_SCHEMA / f"{nom}.schema.json").read_text())
-        jsonschema.validate(json.loads(fichier.read_text()), schema)
+        schema = json.loads((DOSSIER_SCHEMA / f"{nom}.schema.json").read_text(encoding="utf-8"))
+        jsonschema.validate(json.loads(fichier.read_text(encoding="utf-8")), schema)
 
 
 def _monde_avec_petition(horloge):

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { couchePermis } from './index.js';
+// Importé dès la collecte, hors du délai des tests : la première transformation du module de données par Vite, qui
+// prend des secondes sur une machine chargée, est faite avant que `localiser` et le fil ne l'importent à la demande.
+import './donnees.svelte.js';
 import { entite, fauxCanton } from '#tests/faux-canton.js';
 
 // Le client du canton refuse de partir ailleurs que dans un navigateur.

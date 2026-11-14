@@ -37,7 +37,7 @@ PLAFOND = 60  # requêtes, au plus, par commune et par passage ordinaire
 # plus que son délai de job pour une seule commune)
 CRAWL_DELAY_MAX = 30.0
 
-_CONFIG = json.loads((RACINE / "config.json").read_text())
+_CONFIG = json.loads((RACINE / "config.json").read_text(encoding="utf-8"))
 A_PROPOS = f"{_CONFIG['site']}/a-propos#robot"
 
 
