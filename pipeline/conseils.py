@@ -87,7 +87,7 @@ from schema import (
 from sites_communaux import lire_site
 
 API = "https://api.openparldata.ch/v1"
-_CONFIG = json.loads((RACINE / "config.json").read_text())
+_CONFIG = json.loads((RACINE / "config.json").read_text(encoding="utf-8"))
 USER_AGENT = f"VigieVaud-import (+{_CONFIG['depot']}; {_CONFIG['courriel']})"
 INTERVALLE = 1.0  # secondes, au moins, entre deux requêtes
 TAILLE_PAGE = 200

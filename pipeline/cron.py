@@ -84,7 +84,7 @@ from sonde_sites import sonder_site
 FICHIER_ETAT = "etat-sources.json"
 ECHECS_AVANT_PANNE = 2
 # L'adresse du dépôt vient de `config.json`, puisque le dépôt est renommé à la fin de J0.
-USER_AGENT = f"VigieVaud-sonde (+{json.loads((RACINE / 'config.json').read_text())['depot']})"
+USER_AGENT = f"VigieVaud-sonde (+{json.loads((RACINE / 'config.json').read_text(encoding='utf-8'))['depot']})"
 
 
 @dataclass(frozen=True)
@@ -1061,7 +1061,9 @@ DELAI_GIT = 120
 
 def _git(depot: Path, *args: str, verifier: bool = True) -> subprocess.CompletedProcess:
     try:
-        return subprocess.run(["git", "-C", str(depot), *args], check=verifier, text=True, timeout=DELAI_GIT)
+        return subprocess.run(
+            ["git", "-C", str(depot), *args], check=verifier, text=True, encoding="utf-8", timeout=DELAI_GIT
+        )
     except subprocess.TimeoutExpired:
         raise SystemExit(
             f"git {args[0]} : sans réponse après {DELAI_GIT} s, le passage échoue ; "

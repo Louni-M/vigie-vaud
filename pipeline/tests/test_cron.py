@@ -127,7 +127,7 @@ def _passer(depot, sources, reponse, heure=T0, issues=None):
     with httpx.Client(transport=transport) as client:
         issues = issues or IssuesFactices()
         passage(depot, sources, client, horloge=lambda: heure, issues=issues, attendre=_sans_attente)
-    return json.loads((depot / "etat-sources.json").read_text()), requetes
+    return json.loads((depot / "etat-sources.json").read_text(encoding="utf-8")), requetes
 
 
 def test_une_source_neuve_qui_repond_est_ecrite_disponible_avec_l_enveloppe(tmp_path):
@@ -147,7 +147,7 @@ def test_une_source_neuve_qui_repond_est_ecrite_disponible_avec_l_enveloppe(tmp_
             }
         },
     }
-    schema = json.loads((tmp_path / "schema" / "etat-sources.schema.json").read_text())
+    schema = json.loads((tmp_path / "schema" / "etat-sources.schema.json").read_text(encoding="utf-8"))
     jsonschema.validate(etat, schema)
 
 
@@ -243,7 +243,7 @@ def _etat_precedent(depot, version):
         "motif": "HTTP 500",
     }
     contenu = {"version": version, "genere": "2026-10-14T11:47:00Z", "sources": {"camac-permis": panne}}
-    (depot / "etat-sources.json").write_text(json.dumps(contenu))
+    (depot / "etat-sources.json").write_text(json.dumps(contenu), encoding="utf-8")
 
 
 def test_un_etat_d_une_autre_version_fait_repartir_de_zero(tmp_path):
@@ -256,7 +256,7 @@ def test_un_etat_d_une_autre_version_fait_repartir_de_zero(tmp_path):
 
 
 def test_un_etat_illisible_fait_repartir_de_zero(tmp_path):
-    (tmp_path / "etat-sources.json").write_text("{pas du json")
+    (tmp_path / "etat-sources.json").write_text("{pas du json", encoding="utf-8")
 
     etat, _ = _passer(tmp_path, _sources(SONDEE), httpx.Response(500))
 
@@ -410,7 +410,7 @@ def test_un_passage_sonde_les_trois_conseils_de_sources_json_et_les_donne_dispon
             resoudre=resoudre,
         )
 
-    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    etat = json.loads((tmp_path / "etat-sources.json").read_text(encoding="utf-8"))
     conseils = {id: e for id, e in etat["sources"].items() if id.startswith("openparldata-")}
     assert {id: (e["etat"], e["motif"]) for id, e in conseils.items()} == {
         "openparldata-vd": ("disponible", None),
@@ -432,7 +432,7 @@ def test_la_sonde_est_une_seule_requete_avec_son_delai_et_le_user_agent_du_depot
 def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
     _passer(tmp_path, _sources(SONDEE), _dossiers({"NO_CAMAC": 987654, "ETAT": "Dossier secret"}))
 
-    ecrits = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*") if p.is_file())
+    ecrits = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file())
     assert ecrits == [
         "etat-sources.json",
         "schema/corrections.schema.json",
@@ -450,7 +450,7 @@ def test_un_passage_ne_conserve_aucune_donnee_de_la_source(tmp_path):
         "schema/seance.schema.json",
         "schema/sources.schema.json",
     ]
-    assert "987654" not in (tmp_path / "etat-sources.json").read_text()
+    assert "987654" not in (tmp_path / "etat-sources.json").read_text(encoding="utf-8")
 
 
 # --- Issues `panne-source` dans le dépôt de données (ticket #32), contre un GitHub factice ----------------------
@@ -612,7 +612,7 @@ def test_une_panne_de_l_api_github_n_empeche_pas_d_ecrire_l_etat(tmp_path, capsy
 
     _passer_avec_github(tmp_path, github, [_dossiers(DOSSIER), httpx.Response(503), httpx.Response(503)])
 
-    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    etat = json.loads((tmp_path / "etat-sources.json").read_text(encoding="utf-8"))
     assert etat["sources"]["camac-permis"]["etat"] == "en_panne"
     assert "503" in capsys.readouterr().err
 
@@ -749,7 +749,7 @@ def _passer_conseils(depot, monde, heure, issues=None, en_echec=(), rattrapage=F
 
 
 def _imports(depot):
-    return json.loads((depot / "conseils/import.json").read_text())["conseils"]
+    return json.loads((depot / "conseils/import.json").read_text(encoding="utf-8"))["conseils"]
 
 
 def _requetes_d_import(monde):
@@ -783,7 +783,7 @@ def test_un_import_en_echec_est_refait_au_passage_suivant_sans_toucher_a_l_etat_
 
     _passer_conseils(tmp_path, monde, JOUR, en_echec={"VD"})
     apres_echec = _imports(tmp_path)
-    etat = json.loads((tmp_path / "etat-sources.json").read_text())["sources"]["openparldata-vd"]
+    etat = json.loads((tmp_path / "etat-sources.json").read_text(encoding="utf-8"))["sources"]["openparldata-vd"]
     monde.requetes.clear()
     _passer_conseils(tmp_path, monde, JOUR + timedelta(minutes=30))
 
@@ -808,11 +808,11 @@ def test_le_rattrapage_importe_tous_les_conseils_depuis_tout_l_historique_a_tout
 def test_un_import_qui_plante_n_empeche_pas_d_ecrire_l_etat_des_sources_et_compte_comme_un_echec(tmp_path, capsys):
     monde = _monde_conseils()
     _passer_conseils(tmp_path, monde, VEILLE)
-    (tmp_path / "conseils/vd/objets/26_INT_140.json").write_text("{abîmé")
+    (tmp_path / "conseils/vd/objets/26_INT_140.json").write_text("{abîmé", encoding="utf-8")
 
     _passer_conseils(tmp_path, monde, JOUR)
 
-    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    etat = json.loads((tmp_path / "etat-sources.json").read_text(encoding="utf-8"))
     assert etat["genere"] == "2026-10-16T05:17:00Z"
     assert set(_imports(tmp_path).values()) == {"2026-10-15T05:17:00Z"}
     assert "Import des conseils en échec" in capsys.readouterr().err
@@ -846,7 +846,7 @@ def test_plus_de_24_h_sans_import_reussi_ouvrent_une_seule_issue_import_conseils
     assert issue["commentaires"] == [
         "Grand Conseil (OpenParlData) est de nouveau importé : import réussi le 2026-10-16 à 06:47 UTC."
     ]
-    etat = json.loads((tmp_path / "etat-sources.json").read_text())
+    etat = json.loads((tmp_path / "etat-sources.json").read_text(encoding="utf-8"))
     assert {e["etat"] for e in etat["sources"].values()} == {"disponible"}
 
 

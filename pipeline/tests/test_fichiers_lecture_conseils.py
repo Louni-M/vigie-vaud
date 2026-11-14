@@ -195,7 +195,7 @@ def test_un_fichier_de_lecture_que_l_import_ne_produit_plus_est_supprime_jamais_
     # Une commune qui n'a plus d'Objet rattaché (une correction l'a retirée, par exemple).
     perime = tmp_path / "conseils/communes/5586.json"
     perime.parent.mkdir(parents=True)
-    perime.write_text((tmp_path / "conseils/index.json").read_text())
+    perime.write_text((tmp_path / "conseils/index.json").read_text(encoding="utf-8"), encoding="utf-8")
 
     # Le conseil de Prilly (5938) n'est plus déclaré.
     sans_prilly = FichierSources(sources=[s for s in SOURCES.sources if s.id != "openparldata-5938"])
@@ -211,15 +211,17 @@ def test_un_fichier_de_lecture_que_l_import_ne_produit_plus_est_supprime_jamais_
 def test_la_reconstruction_refait_les_fichiers_de_lecture_depuis_l_archive_sans_rien_importer(tmp_path):
     horloge = HorlogeFactice(T0)
     _passer(tmp_path, _monde(horloge), horloge)
-    import_avant = (tmp_path / "conseils/import.json").read_text()
+    import_avant = (tmp_path / "conseils/import.json").read_text(encoding="utf-8")
     # Un titre réécrit à la main dans l'archive (ADR 0007), un fichier de lecture perdu, un autre périmé.
     objet = tmp_path / "conseils/vd/objets/26_INT_140.json"
-    objet.write_text(objet.read_text().replace("six ans pour revenir", "[nom retiré]"))
-    archive_avant = objet.read_text()
+    objet.write_text(
+        objet.read_text(encoding="utf-8").replace("six ans pour revenir", "[nom retiré]"), encoding="utf-8"
+    )
+    archive_avant = objet.read_text(encoding="utf-8")
     (tmp_path / "conseils/fil.json").unlink()
     perime = tmp_path / "conseils/communes/5586.json"
     perime.parent.mkdir(parents=True)
-    perime.write_text("{}")
+    perime.write_text("{}", encoding="utf-8")
 
     horloge.heure = T0 + timedelta(days=3)
     reconstruire(tmp_path, SOURCES, horloge)
@@ -229,8 +231,8 @@ def test_la_reconstruction_refait_les_fichiers_de_lecture_depuis_l_archive_sans_
     assert _lire(tmp_path, "conseils/vd/objets-2026.json")["genere"] == "2026-10-19T07:05:00Z"
     assert _lire(tmp_path, "conseils/fil.json")["genere"] == "2026-10-19T07:05:00Z"
     assert not perime.exists()
-    assert objet.read_text() == archive_avant
-    assert (tmp_path / "conseils/import.json").read_text() == import_avant
+    assert objet.read_text(encoding="utf-8") == archive_avant
+    assert (tmp_path / "conseils/import.json").read_text(encoding="utf-8") == import_avant
 
 
 def _entree(cle, sorte, date, titre, communes=(), type=None, points=None):

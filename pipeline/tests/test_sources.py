@@ -204,7 +204,7 @@ def _coreapi(coreapi):
 
 def _ecrire(tmp_path, sources):
     chemin = tmp_path / "sources.json"
-    chemin.write_text(json.dumps({"$schema": "./schema/sources.schema.json", "sources": sources}))
+    chemin.write_text(json.dumps({"$schema": "./schema/sources.schema.json", "sources": sources}), encoding="utf-8")
     return chemin
 
 
@@ -293,7 +293,7 @@ def test_une_declaration_invalide_est_refusee(tmp_path, sources):
 
 def _avec_reseaux(tmp_path, reseaux):
     chemin = tmp_path / "sources.json"
-    chemin.write_text(json.dumps({"reseaux": reseaux, "sources": [_source()]}))
+    chemin.write_text(json.dumps({"reseaux": reseaux, "sources": [_source()]}), encoding="utf-8")
     return chemin
 
 
