@@ -165,7 +165,8 @@ NIVEAUX = (
 
 
 def niveau_de(donne: list[str] | tuple[str, ...]) -> Niveau | None:
-    """Le niveau de ce que donne un conseil, dans n'importe quel ordre ; `None` hors des trois."""
+    """Le niveau de ce que donne un conseil, lu comme un ensemble (dans n'importe quel ordre, une répétition ne compte
+    qu'une fois), comme `niveauDe` du site ; `None` hors des trois."""
     return next((n for n in NIVEAUX if n.donne == frozenset(donne)), None)
 
 

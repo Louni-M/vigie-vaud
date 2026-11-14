@@ -322,8 +322,18 @@ def brouillon(
     return sources, remarques
 
 
-def _de(nom: str) -> str:
-    return f"d'{nom}" if nom[0].upper() in "AEIOUYÉÈÊÂÎÔ" else f"de {nom}"
+def de_nom(nom: str) -> str:
+    """Complément « de <nom> » d'une commune, la règle de `deNom` du site (`web/src/lib/registre/elision.ts`) :
+    « d' » devant une voyelle ou un y (« d'Yverdon-les-Bains », « d'Echallens »), l'article contracté devant « Le » et
+    « Les » (« du Mont-sur-Lausanne », « des Clées ») ; le h initial est aspiré (« de Hautemorges ») et « La », « L' »
+    restent tels quels (« de La Sarraz »). L'apostrophe est droite, comme dans `sources.json`."""
+    if nom.startswith("Les "):
+        return f"des {nom[4:]}"
+    if nom.startswith("Le "):
+        return f"du {nom[3:]}"
+    if re.match(r"[aeiouyàâäéèêëîïôöùûüÿæœ]", nom, re.IGNORECASE):
+        return f"d'{nom}"
+    return f"de {nom}"
 
 
 def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> dict:
@@ -331,9 +341,9 @@ def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> 
     sous le plafond, le moins complet de sa variante, à relire."""
     source = {
         "id": f"site-{candidat.ofs}",
-        "nom": f"{candidat.conseil} {_de(candidat.commune)} (site de la commune)",
-        "nom_court": f"Site {_de(candidat.commune)}",
-        "attribution": {"texte": f"Commune {_de(candidat.commune)}", "lien": candidat.page, "licence": LICENCE},
+        "nom": f"{candidat.conseil} {de_nom(candidat.commune)} (site de la commune)",
+        "nom_court": f"Site {de_nom(candidat.commune)}",
+        "attribution": {"texte": f"Commune {de_nom(candidat.commune)}", "lien": candidat.page, "licence": LICENCE},
         "voie_acces": "cron",
         "fraicheur": "import",
     }

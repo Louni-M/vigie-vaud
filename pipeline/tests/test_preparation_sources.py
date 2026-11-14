@@ -13,12 +13,14 @@ import re
 from datetime import UTC, date, datetime
 
 import httpx
+import pytest
 
 import sites_communaux
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
 from mesure_sites import Mesure
-from preparation_sources import Candidat, brouillon, candidats_du_recensement, verifier
+from cas_partages import cas_partages
+from preparation_sources import Candidat, brouillon, candidats_du_recensement, de_nom, verifier
 from robot_communal import Robot
 from schema import FichierSources
 
@@ -336,6 +338,28 @@ def test_une_commune_sans_page_des_seances_est_proposee_non_couverte_a_relire():
         "couverture": {"communes": [5607], "mode": "non_couvert", "raison": "rien_en_ligne"}
     }]
     assert remarques == {"site-5607": ["Puidoux : aucune page des Séances i-web trouvée ; raison à relire"]}
+
+
+def test_le_brouillon_nomme_une_commune_en_le_avec_l_article_contracte():
+    horloge = HorlogeFactice(T0)
+    reseau = _reseau(horloge)
+    _sans_marqueur(reseau, f"{PUIDOUX}/seances")
+    candidat = Candidat(5587, "Le Mont-sur-Lausanne", "Conseil communal", f"{PUIDOUX}/conseil")
+
+    [source], _ = brouillon(_robot(reseau, horloge), [candidat], _fichier().plateformes[0], JOUR)
+
+    assert (source["nom"], source["nom_court"], source["attribution"]["texte"]) == (
+        "Conseil communal du Mont-sur-Lausanne (site de la commune)",
+        "Site du Mont-sur-Lausanne",
+        "Commune du Mont-sur-Lausanne",
+    )
+
+
+# Les cas de `cas-partages/elision.json`, que lit aussi `deNom` du site : le site les écrit avec l'apostrophe
+# typographique, le cron avec l'apostrophe droite de `sources.json`.
+@pytest.mark.parametrize(("nom", "de"), [(c["nom"], c["de"]) for c in cas_partages("elision")])
+def test_le_complement_de_d_une_commune_elide_ou_contracte_comme_sur_le_site(nom, de):
+    assert de_nom(nom).replace("’", "'") == de.replace("’", "'")
 
 
 def test_le_brouillon_passe_la_verification_sans_ecart():
