@@ -116,15 +116,27 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 		await expect(annuler).toBeHidden();
 	});
 
-	test('au doigt, « Annuler » laisse le champ sans focus, pour que le clavier de l’écran se ferme', async ({ page }) => {
+	test('ouverte au doigt, la Recherche se referme sans focus sur le champ, pour fermer le clavier de l’écran', async ({
+		page
+	}) => {
 		await arriver(page, '/');
 		const champ = page.getByRole('searchbox');
-		await champ.tap();
 		const annuler = page.getByRole('button', { name: 'Annuler' });
+
+		// « Annuler », touché.
+		await champ.tap();
 		await expect(annuler).toBeVisible();
-
 		await annuler.tap();
+		await expect(annuler).toBeHidden();
+		await expect(champ).not.toBeFocused();
 
+		// « Rechercher » sur le clavier de l'écran : ses touches arrivent dans le champ, Entrée comprise.
+		await champ.tap();
+		await expect(annuler).toBeVisible();
+		await page.keyboard.type('Pully');
+		await expect(page.getByRole('list', { name: 'Résultats de recherche' }).getByRole('button')).toHaveCount(2);
+		await page.keyboard.press('Enter');
+		await expect(page.getByRole('button', { name: /Pully · Voir la fiche/ })).toBeVisible();
 		await expect(annuler).toBeHidden();
 		await expect(champ).not.toBeFocused();
 	});

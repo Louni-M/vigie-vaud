@@ -64,6 +64,8 @@
 	let actuelleParDefaut = false;
 	/** Pendant `preparer`, les fins de déplacement ne sont pas signalées. */
 	let muette = false;
+	/** Instant du dernier tour de molette (`performance.now()`) : voir l'écoute de `movestart`. */
+	let molette = -Infinity;
 
 	const STYLE = 'https://vectortiles.geo.admin.ch/styles/ch.swisstopo.lightbasemap.vt/style.json';
 	const SWISSIMAGE = 'https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg';
@@ -92,9 +94,11 @@
 	 * Avant un déplacement demandé : arrête celui en cours et relit la taille de la carte, sans signaler la vue qu'on
 	 * quitte. Signalée, elle entrerait dans l'adresse avant que la carte ait bougé : après le précédent, l'adresse où
 	 * l'on revient prendrait un instant la vue de la fiche qu'on quitte, ou la perdrait. Le déplacement demandé
-	 * signale la sienne en finissant ; `parDefaut` : elle n'entrera pas dans l'adresse.
+	 * signale la sienne en finissant ; `parDefaut` : elle n'entrera pas dans l'adresse. Un tour de molette juste
+	 * avant n'en fait pas un geste du visiteur.
 	 */
 	function preparer(m: MlMap, parDefaut: boolean) {
+		molette = -Infinity;
 		muette = true;
 		try {
 			m.stop();
@@ -219,7 +223,6 @@
 				// MapLibre joint l'évènement du navigateur aux déplacements faits par le visiteur, pas aux vols demandés
 				// ni aux changements de taille. Il l'omet parfois pour la molette : un tour de molette juste avant compte.
 				let geste = false;
-				let molette = -Infinity;
 				container.addEventListener('wheel', () => (molette = performance.now()), { capture: true, passive: true });
 				m.on('movestart', (e) => (geste = !!e.originalEvent || performance.now() - molette < 500));
 				m.on('moveend', (e) => emitView(geste || !!e.originalEvent));

@@ -51,6 +51,45 @@ async function chercherCommune(page: Page, nom: string) {
 	).toBeVisible();
 }
 
+test.describe('sur bureau', { tag: '@bureau' }, () => {
+	test('un clic sur l’hôtel de ville juste après un tour de molette n’écrit pas le cadrage de la commune', async ({
+		page
+	}) => {
+		// La carte part centrée sur l'hôtel de ville d'Aclens : son marqueur est au centre (voir carte.e2e.ts).
+		await arriver(page, `/?vue=${VUE}`);
+		const carte = page.locator('#carte');
+		const titre = page.getByRole('heading', { name: 'Aclens', level: 2 });
+		// La carte compte comme geste de la personne un déplacement qui commence moins d'une demi-seconde après un tour
+		// de molette (MapLibre ne joint pas toujours l'évènement à son zoom). Le tour, ici, est de ceux que la carte ne
+		// suit pas, comme la fin de l'inertie d'un pavé tactile : il arrive sur le conteneur de la carte, que la carte
+		// écoute, et pas sur son canevas, que MapLibre écoute. Il tombe pendant l'ouverture de la fiche, quand elle
+		// entre dans l'historique, juste avant que la carte cadre la commune : depuis le scénario, il arriverait trop
+		// tard, la page étant lente à dessiner sans carte graphique.
+		await page.evaluate(() => {
+			const pousser = history.pushState.bind(history);
+			history.pushState = (...args: Parameters<History['pushState']>) => {
+				const conteneur = document.querySelector('#carte .maplibregl-canvas-container')?.parentElement;
+				conteneur?.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true }));
+				return pousser(...args);
+			};
+		});
+		// On recommence tant que les marqueurs ne sont pas dessinés.
+		await expect(async () => {
+			const b = (await carte.boundingBox())!;
+			await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+			await expect(titre).toBeVisible({ timeout: 1000 });
+		}).toPass();
+		await page.waitForTimeout(1500);
+		await expect(page).toHaveURL('/commune/aclens');
+		// La vue que la carte a prise pour celle de la personne n'entre dans l'adresse qu'à sa prochaine écriture : un
+		// autre onglet de la fiche.
+		await page.getByRole('tab').nth(1).click();
+		await expect(page).toHaveURL(/\/commune\/aclens\?onglet=/);
+		await page.waitForTimeout(500);
+		await expect(page).not.toHaveURL(/vue=/);
+	});
+});
+
 for (const reducedMotion of ['reduce', 'no-preference'] as const)
 	test.describe(reducedMotion === 'reduce' ? 'sans animation' : 'avec animation', () => {
 		test.use({ reducedMotion });
