@@ -1,7 +1,8 @@
 """Un passage du cron, lancé contre un dossier temporaire qui tient lieu de clone du dépôt de données.
 
 C'est le seul point de test du cron (spec de J0, « Décisions de test ») : le transport HTTP et l'horloge sont
-factices, et on observe ce que le passage écrit dans le clone. Le commit et le push restent en dehors.
+factices, et on observe ce que le passage écrit dans le clone. Le commit et le push sont testés à part, contre un
+dépôt nu local (`test_cron_git.py`).
 """
 
 import json
@@ -102,6 +103,19 @@ class IssuesFactices:
 
     def import_retour(self, conseil, dernier):
         self.signalements.append(("import_retour", conseil.id, dernier.isoformat()))
+
+    def retraits_signales(self):
+        return None
+
+    def retraits_sans_effet(self, constat):
+        elements = [r.element for r in constat.sans_effet]
+        self.signalements.append(("retraits_sans_effet", elements, len(constat.non_verifies)))
+
+    def liste_retraits(self, constat):
+        self.retraits_sans_effet(constat)
+
+    def retraits_en_effet(self):
+        self.signalements.append(("retraits_en_effet",))
 
 
 def _sans_attente(secondes):
@@ -379,8 +393,22 @@ def test_un_passage_sonde_les_trois_conseils_de_sources_json_et_les_donne_dispon
         assert requete.url.params["client"] == "vigie-vaud"
         return httpx.Response(200, json=reponses[requete.url.path.split("/")[2]])
 
+    adresses = {}
+
+    def resoudre(hote):
+        """Résolution factice, sans DNS : chaque site communal a son propre réseau /24."""
+        return adresses.setdefault(hote, f"10.0.{len(adresses)}.1")
+
     with httpx.Client(transport=httpx.MockTransport(traiter)) as client:
-        passage(tmp_path, sources, client, horloge=lambda: T0, issues=IssuesFactices(), attendre=_sans_attente)
+        passage(
+            tmp_path,
+            sources,
+            client,
+            horloge=lambda: T0,
+            issues=IssuesFactices(),
+            attendre=_sans_attente,
+            resoudre=resoudre,
+        )
 
     etat = json.loads((tmp_path / "etat-sources.json").read_text())
     conseils = {id: e for id, e in etat["sources"].items() if id.startswith("openparldata-")}

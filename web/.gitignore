@@ -8,6 +8,10 @@ node_modules
 /.svelte-kit
 /build
 
+# Playwright (pnpm test:e2e) : rapports et traces des échecs
+/test-results
+/playwright-report
+
 # OS
 .DS_Store
 Thumbs.db

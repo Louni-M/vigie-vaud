@@ -12,6 +12,7 @@ import httpx
 import jsonschema
 import pytest
 
+from cas_partages import cas_partages
 from conseils import OpenParlData, cle_objet, importer_conseils
 from schema import DOSSIER_SCHEMA, FichierSources
 from faux_openparldata import (
@@ -243,21 +244,10 @@ def test_un_numero_a_espaces_donne_une_cle_sans_espace(tmp_path):
     assert _lire(tmp_path, "conseils/vd/seances/2026-10-06.json")["ordre_du_jour"][-1]["objet"] == "vd/V_1.9.2026"
 
 
-# Les mêmes cas que `cleObjet` du site (`web/src/lib/couches/conseils/numeros.test.ts`), qui ouvre un Objet par la
-# clé que le cron a donnée à son fichier : un cas ajouté d'un côté s'ajoute de l'autre.
+# Les cas de `cas-partages/cle-objet.json`, que lit aussi `cleObjet` du site : il ouvre un Objet par la clé que le
+# cron a donnée à son fichier.
 @pytest.mark.parametrize(
-    ("conseil", "numero", "cle"),
-    [
-        ("vd", "26_INT_140", "vd/26_INT_140"),
-        ("vd", "8_LEG_124", "vd/8_LEG_124"),
-        ("vd", "V 1.9.2026", "vd/V_1.9.2026"),
-        ("vd", "  21_POS_3 ", "vd/21_POS_3"),
-        ("5586", "POS25/115", "5586/POS25-115"),
-        ("5586", "INT26/056", "5586/INT26-056"),
-        ("5586", "PR 25/3/bis", "5586/PR_25-3-bis"),
-        ("5586", "INT \t 26/056", "5586/INT_26-056"),
-        ("5586", "INT 26/056", "5586/INT_26-056"),
-    ],
+    ("conseil", "numero", "cle"), [(c["conseil"], c["numero"], c["cle"]) for c in cas_partages("cle-objet")]
 )
 def test_la_cle_d_un_objet_est_celle_que_le_site_calcule(conseil, numero, cle):
     assert cle_objet(conseil, numero) == cle
@@ -380,7 +370,7 @@ def test_un_objet_modifie_seul_son_fichier_est_reecrit_et_rien_n_est_supprime(tm
     assert _lire(tmp_path, "conseils/vd/objets/26_INT_140.json")["numero"] == "26_INT_140"
 
 
-def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path):
+def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path, capsys):
     horloge = HorlogeFactice(T0)
     monde = _monde(horloge)
     _passer(tmp_path, monde, horloge)
@@ -402,6 +392,9 @@ def test_un_conseil_en_echec_garde_sa_date_et_n_empeche_pas_les_autres(tmp_path)
     }
     assert (tmp_path / "conseils/5586/seances/2026-10-13.json").exists()
     assert not (tmp_path / "conseils/vd/objets/26_MOT_20.json").exists()
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil VD (OpenParlData) (HTTPStatusError" in journal
+    assert "Traceback" not in journal  # une erreur HTTP garde sa ligne courte
 
 
 def test_une_erreur_imprevue_d_un_conseil_n_empeche_pas_d_ecrire_les_autres(tmp_path, capsys):
@@ -429,7 +422,9 @@ def test_une_erreur_imprevue_d_un_conseil_n_empeche_pas_d_ecrire_les_autres(tmp_
         "5938": "2026-10-17T07:05:00Z",
     }
     assert (tmp_path / "conseils/5586/seances/2026-10-13.json").exists()
-    assert "Import en échec : Conseil VD (OpenParlData)" in capsys.readouterr().err
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil VD (OpenParlData)" in journal
+    assert "Traceback (most recent call last)" in journal  # une erreur imprévue montre où chercher
 
 
 def _schema_du_fichier(chemin):

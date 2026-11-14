@@ -1,5 +1,6 @@
 // État des sources (`etat-sources.json`), écrit par le cron dans le dépôt de données et lu par le navigateur au
 // chargement, depuis les Pages de ce dépôt. On n'y valide rien au-delà de `version` : le cron valide à l'écriture.
+import { contenuVersionne, lireJsonVersionne } from './chargement.js';
 import { DEPOT_DONNEES, DONNEES } from './config.js';
 import type { FichePlateforme } from './couverture.js';
 import type { EtatSources, Plateforme, Source } from './schema.js';
@@ -9,23 +10,15 @@ import { PLATEFORMES, nomDePlateforme } from './sources.js';
 export const VERSION_ETAT = 1;
 
 /** L'état des sources lu, ou `null` (état « inconnu ») si ce n'est pas un objet de la version connue. */
-export function lireEtatSources(json: unknown): EtatSources | null {
-	const objet = json as Partial<EtatSources> | null;
-	return typeof objet === 'object' && objet !== null && objet.version === VERSION_ETAT ? (objet as EtatSources) : null;
-}
+export const lireEtatSources = (json: unknown): EtatSources | null => contenuVersionne(json, VERSION_ETAT);
 
 /**
- * Charge l'état des sources à l'adresse de base `donnees`. Absent, injoignable, illisible ou d'une version
- * inconnue, il vaut `null` : la Couverture dit alors l'état « inconnu », sans jamais lever d'erreur.
+ * Charge l'état des sources à l'adresse de base `donnees`. Rejette s'il est absent, injoignable, trop lent, illisible
+ * ou d'une version inconnue : `couverture-courante` le relit alors plus tard, et la Couverture dit l'état « inconnu »
+ * en attendant.
  */
-export async function chargerEtatSources(f: typeof fetch, donnees: string = DONNEES): Promise<EtatSources | null> {
-	try {
-		const reponse = await f(`${donnees}/etat-sources.json`, { cache: 'no-cache' });
-		return reponse.ok ? lireEtatSources(await reponse.json()) : null;
-	} catch {
-		return null;
-	}
-}
+export const chargerEtatSources = (f: typeof fetch, donnees: string = DONNEES): Promise<EtatSources> =>
+	lireJsonVersionne<EtatSources>(f, `${donnees}/etat-sources.json`, VERSION_ETAT, { init: { cache: 'no-cache' } });
 
 /** Recherche des issues `panne-source` ouvertes du dépôt de données qui portent ce titre. */
 function rechercherPannes(titre: string): string {

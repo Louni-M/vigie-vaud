@@ -41,6 +41,7 @@ import json
 import re
 import sys
 import time
+import traceback
 import unicodedata
 from collections.abc import Callable, Collection, Iterable, Mapping
 from datetime import UTC, date, datetime, timedelta
@@ -53,7 +54,7 @@ from pydantic import ValidationError
 from bruts import Bruts
 from lecture_conseils import MOTIFS_LECTURE, lecture
 from masquage import TYPES_SANS_AUTEUR, elus_connus, est_point_de_grace, masquer
-from retraits import appliquer_retraits, lire_retraits
+from retraits import appliquer_retraits, cle_des_retraits, lire_retraits
 from rattachement import (
     COMMUNES_JSON,
     Repertoire,
@@ -63,7 +64,7 @@ from rattachement import (
     porte_sur_le_canton,
     rattacher_objet,
 )
-from robot_communal import Robot, robot_des_sources
+from robot_communal import PageNonLue, Robot, robot_des_sources
 from schema import (
     FUSEAU,
     RACINE,
@@ -90,6 +91,12 @@ _CONFIG = json.loads((RACINE / "config.json").read_text())
 USER_AGENT = f"VigieVaud-import (+{_CONFIG['depot']}; {_CONFIG['courriel']})"
 INTERVALLE = 1.0  # secondes, au moins, entre deux requêtes
 TAILLE_PAGE = 200
+# Les échecs prévus d'un conseil, que le journal du passage dit en une ligne : une erreur HTTP d'OpenParlData, une
+# page du site non lue, une valeur invalide levée exprès par un lecteur (`ValueError` de ce type exact : réponse sans
+# `data`, relation tronquée, liste illisible). Toute autre exception est un bogue, et le journal en montre la trace
+# d'appel, y compris les sous-classes de `ValueError` (`pydantic.ValidationError`, `json.JSONDecodeError`,
+# `UnicodeDecodeError`) qu'aucun lecteur ne lève exprès.
+ECHECS_PREVUS = (httpx.HTTPError, PageNonLue)
 # Plafond de chaque relation développée (`expand`) : au-delà, l'import du conseil échoue plutôt que de tronquer.
 TAILLE_RELATION = 1000
 RECOUVREMENT = timedelta(days=1)
@@ -633,6 +640,11 @@ def lire_rattrapages(depot: Path) -> dict[str, datetime]:
     return dict(lu.rattrapages) if lu else {}
 
 
+def _echec_prevu(e: Exception) -> bool:
+    """Vrai si `e` est un échec prévu d'un conseil (ligne courte au journal), faux si c'est un bogue (trace)."""
+    return isinstance(e, ECHECS_PREVUS) or type(e) is ValueError
+
+
 def importer_conseils(
     depot: Path,
     sources: FichierSources,
@@ -655,13 +667,16 @@ def importer_conseils(
     Le commit et le push sont l'affaire de l'appelant.
 
     Le rattachement par le nom lit `communes` (`communes.json` du site) et `corrections.json` du dépôt ; les
-    retraits de `retraits.json` (ADR 0007) sont réappliqués à toute l'archive après les imports. Un
-    `corrections.json` ou un `retraits.json` invalide lève `pydantic.ValidationError` avant tout import."""
+    retraits de `retraits.json` (ADR 0007) sont réappliqués à toute l'archive après les imports, avec la clé des
+    empreintes de `RETRAITS_CLE` (sans elle, un retrait à empreinte vaut pour le point de son rang). Un
+    `corrections.json` ou un `retraits.json` invalide lève `pydantic.ValidationError`, et une `RETRAITS_CLE` trop
+    courte `ValueError`, avant tout import."""
     genere = horloge().astimezone(UTC).replace(microsecond=0)
     jour = genere.astimezone(FUSEAU).date()
     repertoire = Repertoire.lire(communes)
     corrections = lire_corrections(depot)
     retraits = lire_retraits(depot)
+    cle_retraits = cle_des_retraits()
     imports = lire_imports(depot)
     premiers = lire_premiers_imports(depot)
     rattrapages = lire_rattrapages(depot)
@@ -686,9 +701,12 @@ def importer_conseils(
             connus = lire_membres(depot, cle) if source.site is not None else []
             elements = vers_archive(bruts, archive, genere, repertoire, corrections, connus)
         except Exception as e:
-            # Toute erreur, prévue (HTTP, relation tronquée) ou non (réponse d'une forme inattendue), ne vaut
-            # qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
+            # Toute erreur, prévue (HTTP, page non lue, relation tronquée) ou non (réponse d'une forme inattendue,
+            # bogue d'un lecteur), ne vaut qu'un échec de ce conseil : les conseils réussis sont tout de même écrits.
+            # Une erreur imprévue montre en plus sa trace d'appel, pour que le journal du passage dise où chercher.
             print(f"Import en échec : {source.nom} ({type(e).__name__} : {e})", file=sys.stderr)
+            if not _echec_prevu(e):
+                traceback.print_exc()
             continue
         nouveaux |= elements
         archive = {**archive, **elements}
@@ -706,7 +724,7 @@ def importer_conseils(
 
     # Les retraits passent après le masquage, sur toute l'archive : un élément relu avec son texte d'origine
     # reprend le texte corrigé, et un retrait nouveau vaut dès ce passage.
-    retires = appliquer_retraits(archive, retraits)
+    retires = appliquer_retraits(archive, retraits, cle_retraits)
     nouveaux |= retires
     archive = {**archive, **retires}
 

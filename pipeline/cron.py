@@ -3,7 +3,9 @@
 Le passage relit `sources.json` et l'état précédent dans un clone du dépôt de données, sonde chaque source qui a
 un bloc `sonde` et le site de chaque commune due (`sonde_sites.py`, par le robot communal), écrit
 `etat-sources.json`, copie `schema/`, importe les conseils dus (`conseils.py` : OpenParlData, et les sites des
-communes par le robot communal), puis committe (l'historique sert d'archive) et pousse. Il ouvre l'issue
+communes par le robot communal). Il committe (l'historique sert d'archive) et pousse après chaque phase : les
+sondes, puis l'import d'OpenParlData, puis celui des sites des communes ; un passage arrêté au délai du job ne perd
+que la phase en cours, et une phase qui n'a rien changé ne committe rien. Il ouvre l'issue
 `panne-source` d'une source en panne et ferme celle d'une source disponible, dans le dépôt de données ; pour les
 communes scrapées, l'issue est celle de leur plateforme (« Panne : i-web »), avec la liste des communes en panne,
 ouverte avec la première et fermée au retour de la dernière. Une erreur de l'API des issues ne fait pas échouer le
@@ -33,7 +35,8 @@ d'une commune scrapée et rouvre toutes les pages de son site ou de ceux de la p
 6 mois et sans plafond de requêtes, au même débit, sans toucher à OpenParlData ni aux autres communes ; il note
 l'heure de chaque rattrapage dans `conseils/import.json` (`rattrapages`). En production, le workflow réutilisable
 `.github/workflows/cron.yml` lance la même commande sans `--sans-push`, avec le `GITHUB_TOKEN` et le
-`GITHUB_REPOSITORY` du dépôt de données dans l'environnement, puis publie le dépôt sur Pages ; un lancement manuel
+`GITHUB_REPOSITORY` du dépôt de données dans l'environnement, et son secret `RETRAITS_CLE` (la clé des empreintes des
+retraits, ADR 0007 ; sans elle, l'issue `retrait-sans-effet` le dit), puis publie le dépôt sur Pages ; un lancement manuel
 (`workflow_dispatch`) y ajoute `--rattrapage` avec l'entrée `rattrapage`, ou `--rattrapage-cible` avec l'entrée
 `rattrapage_cible`.
 """
@@ -61,6 +64,7 @@ import httpx
 from pydantic import ValidationError
 
 from conseils import OpenParlData, importer_conseils, lire_imports, lire_premiers_imports
+from retraits import FICHIER_RETRAITS, ConstatRetraits, cible_affichee, cle_des_retraits, constat_des_retraits
 from robot_communal import Alternance, CrawlDelayTropLong, Robot, alterner, erreur_tls, robot_des_sources
 from schema import (
     DOSSIER_SCHEMA,
@@ -102,8 +106,8 @@ Touchee = tuple[Source, str]
 
 
 class ClientIssues(Protocol):
-    """Les issues `panne-source`, `import-conseils` et `a-verifier` du dépôt de données : `IssuesGitHub` en
-    production, `IssuesAffichees` sans push. Une erreur de l'API lève `httpx.HTTPError`."""
+    """Les issues `panne-source`, `import-conseils`, `a-verifier` et `retrait-sans-effet` du dépôt de données :
+    `IssuesGitHub` en production, `IssuesAffichees` sans push. Une erreur de l'API lève `httpx.HTTPError`."""
 
     def signalees(self, sources: list[Source]) -> set[str] | None:
         """Identifiants des `sources` qui ont une issue `panne-source` ouverte, ou `None` pour un client qui ne voit
@@ -147,6 +151,20 @@ class ClientIssues(Protocol):
     def import_retour(self, conseil: Source, dernier: datetime) -> None:
         """Le conseil qui a une issue ouverte a de nouveau été importé, à `dernier`."""
 
+    def retraits_signales(self) -> set[str] | None:
+        """Ce que liste l'issue `retrait-sans-effet` ouverte (`identifiants_retraits`), un ensemble vide sans issue
+        ouverte, ou `None` pour un client qui ne voit pas les issues : le passage lui signale alors le constat à
+        chaque passage."""
+
+    def retraits_sans_effet(self, constat: ConstatRetraits) -> None:
+        """Des retraits sont sans effet ou non vérifiés, sans issue ouverte."""
+
+    def liste_retraits(self, constat: ConstatRetraits) -> None:
+        """L'issue ouverte liste d'autres retraits que `constat` : la liste change."""
+
+    def retraits_en_effet(self) -> None:
+        """Chaque retrait de l'issue ouverte a de nouveau effet."""
+
 
 class IssuesAffichees:
     """Client d'issues du mode local : il affiche ce qu'il signalerait, sans rien ouvrir."""
@@ -183,6 +201,18 @@ class IssuesAffichees:
 
     def import_retour(self, conseil: Source, dernier: datetime) -> None:
         print(f"Import de retour : {conseil.nom} (importé {dernier:%Y-%m-%d %H:%M}Z)")
+
+    def retraits_signales(self) -> None:
+        return None
+
+    def retraits_sans_effet(self, constat: ConstatRetraits) -> None:
+        print(commentaire_retraits(constat))
+
+    def liste_retraits(self, constat: ConstatRetraits) -> None:
+        self.retraits_sans_effet(constat)
+
+    def retraits_en_effet(self) -> None:
+        print(RETRAITS_EN_EFFET)
 
 
 ETIQUETTE_PANNE = "panne-source"
@@ -313,6 +343,23 @@ class IssuesGitHub:
         commentaire = f"{conseil.nom} est de nouveau importé : import réussi le {dernier:%Y-%m-%d à %H:%M} UTC."
         self._fermer(ETIQUETTE_IMPORT, titre_import(conseil), commentaire)
 
+    def retraits_signales(self) -> set[str]:
+        ouvertes = [i for i in self._issues_ouvertes(ETIQUETTE_RETRAITS) if i["title"] == TITRE_RETRAITS]
+        return set().union(*(_retraits_listes(i.get("body") or "") for i in ouvertes))
+
+    def retraits_sans_effet(self, constat: ConstatRetraits) -> None:
+        corps = {"title": TITRE_RETRAITS, "body": corps_retraits(constat), "labels": [ETIQUETTE_RETRAITS]}
+        self._requete("POST", self._api, json=corps)
+
+    def liste_retraits(self, constat: ConstatRetraits) -> None:
+        ouvertes = [i["number"] for i in self._issues_ouvertes(ETIQUETTE_RETRAITS) if i["title"] == TITRE_RETRAITS]
+        for numero in ouvertes:
+            self._requete("PATCH", f"{self._api}/{numero}", json={"body": corps_retraits(constat)})
+            self._requete("POST", f"{self._api}/{numero}/comments", json={"body": commentaire_retraits(constat)})
+
+    def retraits_en_effet(self) -> None:
+        self._fermer(ETIQUETTE_RETRAITS, TITRE_RETRAITS, RETRAITS_EN_EFFET)
+
     def _fermer(self, etiquette: str, titre: str, commentaire: str) -> None:
         """Commente puis ferme les issues ouvertes `etiquette` de ce titre."""
         for numero in [i["number"] for i in self._issues_ouvertes(etiquette) if i["title"] == titre]:
@@ -375,6 +422,73 @@ def corps_plateforme(sorte: SorteIssue, plateforme: Plateforme, communes: list[T
     )
 
 
+# --- Issue `retrait-sans-effet` (ADR 0007) : la clé de l'élément et la cible de chaque retrait, jamais un texte ---
+
+ETIQUETTE_RETRAITS = "retrait-sans-effet"
+TITRE_RETRAITS = "Retraits sans effet"
+RETRAITS_EN_EFFET = "Chaque retrait de `retraits.json` a de nouveau effet."
+_CLE_ABSENTE = "cle-absente"
+_RETRAITS_LISTES = re.compile(r"<!-- retraits : ([^>]*) -->")
+
+
+def _retraits_listes(corps: str) -> set[str]:
+    m = _RETRAITS_LISTES.search(corps)
+    return set(m[1].split()) if m else set()
+
+
+def identifiants_retraits(constat: ConstatRetraits) -> set[str]:
+    """Ce que l'issue liste, pour que le passage suivant la compare au constat : `<élément>|<cible>` de chaque
+    retrait sans effet, et `cle-absente` s'il y a des retraits non vérifiés."""
+    ids = {f"{r.element}|{cible_affichee(r)}" for r in constat.sans_effet}
+    return ids | ({_CLE_ABSENTE} if constat.non_verifies else set())
+
+
+def _liste_retraits(constat: ConstatRetraits) -> list[str]:
+    return list(dict.fromkeys(f"`{r.element}` : `{cible_affichee(r)}`" for r in constat.sans_effet))
+
+
+def _phrase_cle_absente(constat: ConstatRetraits) -> str:
+    n = len(constat.non_verifies)
+    return (
+        f"`RETRAITS_CLE` absente : {n} retrait{'s' if n > 1 else ''} à empreinte "
+        f"{'sont corrigés' if n > 1 else 'est corrigé'} au point de {'leur' if n > 1 else 'son'} rang, sans "
+        "vérification ; un point inséré par la source décale la correction et le nom retiré revient. Donner le secret "
+        "`RETRAITS_CLE` du dépôt de données au workflow du cron (ADR 0007)."
+    )
+
+
+def commentaire_retraits(constat: ConstatRetraits) -> str:
+    """Une ligne : les retraits sans effet, et la clé absente s'il y a lieu."""
+    phrases = []
+    if constat.sans_effet:
+        phrases.append(f"{TITRE_RETRAITS} : {', '.join(_liste_retraits(constat))}.")
+    if constat.non_verifies:
+        phrases.append(_phrase_cle_absente(constat))
+    return " ".join(phrases)
+
+
+def corps_retraits(constat: ConstatRetraits) -> str:
+    """Le corps de l'issue : les retraits sans effet, la clé absente s'il y a lieu, la suite, puis les identifiants
+    pour le passage suivant. Ni le texte corrigé ni le lien d'un document : seulement la clé et la cible."""
+    parties = []
+    if constat.sans_effet:
+        lignes = "\n".join(f"- {ligne}" for ligne in _liste_retraits(constat))
+        parties.append(
+            "Ces retraits de `retraits.json` sont sans effet : leur cible est introuvable dans l'élément de l'archive, "
+            "ou aucun point n'a plus l'empreinte du titre d'origine (la source l'a changé). Le nom retiré peut être "
+            f"revenu.\n\n{lignes}"
+        )
+    if constat.non_verifies:
+        parties.append(_phrase_cle_absente(constat))
+    parties.append(
+        "Marche à suivre : `docs/retrait.md` du dépôt principal (vérifier l'élément, recalculer l'empreinte ou le "
+        "rang). Le cron tient cette issue à jour à chaque passage et la fermera quand chaque retrait aura de nouveau "
+        "effet."
+    )
+    parties.append(f"<!-- retraits : {' '.join(sorted(identifiants_retraits(constat)))} -->")
+    return "\n\n".join(parties)
+
+
 def titre_import(conseil: Source) -> str:
     return f"Import en échec : {conseil.nom}"
 
@@ -398,6 +512,7 @@ def passage(
     resoudre: Callable[[str], str] = socket.gethostbyname,
     rattrapage_cible: str | None = None,
     alternance: Alternance = alterner,
+    fin_de_phase: Callable[[str], None] = lambda message: None,
 ) -> EtatSources:
     """Sonde chaque source qui a un bloc `sonde` et le site de chaque commune due (`sonder_les_sites`), puis écrit
     `etat-sources.json` et copie `schema/` dans `depot`, un clone du dépôt de données. L'état précédent est relu
@@ -410,8 +525,13 @@ def passage(
     `PLAFOND` requêtes hors rattrapage ciblé, et reçoit puis rend les réseaux bloqués, gardés dans `etat-sources.json`
     (`reseaux`) pour que le passage suivant les teste d'abord. Les sondes, puis les lectures des sites, se font un
     fil par réseau /24 (`alternance`, que reçoit le robot) : un réseau lit pendant que les autres attendent leurs
-    5 s ; leurs résultats sont appliqués dans l'ordre de `sources.json`. Le commit et le push sont l'affaire de
-    l'appelant.
+    5 s ; leurs résultats sont appliqués dans l'ordre de `sources.json`.
+
+    Le passage appelle `fin_de_phase` avec un message de commit (« Passage du cron du 2026-11-13 06:17Z : sondes »)
+    à la fin de chaque phase : les sondes (l'état écrit et le schéma copié), puis l'import des conseils
+    d'OpenParlData, puis celui des sites des communes, puis, s'il y a lieu, l'écriture des réseaux bloqués pendant
+    l'import. `main` y committe et pousse ce que la phase a écrit (`publier`), pour qu'un dépassement du délai du job
+    ne perde que la phase en cours ; par défaut, rien n'est committé.
 
     Un `rattrapage` relit tout l'historique des conseils d'OpenParlData, à toute heure, sans toucher aux sites des
     communes. Un `rattrapage_cible` (une plateforme ou le n° OFS d'une commune scrapée, lancé à la main) relit tout
@@ -450,6 +570,11 @@ def passage(
     shutil.rmtree(depot / "schema", ignore_errors=True)
     shutil.copytree(DOSSIER_SCHEMA, depot / "schema")
 
+    def message(phase: str) -> str:
+        return f"Passage du cron du {genere:%Y-%m-%d %H:%M}Z : {phase}"
+
+    fin_de_phase(message("sondes"))
+
     try:
         sondees = [s for s in sources.sources if s.sonde is not None and s.id in etats]
         _accorder_issues(issues, sondees, precedent, etats)
@@ -458,11 +583,14 @@ def passage(
         print(f"Issues panne-source non mises à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
 
     opd = OpenParlData(client, horloge, attendre)
-    importer_les_conseils(depot, sources, opd, robot, horloge, issues, rattrapes, sautes)
+    importer_les_conseils(
+        depot, sources, opd, robot, horloge, issues, rattrapes, sautes, lambda phase: fin_de_phase(message(phase))
+    )
     if robot.reseaux_bloques() != etat.reseaux:
         # Un réseau bloqué pendant l'import : le passage suivant doit le savoir pour le tester d'abord.
         etat = etat.model_copy(update={"reseaux": robot.reseaux_bloques()})
         (depot / FICHIER_ETAT).write_text(etat.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        fin_de_phase(message("réseaux bloqués"))
     return etat
 
 
@@ -766,8 +894,11 @@ def importer_les_conseils(
     issues: ClientIssues,
     rattrapes: Collection[str] | None = None,
     sautes: Mapping[str, str] | None = None,
+    fin_de_phase: Callable[[str], None] = lambda phase: None,
 ) -> None:
-    """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique), puis, hors
+    """Importe les conseils dus (pour un rattrapage, ceux de `rattrapes`, depuis tout l'historique) en deux phases,
+    chacune suivie de `fin_de_phase`, appelé avec le nom de la phase : ceux d'OpenParlData, puis ceux des sites des communes, lus ensemble, un fil par
+    réseau (les séparer par plateforme ferait attendre l'un après l'autre des réseaux qui lisent en même temps). Hors
     rattrapage, accorde les issues `import-conseils` et `a-verifier` aux dates d'import. `sautes` donne, par clé, les conseils dont le site n'est pas lu
     à ce passage et pourquoi (sonde en échec, `Crawl-delay` trop long) : leur import du jour est sauté, ce qui vaut un
     import en échec ordinaire. Seules les sondes
@@ -785,23 +916,34 @@ def importer_les_conseils(
             print(f"Import sauté : {conseil.nom} ({sautes[conseil.conseil.cle]})", file=sys.stderr)
     dus -= sautes.keys()
     apres = avant
-    if dus:
+    phases = {
+        "conseils d'OpenParlData": {s.conseil.cle for s in conseils if s.site is None} & dus,
+        "sites des communes": {s.conseil.cle for s in conseils if s.site is not None} & dus,
+    }
+    for phase, dus_de_la_phase in phases.items():
+        if not dus_de_la_phase:
+            continue
         try:
             apres = importer_conseils(
                 depot,
                 sources,
                 opd,
                 horloge,
-                dus=dus,
+                dus=dus_de_la_phase,
                 rattrapage=rattrapes is not None,
                 robot=robot,
             ).conseils
         except Exception:
-            # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus : l'état des
-            # sources est tout de même publié, et l'issue `import-conseils` s'ouvrira au-delà de 24 h.
-            print("Import des conseils en échec, le passage suivant réessaiera :", file=sys.stderr)
+            # Une erreur imprévue (archive illisible, bogue) vaut un échec de tous les conseils dus de la phase :
+            # l'état des sources est tout de même publié, et l'issue `import-conseils` s'ouvrira au-delà de 24 h.
+            print(f"Import des conseils en échec ({phase}), le passage suivant réessaiera :", file=sys.stderr)
             traceback.print_exc()
+        fin_de_phase(phase)
 
+    try:
+        _accorder_issue_retraits(issues, depot)
+    except httpx.HTTPError as e:
+        print(f"Issue retrait-sans-effet non mise à jour, le passage suivant réessaiera : {e}", file=sys.stderr)
     if rattrapes is not None:
         # Un rattrapage ne lit que les conseils visés : les autres, qu'il ne tente pas, n'y sont pas en échec. Le
         # passage ordinaire suivant accorde les issues.
@@ -839,6 +981,31 @@ def _accorder_issues_a_verifier(issues: ClientIssues, depot: Path, sources: Fich
             if premier <= seuil:
                 touchees[site.id] = f"aucune Séance depuis le premier import, le {premier:%Y-%m-%d}"
     _accorder_issues_plateformes(issues, A_VERIFIER, sources, touchees, ())
+
+
+def _accorder_issue_retraits(issues: ClientIssues, depot: Path) -> None:
+    """L'issue `retrait-sans-effet` : ouverte au premier retrait sans effet (ou non vérifié faute de `RETRAITS_CLE`),
+    complétée quand la liste change, fermée quand chaque retrait a de nouveau effet. Le constat porte sur l'archive
+    écrite, à chaque passage : un retrait n'est appliqué qu'à l'import, mais l'archive ne change qu'avec lui. Sans
+    `retraits.json`, rien à faire ; un `retraits.json` illisible fait déjà échouer l'import, qui le dit."""
+    if not (depot / FICHIER_RETRAITS).is_file():
+        return
+    try:
+        constat = constat_des_retraits(depot, cle_des_retraits())
+    except ValueError as e:  # `ValidationError` compris ; son message citerait le texte corrigé
+        print(f"Retraits non vérifiés : {type(e).__name__}", file=sys.stderr)
+        return
+    courants = identifiants_retraits(constat)
+    signales = issues.retraits_signales()
+    if signales is None:
+        if courants:
+            issues.retraits_sans_effet(constat)
+    elif courants and not signales:
+        issues.retraits_sans_effet(constat)
+    elif courants and courants != signales:
+        issues.liste_retraits(constat)
+    elif signales and not courants:
+        issues.retraits_en_effet()
 
 
 DELAI_AVANT_ISSUE_IMPORT = timedelta(hours=24)
@@ -884,19 +1051,32 @@ def _accorder_issues_import(
             issues.import_retour(conseil, dernier)
 
 
-# --- Commit et push (hors du point de test : l'option sans push sert de vérification locale) -------------------
+# --- Commit et push (testés contre un dépôt nu local : `tests/test_cron_git.py`) --------------------------------
 
 NOUVEAUX_ESSAIS_PUSH = 2
+# Délai d'attente de chaque appel à git, en secondes : un git bloqué (réseau, verrou) fait échouer le passage avec
+# un message plutôt que d'attendre la fin du job.
+DELAI_GIT = 120
 
 
 def _git(depot: Path, *args: str, verifier: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(depot), *args], check=verifier, text=True)
+    try:
+        return subprocess.run(["git", "-C", str(depot), *args], check=verifier, text=True, timeout=DELAI_GIT)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(
+            f"git {args[0]} : sans réponse après {DELAI_GIT} s, le passage échoue ; "
+            "le suivant repartira de l'état relu."
+        ) from None
 
 
-def committer(depot: Path, etat: EtatSources) -> None:
+def committer(depot: Path, message: str) -> bool:
+    """Committe l'état, le schéma et les conseils sous `message` ; rien, et rend `False`, si rien n'a changé."""
     chemins = [FICHIER_ETAT, "schema"] + (["conseils"] if (depot / "conseils").is_dir() else [])
     _git(depot, "add", "--all", "--", *chemins)
-    _git(depot, "commit", "--quiet", "-m", f"Passage du cron du {etat.genere:%Y-%m-%d %H:%M}Z")
+    if _git(depot, "diff", "--cached", "--quiet", verifier=False).returncode == 0:
+        return False
+    _git(depot, "commit", "--quiet", "-m", message)
+    return True
 
 
 def pousser(depot: Path) -> None:
@@ -912,6 +1092,13 @@ def pousser(depot: Path) -> None:
             _git(depot, "rebase", "--abort", verifier=False)
             break
     raise SystemExit("Push refusé : le passage échoue, le suivant repartira de l'état relu.")
+
+
+def publier(depot: Path, message: str, pousse: bool = True) -> None:
+    """La fin d'une phase du passage (`passage(fin_de_phase=...)`) : committe ce qu'elle a écrit sous `message` et le
+    pousse (sauf si `pousse` est faux) ; une phase qui n'a rien changé ne committe ni ne pousse rien."""
+    if committer(depot, message) and pousse:
+        pousser(depot)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -946,15 +1133,12 @@ def main(argv: list[str] | None = None) -> None:
             issues,
             rattrapage=args.rattrapage,
             rattrapage_cible=args.rattrapage_cible or None,
+            fin_de_phase=lambda message: publier(depot, message, pousse=not args.sans_push),
         )
     for id_source, e in etat.sources.items():
         print(f"{id_source} : {e.etat}" + (f" ({e.motif}, {e.echecs_consecutifs} échec(s))" if e.motif else ""))
-
-    committer(depot, etat)
     if args.sans_push:
         print("Commit fait, sans push (--sans-push).")
-        return
-    pousser(depot)
 
 
 if __name__ == "__main__":

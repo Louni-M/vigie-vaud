@@ -25,15 +25,15 @@
 	import { fade, fly } from 'svelte/transition';
 	import { bulleEntree, bulleSortie } from '#lib/registre/bulle.js';
 	import { MediaQuery } from 'svelte/reactivity';
-	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { navigating, page } from '$app/state';
+	import { navigating } from '$app/state';
 	import Map, { CALQUE_REPERE } from '#lib/socle/Map.svelte';
 	import Recherche from '#lib/socle/Recherche.svelte';
 	import { COUCHES } from '#lib/registre/couches.js';
 	import { resultatsCouches } from '#lib/registre/recherche.js';
 	import { ancre } from '#lib/registre/recouvrement.js';
 	import { creerRegistre, fournirRegistre, FIL, type VueCarte } from '#lib/registre/registre.svelte.js';
+	import { navigateurSvelteKit } from '#lib/registre/navigateur.js';
 	import Fil from '#lib/fil/Fil.svelte';
 	import { creerChargementFil } from '#lib/fil/chargement.svelte.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
@@ -57,7 +57,7 @@
 
 	let { data, children }: LayoutProps = $props();
 
-	const registre = creerRegistre(COUCHES, () => data.communes);
+	const registre = creerRegistre(COUCHES, () => data.communes, navigateurSvelteKit());
 	/** Entrées du fil cantonal, lues à sa première ouverture et gardées pendant la visite. */
 	const fil = creerChargementFil(COUCHES);
 	let carte: ReturnType<typeof Map> | undefined = $state();
@@ -180,12 +180,10 @@
 	/* ---- Recherche plein écran (téléphone) ---- */
 
 	/**
-	 * Ouverte, elle a poussé une entrée d'historique (même adresse) : le retour arrière du téléphone la retire et
-	 * referme la Recherche, sans fermer l'aperçu ni quitter la page. On suit l'événement du navigateur plutôt que
-	 * `page.state` : la carte qui finit un déplacement réécrit l'adresse, et SvelteKit abandonne alors la mise à jour.
+	 * Ouverte, elle a son entrée d'historique, tenue par le registre (`registre.recherche`) : le retour arrière du
+	 * téléphone la retire et referme la Recherche, sans fermer l'aperçu ni quitter la page.
 	 */
-	let ouverte = $state(false);
-	const pleine = $derived(recherchePleine(telephone.current, affichage, ouverte));
+	const pleine = $derived(recherchePleine(telephone.current, affichage, registre.recherche));
 	let texteRecherche = $state('');
 	/** Texte du champ de la carte à l'ouverture, rendu par « Annuler » et le retour arrière. */
 	let texteAvant = '';
@@ -193,25 +191,18 @@
 	let fin: { fin: Exclude<FinRecherche, 'retour'>; resultat?: Resultat } | null = null;
 
 	function ouvrirRecherche() {
-		if (ouverte || !recherchePleine(telephone.current, affichage, true)) return;
+		if (registre.recherche || !recherchePleine(telephone.current, affichage, true)) return;
 		// La Recherche s'ouvre vide, sur « Autour de moi » et la ligne d'aide ; « Annuler » rend le texte du champ.
 		texteAvant = texteRecherche;
 		texteRecherche = '';
-		ouverte = true;
-		goto(`${location.pathname}${location.search}`, { shallow: true, state: page.state });
+		registre.ouvrirRecherche();
 	}
-
-	$effect(() => {
-		const retour = () => (ouverte = false);
-		addEventListener('popstate', retour);
-		return () => removeEventListener('popstate', retour);
-	});
 
 	/** « Annuler » ou un résultat choisi retirent l'entrée de la Recherche : elle se referme au retour. */
 	function quitterRecherche(f: NonNullable<typeof fin>) {
 		if (fin) return;
 		fin = f;
-		history.back();
+		registre.fermerRecherche();
 	}
 
 	let pleineAvant = false;
@@ -231,10 +222,7 @@
 		const f = fin;
 		fin = null;
 		// Refermée sans retour (téléphone tourné au-delà de 760 px de large) : son entrée est retirée.
-		if (ouverte) {
-			ouverte = false;
-			history.back();
-		}
+		registre.fermerRecherche();
 		texteRecherche = texteApresRecherche(f?.fin ?? 'retour', texteAvant, texteRecherche);
 		// SvelteKit lance la navigation du retour quelques instants après lui : on la laisse partir.
 		if (f?.resultat) setTimeout(() => (choisi = f.resultat!));
@@ -303,13 +291,18 @@
 			{#if registre.map}
 				<!-- Sous toutes les couches : le gris voile le fond, pas les éléments. -->
 				<Grisage map={registre.map} sous={ancre(COUCHES[0].id)} {grisees} />
-				{#each COUCHES as c (c.id)}
-					{#if registre.montee(c.id)}
-						{#await registre.composant(c, 'Carte') then module}
-							{#if module}<module.default ctx={registre.contexte(c)} />{/if}
-						{/await}
-					{/if}
-				{/each}
+				<!-- La carte d'une couche n'a pas de balisage : seuls s'y lisent les messages des couches dont le code n'a pas pu être chargé. -->
+				<div class="echecs-couches" aria-live="polite">
+					{#each COUCHES as c (c.id)}
+						{#if registre.montee(c.id)}
+							{#await registre.composant(c, 'Carte') then module}
+								{#if module}<module.default ctx={registre.contexte(c)} />{/if}
+							{:catch}
+								<p>La couche «&nbsp;{c.nom}&nbsp;» n’a pas pu s’afficher sur la carte. Rechargez la page.</p>
+							{/await}
+						{/if}
+					{/each}
+				</div>
 			{/if}
 
 			<div class="recherche" bind:this={recherche}>
@@ -480,6 +473,30 @@
 	/* Pendant la saisie, les résultats passent devant l'aperçu (téléphone). */
 	.recherche:focus-within {
 		z-index: 5;
+	}
+	/* Couches qui n'ont pas pu s'afficher : en bas de la carte, l'une sous l'autre, sans gêner les clics sur la carte. */
+	.echecs-couches {
+		position: absolute;
+		z-index: 3;
+		left: 10px;
+		right: 10px;
+		bottom: 40px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		pointer-events: none;
+	}
+	.echecs-couches p {
+		margin: 0;
+		max-width: 360px;
+		padding: 8px 12px;
+		border-radius: 10px;
+		background: var(--surface);
+		box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+		font-size: 14px;
+		color: var(--erreur);
+		pointer-events: auto;
 	}
 	.avis:empty {
 		display: none;

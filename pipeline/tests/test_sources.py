@@ -5,9 +5,10 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
 import pytest
+from cas_partages import cas_partages
 from pydantic import ValidationError
 
-from schema import Conseil, lire_sources, nom_du_conseil
+from schema import Conseil, lire_sources, niveau_de, nom_du_conseil
 
 RACINE = Path(__file__).resolve().parents[2]
 
@@ -327,18 +328,17 @@ def test_la_cle_et_la_commune_d_un_conseil_se_tirent_de_son_body_key(body_key, c
     assert (conseil.cle, conseil.commune) == (cle, commune)
 
 
-# Les mêmes cas que `nomDuConseil` du site (`web/src/lib/sources.test.ts`) : le nom de l'index est celui que le site
-# affiche ailleurs. Un cas ajouté d'un côté s'ajoute de l'autre.
-@pytest.mark.parametrize(
-    ("nom_source", "nom"),
-    [
-        ("Grand Conseil (OpenParlData)", "Grand Conseil"),
-        ("Conseil communal de Lausanne (OpenParlData)", "Conseil communal de Lausanne"),
-        ("Conseil communal d'Yverdon-les-Bains (OpenParlData)", "Conseil communal d’Yverdon-les-Bains"),
-        ("Conseil général de Nyon (OpenParlData, essai)", "Conseil général de Nyon"),
-        ("Conseil communal (CC) de Morges", "Conseil communal (CC) de Morges"),
-        ("Conseil communal de Pully", "Conseil communal de Pully"),
-    ],
-)
+# Les cas de `cas-partages/nom-du-conseil.json`, que lit aussi `nomDuConseil` du site : le nom de l'index est celui que
+# le site affiche ailleurs.
+@pytest.mark.parametrize(("nom_source", "nom"), [(c["nom_source"], c["nom"]) for c in cas_partages("nom-du-conseil")])
 def test_le_nom_d_un_conseil_est_celui_de_sa_source_sans_la_mention_finale_entre_parentheses(nom_source, nom):
     assert nom_du_conseil(nom_source) == nom
+
+
+# Les cas de `cas-partages/niveaux.json`, que lit aussi `niveauDe` du site : ce que donne un conseil, dans n'importe
+# quel ordre, est l'un des trois niveaux (`null` : aucun).
+@pytest.mark.parametrize(("donne", "attendu"), [(c["donne"], c["niveau"]) for c in cas_partages("niveaux")])
+def test_le_niveau_d_un_conseil_se_lit_dans_ce_qu_il_donne(donne, attendu):
+    niveau = niveau_de(donne)
+
+    assert (None if niveau is None else {"libelle": niveau.libelle, "objets": niveau.objets}) == attendu

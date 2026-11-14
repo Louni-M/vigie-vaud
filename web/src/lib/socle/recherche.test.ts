@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { ancienEtActuelle, avecAdresses, chercherCommunes, resultatsLocaux } from './recherche.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ancienEtActuelle, avecAdresses, chercherAdresses, chercherCommunes, resultatsLocaux } from './recherche.js';
+import { delaiDepasse } from '#lib/chargement.js';
+import { delaiExpire, sansReponse } from '#tests/sans-reponse.js';
 import { commune } from '#tests/faux-canton.js';
 import { COUCHES } from '#lib/registre/couches.js';
 import { resultatsCouches } from '#lib/registre/recherche.js';
@@ -83,5 +85,51 @@ describe('ordre des résultats de la recherche', () => {
 		const element: Resultat = { type: 'element', nomCouche: 'Permis', libelle: 'Dossier', couche: 'permis', element: '1' };
 		const locaux = resultatsLocaux([PULLY], 'pully', () => [element]);
 		expect(avecAdresses(locaux, [adresse('Pully'), adresse('Pully')]).map((r) => r.type)).toEqual(['commune', 'element']);
+	});
+});
+
+describe('adresses et lieux swisstopo', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	const reponse = (corps: unknown, status = 200) =>
+		new Response(typeof corps === 'string' ? corps : JSON.stringify(corps), { status });
+	const lieu = (origin: string, label: string, detail = '') => ({ attrs: { origin, label, detail, lon: 6.65, lat: 46.51 } });
+
+	it('demande les adresses, NPA et lieux de la saisie, et ne garde que ceux du canton', async () => {
+		const demandes: URL[] = [];
+		const f = async (url: RequestInfo | URL) => (
+			demandes.push(new URL(String(url))),
+			reponse({
+				results: [
+					lieu('address', 'Avenue de Lavaux 1 <b>1009 Pully</b>', 'avenue de lavaux 1 1009 pully 5590 pully ch vd'),
+					lieu('address', 'Rue du Lac 1 <b>1200 Genève</b>', 'rue du lac 1 1200 geneve ch ge'),
+					lieu('gazetteer', '<i>Lieu</i> <b>Pully</b> (VD) - Pully'),
+					lieu('zipcode', '<b>1009</b> - Pully')
+				]
+			})
+		);
+		const adresses = await chercherAdresses(f, 'avenue de lavaux', [PULLY]);
+		expect(demandes[0].origin + demandes[0].pathname).toBe('https://api3.geo.admin.ch/rest/services/api/SearchServer');
+		expect(demandes[0].searchParams.get('searchText')).toBe('avenue de lavaux');
+		expect(adresses.map((r) => r.type === 'adresse' && [r.categorie, r.libelle])).toEqual([
+			['Adresse', 'Avenue de Lavaux 1 1009 Pully'],
+			['Lieu', 'Pully'],
+			['NPA', '1009 - Pully']
+		]);
+	});
+
+	it('rejette une réponse HTTP en erreur, au lieu de la lire comme une recherche vide', async () => {
+		await expect(chercherAdresses(async () => reponse({ results: [] }, 500), 'pully', [PULLY])).rejects.toThrow('HTTP 500');
+		await expect(chercherAdresses(async () => reponse('Too many requests', 429), 'pully', [PULLY])).rejects.toThrow(
+			'HTTP 429'
+		);
+	});
+
+	it('rejette quand swisstopo est injoignable ou ne répond pas à temps', async () => {
+		await expect(chercherAdresses(() => Promise.reject(new TypeError('réseau')), 'pully', [PULLY])).rejects.toThrow(
+			'réseau'
+		);
+		delaiExpire();
+		await expect(chercherAdresses(sansReponse, 'pully', [PULLY])).rejects.toSatisfy(delaiDepasse);
 	});
 });

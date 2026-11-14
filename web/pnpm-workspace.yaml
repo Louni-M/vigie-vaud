@@ -1,2 +1,6 @@
 allowBuilds:
   esbuild: true
+
+# Une version de Node ou de pnpm hors de « engines » (package.json) fait échouer l’installation.
+# pnpm 11 ne lit plus ce réglage dans .npmrc.
+engineStrict: true

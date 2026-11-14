@@ -8,11 +8,14 @@ horloge que l'attente fait avancer. On observe les fichiers écrits, le journal 
 les sites (URL, User-Agent, heure). Les cas instables sont fabriqués par de petites retouches de l'échantillon.
 """
 
+import json
 from datetime import timedelta
 from pathlib import Path
 
+import pydantic
 import pytest
 
+import lecture_iweb
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
 from passage_sites import (
@@ -280,9 +283,60 @@ def test_une_liste_dont_aucune_ligne_ne_se_lit_met_l_import_de_la_commune_en_ech
 
     _passer(tmp_path, horloge, reseau)
 
-    assert "Import en échec : Conseil communal de Préverenges (site de la commune)" in capsys.readouterr().err
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune) (ValueError" in journal
+    assert "Traceback" not in journal  # un échec prévu garde sa ligne courte
     assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
     assert not (tmp_path / "conseils/5643/seances").exists()
+
+
+def test_un_bogue_de_lecteur_imprime_sa_trace_d_appel_et_n_empeche_pas_les_autres(tmp_path, horloge, capsys, monkeypatch):
+    # Une exception imprévue levée dans le fil de lecture du site : le journal du passage montre où, sans attendre
+    # l'issue `import-conseils` du lendemain.
+    def lecteur_bogue(robot, source, depuis):
+        return source.inexistant
+
+    monkeypatch.setattr(lecture_iweb, "lire", lecteur_bogue)
+
+    _passer(tmp_path, horloge, _preverenges(horloge))
+
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune) (AttributeError" in journal
+    assert "Traceback (most recent call last)" in journal
+    assert "in lecteur_bogue" in journal and "source.inexistant" in journal
+    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
+
+
+class _Forme(pydantic.BaseModel):
+    nombre: int
+
+
+@pytest.mark.parametrize(
+    "casse",
+    [
+        lambda: _Forme.model_validate({"nombre": "pas un nombre"}),
+        lambda: json.loads("{pas du json"),
+        lambda: b"\xff".decode("utf-8"),
+    ],
+    ids=["ValidationError", "JSONDecodeError", "UnicodeDecodeError"],
+)
+def test_un_lecteur_casse_par_une_sous_classe_de_valueerror_imprime_sa_trace(
+    tmp_path, horloge, capsys, monkeypatch, casse
+):
+    # Ces sous-classes de `ValueError` ne sont pas levées exprès par un lecteur : elles disent qu'il est cassé, et le
+    # journal montre où, comme pour tout bogue. Seul un `ValueError` levé exprès garde la ligne courte.
+    def lecteur_casse(robot, source, depuis):
+        return casse()
+
+    monkeypatch.setattr(lecture_iweb, "lire", lecteur_casse)
+
+    _passer(tmp_path, horloge, _preverenges(horloge))
+
+    journal = capsys.readouterr().err
+    assert "Import en échec : Conseil communal de Préverenges (site de la commune)" in journal
+    assert "Traceback (most recent call last)" in journal
+    assert "in lecteur_casse" in journal
+    assert _lire(tmp_path, "conseils/import.json")["conseils"] == {"5586": "2026-10-23T05:17:05Z"}
 
 
 def test_une_liste_vide_est_un_import_reussi_sans_seance(tmp_path, horloge):

@@ -2,10 +2,11 @@ name: Passage du cron
 
 # Workflow réutilisable (ADR 0014). Il n'est lancé que par le déclencheur du dépôt de données `vigie-vaud-donnees`,
 # dont le contenu est dans `pipeline/depot-donnees/.github/workflows/cron.yml`. Il tourne donc avec le
-# `GITHUB_TOKEN` du dépôt de données, sans aucun secret, et `github.repository` y désigne le dépôt de données.
-# Un passage : sondes et état des sources, import quotidien des conseils dus (`pipeline/cron.py`), commit qui sert
-# d'archive, push (avec `pull --rebase` et deux nouveaux essais au plus), puis publication du dépôt de données sur
-# Pages. Lancé à la main depuis le déclencheur, l'entrée `rattrapage` importe tous les conseils d'OpenParlData depuis
+# `GITHUB_TOKEN` du dépôt de données, avec pour seul secret `RETRAITS_CLE` (facultatif, ADR 0007), et `github.repository`
+# y désigne le dépôt de données.
+# Un passage : sondes et état des sources, import quotidien des conseils dus (`pipeline/cron.py`), avec un commit
+# qui sert d'archive et un push (`pull --rebase` et deux nouveaux essais au plus) après chaque phase (sondes,
+# OpenParlData, sites des communes), puis publication du dépôt de données sur Pages. Lancé à la main depuis le déclencheur, l'entrée `rattrapage` importe tous les conseils d'OpenParlData depuis
 # tout l'historique, sans toucher aux sites des communes ; l'entrée `rattrapage_cible` (une plateforme, `i-web`, ou le
 # n° OFS d'une commune scrapée) rouvre toutes les pages des sites visés, sans plafond, au même débit (ADR 0010).
 on:
@@ -19,14 +20,21 @@ on:
         description: Plateforme (i-web) ou n° OFS d'une commune scrapée dont relire tout le site
         type: string
         default: ''
+    secrets:
+      RETRAITS_CLE:
+        description: Clé des empreintes des retraits (ADR 0007)
+        required: false
 
 jobs:
   passage:
     runs-on: ubuntu-24.04
-    # Un passage ordinaire sonde et importe au plus un jour de changements, sites des communes compris (environ
-    # 25 minutes à 5 s par requête), et laisse jusqu'à 15 minutes aux deux essais de publication sur Pages ; un
-    # rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à deux heures pour une plateforme).
-    # 360 minutes est le plus long délai d'un job hébergé par GitHub.
+    # Un passage ordinaire sonde et importe au plus un jour de changements, sites des communes compris (l'étape
+    # « Passage du cron » a duré jusqu'à 35 minutes du 15 octobre au 13 novembre 2026, à 5 s par requête), et laisse
+    # jusqu'à 15 minutes aux deux essais de publication sur Pages : il reste 15 minutes de marge quand Pages publie en
+    # quelques secondes, presque rien quand ses deux essais vont jusqu'à leur délai. Chaque
+    # phase étant poussée dès sa fin, un dépassement ne perd que la phase en cours ; Pages attend alors le passage
+    # suivant. Un rattrapage relit tout l'historique d'OpenParlData ou des sites visés (une à deux heures pour une
+    # plateforme). 360 minutes est le plus long délai d'un job hébergé par GitHub.
     timeout-minutes: ${{ (inputs.rattrapage || inputs.rattrapage_cible != '') && 360 || 50 }}
     permissions:
       contents: write
@@ -38,21 +46,22 @@ jobs:
       url: ${{ steps.deploiement.outputs.page_url || steps.deploiement-2.outputs.page_url }}
     steps:
       - name: Cloner le dépôt de données
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: donnees
 
       # Le dépôt principal, à la même branche que l'appel `cron.yml@main` du déclencheur. Son adresse est aussi
       # dans `config.json` (`depot`), que ce workflow ne peut pas lire avant de l'avoir cloné.
       - name: Cloner le code du cron
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Louni-M/vigie-vaud
           ref: main
           path: code
           persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      # Les dépendances du projet seules : ni `dev` ni `geo` (pile géographique de la préparation des communes).
       - name: Installer le pipeline
         run: uv sync --locked --no-dev --project code/pipeline
 
@@ -67,13 +76,14 @@ jobs:
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           # La cible passe par l'environnement, jamais dans le script lui-même : c'est un texte saisi à la main.
           RATTRAPAGE_CIBLE: ${{ inputs.rattrapage_cible }}
+          RETRAITS_CLE: ${{ secrets.RETRAITS_CLE }}
         run: >-
           uv run --no-dev --project code/pipeline python code/pipeline/cron.py --depot donnees
           ${{ inputs.rattrapage && '--rattrapage' || '' }}
           ${RATTRAPAGE_CIBLE:+--rattrapage-cible "$RATTRAPAGE_CIBLE"}
 
       # `upload-pages-artifact` laisse de côté `.git`, `.github` et, depuis sa v4, tout fichier caché.
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: donnees
       # Un déploiement prend d'ordinaire quelques secondes, mais Pages en laisse parfois un bloqué sur
@@ -82,17 +92,17 @@ jobs:
       # repart d'un artefact neuf avec le délai par défaut de 10 minutes : sans lui, le site attendrait le prochain
       # passage planifié, parfois plusieurs heures, alors que le commit d'archive est déjà poussé.
       - id: deploiement
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         continue-on-error: true
         with:
           timeout: 300000
       - if: steps.deploiement.outcome == 'failure'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: donnees
           name: github-pages-2
       - id: deploiement-2
         if: steps.deploiement.outcome == 'failure'
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         with:
           artifact_name: github-pages-2

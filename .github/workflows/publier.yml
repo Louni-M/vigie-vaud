@@ -1,7 +1,7 @@
-name: Publication du site (API en direct)
+name: Publication du site
 
-# Prototype « API en direct » : aucune donnée CAMAC n'est téléchargée, construite ni publiée.
-# Le navigateur des visiteurs interroge lui-même ogc.vd.ch ; seul le site statique est déployé.
+# Construit le site statique et le publie sur GitHub Pages. Aucune donnée CAMAC ni DGMR n'est téléchargée,
+# construite ni publiée : le navigateur des visiteurs interroge lui-même www.ogc.vd.ch (norme DCG 8401).
 on:
   workflow_dispatch:
 
@@ -18,31 +18,42 @@ jobs:
   site:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          version: 11
-      - uses: actions/setup-node@v7
+          package_json_file: web/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
+      - name: Installer les dépendances
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      # Contrôles du site avant toute construction : un échec arrête le job avant le déploiement.
+      - name: svelte-check
+        working-directory: web
+        run: pnpm check
+
+      - name: Tests (Vitest)
+        working-directory: web
+        run: pnpm test
+
       - name: Construire le site
         working-directory: web
         env:
           BASE_PATH: ${{ vars.BASE_PATH }}
           VITE_GOATCOUNTER: ${{ vars.GOATCOUNTER }}
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
+        run: pnpm build
 
       - name: Vérifier qu'aucune donnée CAMAC ni DGMR n'est publiée
         run: .github/scripts/verifier-sans-rediffusion.sh web/build
 
       - if: vars.PUBLIER == 'true'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: web/build
       - if: vars.PUBLIER == 'true'
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

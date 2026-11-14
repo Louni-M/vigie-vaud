@@ -1,7 +1,7 @@
 # Seul workflow du dépôt de données `vigie-vaud-donnees` (ADR 0014), à poser tel quel dans son
 # `.github/workflows/cron.yml` au passage public. GitHub ne lance pas ce fichier ici : il n'est que le modèle.
-# Il appelle le workflow réutilisable du dépôt principal avec le seul `GITHUB_TOKEN` du dépôt de données,
-# sans aucun secret. Pages doit y être publié « par GitHub Actions ».
+# Il appelle le workflow réutilisable du dépôt principal avec le `GITHUB_TOKEN` du dépôt de données et pour seul
+# secret `RETRAITS_CLE` (facultatif, ADR 0007). Pages doit y être publié « par GitHub Actions ».
 name: Cron
 
 on:
@@ -24,12 +24,14 @@ on:
         default: ''
 
 # Un passage attend la fin du précédent, sans l'annuler : rattrapages et passages ordinaires, dans le même groupe, ne
-# tournent jamais en même temps (un rattrapage retient donc les passages planifiés). Le groupe ne garde qu'une
-# exécution en attente : un rattrapage lancé pendant un passage peut être remplacé par le passage planifié suivant
-# (voir « Cron et dépôt de données » dans la README du dépôt principal, pour savoir quand le lancer).
+# tournent jamais en même temps (un rattrapage retient donc les passages planifiés). `queue: max` garde jusqu'à 100
+# exécutions en attente, lancées dans l'ordre où elles sont entrées dans le groupe : un rattrapage lancé pendant un
+# passage attend sa fin et n'est plus remplacé par le passage planifié suivant (par défaut, GitHub n'en garde qu'une
+# et annule celle qui attendait). Les passages planifiés pendant un rattrapage tournent à sa suite, l'un après l'autre.
 concurrency:
   group: cron
   cancel-in-progress: false
+  queue: max
 
 permissions:
   contents: write
@@ -39,9 +41,13 @@ permissions:
 
 jobs:
   passage:
+    # Workflow du dépôt principal, pas une action tierce : sa référence (`@main`) relève de #187. Les actions
+    # tierces qu'il appelle y sont épinglées par SHA.
     uses: Louni-M/vigie-vaud/.github/workflows/cron.yml@main
     with:
       # `inputs.rattrapage` est vide pour un passage planifié, qui n'est donc pas un rattrapage.
       rattrapage: ${{ inputs.rattrapage == true }}
       # Vide aussi pour un passage planifié.
       rattrapage_cible: ${{ inputs.rattrapage_cible || '' }}
+    secrets:
+      RETRAITS_CLE: ${{ secrets.RETRAITS_CLE }}

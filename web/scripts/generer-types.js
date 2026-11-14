@@ -12,6 +12,7 @@ const SORTIE = new URL('../src/lib/schema.ts', import.meta.url);
 const EN_TETE = `/* Fichier généré par \`pnpm schema\` depuis pipeline/schema.py : ne pas modifier.
  * Pour changer le schéma commun, modifier les modèles Pydantic puis relancer \`pnpm schema\`. */`;
 
+/** @type {Record<string, unknown>} */
 const defs = {};
 const documents = [];
 for (const fichier of readdirSync(DOSSIER).filter((f) => f.endsWith('.schema.json')).sort()) {

@@ -15,27 +15,34 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import polylabel
 
+import reference
 from telechargement import telecharger
 
-LACS_URL = (
-    "https://data.geo.admin.ch/ch.swisstopo.swisstlmregio/swisstlmregio_2026/"
-    "swisstlmregio_2026_2056.gpkg.zip"
-)
 COUCHE_LACS = "tlmregio_hydrography_lake"
 
 
+def edition_lacs() -> str:
+    return f"swisstlmregio_{reference.EDITION_LACS}"
+
+
+def url_lacs() -> str:
+    edition = edition_lacs()
+    return f"https://data.geo.admin.ch/ch.swisstopo.swisstlmregio/{edition}/{edition}_2056.gpkg.zip"
+
+
 def charger_lacs(client: httpx.Client, cache: Path) -> gpd.GeoSeries:
-    """Les lacs de swissTLMRegio en LV95 (téléchargés une fois dans `cache`)."""
-    produits = list(cache.glob("swissTLMRegio_Product*.gpkg"))
+    """Les lacs de swissTLMRegio en LV95 (téléchargés une fois dans `cache`, rangés par édition)."""
+    dossier = cache / edition_lacs()
+    produits = list(dossier.glob("swissTLMRegio_Product*.gpkg"))
     if not produits:
-        archive = telecharger(client, LACS_URL, cache / "swisstlmregio.gpkg.zip")
+        archive = telecharger(client, url_lacs(), dossier / "swisstlmregio.gpkg.zip")
         with zipfile.ZipFile(archive) as z:
             for nom in z.namelist():
                 if Path(nom).name.startswith("swissTLMRegio_Product"):
-                    z.extract(nom, cache)
-                    (cache / nom).rename(cache / Path(nom).name)
+                    z.extract(nom, dossier)
+                    (dossier / nom).rename(dossier / Path(nom).name)
         archive.unlink()
-        produits = list(cache.glob("swissTLMRegio_Product*.gpkg"))
+        produits = list(dossier.glob("swissTLMRegio_Product*.gpkg"))
     lacs = gpd.read_file(produits[0], layer=COUCHE_LACS).geometry.force_2d()
     return lacs.set_crs(2056, allow_override=True)
 

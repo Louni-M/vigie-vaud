@@ -314,6 +314,7 @@ def test_un_premier_delai_depasse_a_l_import_met_sa_commune_en_echec_sans_requet
     assert lues[-1] == seance  # plus rien vers Préverenges après le délai dépassé
     journal = capsys.readouterr().err
     assert "Import en échec : Conseil communal de Préverenges (site de la commune) (DelaiDepasse" in journal
+    assert "Traceback" not in journal  # une page non lue garde sa ligne courte
     assert _etat(tmp_path)["echecs_consecutifs"] == 0  # la sonde avait réussi : pas une panne
     assert _importe(tmp_path) is None and _importe(tmp_path, "5892") is not None
     assert _reseaux_bloques(tmp_path) == {}

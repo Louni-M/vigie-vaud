@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { delaiDepasse } from '#lib/chargement.js';
+import { delaiExpire, sansReponse } from '#tests/sans-reponse.js';
 import { creerDonneesConseils } from './donnees.js';
 import type { ListeObjets, ListeSeances } from '#lib/schema.js';
 import {
@@ -9,7 +11,6 @@ import {
 	entreeFil,
 	fauxDepotConseils,
 	filConseils,
-	grandConseil,
 	indexConseils,
 	ligneObjet,
 	objet,
@@ -73,6 +74,26 @@ describe('index des conseils', () => {
 
 		expect(index.conseils).toHaveLength(3);
 		expect(depot.requetes).toEqual(['conseils/index.json', 'conseils/index.json']);
+	});
+
+	it('refuse un index quand le dépôt ne répond pas à temps, et le relit à la demande suivante', async () => {
+		const depot = fauxDepotConseils({ 'conseils/index.json': indexConseils() });
+		let repond = false;
+		const conseils = creerDonneesConseils({
+			fetch: (entree, init) => (repond ? depot.fetch(entree, init) : sansReponse(entree, init)),
+			donnees: DONNEES
+		});
+		const delai = delaiExpire();
+		try {
+			const erreur = await conseils.index().catch((e) => e);
+			expect(delaiDepasse(erreur)).toBe(true);
+			expect(delai).toHaveBeenCalledWith(20_000);
+		} finally {
+			vi.restoreAllMocks();
+		}
+
+		repond = true;
+		expect((await conseils.index()).conseils).toHaveLength(3);
 	});
 });
 

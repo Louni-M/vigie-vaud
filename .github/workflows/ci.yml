@@ -1,14 +1,19 @@
-name: Contrôles des PR
+name: Contrôles
 
-# Chaîne de contrôles de chaque PR, que les tickets suivants complètent (tests, schéma commun…).
+# Chaîne de contrôles de chaque PR, relancée sur chaque push vers main : une fusion fautive (conflit mal résolu,
+# PR fusionnée sans CI à jour) doit se voir avant le passage du cron et la prochaine publication.
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
+# Une PR annule son run précédent ; chaque commit de main garde le sien (groupe par SHA), pour que chaque fusion
+# soit contrôlée, même quand deux se suivent de près.
 concurrency:
-  group: ci-${{ github.event.pull_request.number }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -18,12 +23,14 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: pnpm/action-setup@v6
+      # Version de pnpm : celle de « packageManager » dans web/package.json, dans chaque workflow.
+      # Node doit satisfaire « engines » du même fichier, sinon l'installation échoue (engineStrict).
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          version: 11
-      - uses: actions/setup-node@v7
+          package_json_file: web/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -33,6 +40,10 @@ jobs:
 
       - name: svelte-check
         run: pnpm check
+
+      # Constats gelés dans l'état de référence de web/eslint.config.js : seul le nouveau code est tenu.
+      - name: ESLint
+        run: pnpm lint
 
       - name: Tests (Vitest)
         run: pnpm test
@@ -45,18 +56,26 @@ jobs:
         working-directory: .
         run: .github/scripts/verifier-sans-rediffusion.sh web/build
 
+      # Scénarios dans un navigateur (web/e2e) contre le site construit ci-dessus, servi par vite preview. Les services
+      # (fond de carte, canton, dépôt de données, recherche d'adresses) sont factices : aucune requête ne quitte la machine.
+      - name: Installer Chromium pour Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Tests dans un navigateur (Playwright)
+        run: pnpm exec playwright test
+
   # Schéma commun (ADR 0013) : les modèles Pydantic sont la seule source. Le JSON Schema et les types TypeScript
   # versionnés doivent être ceux qu'une nouvelle génération produit.
   schema:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: astral-sh/setup-uv@v10.3.0
-      - uses: pnpm/action-setup@v6
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          version: 11
-      - uses: actions/setup-node@v7
+          package_json_file: web/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -84,11 +103,22 @@ jobs:
       run:
         working-directory: pipeline
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      # Sans le groupe `geo` (pile géographique de la préparation des communes), comme le cron.
       - name: Installer les dépendances
         run: uv sync --locked
 
-      - name: pytest
+      # Constats gelés dans l'état de référence de pyproject.toml (per-file-ignores) : seul le nouveau code est tenu.
+      - name: ruff
+        run: uv run ruff check --output-format github
+
+      # Dans l'ordre : `uv run` ajoute des paquets sans jamais en retirer. D'abord sans la pile géographique, où les
+      # tests marqués `geo` ne sont pas collectés (tests/conftest.py) ; puis seulement eux, avec elle. Le second
+      # échoue s'il ne trouve aucun test `geo`.
+      - name: pytest (sans le groupe geo, comme le cron)
         run: uv run pytest
+
+      - name: pytest (groupe geo)
+        run: uv run --locked --group geo pytest -m geo

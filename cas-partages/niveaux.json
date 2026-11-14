@@ -1,0 +1,14 @@
+{
+	"description": "Niveau d'un conseil, d'après ce qu'il donne (`conseil.donne`, dans n'importe quel ordre) : `niveau_de(donne)` de `pipeline/schema.py` et `niveauDe({ donne })` de `web/src/lib/sources.ts`. `niveau` : son libellé et s'il donne des Objets ; `null` : hors des trois niveaux. Le reste d'un niveau (résumé, note de l'onglet) n'existe que sur le site.",
+	"cas": [
+		{"donne": ["objets", "seances"], "niveau": {"libelle": "objets et séances", "objets": true}},
+		{"donne": ["seances", "objets"], "niveau": {"libelle": "objets et séances", "objets": true}},
+		{"donne": ["preavis", "seances"], "niveau": {"libelle": "séances et préavis", "objets": true}},
+		{"donne": ["seances", "preavis"], "niveau": {"libelle": "séances et préavis", "objets": true}},
+		{"donne": ["seances"], "niveau": {"libelle": "séances seulement", "objets": false}},
+		{"donne": ["objets"], "niveau": null},
+		{"donne": ["preavis"], "niveau": null},
+		{"donne": ["objets", "preavis"], "niveau": null},
+		{"donne": ["objets", "preavis", "seances"], "niveau": null}
+	]
+}
