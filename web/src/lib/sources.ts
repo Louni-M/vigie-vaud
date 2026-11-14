@@ -78,9 +78,14 @@ export const NIVEAUX: readonly Niveau[] = [
 	}
 ];
 
-/** Le niveau d'un conseil, d'après ce qu'il donne (dans n'importe quel ordre) ; `undefined` hors des trois. */
-export const niveauDe = (conseil: { donne: readonly DonneeConseil[] }): Niveau | undefined =>
-	NIVEAUX.find((n) => n.donne.length === conseil.donne.length && n.donne.every((d) => conseil.donne.includes(d)));
+/**
+ * Le niveau d'un conseil, d'après ce qu'il donne, lu comme un ensemble (dans n'importe quel ordre, une répétition ne
+ * compte qu'une fois), comme `niveau_de` du cron ; `undefined` hors des trois.
+ */
+export function niveauDe(conseil: { donne: readonly DonneeConseil[] }): Niveau | undefined {
+	const donne = new Set(conseil.donne);
+	return NIVEAUX.find((n) => n.donne.length === donne.size && n.donne.every((d) => donne.has(d)));
+}
 
 /**
  * Ce que donne un conseil, en toutes lettres, c'est-à-dire son niveau : « objets et séances », « séances et
