@@ -51,6 +51,7 @@
 		texteApresRecherche,
 		type FinRecherche
 	} from '#lib/socle/telephone.js';
+	import { suivreSaisie } from '#lib/socle/saisie.js';
 	import { attributionHtml, source } from '#lib/sources.js';
 	import type { Resultat } from '#lib/types.js';
 	import type { LayoutProps } from './$types';
@@ -77,7 +78,9 @@
 
 	let zoneCarte: HTMLElement | undefined = $state();
 	let recherche: HTMLElement | undefined = $state();
+	let composantRecherche: ReturnType<typeof Recherche> | undefined = $state();
 	let apercu: HTMLElement | undefined = $state();
+	let colonne: HTMLElement | undefined = $state();
 	/** Place prise en bas de la carte par l'aperçu d'un dossier, tant qu'il n'est pas affiché. */
 	const APERCU_DOSSIER = 170;
 
@@ -242,6 +245,60 @@
 
 	const choixRecherche = (r: Resultat) => (pleine ? quitterRecherche({ fin: 'choix', resultat: r }) : choix(r));
 
+	/* ---- Focus à la fermeture de la fiche ---- */
+
+	// Doigt, pointeur ou clavier : rendre le focus au champ de recherche ouvrirait le clavier de l'écran après un toucher.
+	$effect(() => suivreSaisie());
+
+	/** Dernier élément à avoir reçu le focus hors de la fiche ouverte et de son aperçu. */
+	let dernierFocus: HTMLElement | null = null;
+	$effect(() => {
+		const noter = (e: FocusEvent) => {
+			const el = e.target;
+			if (el instanceof HTMLElement && !colonne?.contains(el) && !apercu?.contains(el)) dernierFocus = el;
+		};
+		document.addEventListener('focusin', noter);
+		return () => document.removeEventListener('focusin', noter);
+	});
+
+	/**
+	 * Ce qui avait le focus quand la fiche ouverte s'est ouverte : le champ de recherche, la carte, une entrée du fil.
+	 * Il le retrouve quand la fiche se ferme, par sa croix, celle de son aperçu ou le précédent : la croix disparaît
+	 * avec elle, et le focus tomberait sur la page.
+	 */
+	let ouvreur: HTMLElement | null = null;
+	let ficheAvant: string | null = null;
+	$effect(() => {
+		const f = registre.fiche;
+		const cle = f && ('commune' in f ? `commune:${f.commune}` : `fiche:${f.fiche}`);
+		untrack(() => {
+			if (cle !== null && cle !== ficheAvant) ouvreur = dernierFocus;
+			else if (cle === null && ficheAvant !== null) rendreFocusApresFiche();
+			ficheAvant = cle;
+		});
+	});
+
+	const visible = (el: HTMLElement) =>
+		el.isConnected &&
+		!(el as HTMLButtonElement).disabled &&
+		(typeof el.checkVisibility !== 'function' || el.checkVisibility({ checkVisibilityCSS: true }));
+
+	/**
+	 * La fiche est fermée : le focus revient à ce qui l'avait ouverte, s'il est encore là. Sinon, ou quand c'est le
+	 * champ de recherche après un toucher, il va au contenu de la page (`#contenu`), d'où le clavier repart.
+	 */
+	async function rendreFocusApresFiche() {
+		const o = ouvreur;
+		ouvreur = null;
+		await tick();
+		// Le focus est ailleurs que dans la fiche fermée (logo, lien « Carte ») : il y reste.
+		if (document.activeElement && document.activeElement !== document.body) return;
+		if (o && recherche?.contains(o)) {
+			if (composantRecherche?.rendreFocus()) return;
+		} else if (o && visible(o)) return o.focus();
+		document.getElementById('contenu')?.focus();
+	}
+
 	/** Lien d'évitement : le clavier n'a pas à traverser le rail et la recherche pour atteindre la carte. */
 	async function allerCarte(e: MouseEvent) {
 		e.preventDefault();
@@ -307,6 +364,7 @@
 
 			<div class="recherche" bind:this={recherche}>
 				<Recherche
+					bind:this={composantRecherche}
 					communes={data.communes}
 					{chercherCouches}
 					bind:texte={texteRecherche}
@@ -401,7 +459,7 @@
 		{#if registre.commune ?? registre.propre}
 			{@const ouverte = registre.commune ?? registre.propre!}
 			<!-- Une seule colonne, pour une commune ou une fiche propre : changer de fiche remplace son contenu sans la refermer. -->
-			<div class="colonne" in:entree={{ x: 40 }}>
+			<div class="colonne" bind:this={colonne} in:entree={{ x: 40 }}>
 				<FicheOuverte {registre} {ouverte} />
 			</div>
 		{/if}
