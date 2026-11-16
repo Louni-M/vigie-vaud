@@ -6,6 +6,7 @@ le brouillon déclare chaque commune, et la vérification le relit sans écart. 
 qui sert l'échantillon Quicksite et des pages du conseil fabriquées.
 """
 
+import dataclasses
 from datetime import UTC, date, datetime
 
 import httpx
@@ -15,6 +16,7 @@ from faux_sites import Page, Reseau, echantillon
 from preparation_sources import Candidat, brouillon, verifier
 from robot_communal import Robot
 from schema import FichierSources
+from sites_communaux import PLATEFORMES as DECLAREES
 
 T0 = datetime(2026, 10, 23, 7, 0, tzinfo=UTC)
 JOUR = date(2026, 10, 23)
@@ -42,6 +44,9 @@ PLATEFORMES = [
         ],
     }
 ]
+
+
+QUICKSITE = DECLAREES["quicksite"]
 
 
 def _page_quicksite(menu, contenu=""):
@@ -125,7 +130,7 @@ def test_le_brouillon_trouve_la_variante_de_chaque_site_quicksite_et_ses_paramet
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
 
-    sources, remarques = brouillon(_robot(reseau, horloge), CANDIDATS, _fichier().plateformes[0], JOUR)
+    sources, remarques = brouillon(_robot(reseau, horloge), CANDIDATS, QUICKSITE, JOUR)
 
     assert sources == [
         _declaration(
@@ -160,7 +165,7 @@ def test_le_brouillon_trouve_la_variante_de_chaque_site_quicksite_et_ses_paramet
 def test_le_brouillon_quicksite_passe_la_verification_sans_ecart():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
-    sources, _ = brouillon(_robot(reseau, horloge), CANDIDATS, _fichier().plateformes[0], JOUR)
+    sources, _ = brouillon(_robot(reseau, horloge), CANDIDATS, QUICKSITE, JOUR)
 
     assert verifier(_robot(reseau, horloge), _fichier(*sources), "quicksite", JOUR) == []
 
@@ -168,23 +173,21 @@ def test_le_brouillon_quicksite_passe_la_verification_sans_ecart():
 def test_des_parametres_coreapi_qui_ne_sont_plus_ceux_du_site_sont_un_ecart():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
-    (founex,) = brouillon(_robot(reseau, horloge), CANDIDATS[1:2], _fichier().plateformes[0], JOUR)[0]
+    (founex,) = brouillon(_robot(reseau, horloge), CANDIDATS[1:2], QUICKSITE, JOUR)[0]
     founex["site"]["coreapi"]["projet"] = "founex24"
 
     (ecart,) = verifier(_robot(reseau, horloge), _fichier(founex), "quicksite", JOUR)
     assert ecart.startswith("site-5717 (Founex) : recherche coreapi déclarée {'projet': 'founex24'")
 
 
-def test_la_mesure_cherche_le_marqueur_que_la_section_plateformes_declare():
-    # Le marqueur de sonde de chaque variante n'est déclaré qu'une fois, dans `sources.json` (ADR 0010) : une
+def test_la_mesure_cherche_le_marqueur_que_la_plateforme_declare():
+    # Le marqueur de sonde de chaque variante n'est déclaré qu'une fois, par sa plateforme (`lecture_quicksite`) : une
     # bibliothèque qui n'a pas celui de sa variante n'est pas une page des Séances.
     horloge = HorlogeFactice(T0)
-    variantes = [
-        {**v, "marqueur": "tplAutreBibliotheque"} if v["id"] == "ancienne" else v for v in PLATEFORMES[0]["variantes"]
-    ]
-    plateforme = FichierSources.model_validate(
-        {"plateformes": [{**PLATEFORMES[0], "variantes": variantes}], "sources": []}
-    ).plateformes[0]
+    variantes = tuple(
+        dataclasses.replace(v, marqueur="tplAutreBibliotheque") if v.id == "ancienne" else v for v in QUICKSITE.variantes
+    )
+    plateforme = dataclasses.replace(QUICKSITE, variantes=variantes)
 
     (aigle,), remarques = brouillon(_robot(_reseau(horloge), horloge), CANDIDATS[:1], plateforme, JOUR)
 
@@ -261,7 +264,7 @@ def test_la_mesure_declare_les_deux_recherches_d_une_commune_qui_separe_preavis_
     reseau = _reseau(horloge)
     _duillier(reseau)
 
-    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], QUICKSITE, JOUR)
 
     assert duillier == _declaration(
         5715, "Duillier", CANDIDAT_DUILLIER.page, ["preavis", "seances"],
@@ -279,7 +282,7 @@ def test_la_verification_ne_tient_pas_compte_de_l_ordre_des_recherches():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
     _duillier(reseau)
-    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], QUICKSITE, JOUR)
     duillier["site"]["coreapi"] = [PROCES_VERBAUX_DUILLIER, PREAVIS_DUILLIER]
 
     assert verifier(_robot(reseau, horloge), _fichier(duillier), "quicksite", JOUR) == []
@@ -291,7 +294,7 @@ def test_la_page_des_proces_verbaux_est_trouvee_au_dela_des_premiers_liens_du_me
     reseau = _reseau(horloge)
     _duillier(reseau, avant=[(f"/N60{i}/documents-du-conseil-{i}.html", f"Documents du conseil {i}") for i in range(5)])
 
-    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], QUICKSITE, JOUR)
 
     assert duillier["site"]["coreapi"] == [PREAVIS_DUILLIER, PROCES_VERBAUX_DUILLIER]
 
@@ -309,7 +312,7 @@ def test_une_page_generale_des_documents_du_conseil_n_appelle_pas_les_recherches
             f'data-qsedit-editnode="{noeud}"><a href="{DUILLIER}/n{noeud}1"><h5>Préavis 01-2026</h5></a></div></div>'
         )
 
-    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], QUICKSITE, JOUR)
 
     assert duillier["site"]["seances"] == f"{DUILLIER}/N500/documents-du-conseil.html"
     assert duillier["site"]["coreapi"] == PREAVIS_DUILLIER | {"noeud": 500, "tri": "date_extid"}
@@ -320,7 +323,7 @@ def test_une_commune_declaree_avec_une_seule_de_ses_deux_recherches_est_un_ecart
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
     _duillier(reseau)
-    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    (duillier,), _ = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], QUICKSITE, JOUR)
     duillier["site"]["coreapi"] = PREAVIS_DUILLIER
 
     (ecart,) = verifier(_robot(reseau, horloge), _fichier(duillier), "quicksite", JOUR)
@@ -338,7 +341,7 @@ def test_les_pages_des_deux_recherches_comptent_ensemble_face_au_plafond():
     reseau = _reseau(horloge)
     _duillier(reseau, pages=30)
 
-    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], _fichier().plateformes[0], JOUR)
+    (duillier,), remarques = brouillon(_robot(reseau, horloge), [CANDIDAT_DUILLIER], QUICKSITE, JOUR)
 
     assert remarques == {
         "site-5715": ["Duillier : 62 requêtes au passage ordinaire, au-delà du plafond de 60", DEUX_RECHERCHES_A_RELIRE]

@@ -12,7 +12,7 @@ from echantillon_sites import Echantillon, PageEchantillon, enregistrer
 from faux_openparldata import HorlogeFactice
 from faux_sites import REFUS, Page, Reseau
 from robot_communal import Injoignable, Robot
-from schema import lire_sources
+from sites_communaux import PLATEFORMES
 
 T0 = datetime(2026, 10, 23, 7, 0, tzinfo=UTC)
 
@@ -213,11 +213,10 @@ def test_un_bloc_ou_un_identifiant_absent_arrete_le_script_sans_rien_ecrire(tmp_
 
 
 def test_l_echantillon_enregistre_est_declare_et_reduit_au_bloc_lu():
-    from echantillon_sites import DOSSIER, ECHANTILLONS, SOURCES, _charset
+    from echantillon_sites import DOSSIER, ECHANTILLONS, _charset
 
-    # Un échantillon par variante déclarée dans la section `plateformes` de `sources.json` (ADR 0010).
-    plateformes = {p.id: p for p in lire_sources(SOURCES).plateformes}
-    declarees = {(p.id, v.id) for p in plateformes.values() for v in p.variantes}
+    # Un échantillon par variante déclarée par sa plateforme (`sites_communaux.PLATEFORMES`, ADR 0010).
+    declarees = {(p.id, v.id) for p in PLATEFORMES.values() for v in p.variantes}
     assert {(e.plateforme, e.variante) for e in ECHANTILLONS} == declarees
     assert len({e.nom for e in ECHANTILLONS}) == len(ECHANTILLONS)
     for echantillon in ECHANTILLONS:
@@ -234,8 +233,8 @@ def test_l_echantillon_enregistre_est_declare_et_reduit_au_bloc_lu():
             assert len(texte) < 20_000, page["fichier"]
         seances = next(p for p in index["pages"] if p["sorte"] == "seances")
         liste = (dossier / seances["fichier"]).read_text(encoding=_charset(seances["entetes"]))
-        # Le marqueur que la sonde cherche sur la page de liste, celui que `sources.json` déclare pour la variante.
-        assert plateformes[echantillon.plateforme].variante(echantillon.variante).marqueur in liste
+        # Le marqueur que la sonde cherche sur la page de liste, celui que la plateforme déclare pour la variante.
+        assert PLATEFORMES[echantillon.plateforme].variante(echantillon.variante).marqueur in liste
 
 
 def test_le_module_conseil_de_vevey_est_enregistre_en_iso_8859_1():

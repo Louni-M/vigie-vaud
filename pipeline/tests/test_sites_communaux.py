@@ -8,6 +8,7 @@ horloge que l'attente fait avancer. On observe les fichiers écrits, le journal 
 les sites (URL, User-Agent, heure). Les cas instables sont fabriqués par de petites retouches de l'échantillon.
 """
 
+import dataclasses
 import json
 from datetime import timedelta
 from pathlib import Path
@@ -15,7 +16,7 @@ from pathlib import Path
 import pydantic
 import pytest
 
-import lecture_iweb
+import sites_communaux
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
 from passage_sites import (
@@ -290,13 +291,21 @@ def test_une_liste_dont_aucune_ligne_ne_se_lit_met_l_import_de_la_commune_en_ech
     assert not (tmp_path / "conseils/5643/seances").exists()
 
 
+def _seances_lues_par(monkeypatch, lire):
+    """La variante Séances d'i-web, lue par `lire` le temps d'un test."""
+    iweb = sites_communaux.PLATEFORMES["i-web"]
+    (seances,) = iweb.variantes
+    variantes = (dataclasses.replace(seances, lire=lire),)
+    monkeypatch.setitem(sites_communaux.PLATEFORMES, "i-web", dataclasses.replace(iweb, variantes=variantes))
+
+
 def test_un_bogue_de_lecteur_imprime_sa_trace_d_appel_et_n_empeche_pas_les_autres(tmp_path, horloge, capsys, monkeypatch):
     # Une exception imprévue levée dans le fil de lecture du site : le journal du passage montre où, sans attendre
     # l'issue `import-conseils` du lendemain.
-    def lecteur_bogue(robot, source, depuis):
+    def lecteur_bogue(robot, source, site, conseil, depuis):
         return source.inexistant
 
-    monkeypatch.setattr(lecture_iweb, "lire", lecteur_bogue)
+    _seances_lues_par(monkeypatch, lecteur_bogue)
 
     _passer(tmp_path, horloge, _preverenges(horloge))
 
@@ -325,10 +334,10 @@ def test_un_lecteur_casse_par_une_sous_classe_de_valueerror_imprime_sa_trace(
 ):
     # Ces sous-classes de `ValueError` ne sont pas levées exprès par un lecteur : elles disent qu'il est cassé, et le
     # journal montre où, comme pour tout bogue. Seul un `ValueError` levé exprès garde la ligne courte.
-    def lecteur_casse(robot, source, depuis):
+    def lecteur_casse(robot, source, site, conseil, depuis):
         return casse()
 
-    monkeypatch.setattr(lecture_iweb, "lire", lecteur_casse)
+    _seances_lues_par(monkeypatch, lecteur_casse)
 
     _passer(tmp_path, horloge, _preverenges(horloge))
 

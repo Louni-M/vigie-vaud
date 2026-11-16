@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import sites_communaux
 from preparation_sources import verifier_declarations
 
 RACINE = Path(__file__).resolve().parents[2]
@@ -77,13 +78,24 @@ def test_une_commune_i_web_couverte_suit_la_forme_d_une_source_communale():
             assert s["conseil"]["body_key"] == str(ofs)
 
 
-def test_la_section_plateformes_porte_i_web_et_sa_seule_variante():
-    # Les variantes Objets et pages sont retirées (#200) : i-web ne lit plus que son module Séances.
+def test_la_section_plateformes_recopie_la_declaration_de_chaque_plateforme():
+    # Une plateforme et ses variantes se déclarent une fois, dans son module de lecture (`sites_communaux.PLATEFORMES`) ;
+    # la section `plateformes`, que lit le site, en est la copie, plateforme par plateforme et dans leur ordre. L'ordre
+    # des variantes, celui où la mesure les essaie, ne compte pas ici.
     fichier = json.loads(SOURCES.read_text(encoding="utf-8"))
 
-    (iweb,) = [p for p in fichier["plateformes"] if p["id"] == "i-web"]
-    assert {v["id"]: (v["marqueur"], v["niveaux"]) for v in iweb["variantes"]} == {
-        "seances": ("icmsTablePastSitzungen", [["seances"]]),
+    def par_variante(plateforme):
+        return plateforme | {"variantes": {v["id"]: v for v in plateforme["variantes"]}}
+
+    assert [par_variante(p) for p in fichier["plateformes"]] == [
+        par_variante(p.declaration()) for p in sites_communaux.PLATEFORMES.values()
+    ]
+
+
+def test_i_web_ne_declare_que_sa_variante_seances():
+    # Les variantes Objets et pages sont retirées (#200) : i-web ne lit plus que son module Séances.
+    assert {v.id: (v.marqueur, v.niveaux) for v in sites_communaux.PLATEFORMES["i-web"].variantes} == {
+        "seances": ("icmsTablePastSitzungen", (("seances",),)),
     }
 
 

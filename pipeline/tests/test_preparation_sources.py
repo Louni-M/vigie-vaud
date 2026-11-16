@@ -16,13 +16,15 @@ import httpx
 import pytest
 
 import sites_communaux
+from bruts import Bruts
+from cas_partages import cas_partages
 from faux_openparldata import HorlogeFactice
 from faux_sites import Page, Reseau, echantillon
-from mesure_sites import Mesure
-from cas_partages import cas_partages
+from mesure_sites import Mesure, RobotSansReseau
 from preparation_sources import Candidat, brouillon, candidats_du_recensement, de_nom, verifier
 from robot_communal import Robot
 from schema import FichierSources
+from socle_lecture import PlateformeLue, VarianteLue
 
 T0 = datetime(2026, 10, 23, 7, 0, tzinfo=UTC)
 JOUR = date(2026, 10, 23)  # la fenêtre du passage ordinaire part du 23 avril 2026
@@ -254,7 +256,7 @@ def test_le_brouillon_declare_chaque_commune_de_la_plateforme_d_apres_son_site()
     reseau = _reseau(horloge)
     _preverenges_avec_menu(reseau)
 
-    sources, remarques = brouillon(_robot(reseau, horloge), _candidats(), _fichier().plateformes[0], JOUR)
+    sources, remarques = brouillon(_robot(reseau, horloge), _candidats(), sites_communaux.PLATEFORMES["i-web"], JOUR)
 
     assert sources == [SITE_PREVERENGES, SITE_BLONAY]
     assert remarques == {
@@ -268,7 +270,7 @@ def test_une_commune_sans_page_des_seances_est_proposee_non_couverte_a_relire():
     reseau = _reseau(horloge)
     _sans_marqueur(reseau, f"{BLONAY}/seances")
 
-    sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[1:2], _fichier().plateformes[0], JOUR)
+    sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[1:2], sites_communaux.PLATEFORMES["i-web"], JOUR)
 
     assert sources == [_source(5892, "Blonay - Saint-Légier", f"{BLONAY}/conseil-communal", {}) | {
         "couverture": {"communes": [5892], "mode": "non_couvert", "raison": "rien_en_ligne"}
@@ -284,7 +286,7 @@ def test_le_brouillon_nomme_une_commune_en_le_avec_l_article_contracte():
     _sans_marqueur(reseau, f"{BLONAY}/seances")
     candidat = Candidat(5587, "Le Mont-sur-Lausanne", "Conseil communal", f"{BLONAY}/conseil-communal")
 
-    [source], _ = brouillon(_robot(reseau, horloge), [candidat], _fichier().plateformes[0], JOUR)
+    [source], _ = brouillon(_robot(reseau, horloge), [candidat], sites_communaux.PLATEFORMES["i-web"], JOUR)
 
     assert (source["nom"], source["nom_court"], source["attribution"]["texte"]) == (
         "Conseil communal du Mont-sur-Lausanne (site de la commune)",
@@ -304,7 +306,7 @@ def test_le_brouillon_passe_la_verification_sans_ecart():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
     _preverenges_avec_menu(reseau)
-    sources, _ = brouillon(_robot(reseau, horloge), _candidats(), _fichier().plateformes[0], JOUR)
+    sources, _ = brouillon(_robot(reseau, horloge), _candidats(), sites_communaux.PLATEFORMES["i-web"], JOUR)
 
     assert _verifier(reseau, horloge, *sources) == []
 
@@ -331,44 +333,60 @@ def test_les_candidats_du_recensement_sont_les_communes_de_la_plateforme_sauf_ce
     ]
 
 
-# --- Une autre plateforme : son seul module de lecture ----------------------------------------------------------
+# --- Une autre plateforme : sa seule déclaration -----------------------------------------------------------------
 
 
-class _ModuleExemple:
-    """Le module de lecture d'une plateforme fictive, « exemple » : ce que Quicksite ajoutera, et rien d'autre. Sa
-    page du conseil porte la trace `exemple-cms`, sa liste des Séances le marqueur `exemple-seances` ; une lecture
-    coûte 3 requêtes au niveau « séances et préavis », 70 au niveau « objets et séances »."""
-
-    @staticmethod
-    def lire(robot, source, depuis):
-        raise AssertionError("le script ne lit pas le conseil, il le mesure")
-
-    @staticmethod
-    def mesurer(pages, page_du_conseil, declare, plateforme):
-        if "exemple-cms" not in (pages.texte(page_du_conseil) or ""):
-            return Mesure("autre", remarques=["aucune trace d'exemple"])
-        seances = page_du_conseil.rsplit("/", 1)[0] + "/seances"
-        return Mesure(plateforme.id, variante="liste", seances=seances if pages.texte(seances) else None)
-
-    @staticmethod
-    def requetes(pages, source, depuis):
-        return 70 if "objets" in source.conseil.donne else 3
+def _mesure_exemple(pages, page_du_conseil, declare, plateforme):
+    """La mesure d'une plateforme fictive, « exemple » : sa page du conseil porte la trace `exemple-cms`, et la page
+    des Séances, à côté, est celle que reconnaît l'une de ses variantes."""
+    if "exemple-cms" not in (pages.texte(page_du_conseil) or ""):
+        return Mesure("autre", remarques=["aucune trace d'exemple"])
+    seances = page_du_conseil.rsplit("/", 1)[0] + "/seances"
+    texte = pages.texte(seances)
+    for variante in plateforme.variantes:
+        trouvee = variante.reconnaitre(pages, seances, texte, []) if texte is not None else None
+        if isinstance(trouvee, Mesure):
+            trouvee.plateforme, trouvee.variante = plateforme.id, variante.id
+            return trouvee
+    return Mesure(plateforme.id)
 
 
-PLATEFORME_EXEMPLE = {
-    "id": "exemple",
-    "nom": "Exemple",
-    "editeur": "Exemple SA",
-    "variantes": [
-        {"id": "liste", "marqueur": "exemple-seances", "niveaux": [["objets", "seances"], ["preavis", "seances"], ["seances"]]},
-        {"id": "ancienne", "marqueur": "exemple-seances", "niveaux": [["seances"]]},
-    ],
-}
+def _lire_liste(robot, source, site, conseil, depuis):
+    """Une lecture qui coûte 70 requêtes au niveau « objets et séances », 3 sinon : sa page de liste, puis d'autres
+    pages, jamais lues par la mesure."""
+    for page in range(70 if "objets" in conseil.donne else 3):
+        robot.lire(site.seances if page == 0 else f"{site.seances}?page={page}", "import")
+    return Bruts(conseil, objets=[], seances=[], membres=[])
+
+
+EXEMPLE = PlateformeLue(
+    id="exemple",
+    nom="Exemple",
+    editeur="Exemple SA",
+    variantes=(
+        VarianteLue(
+            "liste",
+            marqueur="exemple-seances",
+            niveaux=(("objets", "seances"), ("preavis", "seances"), ("seances",)),
+            lire=_lire_liste,
+            reconnaitre=lambda pages, url, texte, liens: Mesure(None, seances=url) if "exemple-seances" in texte else None,
+        ),
+        VarianteLue(
+            "ancienne",
+            marqueur="exemple-seances",
+            niveaux=(("seances",),),
+            lire=_lire_liste,
+            reconnaitre=lambda pages, url, texte, liens: None,
+        ),
+    ),
+    mesure=_mesure_exemple,
+    robot_de_mesure=lambda pages: RobotSansReseau(pages.pages, lambda url: 1),
+)
 
 
 def _exemple(monkeypatch):
-    """Le réseau d'une commune de la plateforme fictive « exemple », dont le module de lecture est `_ModuleExemple`."""
-    monkeypatch.setitem(sites_communaux.LECTEURS, "exemple", _ModuleExemple)
+    """Le réseau d'une commune de la plateforme fictive « exemple », déclarée par `EXEMPLE` seulement."""
+    monkeypatch.setitem(sites_communaux.PLATEFORMES, "exemple", EXEMPLE)
     horloge = HorlogeFactice(T0)
     reseau = Reseau(horloge, adresses={"www.exemple.ch": "203.0.113.5"})
     reseau.pages["https://www.exemple.ch/conseil"] = Page("<p class='exemple-cms'>Conseil</p>")
@@ -376,12 +394,11 @@ def _exemple(monkeypatch):
     return reseau, horloge
 
 
-def test_une_autre_plateforme_n_ajoute_que_son_module_de_lecture(monkeypatch):
+def test_une_autre_plateforme_n_ajoute_que_sa_declaration(monkeypatch):
     reseau, horloge = _exemple(monkeypatch)
-    (exemple,) = FichierSources.model_validate({"plateformes": [PLATEFORME_EXEMPLE], "sources": []}).plateformes
     candidat = Candidat(5999, "Exemple", "Conseil général", "https://www.exemple.ch/conseil")
 
-    sources, remarques = brouillon(_robot(reseau, horloge), [candidat], exemple, JOUR)
+    sources, remarques = brouillon(_robot(reseau, horloge), [candidat], EXEMPLE, JOUR)
 
     assert sources[0]["site"] == {"plateforme": "exemple", "variante": "liste", "seances": "https://www.exemple.ch/seances"}
     # Le niveau le plus complet dépasserait le plafond : la commune est déclarée au suivant, et le brouillon le dit.
@@ -398,9 +415,8 @@ def test_une_variante_ou_un_niveau_qui_ne_correspond_plus_au_site_est_un_ecart(m
     # Le niveau le plus complet dépasse le plafond (70 requêtes) : une commune qui le déclare encore est un écart, avec
     # ses requêtes ; une commune déclarée dans une autre variante que celle mesurée en est un aussi.
     reseau, horloge = _exemple(monkeypatch)
-    (exemple,) = FichierSources.model_validate({"plateformes": [PLATEFORME_EXEMPLE], "sources": []}).plateformes
     candidat = Candidat(5999, "Exemple", "Conseil général", "https://www.exemple.ch/conseil")
-    [juste], _ = brouillon(_robot(reseau, horloge), [candidat], exemple, JOUR)
+    [juste], _ = brouillon(_robot(reseau, horloge), [candidat], EXEMPLE, JOUR)
     trop_complet = copy.deepcopy(juste)
     trop_complet["conseil"]["donne"] = ["objets", "seances"]
     autre_variante = copy.deepcopy(juste)
@@ -408,7 +424,7 @@ def test_une_variante_ou_un_niveau_qui_ne_correspond_plus_au_site_est_un_ecart(m
     autre_variante["conseil"]["donne"] = ["seances"]
 
     def verifier_exemple(source):
-        fichier = FichierSources.model_validate({"plateformes": [PLATEFORME_EXEMPLE], "sources": [source]})
+        fichier = FichierSources.model_validate({"sources": [source]})
         return verifier(_robot(reseau, horloge), fichier, "exemple", JOUR)
 
     assert verifier_exemple(juste) == []
