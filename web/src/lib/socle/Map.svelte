@@ -289,9 +289,6 @@
 		border-radius: 0;
 		box-shadow: none;
 	}
-	.carte :global(.maplibregl-ctrl-group button) {
-		border-radius: 0;
-	}
 	.carte :global(.maplibregl-ctrl-group button:not(:disabled):hover) {
 		background-color: var(--color-paper-2);
 	}

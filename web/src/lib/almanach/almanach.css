@@ -89,8 +89,6 @@ body {
 }
 a {
 	color: var(--color-rule-2);
-	text-decoration-color: var(--color-accent);
-	text-underline-offset: 0.18em;
 }
 :focus-visible {
 	outline: var(--rule-bar) solid var(--color-focus);

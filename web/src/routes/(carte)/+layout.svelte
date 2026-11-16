@@ -495,6 +495,16 @@
 		color: var(--color-ink-2);
 		font-family: var(--font-display);
 	}
+	/* Sur la carte, l'anneau de focus et le soulignement orange des liens passent avant ce que les composants et
+	   MapLibre en disent : le titre de la fiche, les boutons de zoom, le fil d'Ariane gardent les leurs. */
+	.app :global(:focus-visible) {
+		outline: var(--rule-bar) solid var(--color-focus);
+		outline-offset: var(--space-3xs);
+	}
+	.app :global(a) {
+		text-decoration-color: var(--color-accent);
+		text-underline-offset: 0.18em;
+	}
 	/* Le contenu, à droite du rail : la carte, puis la fiche ouverte, qui prend une colonne à droite et la rétrécit. */
 	.contenu {
 		display: grid;
