@@ -317,8 +317,9 @@ changement sous `.github/workflows/`, comme chaque mise à jour d'action par Dep
    qui ne contient plus la faute.
 
 **Le revert d'abord.** Après un retour en arrière, le revert est fusionné dans `main` avant toute autre PR, celles de
-Dependabot comprises. La CI verte de n'importe quel commit qui contient encore le commit fautif ferait avancer `cron`
-jusqu'à lui. Il n'y a pas d'interrupteur de gel : cette règle en tient lieu.
+Dependabot comprises, et aucune CI de `main` n'est relancée d'ici là. La CI verte de n'importe quel commit qui
+contient encore le commit fautif ferait avancer `cron` jusqu'à lui. Il n'y a pas d'interrupteur de gel : cette règle
+en tient lieu.
 
 **Mise en place**, une seule fois et à la main, dans l'ordre :
 
