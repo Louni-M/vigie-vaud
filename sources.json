@@ -6,17 +6,7 @@
 			"nom": "i-web",
 			"editeur": "Innovative Web AG",
 			"variantes": [
-				{ "id": "seances", "marqueur": "icmsTablePastSitzungen", "niveaux": [["seances"]] },
-				{
-					"id": "objets",
-					"marqueur": "icmsTablePastSitzungen",
-					"niveaux": [["objets", "seances"], ["seances"]]
-				},
-				{
-					"id": "pages",
-					"marqueur": "icmsTablePastSitzungen",
-					"niveaux": [["preavis", "seances"], ["seances"]]
-				}
+				{ "id": "seances", "marqueur": "icmsTablePastSitzungen", "niveaux": [["seances"]] }
 			]
 		},
 		{
@@ -414,12 +404,11 @@
 			"voie_acces": "cron",
 			"fraicheur": "import",
 			"couverture": { "communes": [5607], "mode": "scrape" },
-			"conseil": { "body_key": "5607", "donne": ["preavis", "seances"] },
+			"conseil": { "body_key": "5607", "donne": ["seances"] },
 			"site": {
 				"plateforme": "i-web",
-				"variante": "pages",
+				"variante": "seances",
 				"seances": "https://www.puidoux.ch/seances",
-				"objets": "https://www.puidoux.ch/seances",
 				"membres": "https://www.puidoux.ch/conseil"
 			}
 		},
@@ -751,9 +740,8 @@
 			"conseil": { "body_key": "5892", "donne": ["seances"] },
 			"site": {
 				"plateforme": "i-web",
-				"variante": "objets",
+				"variante": "seances",
 				"seances": "https://www.blonay-saint-legier.ch/seances",
-				"objets": "https://www.blonay-saint-legier.ch/objets-politiques",
 				"membres": "https://www.blonay-saint-legier.ch/conseil-communal"
 			}
 		},

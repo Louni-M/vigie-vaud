@@ -20,11 +20,13 @@ déclaration est à revoir. Une page non lue (erreur HTTP, refus, délai) l'arr�
 Un échantillon par variante, et non par commune (ADR 0010) : la commune choisie ne fait que montrer sa variante.
 Chaque variante a son dossier (`<plateforme>/<variante>/`), avec ses pages réduites, encodées comme le site les a
 servies, et `index.json` (URL demandée et finale, statut, en-têtes utiles de chaque page ; le corps enregistré est
-décompressé, un faux transport qui sert son `content-encoding` le recompresse). Seule exception, une variante que son
-module de lecture lit sous plusieurs formes : la recherche `coreapi` de Quicksite a deux vues du conseil
-(`site.coreapi.vue`), et la seconde, `documentconseil`, porte des cas que la première ne montre pas (une Séance par
-document, les fausses « Séance du 1 janvier ») ; elle a son propre échantillon, dans le dossier de sa vue
-(`quicksite/coreapi-documentconseil/`). Les pages entières restent hors du dépôt, dans le dossier `--brut` : relancé
+décompressé, un faux transport qui sert son `content-encoding` le recompresse). Deux exceptions ont un second
+échantillon, dans le dossier `<plateforme>/<variante>-<suffixe>/` :
+- une variante que son module de lecture lit sous plusieurs formes : la recherche `coreapi` de Quicksite a deux vues
+  du conseil (`site.coreapi.vue`), et la seconde, `documentconseil`, porte des cas que la première ne montre pas (une
+  Séance par document, les fausses « Séance du 1 janvier ») : `quicksite/coreapi-documentconseil/` ;
+- une seconde commune i-web sur le même /24 que la première, pour les tests des règles du robot entre deux sites
+  (débit par réseau, blocage, alternance) : `i-web/seances-blonay/`. Les pages entières restent hors du dépôt, dans le dossier `--brut` : relancé
 avec `--hors-ligne`, le script refait la réduction sans aucune requête et produit les mêmes fichiers.
 
 Lancé à la main, jamais par le cron : au début de chaque étape de J3 pour sa plateforme, puis dans la PR qui corrige
@@ -76,12 +78,12 @@ class Echantillon:
     commune: str
     ofs: int
     pages: tuple[PageEchantillon, ...]
-    vue: str | None = None  # la vue `coreapi` d'un second échantillon de la variante, qui a alors son dossier
+    suffixe: str | None = None  # un second échantillon de la variante (vue `coreapi`, seconde commune), à son dossier
 
     @property
     def nom(self) -> str:
-        """Le dossier de l'échantillon : `<plateforme>/<variante>`, ou `<plateforme>/<variante>-<vue>`."""
-        return f"{self.plateforme}/{self.variante}" + (f"-{self.vue}" if self.vue else "")
+        """Le dossier de l'échantillon : `<plateforme>/<variante>`, ou `<plateforme>/<variante>-<suffixe>`."""
+        return f"{self.plateforme}/{self.variante}" + (f"-{self.suffixe}" if self.suffixe else "")
 
 
 _SEANCES_IWEB = ("table#icmsTableFutureSitzungen", "table#icmsTablePastSitzungen")
@@ -112,9 +114,9 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             ("123379", "123415"),  # le président et la 1re vice-présidente du Conseil
         ),
     )),
-    # Modules Séances et Objets : Objets numérotés (`2026-PM-23`) avec catégorie, statut et autorité ; points
-    # d'ordre du jour reliés à leurs Objets.
-    Echantillon("i-web", "objets", "Blonay - Saint-Légier", 5892, (
+    # Une seconde commune du module Séances, sur le même /24 que Préverenges : ses points d'ordre du jour citent des
+    # Objets, que la variante ne lit pas.
+    Echantillon("i-web", "seances", "Blonay - Saint-Légier", 5892, (
         PageEchantillon(
             "seances", "https://www.blonay-saint-legier.ch/seances", _SEANCES_IWEB,
             # À venir ; 8 et 29 septembre 2026 (page lue), puis l'installation du 18 juin, dans le désordre du site.
@@ -125,40 +127,11 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             ids=(
                 "7246414", "7262080",  # ordre du jour, procès-verbal
                 "traktanden_197017", "traktanden_197032", "traktanden_197035",  # points 1, 5 et 6
-                "2909893", "2981212", "3002125",  # Objets de la Séance : préavis 23-2026, deux communications
+                "2909893", "2981212", "3002125",  # Objets cités par les points : préavis 23-2026, deux communications
             ),
             **_SEANCE_IWEB,
         ),
-        PageEchantillon(
-            "objets", "https://www.blonay-saint-legier.ch/objets-politiques", ("table#icmsTable-geschaefteList",),
-            # Préavis 23-2026 (point 6) et 37-2026 (page lue), un postulat d'élu·e, deux communications.
-            ("2909893", "3002200", "3000802", "2981212", "3002125"),
-        ),
-        PageEchantillon("objet", "https://www.blonay-saint-legier.ch/_rte/information/3002200", ("div.maincontent",)),
-        # Le postulat d'un élu (2026-PO-02) : un Objet dont la fiche publie ses auteur·e·s.
-        PageEchantillon("postulat", "https://www.blonay-saint-legier.ch/_rte/information/3000802", ("div.maincontent",)),
-    )),
-    # Préavis rédigés dans une page (tableau saisi à la main sous les Séances), à côté du module Séances.
-    Echantillon("i-web", "pages", "Puidoux", 5607, (
-        PageEchantillon(
-            "seances", "https://www.puidoux.ch/seances", (*_SEANCES_IWEB, "table.Table"),
-            (
-                "7115819", "7115804", "7115816",  # à venir ; séance annulée du 29 janvier ; 1er octobre (page lue)
-                "N° du préavis et date",  # ligne d'en-tête du tableau des préavis
-                "09-2021",  # préavis sans document
-                "5549947", "5550052",  # retiré, refusé
-                "7014520",  # date en toutes lettres
-                "7206067",  # 05-2026 et 07-2026, liés au même document
-                "7206046",  # proposition du bureau, sans numéro
-            ),
-            lignes="tbody>tr",
-        ),
-        PageEchantillon(
-            "seance", "https://www.puidoux.ch/_rte/anlass/7115816",
-            ids=("7206034", "7206037", "7266115", "7266130"),  # ordre du jour, préavis, extrait de décision, PV
-            **_SEANCE_IWEB,
-        ),
-    )),
+    ), suffixe="blonay"),
     # Quicksite, ancienne génération : la bibliothèque de documents rendue côté serveur (`/documents`), une page de
     # 20 documents typés, avec leur date de mise en ligne ; les Séances se lisent dans les titres des ordres du jour
     # et des procès-verbaux.
@@ -219,7 +192,7 @@ ECHANTILLONS: tuple[Echantillon, ...] = (
             ),
             lignes="div.qs-edit",
         ),
-    ), vue="documentconseil"),
+    ), suffixe="documentconseil"),
     # Module Conseil de Quicksite (« Vision Citoyenne »), sur un site à part : la liste des Séances (année en cours,
     # années précédentes en onglets), une page par Séance (`?ID=`) dont les points citent leur Objet, une fiche par
     # Objet (`?id=`) avec son auteur·e et ses documents datés, les conseillers en deux pages.

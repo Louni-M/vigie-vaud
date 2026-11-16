@@ -58,7 +58,7 @@ export function noteDeNiveau(source: Source): NoteDeNiveau | null {
  * La mention de la fiche d'un Objet sans statut ni auteur·e, quand le conseil scrapé ne les publie pas : son niveau
  * n'est pas « objets et séances » (un préavis n'est pas d'office de la Municipalité, ni en attente). `null` pour un
  * Objet qui a l'un ou l'autre, pour un conseil scrapé qui publie statuts et auteur·e·s (un Objet sans statut du
- * module Objets d'i-web n'a simplement pas de statut), ou pour un conseil sans site (OpenParlData).
+ * module Conseil de Quicksite n'a simplement pas de statut), ou pour un conseil sans site (OpenParlData).
  */
 export function mentionNonPublies(
 	conseil: string,

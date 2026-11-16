@@ -249,7 +249,7 @@ def _meme_24(horloge):
     """Préverenges et Blonay - Saint-Légier, deux communes i-web sur le même /24 (la plage d'i-web)."""
     reseau = _preverenges(horloge)
     reseau.adresses["www.blonay-saint-legier.ch"] = "195.65.10.22"
-    reseau.pages |= echantillon("i-web", "objets")
+    reseau.pages |= echantillon("i-web", "seances-blonay")
     return reseau
 
 

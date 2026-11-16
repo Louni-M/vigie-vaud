@@ -1,7 +1,7 @@
 """Le script de préparation des sources (`preparation_sources.py`, spec de J3, « Scripts de préparation »), par ses
 deux opérations : `verifier` (revérifie `sources.json` sans l'écrire) et `brouillon` (écrit le brouillon des sources
 d'une plateforme). Le réseau est le faux réseau des sites (`faux_sites.Reseau`), qui sert l'échantillon i-web
-enregistré (Préverenges, Blonay - Saint-Légier, Puidoux) et des pages du conseil fabriquées ; on observe les écarts
+enregistré (Préverenges, Blonay - Saint-Légier) et des pages du conseil fabriquées ; on observe les écarts
 signalés, le brouillon écrit et les requêtes reçues par les sites (URL, User-Agent, heure).
 """
 
@@ -29,7 +29,6 @@ JOUR = date(2026, 10, 23)  # la fenêtre du passage ordinaire part du 23 avril 2
 
 PREVERENGES = "https://www.preverenges.ch"
 BLONAY = "https://www.blonay-saint-legier.ch"
-PUIDOUX = "https://www.puidoux.ch"
 OIOI = "https://www.exemple-oioi.ch"
 LICENCE = "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
 
@@ -40,8 +39,6 @@ PLATEFORMES = [
         "editeur": "Innovative Web AG",
         "variantes": [
             {"id": "seances", "marqueur": "icmsTablePastSitzungen", "niveaux": [["seances"]]},
-            {"id": "objets", "marqueur": "icmsTablePastSitzungen", "niveaux": [["objets", "seances"], ["seances"]]},
-            {"id": "pages", "marqueur": "icmsTablePastSitzungen", "niveaux": [["preavis", "seances"], ["seances"]]},
         ],
     }
 ]
@@ -60,22 +57,19 @@ MENU = [("/conseil", "Conseil communal"), ("/municipalite", "Municipalité"), ("
 
 
 def _reseau(horloge):
-    """Les trois sites de l'échantillon i-web, sur le /24 d'i-web, avec la page du conseil de chacun."""
+    """Les deux sites de l'échantillon i-web, sur le /24 d'i-web, avec la page du conseil de chacun."""
     reseau = Reseau(
         horloge,
         adresses={
             "www.preverenges.ch": "195.65.10.20",
             "www.blonay-saint-legier.ch": "195.65.10.22",
-            "www.puidoux.ch": "195.65.10.23",
             "www.exemple-oioi.ch": "164.128.171.231",
         },
     )
-    for variante in ("seances", "objets", "pages"):
-        reseau.pages |= echantillon("i-web", variante)
+    reseau.pages |= echantillon("i-web", "seances") | echantillon("i-web", "seances-blonay")
     reseau.pages[f"{BLONAY}/conseil-communal"] = _conseil_fabrique(
         [*MENU, ("/seances", "Séances"), ("/objets-politiques", "Objets politiques")]
     )
-    reseau.pages[f"{PUIDOUX}/conseil"] = _conseil_fabrique([*MENU, ("/seances", "Séances du Conseil")])
     reseau.pages[f"{OIOI}/conseil-general"] = Page(
         '<html><body><a href="/uploads/3f2a/documents/pv.pdf">PV</a> Réalisation OIOI web</body></html>'
     )
@@ -107,13 +101,7 @@ SITE_PREVERENGES = _source(
 )
 SITE_BLONAY = _source(
     5892, "Blonay - Saint-Légier", f"{BLONAY}/conseil-communal",
-    {"variante": "objets", "seances": f"{BLONAY}/seances", "objets": f"{BLONAY}/objets-politiques"},
-    donne=("objets", "seances"),
-)
-SITE_PUIDOUX = _source(
-    5607, "Puidoux", f"{PUIDOUX}/conseil",
-    {"variante": "pages", "seances": f"{PUIDOUX}/seances", "objets": f"{PUIDOUX}/seances"},
-    donne=("preavis", "seances"),
+    {"variante": "seances", "seances": f"{BLONAY}/seances"},
 )
 
 
@@ -157,19 +145,19 @@ def _seances_dans_la_fenetre(reseau, url, nombre):
 def test_des_declarations_justes_ne_donnent_aucun_ecart():
     horloge = HorlogeFactice(T0)
 
-    assert _verifier(_reseau(horloge), horloge, SITE_PREVERENGES, SITE_BLONAY, SITE_PUIDOUX) == []
+    assert _verifier(_reseau(horloge), horloge, SITE_PREVERENGES, SITE_BLONAY) == []
 
 
 def test_la_verification_passe_par_le_robot_une_requete_par_page_cinq_secondes_d_ecart():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
 
-    _verifier(reseau, horloge, SITE_PREVERENGES, SITE_BLONAY, SITE_PUIDOUX)
+    _verifier(reseau, horloge, SITE_PREVERENGES, SITE_BLONAY)
 
     urls = [r.url for r in reseau.journal]
     assert len(urls) == len(set(urls))
-    assert {f"{PREVERENGES}/sitzung", f"{BLONAY}/objets-politiques", f"{PUIDOUX}/seances"} <= set(urls)
-    assert not any("/_rte/anlass/" in u or "/_rte/information/" in u for u in urls)  # ni Séance ni Objet ouverts
+    assert {f"{PREVERENGES}/sitzung", f"{BLONAY}/seances"} <= set(urls)
+    assert not any("/_rte/anlass/" in u for u in urls)  # aucune Séance ouverte
     secondes = [(r.heure - T0).total_seconds() for r in reseau.journal]
     assert secondes == [5 * i for i in range(len(secondes))]  # un seul /24 : 5 s entre deux requêtes
     assert all(r.user_agent.startswith("VigieVaud-import ") for r in reseau.journal)
@@ -198,26 +186,22 @@ def test_un_site_qui_n_est_pas_sur_la_plateforme_declaree_est_un_ecart():
 def test_une_page_du_conseil_non_lue_est_un_ecart():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
-    del reseau.pages[f"{PUIDOUX}/conseil"]
+    del reseau.pages[f"{BLONAY}/conseil-communal"]
 
-    assert _verifier(reseau, horloge, SITE_PUIDOUX) == [
-        "site-5607 (Puidoux) : page du conseil https://www.puidoux.ch/conseil non lue (HTTP 404)"
+    assert _verifier(reseau, horloge, SITE_BLONAY) == [
+        "site-5892 (Blonay - Saint-Légier) : page du conseil https://www.blonay-saint-legier.ch/conseil-communal non "
+        "lue (HTTP 404)"
     ]
 
 
-def test_une_variante_ou_une_page_qui_ne_correspond_plus_au_site_est_un_ecart():
+def test_une_page_qui_ne_correspond_plus_au_site_est_un_ecart():
     horloge = HorlogeFactice(T0)
-    seances_seules = copy.deepcopy(SITE_BLONAY)
-    seances_seules["site"] = {"plateforme": "i-web", "variante": "seances", "seances": f"{BLONAY}/seances"}
-    seances_seules["conseil"]["donne"] = ["seances"]
-    membres = copy.deepcopy(SITE_PUIDOUX)
-    membres["site"]["membres"] = f"{PUIDOUX}/conseil"
+    membres = copy.deepcopy(SITE_BLONAY)
+    membres["site"]["membres"] = f"{BLONAY}/conseil-communal"
 
-    assert _verifier(_reseau(horloge), horloge, seances_seules, membres) == [
-        "site-5892 (Blonay - Saint-Légier) : variante déclarée seances, mesurée objets",
-        "site-5892 (Blonay - Saint-Légier) : page des Objets déclarée aucune, mesurée "
-        "https://www.blonay-saint-legier.ch/objets-politiques",
-        "site-5607 (Puidoux) : page des membres déclarée https://www.puidoux.ch/conseil, mesurée aucune",
+    assert _verifier(_reseau(horloge), horloge, membres) == [
+        "site-5892 (Blonay - Saint-Légier) : page des membres déclarée "
+        "https://www.blonay-saint-legier.ch/conseil-communal, mesurée aucune",
     ]
 
 
@@ -233,60 +217,13 @@ def test_une_commune_au_dela_du_plafond_de_60_requetes_est_un_ecart():
     ]
 
 
-def _objets_dans_la_fenetre(reseau, nombre):
-    """La liste des Objets de Blonay - Saint-Légier, avec `nombre` Communications de plus, toutes dans la fenêtre :
-    comme le vrai site, qui en numérote plus de 40 par an, avec ses préavis."""
-    url = f"{BLONAY}/objets-politiques"
-    page = reseau.pages[url]
-    texte = page.corps.decode("utf-8")
-
-    def remplacer(m):
-        donnees = json.loads(html.unescape(m[2]))
-        donnees["data"] += [
-            {
-                "title": f'<a href="/_rte/information/{9000000 + i}">Communication municipale {50 + i}-2026</a>',
-                "_nummer": f"2026-CM-{50 + i}",
-                "_geschaeftsdatum": f"{1 + i % 28:02d}.09.2026",
-                "_kategorieId": "Communication",
-            }
-            for i in range(nombre)
-        ]
-        return m[1] + html.escape(json.dumps(donnees), quote=True) + m[3]
-
-    texte = re.sub(r'(<table[^>]*id="icmsTable-geschaefteList"[^>]*data-entities=")([^"]*)(")', remplacer, texte)
-    reseau.pages[url] = Page(texte, entetes=page.entetes, gzip=page.gzip)
-
-
-def test_au_dela_du_plafond_au_niveau_objets_et_seances_blonay_tient_en_seances_seulement():
-    # Chaque Objet de la fenêtre coûte deux requêtes (son lien stable, redirigé) : au vrai, Blonay - Saint-Légier en
-    # demandait 162 le 23 octobre 2026. Ses seules Séances tiennent sous le plafond.
-    horloge = HorlogeFactice(T0)
-    reseau = _reseau(horloge)
-    _objets_dans_la_fenetre(reseau, 25)
-    seances_seules = copy.deepcopy(SITE_BLONAY)
-    seances_seules["conseil"]["donne"] = ["seances"]
-
-    assert _verifier(reseau, horloge, SITE_BLONAY) == [
-        "site-5892 (Blonay - Saint-Légier) : niveau déclaré objets et séances, mesuré séances seulement (72 requêtes "
-        "au passage ordinaire, au-delà du plafond de 60)"
-    ]
-    assert _verifier(reseau, horloge, seances_seules) == []
-    sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[1:2], _fichier().plateformes[0], JOUR)
-    assert sources == [seances_seules]
-    assert remarques == {
-        "site-5892": [
-            "Blonay - Saint-Légier : 72 requêtes au niveau objets et séances, au-delà du plafond de 60 ; déclarée au "
-            "niveau séances seulement"
-        ]
-    }
-
-
 def test_une_commune_non_couverte_dont_le_site_a_maintenant_ses_seances_est_un_ecart():
     horloge = HorlogeFactice(T0)
-    non_couverte = _source(5607, "Puidoux", f"{PUIDOUX}/conseil", {})
+    non_couverte = _source(5892, "Blonay - Saint-Légier", f"{BLONAY}/conseil-communal", {})
 
     assert _verifier(_reseau(horloge), horloge, non_couverte) == [
-        "site-5607 (Puidoux) : non couverte, mais une page des Séances est mesurée : https://www.puidoux.ch/seances"
+        "site-5892 (Blonay - Saint-Légier) : non couverte, mais une page des Séances est mesurée : "
+        "https://www.blonay-saint-legier.ch/seances"
     ]
 
 
@@ -297,7 +234,6 @@ def _candidats():
     return [
         Candidat(5643, "Préverenges", "Conseil communal", f"{PREVERENGES}/conseil"),
         Candidat(5892, "Blonay - Saint-Légier", "Conseil communal", f"{BLONAY}/conseil-communal"),
-        Candidat(5607, "Puidoux", "Conseil communal", f"{PUIDOUX}/conseil"),
         Candidat(5999, "Exemple", "Conseil général", f"{OIOI}/conseil-general"),
     ]
 
@@ -320,7 +256,7 @@ def test_le_brouillon_declare_chaque_commune_de_la_plateforme_d_apres_son_site()
 
     sources, remarques = brouillon(_robot(reseau, horloge), _candidats(), _fichier().plateformes[0], JOUR)
 
-    assert sources == [SITE_PREVERENGES, SITE_BLONAY, SITE_PUIDOUX]
+    assert sources == [SITE_PREVERENGES, SITE_BLONAY]
     assert remarques == {
         "site-5999": ["Exemple : pas sur i-web (aucune trace d'i-web sur https://www.exemple-oioi.ch/conseil-general),"
                       " non déclarée"],
@@ -330,21 +266,23 @@ def test_le_brouillon_declare_chaque_commune_de_la_plateforme_d_apres_son_site()
 def test_une_commune_sans_page_des_seances_est_proposee_non_couverte_a_relire():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
-    _sans_marqueur(reseau, f"{PUIDOUX}/seances")
+    _sans_marqueur(reseau, f"{BLONAY}/seances")
 
-    sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[2:3], _fichier().plateformes[0], JOUR)
+    sources, remarques = brouillon(_robot(reseau, horloge), _candidats()[1:2], _fichier().plateformes[0], JOUR)
 
-    assert sources == [_source(5607, "Puidoux", f"{PUIDOUX}/conseil", {}) | {
-        "couverture": {"communes": [5607], "mode": "non_couvert", "raison": "rien_en_ligne"}
+    assert sources == [_source(5892, "Blonay - Saint-Légier", f"{BLONAY}/conseil-communal", {}) | {
+        "couverture": {"communes": [5892], "mode": "non_couvert", "raison": "rien_en_ligne"}
     }]
-    assert remarques == {"site-5607": ["Puidoux : aucune page des Séances i-web trouvée ; raison à relire"]}
+    assert remarques == {
+        "site-5892": ["Blonay - Saint-Légier : aucune page des Séances i-web trouvée ; raison à relire"]
+    }
 
 
 def test_le_brouillon_nomme_une_commune_en_le_avec_l_article_contracte():
     horloge = HorlogeFactice(T0)
     reseau = _reseau(horloge)
-    _sans_marqueur(reseau, f"{PUIDOUX}/seances")
-    candidat = Candidat(5587, "Le Mont-sur-Lausanne", "Conseil communal", f"{PUIDOUX}/conseil")
+    _sans_marqueur(reseau, f"{BLONAY}/seances")
+    candidat = Candidat(5587, "Le Mont-sur-Lausanne", "Conseil communal", f"{BLONAY}/conseil-communal")
 
     [source], _ = brouillon(_robot(reseau, horloge), [candidat], _fichier().plateformes[0], JOUR)
 
@@ -417,26 +355,30 @@ class _ModuleExemple:
         return 70 if "objets" in source.conseil.donne else 3
 
 
-def test_une_autre_plateforme_n_ajoute_que_son_module_de_lecture(monkeypatch):
+PLATEFORME_EXEMPLE = {
+    "id": "exemple",
+    "nom": "Exemple",
+    "editeur": "Exemple SA",
+    "variantes": [
+        {"id": "liste", "marqueur": "exemple-seances", "niveaux": [["objets", "seances"], ["preavis", "seances"], ["seances"]]},
+        {"id": "ancienne", "marqueur": "exemple-seances", "niveaux": [["seances"]]},
+    ],
+}
+
+
+def _exemple(monkeypatch):
+    """Le réseau d'une commune de la plateforme fictive « exemple », dont le module de lecture est `_ModuleExemple`."""
     monkeypatch.setitem(sites_communaux.LECTEURS, "exemple", _ModuleExemple)
     horloge = HorlogeFactice(T0)
     reseau = Reseau(horloge, adresses={"www.exemple.ch": "203.0.113.5"})
     reseau.pages["https://www.exemple.ch/conseil"] = Page("<p class='exemple-cms'>Conseil</p>")
     reseau.pages["https://www.exemple.ch/seances"] = Page("<table class='exemple-seances'></table>")
-    niveaux = [["objets", "seances"], ["preavis", "seances"], ["seances"]]
-    (exemple,) = FichierSources.model_validate(
-        {
-            "plateformes": [
-                {
-                    "id": "exemple",
-                    "nom": "Exemple",
-                    "editeur": "Exemple SA",
-                    "variantes": [{"id": "liste", "marqueur": "exemple-seances", "niveaux": niveaux}],
-                }
-            ],
-            "sources": [],
-        }
-    ).plateformes
+    return reseau, horloge
+
+
+def test_une_autre_plateforme_n_ajoute_que_son_module_de_lecture(monkeypatch):
+    reseau, horloge = _exemple(monkeypatch)
+    (exemple,) = FichierSources.model_validate({"plateformes": [PLATEFORME_EXEMPLE], "sources": []}).plateformes
     candidat = Candidat(5999, "Exemple", "Conseil général", "https://www.exemple.ch/conseil")
 
     sources, remarques = brouillon(_robot(reseau, horloge), [candidat], exemple, JOUR)
@@ -450,3 +392,28 @@ def test_une_autre_plateforme_n_ajoute_que_son_module_de_lecture(monkeypatch):
             "séances et préavis"
         ]
     }
+
+
+def test_une_variante_ou_un_niveau_qui_ne_correspond_plus_au_site_est_un_ecart(monkeypatch):
+    # Le niveau le plus complet dépasse le plafond (70 requêtes) : une commune qui le déclare encore est un écart, avec
+    # ses requêtes ; une commune déclarée dans une autre variante que celle mesurée en est un aussi.
+    reseau, horloge = _exemple(monkeypatch)
+    (exemple,) = FichierSources.model_validate({"plateformes": [PLATEFORME_EXEMPLE], "sources": []}).plateformes
+    candidat = Candidat(5999, "Exemple", "Conseil général", "https://www.exemple.ch/conseil")
+    [juste], _ = brouillon(_robot(reseau, horloge), [candidat], exemple, JOUR)
+    trop_complet = copy.deepcopy(juste)
+    trop_complet["conseil"]["donne"] = ["objets", "seances"]
+    autre_variante = copy.deepcopy(juste)
+    autre_variante["site"]["variante"] = "ancienne"
+    autre_variante["conseil"]["donne"] = ["seances"]
+
+    def verifier_exemple(source):
+        fichier = FichierSources.model_validate({"plateformes": [PLATEFORME_EXEMPLE], "sources": [source]})
+        return verifier(_robot(reseau, horloge), fichier, "exemple", JOUR)
+
+    assert verifier_exemple(juste) == []
+    assert verifier_exemple(trop_complet) == [
+        "site-5999 (Exemple) : niveau déclaré objets et séances, mesuré séances et préavis (72 requêtes au passage "
+        "ordinaire, au-delà du plafond de 60)"
+    ]
+    assert verifier_exemple(autre_variante) == ["site-5999 (Exemple) : variante déclarée ancienne, mesurée liste"]

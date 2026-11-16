@@ -25,7 +25,7 @@ def _deux_reseaux(horloge, adresse_blonay=AUTRE_RESEAU):
     reseau = _preverenges(horloge)
     reseau.duree = 0.001  # chaque réponse prend un peu de temps réel : deux requêtes simultanées se verraient
     reseau.adresses["www.blonay-saint-legier.ch"] = adresse_blonay
-    reseau.pages |= echantillon("i-web", "objets")
+    reseau.pages |= echantillon("i-web", "seances-blonay")
     blonay = _site(5892, "Blonay - Saint-Légier", f"{BLONAY}/seances", f"{BLONAY}/conseil-communal")
     return reseau, _sources(SITE_PREVERENGES, blonay)
 

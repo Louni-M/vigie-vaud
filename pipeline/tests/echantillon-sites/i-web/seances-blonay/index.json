@@ -1,13 +1,13 @@
 {
  "plateforme": "i-web",
- "variante": "pages",
- "commune": "Puidoux",
- "ofs": 5607,
+ "variante": "seances",
+ "commune": "Blonay - Saint-Légier",
+ "ofs": 5892,
  "pages": [
   {
    "sorte": "seances",
-   "url": "https://www.puidoux.ch/seances",
-   "finale": "https://www.puidoux.ch/seances",
+   "url": "https://www.blonay-saint-legier.ch/seances",
+   "finale": "https://www.blonay-saint-legier.ch/seances",
    "statut": 200,
    "entetes": {
     "content-type": "text/html; charset=UTF-8",
@@ -17,8 +17,8 @@
   },
   {
    "sorte": "seance",
-   "url": "https://www.puidoux.ch/_rte/anlass/7115816",
-   "finale": "https://www.puidoux.ch/seances/7115816",
+   "url": "https://www.blonay-saint-legier.ch/_rte/anlass/6895123",
+   "finale": "https://www.blonay-saint-legier.ch/seances/6895123",
    "statut": 200,
    "entetes": {
     "content-type": "text/html; charset=UTF-8",
