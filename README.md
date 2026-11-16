@@ -301,7 +301,9 @@ le déclencheur est le seul endroit qui nomme la référence.
 verts les jobs du site, du schéma et du pipeline, il pousse le commit contrôlé vers `cron`, sans force. Une fusion
 dont la CI échoue n'atteint donc pas le cron : `cron` reste au dernier commit vert. Sans force, la branche ne fait
 qu'avancer : une CI plus ancienne qui finit après une plus récente voit son push refusé, et le job le note dans son
-journal sans échouer. Tout autre refus le fait échouer.
+journal sans échouer. Tout autre refus le fait échouer. Le job pousse avec la clé de déploiement `CRON_CLE`, en
+écriture, et non avec le `GITHUB_TOKEN` : GitHub refuse à ce jeton toute avancée d'une branche qui fait entrer un
+changement sous `.github/workflows/`, comme chaque mise à jour d'action par Dependabot.
 
 **Revenir en arrière**, quand un commit vert casse quand même le cron :
 
@@ -320,9 +322,17 @@ jusqu'à lui. Il n'y a pas d'interrupteur de gel : cette règle en tient lieu.
 
 **Mise en place**, une seule fois et à la main, dans l'ordre :
 
-1. fusionner dans `main` la PR qui introduit `avancer-cron` ;
-2. attendre la CI verte de ce commit sur `main`, qui crée `cron` (`git ls-remote origin cron` la montre) ;
-3. copier le déclencheur `pipeline/depot-donnees/.github/workflows/cron.yml` (`cron.yml@cron`) dans le dépôt de
+1. créer la clé de déploiement, sans phrase de passe, hors du dépôt :
+
+   ```bash
+   ssh-keygen -t ed25519 -N '' -C avancer-cron -f cron_cle
+   ```
+
+   ajouter `cron_cle.pub` aux clés de déploiement du dépôt principal (Settings → Deploy keys, « Allow write
+   access »), puis le contenu de `cron_cle` au secret Actions `CRON_CLE` du même dépôt, et effacer les deux fichiers ;
+2. fusionner dans `main` la PR qui introduit `avancer-cron` ;
+3. attendre la CI verte de ce commit sur `main`, qui crée `cron` (`git ls-remote origin cron` la montre) ;
+4. copier le déclencheur `pipeline/depot-donnees/.github/workflows/cron.yml` (`cron.yml@cron`) dans le dépôt de
    données et le pousser.
 
 Entre la fusion et la copie, l'ancien déclencheur (`cron.yml@main`) continue de tourner : le workflow clone le code
