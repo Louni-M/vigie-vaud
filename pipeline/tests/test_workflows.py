@@ -3,7 +3,7 @@ commentaire (`@<sha> # v7.0.1`), y compris dans le déclencheur modèle du dép�
 un SHA non. Dependabot (`.github/dependabot.yml`) tient ces épingles et leur commentaire à jour.
 
 Seules exceptions : les actions locales (`./…`) et l'appel du workflow réutilisable de ce dépôt par le déclencheur
-modèle (`Louni-M/vigie-vaud/…@main`), dont la référence relève de #187.
+modèle (`Louni-M/vigie-vaud/…@cron`), qui suit la branche `cron` que la CI de `main` avance (README, « Branche cron »).
 """
 
 import re
@@ -50,7 +50,7 @@ def test_mal_epinglees_ne_retient_que_les_actions_tierces_sans_sha_ni_version():
         f"      - uses: github/codeql-action/init@{sha} # v4.31.2\n"
         f"      - uses: actions/checkout@{sha[:7]} # v7.0.1\n"
         "      - uses: ./.github/actions/locale\n"
-        "    uses: Louni-M/vigie-vaud/.github/workflows/cron.yml@main\n"
+        "    uses: Louni-M/vigie-vaud/.github/workflows/cron.yml@cron\n"
         "      # uses: actions/cache@v5\n"
     )
     assert mal_epinglees(texte) == [

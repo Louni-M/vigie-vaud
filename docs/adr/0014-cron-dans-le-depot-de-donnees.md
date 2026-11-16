@@ -5,8 +5,9 @@ Le workflow planifié du cron vit dans `vigie-vaud-donnees`, et non à côté de
 secret passé au workflow est `RETRAITS_CLE` (facultatif, ADR 0007). Et comme le cron committe à chaque passage dans le
 dépôt qui le porte, GitHub ne désactive pas son `schedule` après 60 jours sans activité, ce qui arriverait au dépôt
 principal entre deux jalons. Le dépôt de données ne contient qu'un déclencheur (`schedule`, `workflow_dispatch`,
-`concurrency`, `permissions`) qui appelle le workflow réutilisable `.github/workflows/cron.yml@main` du dépôt principal.
-La logique évolue donc avec `pipeline/`, dans les mêmes PR.
+`concurrency`, `permissions`) qui appelle le workflow réutilisable `.github/workflows/cron.yml@cron` du dépôt principal,
+à la branche `cron` que la CI de `main` n'avance qu'à un commit vert (#187). La logique évolue donc avec `pipeline/`,
+dans les mêmes PR.
 
 ## Considered Options
 

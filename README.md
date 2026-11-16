@@ -291,6 +291,43 @@ main de l'archive (ADR 0017) :
 cd pipeline && uv run python conseils.py --depot ../../vigie-vaud-donnees --reconstruire
 ```
 
+### Branche cron
+
+Le cron ne tourne jamais au code de `main`, mais au bout de la branche `cron`. Le déclencheur appelle
+`cron.yml@cron`, et le workflow réutilisable clone le code du cron au commit de ce même appel (`job.workflow_sha`) :
+le déclencheur est le seul endroit qui nomme la référence.
+
+**Comment `cron` avance.** Le dernier job de `ci.yml`, `avancer-cron`, ne tourne que sur un push vers `main`. Une fois
+verts les jobs du site, du schéma et du pipeline, il pousse le commit contrôlé vers `cron`, sans force. Une fusion
+dont la CI échoue n'atteint donc pas le cron : `cron` reste au dernier commit vert. Sans force, la branche ne fait
+qu'avancer : une CI plus ancienne qui finit après une plus récente voit son push refusé, et le job le note dans son
+journal sans échouer. Tout autre refus le fait échouer.
+
+**Revenir en arrière**, quand un commit vert casse quand même le cron :
+
+1. repousser `cron` de force au dernier commit sain :
+
+   ```bash
+   git push --force origin <sha>:refs/heads/cron
+   ```
+
+2. annuler le commit fautif sur `main` (revert). La CI verte du revert fait de nouveau avancer `cron`, à un commit
+   qui ne contient plus la faute.
+
+**Le revert d'abord.** Après un retour en arrière, le revert est fusionné dans `main` avant toute autre PR, celles de
+Dependabot comprises. La CI verte de n'importe quel commit qui contient encore le commit fautif ferait avancer `cron`
+jusqu'à lui. Il n'y a pas d'interrupteur de gel : cette règle en tient lieu.
+
+**Mise en place**, une seule fois et à la main, dans l'ordre :
+
+1. fusionner dans `main` la PR qui introduit `avancer-cron` ;
+2. attendre la CI verte de ce commit sur `main`, qui crée `cron` (`git ls-remote origin cron` la montre) ;
+3. copier le déclencheur `pipeline/depot-donnees/.github/workflows/cron.yml` (`cron.yml@cron`) dans le dépôt de
+   données et le pousser.
+
+Entre la fusion et la copie, l'ancien déclencheur (`cron.yml@main`) continue de tourner : le workflow clone le code
+au commit de son appel, ici `main`, comme avant.
+
 ## Configuration
 
 Les adresses du dépôt, du courriel de contact, du site public et des Pages du dépôt de données sont écrites une
@@ -301,7 +338,9 @@ seule fois, dans `config.json` à la racine. Le site les lit par `web/src/lib/co
 Le workflow `ci.yml` se lance sur chaque PR et sur chaque push vers `main` : `svelte-check`, le linter du site
 (ESLint), les tests du site (Vitest), la construction (qui valide `sources.json`), la vérification qu'aucune donnée
 CAMAC ni DGMR n'est dans le site construit, les scénarios dans un navigateur (Playwright), la régénération du schéma
-commun (qui doit ne rien changer), le linter du pipeline (ruff) et ses tests (pytest).
+commun (qui doit ne rien changer), le linter du pipeline (ruff) et ses tests (pytest). Sur un push vers `main`
+seulement, un dernier job (`avancer-cron`) avance la branche `cron` au commit contrôlé quand tout est vert (voir
+[Branche cron](#branche-cron)).
 
 Les scénarios Playwright (`web/e2e/`) tournent sur bureau et en vue téléphone contre le site construit, avec des
 services factices : toute requête qui quitterait la machine fait échouer le scénario.
@@ -347,7 +386,9 @@ elle est écrite :
   lancés avec `uv run --group geo` ; le cron s'installe sans elle (`uv sync --no-dev`), à chaque passage.
 - Déclencheur du cron changé dans `pipeline/depot-donnees/.github/workflows/cron.yml` (ex. la file d'attente des
   rattrapages) : il n'agit qu'une fois recopié dans `.github/workflows/cron.yml` du dépôt de données et poussé, après
-  la fusion dans `main`.
+  la fusion dans `main` et une fois `cron` avancée à ce commit.
+- Fusion qui casse le cron malgré une CI verte : [Branche cron](#branche-cron), retour en arrière puis revert, fusionné
+  avant toute autre PR.
 
 ## Données et licence
 
