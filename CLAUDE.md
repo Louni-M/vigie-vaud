@@ -12,7 +12,7 @@ The product, the code and the docs are in French. Write every new doc in French,
 - `docs/adr/`: the decisions, numbered `NNNN-titre.md`. Read the ADRs that touch the area before planning or changing it. When a change contradicts one, say so explicitly and why it is worth reopening; never override it silently.
 - `docs/sources.md`: the inventory of data sources (used, rejected, not found) with their access path. Read it before adding, changing or debugging a source; update it when a source changes.
 - `docs/recherche/`: research notes, one per question, each tied to the issue that asked it.
-- `docs/feuille-de-route.md` (temporary): milestones J0–J6, phase 2, backlog and the owner's actions, until they move to GitHub milestones and issues.
+- `docs/feuille-de-route.md` (temporary): milestones J0–J7, phase 2, backlog and the owner's actions, until they move to GitHub milestones and issues.
 
 ## Code standards
 
