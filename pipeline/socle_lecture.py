@@ -31,8 +31,10 @@ from schema import Conseil, DonneeConseil, Site, Source
 # fenêtre (`None` : tout).
 LectureDeVariante = Callable[[Robot, Source, Site, Conseil, date | None], Bruts]
 # Ce que la mesure tire d'une page qui pourrait être la page des Séances d'une variante : son URL et son texte, avec les
-# liens de la page du conseil (`mesure_sites.liens`). Une `Mesure` si la page est celle de la variante (sa plateforme
-# et sa variante y sont reportées par la plateforme), une remarque si elle en a l'air sans se lire, sinon `None`.
+# liens de la page du conseil tels que la mesure de sa plateforme les retient ((URL, texte), d'après
+# `mesure_sites.liens`). Une `Mesure` si la page est celle de la variante (la mesure de la plateforme y reporte sa
+# plateforme et sa variante), une remarque si elle en a l'air sans se lire (Quicksite : une recherche `coreapi` d'une
+# autre vue), sinon `None`.
 Reconnaissance = Callable[[PagesLues, str, str, list[tuple[str, str]]], Mesure | str | None]
 
 

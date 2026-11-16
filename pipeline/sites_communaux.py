@@ -13,9 +13,13 @@ script de préparation des sources (`preparation_sources`) ne lisent que cette d
 c'est ajouter une `VarianteLue` à sa plateforme ; ajouter une plateforme, c'est écrire son module et l'inscrire ici.
 Ce que la déclaration ne couvre pas :
 
-- la section `plateformes` de `sources.json`, que lisent le site (nom, éditeur) et les règles de déclaration des
-  sources (`preparation_sources.verifier_declarations`), en est une copie (`PlateformeLue.declaration`), que les
-  tests comparent à la déclaration : ils échouent tant qu'elle n'est pas recopiée ;
+- la section `plateformes` de `sources.json`, que lisent le site (nom, éditeur), le cron pour ses issues par
+  plateforme et les règles de déclaration des sources (`preparation_sources.verifier_declarations`), en est une copie
+  (`PlateformeLue.declaration`), que les tests comparent à la déclaration : ils échouent tant qu'elle n'est pas
+  recopiée ;
+- la mesure ne présente à une variante que les pages que sa plateforme essaie (pages déclarées, page du conseil,
+  liens de son menu qui ressemblent à une page des Séances ou des documents du conseil) : une variante dont la page
+  ne s'atteint pas ainsi demande d'étendre la `mesure` de sa plateforme ;
 - chaque variante a son échantillon (`echantillon_sites.ECHANTILLONS`, ADR 0010), que les tests réclament aussi ;
 - une variante qui déclare d'autres paramètres de site, comme les recherches `coreapi` de Quicksite, les ajoute au
   bloc `site` (`schema.Site`), à `mesure_sites.Mesure` et à la comparaison du script de préparation.

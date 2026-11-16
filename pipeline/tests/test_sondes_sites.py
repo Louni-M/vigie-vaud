@@ -3,7 +3,8 @@ par plateforme »), observées par le passage du cron : `etat-sources.json`, les
 User-Agent, heure), les fichiers d'import et les issues signalées au faux client d'issues.
 
 Une commune scrapée est sondée une fois par jour, juste avant son import : la sonde lit sa page de liste
-(`site.seances`) par le robot communal et y cherche le marqueur de sa variante, déclaré dans `plateformes`.
+(`site.seances`) par le robot communal et y cherche le marqueur de sa variante, déclaré par sa plateforme
+(`sites_communaux.PLATEFORMES`).
 """
 
 from datetime import timedelta
