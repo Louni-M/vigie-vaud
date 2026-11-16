@@ -337,34 +337,38 @@
 		align-items: center;
 		gap: 4px;
 	}
+	/* Le champ : une feuille, un filet d'encre dessous, comme celui de la page Couverture. */
 	.champ {
 		flex: 1;
 		min-width: 0;
 		display: flex;
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		background: var(--surface);
+		border-bottom: var(--rule-bar) solid var(--color-rule-2);
+		background: var(--color-sheet);
 	}
 	input {
 		flex: 1;
 		min-width: 0;
 		min-height: 44px;
 		padding: 10px 12px;
+		font-family: var(--font-body);
 		font-size: 16px;
 		border: 0;
-		border-radius: 10px 0 0 10px;
+		border-radius: 0;
 		background: none;
-		color: inherit;
+		color: var(--color-ink);
+	}
+	input::placeholder {
+		color: var(--color-muted);
 	}
 	.autour {
 		flex: none;
 		width: 44px;
 		justify-content: center;
 		align-items: center;
-		border-left: 1px solid var(--line);
-		border-radius: 0 10px 10px 0;
+		border-left: 1px solid var(--color-rule);
+		border-radius: 0;
 		font-size: 18px;
-		color: var(--accent);
+		color: var(--color-ink);
 	}
 	.autour:disabled {
 		cursor: progress;
@@ -374,8 +378,8 @@
 		margin: 4px 0 0;
 		padding: 6px 10px;
 		border-radius: 8px;
-		background: var(--surface);
-		color: var(--erreur);
+		background: var(--color-sheet);
+		color: var(--color-erreur);
 		font-size: 13px;
 	}
 	/* Région annoncée par les lecteurs d'écran : vide, elle ne doit pas créer d'espace. */
@@ -393,20 +397,21 @@
 		margin: 0;
 		padding: 4px;
 		list-style: none;
-		background: var(--surface);
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+		background: var(--color-sheet);
+		border-top: var(--rule-bar) solid var(--color-rule-2);
 	}
 	/* La liste tient dans la partie visible (clavier ouvert sur téléphone) et défile au-delà. */
 	ul {
 		max-height: calc(100dvh - 180px);
 		overflow-y: auto;
 	}
+	li + li {
+		border-top: var(--rule-hair) solid var(--color-rule);
+	}
 	.aucun {
 		padding: 10px 12px;
 		font-size: 14px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	button {
 		display: flex;
@@ -424,15 +429,19 @@
 		border-radius: 6px;
 		cursor: pointer;
 	}
+	li button {
+		border-radius: 0;
+	}
 	button:hover,
 	button:focus-visible {
-		background: var(--bg);
+		background: var(--color-paper);
 	}
 	.type {
 		flex: none;
 		width: 64px;
-		color: var(--muted);
-		font-size: 12px;
+		color: var(--color-muted);
+		font-family: var(--font-outlier);
+		font-size: var(--text-xs);
 	}
 	.annuler {
 		flex: none;
@@ -441,7 +450,7 @@
 		padding: 8px;
 		font-size: 16px;
 		font-weight: 600;
-		color: var(--accent);
+		color: var(--color-rule-2);
 	}
 	.accueil {
 		margin-top: 12px;
@@ -452,7 +461,7 @@
 		min-height: 48px;
 		font-size: 16px;
 		font-weight: 600;
-		color: var(--accent);
+		color: var(--color-rule-2);
 	}
 	.autour-large:disabled {
 		cursor: progress;
@@ -461,7 +470,7 @@
 	.aide {
 		margin: 4px 10px 0;
 		font-size: 14px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 
 	/* Plein écran (téléphone) : le champ en haut, puis les résultats jusqu'au clavier, qui défilent. */
@@ -471,16 +480,13 @@
 		height: 100%;
 		padding: 8px 8px 0 12px;
 		padding-top: max(8px, env(safe-area-inset-top));
-		background: var(--surface);
+		background: var(--color-sheet);
 	}
 	.plein ul,
 	.plein .aucun {
 		position: static;
 		margin-top: 8px;
 		padding: 0 0 8px;
-		border: 0;
-		border-radius: 0;
-		box-shadow: none;
 	}
 	.plein ul {
 		flex: 1 1 auto;
@@ -488,7 +494,6 @@
 		overscroll-behavior: contain;
 		min-height: 0;
 		max-height: none;
-		border-top: 1px solid var(--line);
 	}
 	.plein li button {
 		min-height: 48px;
@@ -497,7 +502,6 @@
 	}
 	.plein .type {
 		width: 72px;
-		font-size: 13px;
 	}
 	.annonce {
 		position: absolute;

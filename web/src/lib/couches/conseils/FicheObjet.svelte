@@ -112,12 +112,20 @@
 	dl {
 		display: grid;
 		grid-template-columns: max-content 1fr;
-		gap: 4px 14px;
+		gap: 0 var(--space-md);
 		margin: 0;
 		font-size: 14px;
 	}
+	/* Ses dates, auteurs et statut en lignes réglées. */
+	dt,
+	dd {
+		padding-block: var(--space-2xs);
+		border-top: var(--rule-hair) solid var(--color-rule);
+	}
 	dt {
-		color: var(--muted);
+		padding-top: calc(var(--space-2xs) + 0.1em);
+		font-size: var(--text-xs);
+		color: var(--color-muted);
 	}
 	dd {
 		margin: 0;
@@ -135,23 +143,23 @@
 	}
 	.etiquette {
 		margin-right: 6px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.aide {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.mention {
 		margin: 0;
 		font-size: 14px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	h4 {
 		margin: 8px 0 0;
 		font-size: 12px;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.etapes {
 		margin: 0;
@@ -171,7 +179,7 @@
 	}
 	.date {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.externe {
 		margin: 8px 0 0;

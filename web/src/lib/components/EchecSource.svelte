@@ -29,7 +29,7 @@
 		align-items: center;
 		gap: 6px 10px;
 		margin: 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.echec button {
 		min-height: 32px;

@@ -191,7 +191,7 @@
 				{@const f = fiche(d)}
 				<li data-id={d.id}>
 					{#if f}
-						<DossierCarte d={f} actif={f.id === ouvert} onclick={() => vers(f)} />
+						<DossierCarte d={f} actif={f.id === ouvert} enListe onclick={() => vers(f)} />
 					{:else}
 						<div class="carte-attente" aria-busy="true">
 							<span class="barre-s" style:width="45%"></span>
@@ -233,19 +233,19 @@
 		align-items: center;
 		gap: 6px;
 		padding: 5px 10px;
-		border-radius: 999px;
+		border-radius: var(--radius-pill);
 		border: 1px solid var(--c);
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		font-size: 13px;
 		color: inherit;
 		cursor: pointer;
 	}
 	.puce:hover {
-		background: color-mix(in oklab, var(--c) 12%, var(--surface));
+		background: color-mix(in oklab, var(--c) 12%, var(--color-sheet));
 	}
 	.puce.off:hover {
-		border-color: var(--muted);
+		border-color: var(--color-muted);
 		color: inherit;
 	}
 	.puce span {
@@ -255,21 +255,24 @@
 		background: var(--c);
 	}
 	.puce.off {
-		border-color: var(--line);
-		color: var(--muted);
+		border-color: var(--color-rule);
+		color: var(--color-muted);
 	}
 	.puce.off span {
 		background: transparent;
 		box-shadow: inset 0 0 0 1.5px var(--c);
 	}
+	/* Des listes déroulantes sans cadre arrondi : un filet d'encre dessous. */
 	select {
+		min-height: 40px;
 		padding: 7px 8px;
-		border-radius: 8px;
-		border: 1px solid var(--line);
-		background: var(--surface);
+		border: 0;
+		border-bottom: var(--rule-bar) solid var(--color-rule-2);
+		border-radius: 0;
+		background-color: var(--color-paper);
 		font: inherit;
 		font-size: 13.5px;
-		color: inherit;
+		color: var(--color-ink);
 		max-width: 100%;
 	}
 	.bascule {
@@ -283,7 +286,7 @@
 		width: 18px;
 		height: 18px;
 		margin: 0;
-		accent-color: var(--accent);
+		accent-color: var(--color-ink);
 	}
 	.annee {
 		display: flex;
@@ -298,16 +301,23 @@
 	.annee input {
 		flex: 1;
 		min-width: 80px;
-		accent-color: var(--accent);
+		accent-color: var(--color-ink);
 	}
 	.zone {
-		margin-top: 4px;
-		padding-top: 10px;
-		border-top: 1px solid var(--line);
+		margin-top: var(--space-2xs);
+		padding-top: var(--space-sm);
+		border-top: var(--rule-bar) solid var(--color-rule-2);
 	}
 	.compte {
 		margin: 0;
 		font-size: 14px;
+		color: var(--color-ink-2);
+	}
+	.compte strong {
+		font-family: var(--font-outlier);
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink);
 	}
 	/*
 	 * La zone d'état suit le compte dans le même bloc : vide, elle ne prend pas de place (le paragraphe n'a pas de
@@ -344,7 +354,10 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: 0;
+	}
+	.liste > li + li {
+		border-top: var(--rule-hair) solid var(--color-rule);
 	}
 	/*
 	 * Jusqu'à LISTE_MAX cartes : le navigateur ne rend que celles à l'écran. Le confinement est posé sur la carte et non
@@ -359,10 +372,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
-		padding: 12px;
-		border: 1px solid var(--line);
-		border-radius: 10px;
-		background: var(--surface);
+		padding: var(--space-sm) var(--space-xs) var(--space-sm) var(--space-sm);
 		min-height: 92px;
 	}
 	/* Le reflet est un calque qui glisse sur la barre (transform, sans repeindre le fond à chaque image). */
@@ -370,15 +380,14 @@
 		position: relative;
 		display: block;
 		height: 12px;
-		border-radius: 6px;
-		background: var(--line);
+		background: var(--color-rule);
 		overflow: hidden;
 	}
 	.barre-s::after {
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(90deg, transparent 0%, var(--bg) 50%, transparent 100%);
+		background: linear-gradient(90deg, transparent 0%, var(--color-paper) 50%, transparent 100%);
 		transform: translateX(-100%);
 		animation: reflet 1.2s ease-in-out infinite;
 	}
@@ -397,10 +406,10 @@
 		}
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.source {
 		margin: 4px 0 0;
@@ -412,8 +421,7 @@
 	@media (pointer: coarse) {
 		.petit,
 		.puce,
-		.bascule,
-		select {
+		.bascule {
 			min-height: 44px;
 		}
 	}

@@ -103,7 +103,7 @@
 		{/if}
 		<ul class="liste">
 			{#each visibles.slice(0, LISTE_MAX) as r (r.id)}
-				<li><RestrictionCarte {r} actif={r.id === ouverte} onclick={() => ouvrirRestriction(ctx, r)} /></li>
+				<li><RestrictionCarte {r} actif={r.id === ouverte} enListe onclick={() => ouvrirRestriction(ctx, r)} /></li>
 			{/each}
 		</ul>
 		{#if visibles.length > LISTE_MAX}
@@ -135,9 +135,9 @@
 		align-items: center;
 		gap: 6px;
 		padding: 5px 10px;
-		border-radius: 999px;
+		border-radius: var(--radius-pill);
 		border: 1px solid var(--c);
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		font-size: 13px;
 		color: inherit;
@@ -147,8 +147,8 @@
 		background: color-mix(in oklab, var(--c), white 88%);
 	}
 	.puce.off:hover {
-		border-color: var(--muted);
-		color: var(--text);
+		border-color: var(--color-muted);
+		color: var(--color-ink);
 	}
 	/* Le trait de la légende : la couleur de la sorte, en tirets pour une déviation, comme sur la carte. */
 	.puce span {
@@ -161,27 +161,34 @@
 		background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px);
 	}
 	.puce.etat {
-		--c: var(--accent);
+		--c: var(--color-rule-2);
 	}
 	/* L'à venir est plus pâle sur la carte. */
 	.puce.pale span {
 		opacity: 0.45;
 	}
 	.puce.off {
-		border-color: var(--line);
-		color: var(--muted);
+		border-color: var(--color-rule);
+		color: var(--color-muted);
 	}
 	.puce.off span {
 		opacity: 0.25;
 	}
 	.zone {
-		margin-top: 4px;
-		padding-top: 10px;
-		border-top: 1px solid var(--line);
+		margin-top: var(--space-2xs);
+		padding-top: var(--space-sm);
+		border-top: var(--rule-bar) solid var(--color-rule-2);
 	}
 	.compte {
 		margin: 0;
 		font-size: 14px;
+		color: var(--color-ink-2);
+	}
+	.compte strong {
+		font-family: var(--font-outlier);
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink);
 	}
 	.vide {
 		margin: 0;
@@ -193,7 +200,10 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		gap: 8px;
+		gap: 0;
+	}
+	.liste > li + li {
+		border-top: var(--rule-hair) solid var(--color-rule);
 	}
 	/*
 	 * Jusqu'à 150 cartes : celles hors de l'écran ne sont pas mises en page. Sur la carte elle-même et non sur le
@@ -204,10 +214,10 @@
 		contain-intrinsic-size: auto 92px;
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.source {
 		margin: 4px 0 0;

@@ -117,11 +117,11 @@
 		margin: 8px 0 0;
 		font-size: 12px;
 		line-height: 1.45;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
 		margin: 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.petit {
 		margin-left: 6px;
@@ -199,12 +199,12 @@
 		width: 100%;
 		box-sizing: border-box;
 		padding: 8px 10px;
-		border: 1px solid var(--line);
+		border: 1px solid var(--color-rule);
 		border-radius: 8px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 		text-align: left;
 		text-decoration: none;
 	}
@@ -213,25 +213,28 @@
 		border-color: var(--c);
 	}
 	a.carte:hover {
-		background: var(--bg);
+		background: var(--color-paper);
 	}
 	.carte strong {
 		font-size: 14px;
-		color: var(--text);
+		color: var(--color-ink);
 	}
 	.compte {
 		margin: 10px 0 4px;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-ink-2);
 	}
 	.compte strong {
-		color: var(--text);
+		font-family: var(--font-outlier);
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-ink);
 	}
 	.lignes {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		border-top: 1px solid var(--line);
+		border-top: 1px solid var(--color-rule);
 	}
 	.ligne {
 		display: flex;
@@ -242,17 +245,17 @@
 		box-sizing: border-box;
 		padding: 6px 2px;
 		border: 0;
-		border-bottom: 1px solid var(--line);
+		border-bottom: 1px solid var(--color-rule);
 		background: none;
 		font: inherit;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 		text-align: left;
 		text-decoration: none;
 	}
 	.ligne strong {
 		font-size: 13px;
-		color: var(--text);
+		color: var(--color-ink);
 	}
 	.ligne:hover strong,
 	.ligne:focus-visible strong {

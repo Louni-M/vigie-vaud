@@ -97,7 +97,7 @@
 		font-size: 12px;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.categorie {
 		margin: 6px 0 0;
@@ -118,30 +118,30 @@
 	}
 	.numero {
 		flex: none;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.point {
 		padding: 0;
 		border: 0;
 		background: none;
 		font: inherit;
-		color: var(--accent);
+		color: var(--color-rule-2);
 		text-align: left;
 		text-decoration: underline;
 		cursor: pointer;
 	}
 	.point:hover {
 		text-decoration-thickness: 2px;
-		color: color-mix(in oklab, var(--accent), black 25%);
+		color: color-mix(in oklab, var(--color-rule-2), black 25%);
 	}
 	.resultat {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.note {
 		margin: 0;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.externe {
 		margin: 8px 0 0;
@@ -158,6 +158,6 @@
 	}
 	.date {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 </style>

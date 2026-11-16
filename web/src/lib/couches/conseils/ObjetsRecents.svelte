@@ -151,7 +151,7 @@
 		font-size: 12px;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	ul {
 		margin: 0;
@@ -167,7 +167,7 @@
 		padding: 3px 9px;
 		border: 1px solid var(--c);
 		border-radius: 999px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		font-size: 12px;
 		color: var(--c);
@@ -197,11 +197,11 @@
 	.note {
 		margin: 4px 0 0;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
 		margin: 4px 0 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.petit {
 		margin-left: 6px;
@@ -215,7 +215,7 @@
 		background: none;
 		font: inherit;
 		font-size: 13px;
-		color: var(--accent);
+		color: var(--color-rule-2);
 		cursor: pointer;
 	}
 	.plus:hover {

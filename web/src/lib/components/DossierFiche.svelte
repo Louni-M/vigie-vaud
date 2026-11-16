@@ -90,10 +90,14 @@
 		border-radius: 50%;
 		background: var(--c);
 	}
+	/* Un dossier ouvert : la description en serif, ses dates et numéros en lignes réglées. */
 	.titre {
 		margin: 0;
-		font-size: 20px;
+		font-size: var(--text-lg);
+		font-weight: 600;
+		letter-spacing: var(--tracking-display);
 		line-height: 1.25;
+		color: var(--color-ink);
 		text-wrap: balance;
 	}
 	h4 {
@@ -102,8 +106,10 @@
 	}
 	.desc {
 		margin: 0;
-		font-size: 16px;
-		line-height: 1.45;
+		font-family: var(--font-body);
+		font-size: 1.0625rem;
+		line-height: 1.5;
+		color: var(--color-ink);
 	}
 	p {
 		margin: 0;
@@ -111,12 +117,19 @@
 	dl {
 		display: grid;
 		grid-template-columns: max-content 1fr;
-		gap: 4px 14px;
+		gap: 0 var(--space-md);
 		margin: 0;
 		font-size: 14px;
 	}
+	dt,
+	dd {
+		padding-block: var(--space-2xs);
+		border-top: var(--rule-hair) solid var(--color-rule);
+	}
 	dt {
-		color: var(--muted);
+		padding-top: calc(var(--space-2xs) + 0.1em);
+		font-size: var(--text-xs);
+		color: var(--color-muted);
 	}
 	dd {
 		margin: 0;
@@ -135,9 +148,10 @@
 		display: none;
 	}
 	.note {
-		font-size: 14px;
+		font-family: var(--font-body);
+		font-size: 0.9375rem;
 		line-height: 1.45;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	/* Les liens soulignés : au survol, le soulignement s'épaissit. */
 	.note a:hover {

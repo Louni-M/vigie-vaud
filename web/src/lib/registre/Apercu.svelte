@@ -59,19 +59,19 @@
 		padding: 12px 14px;
 		border: 0;
 		border-radius: 10px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		font-size: 15px;
 		text-align: left;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 	.commune strong {
 		font-size: 17px;
-		color: var(--text);
+		color: var(--color-ink);
 	}
 	.commune > span {
-		color: var(--accent);
+		color: var(--color-rule-2);
 		font-weight: 600;
 	}
 	.fermer {
@@ -84,7 +84,7 @@
 		background: none;
 		font-size: 24px;
 		line-height: 1;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 </style>

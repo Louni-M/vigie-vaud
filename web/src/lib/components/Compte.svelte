@@ -35,11 +35,11 @@
 
 <style>
 	.compte {
-		color: var(--enquete-texte);
+		color: var(--color-enquete-texte);
 		font-weight: 500;
 	}
 	.fini {
-		color: var(--muted);
+		color: var(--color-muted);
 		font-weight: 400;
 	}
 </style>

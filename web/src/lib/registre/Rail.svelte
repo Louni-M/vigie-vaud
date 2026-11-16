@@ -74,14 +74,16 @@
 </div>
 
 <style>
+	/* Le rail des couches : du papier, un filet à droite ; la couche ouverte posée sur une feuille, marquée d'un trait
+	   orange au bord, comme l'intertitre courant d'un sommaire. */
 	.rail {
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
 		/* Téléphone à l'horizontale : le rail, au bord gauche, s'écarte de l'encoche. */
 		padding: 8px 4px 8px max(4px, env(safe-area-inset-left));
-		background: var(--surface);
-		border-right: 1px solid var(--line);
+		background: var(--color-paper);
+		border-right: var(--rule-hair) solid var(--color-rule);
 		overflow-y: auto;
 	}
 	button {
@@ -91,30 +93,30 @@
 		gap: 3px;
 		padding: 8px 2px;
 		border: 0;
-		border-radius: 8px;
+		border-radius: 0;
 		background: none;
 		font: inherit;
 		font-size: 11px;
-		color: var(--text);
+		color: var(--color-ink-2);
 		cursor: pointer;
 		text-align: center;
 	}
 	button:hover {
-		background: var(--bg);
+		background: var(--color-paper-2);
 	}
 	button.ouvert {
-		background: #e8edf5;
+		background: var(--color-sheet);
+		box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
+		color: var(--color-ink);
 	}
-	/* Ouvert, le bouton garde son fond bleuté : au survol, il fonce et se cerne d'un filet. */
+	/* Ouverte, la couche se pose au survol sur le papier, comme les autres, et garde son trait orange. */
 	button.ouvert:hover {
-		background: #d6deeb;
-		box-shadow: inset 0 0 0 1px var(--line);
+		background: var(--color-paper-2);
 	}
 	.fil {
 		margin-bottom: 6px;
 		padding-bottom: 10px;
-		border-bottom: 1px solid var(--line);
-		border-radius: 8px 8px 0 0;
+		border-bottom: 1px solid var(--color-rule-2);
 		font-weight: 600;
 	}
 	.icone-fil {
@@ -122,26 +124,43 @@
 		place-items: center;
 		width: 34px;
 		height: 34px;
-		border-radius: 8px;
-		background: var(--text);
+		border-radius: var(--radius-pill);
+		background: var(--color-ink);
 		color: #fff;
 		font-size: 18px;
 	}
+	/* Les icônes des couches : des carrés à angle droit, comme le signe des entrées du fil et l'icône du Fil. La couleur
+	   de la couche quand elle est affichée ; masquée, un cadre de sa couleur sur la feuille. */
 	.icone {
 		display: grid;
 		place-items: center;
 		width: 34px;
 		height: 34px;
-		border-radius: 50%;
+		border-radius: var(--radius-pill);
 		background: var(--c);
 		color: #fff;
-		font-weight: 700;
+		font-family: var(--font-display);
+		font-weight: 600;
 		font-size: 15px;
+		transition: transform var(--dur-short) var(--ease-out);
 	}
 	.icone.off {
-		background: var(--surface);
+		background: var(--color-sheet);
 		color: var(--c);
-		box-shadow: inset 0 0 0 2px var(--c);
+		box-shadow: inset 0 0 0 var(--rule-bar) var(--c);
+	}
+	button:active .icone {
+		transform: scale(0.94);
+	}
+	/* Sans mouvement, l'icône appuyée ne bouge pas. */
+	@media (prefers-reduced-motion: reduce) {
+		.icone {
+			transition: none;
+		}
+	}
+	.nom {
+		font-size: 0.6875rem;
+		line-height: 1.2;
 	}
 	/* Pour les lecteurs d'écran seulement : l'icône cerclée le dit aux yeux. */
 	.etat {

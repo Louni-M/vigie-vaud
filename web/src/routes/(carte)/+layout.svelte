@@ -19,9 +19,7 @@
 	 * telle qu'on l'a laissée.
 	 */
 	import { tick, untrack } from 'svelte';
-	// Essai (#165) : la carte dans le système Almanach, voir lib/almanach/carte.css.
 	import '#lib/almanach/almanach.css';
-	import '#lib/almanach/carte.css';
 	import { fade, fly } from 'svelte/transition';
 	import { bulleEntree, bulleSortie } from '#lib/registre/bulle.js';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -318,7 +316,6 @@
 
 <div
 	class="app"
-	data-theme="almanach"
 	class:avec-fiche={registre.commune ?? registre.propre}
 	class:recherche-pleine={pleine}
 	data-affichage={affichage}
@@ -493,8 +490,10 @@
 		display: grid;
 		grid-template-columns: calc(72px + env(safe-area-inset-left, 0px)) minmax(0, 1fr);
 		grid-template-rows: minmax(0, 1fr);
-		height: calc(100dvh - var(--header-h));
+		height: calc(100dvh - var(--size-header));
 		position: relative;
+		color: var(--color-ink-2);
+		font-family: var(--font-display);
 	}
 	/* Le contenu, à droite du rail : la carte, puis la fiche ouverte, qui prend une colonne à droite et la rétrécit. */
 	.contenu {
@@ -521,8 +520,6 @@
 		top: 10px;
 		left: 10px;
 		width: min(360px, calc(100% - 70px));
-		border-radius: 10px;
-		box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
 		/* Un filtre neutre donne à la recherche son propre calque. Sans lui, Chromium en rendu logiciel (sans
 		   accélération graphique) laissait un trou de sa taille dans la carte, retourné en bas à gauche : le fond
 		   de la page y paraissait en blanc, alors que la carte elle-même y était bien dessinée. */
@@ -550,10 +547,10 @@
 		max-width: 360px;
 		padding: 8px 12px;
 		border-radius: 10px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
 		font-size: 14px;
-		color: var(--erreur);
+		color: var(--color-erreur);
 		pointer-events: auto;
 	}
 	.avis:empty {
@@ -565,10 +562,9 @@
 		gap: 8px;
 		margin: 6px 0 0;
 		padding: 8px 6px 8px 12px;
-		border-radius: 10px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font-size: 14px;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.avis button {
 		flex: none;
@@ -579,12 +575,12 @@
 		background: none;
 		font-size: 18px;
 		line-height: 1;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 	.avis button:hover {
-		background: var(--color-paper-2, var(--bg));
-		color: var(--text);
+		background: var(--color-paper-2);
+		color: var(--color-ink);
 	}
 	@media (pointer: coarse) {
 		.avis button {
@@ -594,6 +590,9 @@
 		}
 	}
 	/*
+	 * Sur la carte, un volet flotte sur l'image : la feuille claire et son filet d'encre en tête suffisent à l'en
+	 * détacher, sans ombre ni coins arrondis.
+	 *
 	 * Le volet pend sous la recherche, à sa largeur : son filet de tête passe sous celui du champ (46 px de haut, filet
 	 * de 2 px compris). Ni écart ni débord où la carte devrait se voir : un vieux navigateur Windows y laissait le fond
 	 * de la page, en gris, au-dessus du fil.
@@ -606,7 +605,6 @@
 		bottom: 34px;
 		width: min(360px, calc(100% - 70px));
 		overflow-y: auto;
-		border-radius: 10px;
 		/* Le volet est à la hauteur de son contenu, sans dépasser le bas de la carte. */
 		height: fit-content;
 		max-height: calc(100% - 88px);
@@ -626,13 +624,12 @@
 		bottom: 8px;
 		margin: 0;
 		padding: 2px 8px;
-		border-radius: 6px;
-		background: rgb(255 255 255 / 0.85);
+		background: oklch(99% 0.003 255 / 0.9);
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.liens a:hover {
-		color: var(--text);
+		color: var(--color-ink);
 		text-decoration-thickness: 2px;
 	}
 	.apercu {
@@ -654,9 +651,8 @@
 		width: fit-content;
 		margin: 6px 0 0;
 		padding: 4px 4px 4px 12px;
-		border-radius: 999px;
-		background: var(--surface);
-		box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+		border-top: var(--rule-bar) solid var(--color-rule-2);
+		background: var(--color-sheet);
 		font-size: 14px;
 		font-weight: 600;
 	}
@@ -668,7 +664,7 @@
 		background: none;
 		font-size: 20px;
 		line-height: 1;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 
@@ -711,16 +707,11 @@
 			overflow-y: auto;
 			/* Arrivé en bas du fil, le défilement ne passe pas à la page. */
 			overscroll-behavior: contain;
-			background: var(--bg);
+			background: var(--color-paper);
 		}
 		.vue-fil :global(.fil) {
-			border-radius: 0;
-			box-shadow: none;
 			min-height: 100%;
 			box-sizing: border-box;
-		}
-		.colonne :global(.fiche) {
-			border-left: 0;
 		}
 		/* visibility plutôt que display : la carte garde sa taille, et ce qui est caché sort de l'ordre de tabulation. */
 		.app:not([data-affichage='carte']) .zone-carte,
@@ -739,31 +730,32 @@
 			padding: 12px;
 			overflow-y: auto;
 			overscroll-behavior: contain;
-			background: var(--bg);
+			background: var(--color-paper);
 		}
 		.barre-vues {
 			grid-area: 2 / 1;
 			display: flex;
 			gap: 6px;
 			padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
-			background: var(--surface);
-			border-top: 1px solid var(--line);
+			background: var(--color-sheet);
+			border-top: var(--rule-bar) solid var(--color-rule-2);
 		}
+		/* La barre des vues, à angle droit, la vue courante en encre. */
 		.barre-vues button {
 			flex: 1;
 			min-height: 44px;
-			border: 1px solid var(--accent);
-			border-radius: 8px;
-			background: var(--surface);
-			color: var(--accent);
+			border: 1px solid var(--color-rule-2);
+			border-radius: var(--radius-pill);
+			background: var(--color-sheet);
+			color: var(--color-ink);
 			font: inherit;
 			font-size: 15px;
 			font-weight: 600;
 			cursor: pointer;
 		}
 		.barre-vues button[aria-pressed='true'] {
-			background: var(--accent);
-			color: #fff;
+			background: var(--color-ink);
+			color: var(--color-accent-ink);
 		}
 		.barre-vues button:disabled {
 			opacity: 0.4;
@@ -778,8 +770,6 @@
 			inset: 0;
 			z-index: 20;
 			width: auto;
-			border-radius: 0;
-			box-shadow: none;
 			visibility: visible;
 		}
 		.recherche-pleine .zone-carte,
@@ -811,13 +801,11 @@
 		left: 8px;
 		top: 8px;
 		padding: 10px 14px;
-		border-radius: 8px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font-weight: 600;
-		box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
 	}
 	.evitement:hover {
-		background: var(--surface-2, var(--bg));
+		background: var(--color-paper-2);
 		text-decoration-thickness: 2px;
 	}
 	/* Visible seulement au clavier, quand il reçoit le focus. */

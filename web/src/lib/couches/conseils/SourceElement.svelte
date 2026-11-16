@@ -15,7 +15,7 @@
 	.source {
 		margin: 0;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.source a {
 		color: inherit;

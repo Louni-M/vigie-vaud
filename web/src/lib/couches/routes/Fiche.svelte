@@ -178,7 +178,7 @@
 	}
 	.horaires {
 		margin: 2px 0 0;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	dl {
 		display: grid;
@@ -188,7 +188,7 @@
 		font-size: 14px;
 	}
 	dt {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	dd {
 		margin: 0;
@@ -230,12 +230,12 @@
 	}
 	.lien {
 		display: inline-block;
-		color: var(--accent);
+		color: var(--color-rule-2);
 		text-decoration: underline;
 	}
 	.lien:hover {
 		text-decoration-thickness: 2px;
-		color: color-mix(in oklab, var(--accent), black 25%);
+		color: color-mix(in oklab, var(--color-rule-2), black 25%);
 	}
 	@media (pointer: coarse) {
 		.lien {
@@ -254,16 +254,16 @@
 		display: block;
 		height: 14px;
 		border-radius: 7px;
-		background: var(--line);
+		background: var(--color-rule);
 	}
 	.squelette .grand {
 		height: 24px;
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.source {
 		margin-top: 28px;

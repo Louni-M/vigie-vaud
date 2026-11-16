@@ -64,7 +64,7 @@
 	{#if pret && liste.length}
 		<ul class="grille">
 			{#each liste as r (r.id)}
-				<li><RestrictionCarte {r} commune={commune.slug} onclick={() => ouvrirRestriction(ctx, r)} /></li>
+				<li><RestrictionCarte {r} commune={commune.slug} enListe onclick={() => ouvrirRestriction(ctx, r)} /></li>
 			{/each}
 		</ul>
 	{:else if pret}
@@ -87,13 +87,14 @@
 </p>
 
 <style>
+	/* L'encadré des limites de la source en creux, l'orange en tête, comme celui de la consultation d'un dossier. */
 	.encadre {
 		margin: 0 0 4px;
-		padding: 8px 10px;
-		border-radius: 8px;
-		background: var(--bg);
-		border: 1px solid var(--line);
-		font-size: 13px;
+		padding: var(--space-md) var(--space-md) var(--space-lg);
+		border-top: var(--rule-bar) solid var(--color-accent);
+		background: var(--color-paper-2);
+		font-family: var(--font-body);
+		font-size: 0.9375rem;
 		line-height: 1.45;
 	}
 	h3 {
@@ -108,11 +109,11 @@
 		gap: 8px;
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
 		margin: 10px 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.source {
 		margin-top: 28px;
@@ -120,7 +121,7 @@
 	.attente {
 		min-height: 78px;
 		border-radius: 10px;
-		background: var(--line);
+		background: var(--color-rule);
 		opacity: 0.6;
 	}
 </style>

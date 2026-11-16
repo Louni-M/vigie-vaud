@@ -86,7 +86,7 @@
 	<link rel="canonical" href={canonique('/couverture')} />
 </svelte:head>
 
-<main class="almanach" data-theme="almanach" id="contenu" tabindex="-1">
+<main class="almanach" id="contenu" tabindex="-1">
 	<div class="cadre">
 		<header class="tete">
 			<h1>Couverture</h1>
@@ -507,7 +507,7 @@
 	   par un fond, qui suit la cellule collée, quand une bordure resterait sur place. */
 	.tableau thead th {
 		position: sticky;
-		top: var(--header-h);
+		top: var(--size-header);
 		z-index: 1;
 		padding-block: var(--space-xs);
 		background:
