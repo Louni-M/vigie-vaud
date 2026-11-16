@@ -37,7 +37,7 @@
 	.voir {
 		font-size: 14px;
 		font-weight: 600;
-		color: var(--accent);
+		color: var(--color-rule-2);
 	}
 	.attente {
 		display: flex;
@@ -46,9 +46,9 @@
 		gap: 2px;
 		width: 100%;
 		padding: 10px 12px;
-		border: 1px solid var(--line);
+		border: 1px solid var(--color-rule);
 		border-radius: 10px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;

@@ -126,7 +126,7 @@
 		font-size: 13px;
 	}
 	.documents a {
-		color: var(--accent);
+		color: var(--color-rule-2);
 	}
 	/* Un bouton est un bloc en ligne : sans `top`, le numéro du point s'aligne sur sa dernière ligne. */
 	.point {
@@ -135,19 +135,19 @@
 		border: 0;
 		background: none;
 		font: inherit;
-		color: var(--accent);
+		color: var(--color-rule-2);
 		text-align: left;
 		text-decoration: underline;
 		cursor: pointer;
 	}
 	.point:hover {
 		text-decoration-thickness: 2px;
-		color: color-mix(in oklab, var(--accent), black 25%);
+		color: color-mix(in oklab, var(--color-rule-2), black 25%);
 	}
 	.note {
 		margin: 4px 0 0;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.plus {
 		margin: 4px 0 0;
@@ -156,7 +156,7 @@
 		background: none;
 		font: inherit;
 		font-size: 13px;
-		color: var(--accent);
+		color: var(--color-rule-2);
 	}
 	button.plus {
 		cursor: pointer;

@@ -146,8 +146,8 @@
 			grid-row: 2 / span 2;
 			align-self: start;
 			position: sticky;
-			top: calc(var(--header-h) + var(--space-lg));
-			max-height: calc(100dvh - var(--header-h) - var(--space-lg));
+			top: calc(var(--size-header) + var(--space-lg));
+			max-height: calc(100dvh - var(--size-header) - var(--space-lg));
 			overflow-y: auto;
 			overscroll-behavior: contain;
 			margin-top: calc(var(--space-xl) - var(--space-2xs));

@@ -67,7 +67,7 @@
 <style>
 	li {
 		list-style: none;
-		border-bottom: 1px solid var(--line);
+		border-bottom: 1px solid var(--color-rule);
 	}
 	.ligne {
 		display: grid;
@@ -83,7 +83,7 @@
 		text-decoration: none;
 	}
 	a.ligne:hover {
-		background: var(--bg);
+		background: var(--color-paper);
 	}
 	a.ligne:hover .titre {
 		text-decoration: underline;
@@ -113,7 +113,7 @@
 	}
 	.sous {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.origine {
 		font-size: 12px;

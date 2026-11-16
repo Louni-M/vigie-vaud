@@ -66,7 +66,7 @@
 	<link rel="canonical" href={canonique('/a-propos')} />
 </svelte:head>
 
-<main class="almanach" data-theme="almanach" id="contenu" tabindex="-1">
+<main class="almanach" id="contenu" tabindex="-1">
 	<div class="cadre">
 		<header class="tete">
 			<h1>À propos</h1>
@@ -399,6 +399,14 @@ Crawl-delay: 30</code></pre>
 	}
 	.intro .chapeau {
 		margin-top: 0;
+	}
+	/* Les paragraphes de l'introduction, justifiés et avec césure comme le texte courant (almanach.css), sauf sur
+	   téléphone. */
+	@media (min-width: 40rem) {
+		.intro > p {
+			text-align: justify;
+			hyphens: auto;
+		}
 	}
 	ul,
 	ol {

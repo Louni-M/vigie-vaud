@@ -99,16 +99,16 @@
 	hr {
 		margin: 22px 0 12px;
 		border: 0;
-		border-top: 2px solid var(--line);
+		border-top: 2px solid var(--color-rule);
 	}
 	.note {
 		margin: 2px 0 6px;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
 		margin: 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.petit {
 		margin-left: 6px;

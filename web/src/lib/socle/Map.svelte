@@ -282,6 +282,16 @@
 	:global(.maplibregl-ctrl-attrib) {
 		font-size: 11px;
 	}
+	/* Les boutons de zoom : à angle droit, sans ombre, un filet d'encre en tête ; au survol, posés sur le papier, aussi
+	   sur un écran tactile avec souris. */
+	.carte :global(.maplibregl-ctrl-group) {
+		border-top: var(--rule-bar) solid var(--color-rule-2);
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.carte :global(.maplibregl-ctrl-group button:not(:disabled):hover) {
+		background-color: var(--color-paper-2);
+	}
 	/* Boutons de zoom d'au moins 44 px au doigt (29 px par défaut). */
 	@media (pointer: coarse), (max-width: 760px) {
 		:global(.maplibregl-ctrl-group button) {

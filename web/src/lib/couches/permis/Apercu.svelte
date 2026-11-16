@@ -41,22 +41,22 @@
 		gap: 2px;
 		width: 100%;
 		padding: 10px 12px;
-		border: 1px solid var(--line);
+		border: 1px solid var(--color-rule);
 		border-radius: 10px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
 	}
 	.attente:hover {
-		border-color: var(--accent);
-		box-shadow: 0 0 0 1px var(--accent);
+		border-color: var(--color-rule-2);
+		box-shadow: 0 0 0 1px var(--color-rule-2);
 	}
 	.attente:active {
-		background: var(--surface-2);
+		background: var(--color-paper-2);
 	}
 	.attente > span {
 		font-size: 13px;
-		color: var(--accent);
+		color: var(--color-rule-2);
 	}
 </style>

@@ -217,11 +217,11 @@
 </section>
 
 <style>
+	/* Le fil : la feuille posée sur la carte, un filet d'encre en tête, rien d'autre. */
 	.fil {
-		padding: 12px 12px 16px;
-		background: var(--surface);
-		border-radius: 10px;
-		box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+		padding: var(--space-md) var(--space-md) var(--space-lg);
+		border-top: var(--rule-bar) solid var(--color-rule-2);
+		background: var(--color-sheet);
 		font-size: 14px;
 	}
 	header {
@@ -231,26 +231,29 @@
 	h2 {
 		flex: 1;
 		margin: 0;
-		font-size: 16px;
+		font-size: var(--text-lg);
+		font-weight: 600;
+		letter-spacing: var(--tracking-display);
+		color: var(--color-ink);
 	}
 	.fermer {
 		width: 32px;
 		height: 32px;
 		margin: -4px -6px -4px 0;
 		border: 0;
-		border-radius: 50%;
 		background: none;
 		font-size: 22px;
 		line-height: 1;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 	.fermer:hover {
-		background: var(--bg);
+		background: var(--color-paper);
+		color: var(--color-ink);
 	}
 	.panne {
 		margin: 8px 0 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.panne button {
 		padding: 0;
@@ -267,26 +270,30 @@
 		gap: 6px;
 		margin: 10px 0 6px;
 	}
+	/* Les types du fil : une puce à angle droit ; choisie, elle prend un lavis de sa couleur et son filet, plutôt qu'un
+	   aplat qui mettrait quatre couleurs vives en tête du volet. */
 	.puces button {
 		padding: 4px 10px;
-		border: 1px solid var(--c);
-		border-radius: 999px;
-		background: var(--surface);
+		border: 1px solid var(--color-rule);
+		border-radius: var(--radius-pill);
+		background: var(--color-sheet);
 		font: inherit;
 		font-size: 13px;
-		color: var(--c);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 	.puces button[aria-pressed='true'] {
-		background: var(--c);
-		color: #fff;
+		border-color: var(--c);
+		background: color-mix(in oklch, var(--c) 12%, var(--color-sheet));
+		color: var(--color-ink);
+		font-weight: 500;
 	}
-	/* Au survol, la puce prend un lavis de sa couleur ; choisie, elle fonce d'un ton et se cerne d'encre. */
+	/* Au survol, la puce prend un lavis de sa couleur ; choisie, elle fonce son lavis et se cerne de sa couleur. */
 	.puces button:not([aria-pressed='true']):hover {
-		background: color-mix(in oklch, var(--c) 8%, var(--surface));
+		background: color-mix(in oklch, var(--c) 8%, var(--color-sheet));
 	}
 	.puces button[aria-pressed='true']:hover {
-		background: color-mix(in oklch, var(--c) 80%, #000);
+		background: color-mix(in oklch, var(--c) 24%, var(--color-sheet));
 		box-shadow: 0 0 0 1px var(--c);
 	}
 	.portee {
@@ -302,9 +309,8 @@
 	.sans {
 		margin-bottom: 8px;
 		padding: 4px 6px;
-		border: 1px dashed var(--line);
-		border-radius: 8px;
-		background: var(--bg);
+		border-top: var(--rule-hair) solid var(--color-rule);
+		background: var(--color-paper);
 	}
 	.tete-sans {
 		width: 100%;
@@ -317,25 +323,27 @@
 		cursor: pointer;
 	}
 	.tete-sans:hover {
-		background: var(--color-paper-2, var(--surface));
+		background: var(--color-paper-2);
 	}
 	.aide {
 		display: block;
 		font-weight: 400;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.compte {
 		margin: 6px 0 0;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
+	/* Le fil cantonal : intertitres en casse de phrase, lignes réglées, l'entrée ouverte sur un lavis orange. */
 	h3 {
-		margin: 12px 0 4px;
-		font-size: 12px;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--muted);
+		margin: var(--space-md) 0 4px;
+		padding-bottom: var(--space-2xs);
+		border-bottom: var(--rule-bar) solid var(--color-rule-2);
+		font-size: var(--text-xs);
+		font-weight: 600;
+		color: var(--color-ink);
 	}
 	ul {
 		margin: 0;
@@ -343,17 +351,18 @@
 		list-style: none;
 	}
 	li {
-		border-bottom: 1px solid var(--line);
+		border-bottom: 1px solid var(--color-rule);
 	}
 	li.ouvert {
-		background: #fff6d6;
+		background: var(--color-accent-wash);
+		box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
 	}
 	li > a {
 		display: flex;
 		align-items: flex-start;
 		gap: 8px;
 		width: 100%;
-		padding: 7px 2px;
+		padding: 7px var(--space-xs);
 		color: inherit;
 		text-decoration: none;
 		text-align: left;
@@ -365,14 +374,15 @@
 		contain-intrinsic-size: auto 64px;
 	}
 	li > a:hover {
-		background: var(--bg);
+		background: var(--color-paper);
 	}
-	/* Ouverte, l'entrée garde son fond jaune : au survol, il fonce et le titre se souligne. */
+	/* L'entrée ouverte garde son lavis orange au survol : son titre s'y souligne d'orange. */
 	li.ouvert > a:hover {
-		background: #fdeeb5;
+		background: none;
 	}
 	li.ouvert > a:hover .titre {
-		text-decoration: underline;
+		text-decoration: underline var(--rule-bar) var(--color-accent);
+		text-underline-offset: 0.18em;
 	}
 	.signe {
 		display: grid;
@@ -380,7 +390,7 @@
 		place-items: center;
 		width: 22px;
 		height: 22px;
-		border-radius: 6px;
+		border-radius: var(--radius-pill);
 		background: var(--c);
 		font-size: 12px;
 		font-weight: 700;
@@ -393,9 +403,13 @@
 	}
 	.meta {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.titre {
+		font-family: var(--font-body);
+		font-size: 0.9375rem;
+		line-height: 1.35;
+		color: var(--color-ink);
 		display: -webkit-box;
 		overflow: hidden;
 		-webkit-line-clamp: 2;
@@ -404,10 +418,10 @@
 	}
 	.fleche {
 		margin-left: auto;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.vide {
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 </style>

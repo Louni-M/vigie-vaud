@@ -27,26 +27,28 @@
 </div>
 
 <style>
+	/* L'encadré de consultation en creux, l'orange en tête, comme l'encadré d'action de Protection des données. */
 	.encadre {
 		display: grid;
 		gap: 8px;
-		border: 1px solid var(--line);
-		border-left: 4px solid var(--accent);
-		border-radius: 8px;
-		padding: 12px 16px;
-		background: var(--surface-2);
-		font-size: 14px;
+		border-top: var(--rule-bar) solid var(--color-accent);
+		padding: var(--space-md) var(--space-md) var(--space-lg);
+		background: var(--color-paper-2);
+		font-family: var(--font-body);
+		font-size: 0.9375rem;
 		line-height: 1.45;
 	}
 	h4 {
 		margin: 0;
+		font-family: var(--font-display);
 		font-size: 15px;
+		color: var(--color-ink);
 	}
 	p {
 		margin: 0;
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
 		font-size: 12.5px;
 	}
 	/* Les liens soulignés : au survol, le soulignement s'épaissit. */

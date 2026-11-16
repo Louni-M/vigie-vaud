@@ -137,6 +137,6 @@
 		font-size: 13px;
 	}
 	:global(.bulle-hotel span) {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 </style>

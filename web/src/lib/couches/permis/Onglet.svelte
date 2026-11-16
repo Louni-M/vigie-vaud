@@ -102,7 +102,7 @@
 	<ul class="grille" aria-busy="true"><li class="attente"></li><li class="attente"></li></ul>
 {:else if enquetes.length}
 	<ul class="grille">
-		{#each enquetes as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
+		{#each enquetes as d (d.id)}<li><DossierCarte {d} enListe onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
 {:else}
 	<p class="muted">Aucune demande de permis à l’enquête publique actuellement.</p>
@@ -111,7 +111,7 @@
 {#if attente.length}
 	<h3>Enquête terminée, décision attendue ({nombre.format(attente.length)})</h3>
 	<ul class="grille">
-		{#each attente as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
+		{#each attente as d (d.id)}<li><DossierCarte {d} enListe onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
 {/if}
 
@@ -133,7 +133,7 @@
 {#if tout}
 	<p class="muted">{nombre.format(tout.length)}&nbsp;dossier{tout.length > 1 ? 's' : ''} depuis 1999, hors dossiers en cours listés plus haut.</p>
 	<ul class="grille">
-		{#each tout as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
+		{#each tout as d (d.id)}<li><DossierCarte {d} enListe onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
 {:else if echecRecents}
 	<p class="erreur" role="alert">
@@ -144,7 +144,7 @@
 	<ul class="grille" aria-busy="true"><li class="attente"></li><li class="attente"></li><li class="attente"></li></ul>
 {:else}
 	<ul class="grille">
-		{#each recents as d (d.id)}<li><DossierCarte {d} onclick={() => ouvrir(d)} /></li>{/each}
+		{#each recents as d (d.id)}<li><DossierCarte {d} enListe onclick={() => ouvrir(d)} /></li>{/each}
 	</ul>
 	{#if totalHisto > recents.length}
 		<p>
@@ -176,8 +176,8 @@
 		gap: 6px;
 	}
 	.chiffres div {
-		background: var(--surface);
-		border: 1px solid var(--line);
+		background: var(--color-sheet);
+		border: 1px solid var(--color-rule);
 		border-top: 3px solid var(--c);
 		border-radius: 8px;
 		padding: 6px 10px;
@@ -189,7 +189,7 @@
 	}
 	.chiffres span {
 		font-size: 12.5px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.grille {
 		list-style: none;
@@ -224,20 +224,20 @@
 	}
 	.barre span {
 		width: 100%;
-		background: var(--accent);
+		background: var(--color-rule-2);
 		border-radius: 3px 3px 0 0;
 		min-height: 2px;
 	}
 	.barre small {
 		font-size: 11px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
 		margin: 0 0 10px;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.source {
 		margin-top: 28px;
@@ -249,7 +249,7 @@
 	.attente {
 		min-height: 92px;
 		border-radius: 10px;
-		background: var(--line);
+		background: var(--color-rule);
 		opacity: 0.6;
 	}
 	.barres.attente {

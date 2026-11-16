@@ -44,11 +44,11 @@
 	.note {
 		margin: 0;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
 		margin: 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.petit {
 		margin-left: 6px;

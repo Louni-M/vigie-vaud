@@ -29,7 +29,7 @@
 	.badge {
 		font-size: 12px;
 		font-weight: 400;
-		color: var(--muted);
+		color: var(--color-muted);
 		white-space: nowrap;
 	}
 </style>

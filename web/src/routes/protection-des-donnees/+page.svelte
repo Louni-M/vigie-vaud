@@ -55,7 +55,7 @@
 	<link rel="canonical" href={canonique('/protection-des-donnees')} />
 </svelte:head>
 
-<main class="almanach" data-theme="almanach" id="contenu" tabindex="-1">
+<main class="almanach" id="contenu" tabindex="-1">
 	<div class="cadre">
 		<header class="tete">
 			<h1>Protection des données</h1>
@@ -361,6 +361,18 @@
 
 <style>
 	/* Les jetons, la base, l'en-tête, les parties et le sommaire sont communs aux pages Almanach (#lib/almanach). */
+
+	/* La date de mise à jour, sous le titre : elle monte à sa suite. */
+	.tete .date {
+		margin-top: var(--space-md);
+		font-size: var(--text-sm);
+		color: var(--color-muted);
+	}
+	@media screen and (prefers-reduced-motion: no-preference) {
+		.tete .date {
+			animation: almanach-monte 0.8s var(--ease-out) 0.12s both;
+		}
+	}
 
 	/* En bref : la feuille du manuel, une ligne réglée par fait. */
 	.bref {

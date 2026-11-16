@@ -90,11 +90,11 @@
 	.note {
 		margin: 2px 0 6px;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
 		margin: 4px 0 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.petit {
 		margin-left: 6px;
@@ -108,7 +108,7 @@
 		background: none;
 		font: inherit;
 		font-size: 13px;
-		color: var(--accent);
+		color: var(--color-rule-2);
 		cursor: pointer;
 	}
 	.plus:hover {

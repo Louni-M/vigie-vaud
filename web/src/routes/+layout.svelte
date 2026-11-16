@@ -56,7 +56,7 @@
 <!-- Lien d'évitement : chaque page porte son contenu dans <main id="contenu">. -->
 <a class="evitement-contenu" href="#contenu">Aller au contenu</a>
 
-<header data-theme="almanach">
+<header>
 	<a class="marque" href={resolve('/(carte)')}>
 		<!-- Le repère de la vigie : un anneau d'encre et son point orange, qui sert aussi d'icône d'onglet. -->
 		<svg class="repere" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
@@ -75,100 +75,6 @@
 {@render children()}
 
 <style>
-	:global(:root) {
-		color-scheme: light;
-		--bg: #f6f7f9;
-		--surface: #ffffff;
-		--surface-2: #f8f6f2;
-		--text: #1d2330;
-		--muted: #687082;
-		--line: #dfe3ea;
-		--accent: #1f3a5f;
-		--enquete: #d9480f;
-		/* Variante plus foncée pour le texte (contraste AA sur fond blanc). */
-		--enquete-texte: #b93d0b;
-		--erreur: #b02a00;
-		--focus: #1f6feb;
-		--header-h: 52px;
-	}
-	:global(*) {
-		box-sizing: border-box;
-	}
-	/* L'en-tête collant ne recouvre jamais l'élément qui reçoit le focus ou l'ancre visée. */
-	:global(html) {
-		scroll-padding-top: calc(var(--header-h) + 8px);
-	}
-	/* Pas de délai de double-toucher sur les commandes, et un retour de toucher choisi : celui de l'état :active. */
-	:global(:is(a, button, input, select, label, summary, [role='tab'])) {
-		touch-action: manipulation;
-		-webkit-tap-highlight-color: transparent;
-	}
-	:global(html, body) {
-		margin: 0;
-		background: var(--bg);
-		color: var(--text);
-		font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-		-webkit-text-size-adjust: 100%;
-	}
-	:global(a) {
-		color: var(--accent);
-	}
-	:global(:focus-visible) {
-		outline: 3px solid var(--focus);
-		outline-offset: 2px;
-	}
-	:global(.bouton) {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 6px;
-		min-height: 40px;
-		padding: 9px 14px;
-		border-radius: 8px;
-		background: var(--accent);
-		color: #fff;
-		text-decoration: none;
-		font-weight: 600;
-		font-size: 14px;
-		border: 0;
-		cursor: pointer;
-	}
-	/* Survol et appui : seulement sur un bouton actif, qu'un bouton grisé ne fasse pas croire qu'il répond. */
-	:global(.bouton:not(:disabled):hover) {
-		background: color-mix(in oklab, var(--accent), black 22%);
-	}
-	:global(.bouton:not(:disabled):active) {
-		background: color-mix(in oklab, var(--accent), black 35%);
-	}
-	@media (pointer: coarse) {
-		:global(.bouton) {
-			min-height: 44px;
-		}
-	}
-	:global(.bouton.secondaire) {
-		background: var(--surface);
-		color: var(--accent);
-		box-shadow: inset 0 0 0 1px var(--accent);
-	}
-	:global(.bouton.secondaire:not(:disabled):hover) {
-		background: color-mix(in oklab, var(--accent), white 90%);
-		box-shadow: inset 0 0 0 2px var(--accent);
-	}
-	:global(.bouton.secondaire:not(:disabled):active) {
-		background: color-mix(in oklab, var(--accent), white 80%);
-	}
-	/* Texte lu par les lecteurs d'écran seulement (chargement, nom d'un signe, en-têtes d'un tableau replié). */
-	:global(.lecteur-seul) {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		margin: -1px;
-		padding: 0;
-		overflow: hidden;
-		clip-path: inset(50%);
-		white-space: nowrap;
-		border: 0;
-	}
 	/* Hors de l'écran tant qu'il n'a pas le focus clavier. */
 	.evitement-contenu {
 		position: absolute;
@@ -176,10 +82,10 @@
 		left: 8px;
 		z-index: 30;
 		padding: 10px 14px;
-		background: var(--color-sheet, #fff);
-		color: var(--color-ink, #1d2330);
+		background: var(--color-sheet);
+		color: var(--color-ink);
 		font-weight: 600;
-		box-shadow: 0 0 0 2px var(--color-ink, #1d2330);
+		box-shadow: 0 0 0 2px var(--color-ink);
 	}
 	.evitement-contenu:not(:focus) {
 		clip-path: inset(50%);
@@ -189,21 +95,8 @@
 		white-space: nowrap;
 		padding: 0;
 	}
-	/* Le <main> visé par l'évitement prend le focus sans anneau : c'est un point d'arrivée, pas une commande. */
-	:global(#contenu:focus) {
-		outline: none;
-	}
-	:global(.page) {
-		max-width: 860px;
-		margin: 0 auto;
-		padding: 20px 16px 48px;
-	}
-	:global(.source) {
-		font-size: 12px;
-		color: var(--muted);
-	}
 	header {
-		height: var(--header-h);
+		height: var(--size-header);
 		display: flex;
 		align-items: center;
 		gap: var(--space-md);
@@ -215,10 +108,6 @@
 		position: sticky;
 		top: 0;
 		z-index: 10;
-	}
-	header :focus-visible {
-		outline: var(--rule-bar) solid var(--color-focus);
-		outline-offset: var(--space-3xs);
 	}
 	/* La marque : le repère, puis le nom, serré comme un titre, « Vaud » en orange. */
 	.marque {

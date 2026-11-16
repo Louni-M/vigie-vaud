@@ -15,6 +15,7 @@
 		r,
 		commune,
 		actif = false,
+		enListe = false,
 		onclick,
 		children
 	}: {
@@ -22,6 +23,8 @@
 		/** Slug de la commune de l'onglet : la carte y dit la longueur parcourue quand il y en a plusieurs. */
 		commune?: string;
 		actif?: boolean;
+		/** Dans une liste, une ligne réglée quand elle s'ouvre ; seule (l'aperçu du téléphone), une carte encadrée. */
+		enListe?: boolean;
 		onclick?: () => void;
 		/** Une dernière ligne propre à l'endroit (« Voir la fiche › » de l'aperçu sur téléphone). */
 		children?: Snippet;
@@ -36,6 +39,7 @@
 		type="button"
 		class="carte ouvrable"
 		class:actif
+		class:en-liste={enListe}
 		class:avenir={c.aVenir}
 		style:--c={c.couleur}
 		{onclick}
@@ -75,10 +79,10 @@
 		min-width: 0;
 		text-align: left;
 		padding: 10px 12px;
-		border: 1px solid var(--line);
+		border: 1px solid var(--color-rule);
 		border-left: 4px solid var(--c);
 		border-radius: 10px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		color: inherit;
 		font: inherit;
 		font-size: 13.5px;
@@ -88,12 +92,12 @@
 	}
 	.ouvrable:hover,
 	.actif {
-		border-color: var(--accent);
+		border-color: var(--color-rule-2);
 		border-left-color: var(--c);
-		box-shadow: 0 0 0 1px var(--accent);
+		box-shadow: 0 0 0 1px var(--color-rule-2);
 	}
 	.actif:hover {
-		box-shadow: 0 0 0 2px var(--accent);
+		box-shadow: 0 0 0 2px var(--color-rule-2);
 	}
 	.avenir {
 		border-left-style: dashed;
@@ -117,13 +121,13 @@
 	.etiquette {
 		padding: 1px 6px;
 		border-radius: 4px;
-		background: var(--bg);
-		border: 1px solid var(--line);
+		background: var(--color-paper);
+		border: 1px solid var(--color-rule);
 		font-size: 11.5px;
 	}
 	.communes {
 		margin-left: auto;
-		color: var(--muted);
+		color: var(--color-muted);
 		text-align: right;
 	}
 	.quand {
@@ -140,18 +144,36 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.bas {
 		display: flex;
 		gap: 6px;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.source {
 		margin-left: auto;
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
+	}
+	/* Dans une liste, plus de carte encadrée : une ligne réglée par restriction ; celle survolée ou ouverte est posée
+	   sur le papier et marquée d'un trait orange. */
+	.en-liste {
+		padding: var(--space-sm) var(--space-xs) var(--space-sm) var(--space-sm);
+		border: 0;
+		border-radius: 0;
+		background: none;
+	}
+	.en-liste:hover,
+	.en-liste.actif {
+		border: 0;
+		background: var(--color-paper);
+		box-shadow: inset var(--rule-bar) 0 0 var(--color-accent);
+	}
+	/* La restriction ouverte, survolée : le papier fonce d'un ton. */
+	.en-liste.actif:hover {
+		background: var(--color-paper-2);
 	}
 </style>

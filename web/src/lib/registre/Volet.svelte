@@ -96,14 +96,14 @@
 </section>
 
 <style>
+	/* Le volet : la feuille posée sur la carte, un filet d'encre en tête, rien d'autre. */
 	.volet {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
-		padding: 12px 14px 14px;
-		background: var(--surface);
-		border-radius: 10px;
-		box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+		gap: var(--space-sm);
+		padding: var(--space-md) var(--space-md) var(--space-lg);
+		border-top: var(--rule-bar) solid var(--color-rule-2);
+		background: var(--color-sheet);
 		font-size: 14px;
 	}
 	.tete {
@@ -114,7 +114,10 @@
 	h2 {
 		flex: 1;
 		margin: 0;
-		font-size: 16px;
+		font-size: var(--text-lg);
+		font-weight: 600;
+		letter-spacing: var(--tracking-display);
+		color: var(--color-ink);
 	}
 	.interrupteur,
 	.permanente {
@@ -122,7 +125,7 @@
 		align-items: center;
 		gap: 6px;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.interrupteur {
 		cursor: pointer;
@@ -131,22 +134,22 @@
 		width: 18px;
 		height: 18px;
 		margin: 0;
-		accent-color: var(--accent);
+		accent-color: var(--color-ink);
 	}
 	.fermer {
 		width: 32px;
 		height: 32px;
 		margin: -4px -6px -4px 0;
 		border: 0;
-		border-radius: 50%;
 		background: none;
 		font-size: 22px;
 		line-height: 1;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 	.fermer:hover {
-		background: var(--bg);
+		background: var(--color-paper);
+		color: var(--color-ink);
 	}
 	.voir {
 		align-self: flex-start;
@@ -158,15 +161,16 @@
 		flex-wrap: wrap;
 		gap: 2px 12px;
 		margin: -6px 0 0;
+		font-size: var(--text-xs);
 	}
 	.couverture {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.attribution {
 		margin: -8px 0 0;
-		font-size: 12px;
-		color: var(--muted);
+		font-size: var(--text-xs);
+		color: var(--color-muted);
 	}
 	.attribution a {
 		color: inherit;
@@ -174,11 +178,11 @@
 	/* Au survol, le lien prend l'encre et son soulignement s'épaissit. */
 	.couverture:hover,
 	.attribution a:hover {
-		color: var(--text);
-		text-decoration-thickness: 2px;
+		color: var(--color-ink);
+		text-decoration-thickness: var(--rule-bar);
 	}
 	.erreur {
 		margin: 0;
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 </style>

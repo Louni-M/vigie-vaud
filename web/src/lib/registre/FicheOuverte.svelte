@@ -179,13 +179,14 @@
 </section>
 
 <style>
+	/* La fiche ouverte, à droite : du papier, le titre en grand, l'onglet courant souligné d'orange. */
 	.fiche {
 		display: flex;
 		flex-direction: column;
 		height: 100%;
 		min-width: 0;
-		background: var(--bg);
-		border-left: 1px solid var(--line);
+		background: var(--color-paper);
+		border-left: var(--rule-bar) solid var(--color-rule-2);
 	}
 	.entete {
 		display: flex;
@@ -196,7 +197,7 @@
 	.infos {
 		padding: 0 14px 8px;
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.infos p {
 		margin: 2px 0 0;
@@ -208,7 +209,11 @@
 	h2 {
 		flex: 1;
 		margin: 0;
-		font-size: 22px;
+		font-size: 1.75rem;
+		font-weight: 600;
+		letter-spacing: -0.03em;
+		line-height: 1.1;
+		color: var(--color-ink);
 	}
 	h2:focus {
 		outline: none;
@@ -217,20 +222,20 @@
 		width: 36px;
 		height: 36px;
 		border: 0;
-		border-radius: 50%;
-		background: var(--surface);
+		background: none;
 		font-size: 22px;
 		line-height: 1;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 	}
 	.fermer:hover {
-		color: var(--text);
+		background: var(--color-paper-2);
+		color: var(--color-ink);
 	}
 	.onglets {
 		display: flex;
 		padding: 0 10px;
-		border-bottom: 1px solid var(--line);
+		border-bottom: 1px solid var(--color-rule);
 		overflow-x: auto;
 	}
 	.onglets button {
@@ -240,22 +245,22 @@
 		gap: 1px;
 		padding: 8px 10px 6px;
 		border: 0;
-		border-bottom: 3px solid transparent;
+		border-bottom: var(--rule-bar) solid transparent;
 		background: none;
 		font: inherit;
 		font-size: 14px;
 		font-weight: 600;
-		color: var(--muted);
+		color: var(--color-muted);
 		cursor: pointer;
 		white-space: nowrap;
 	}
 	.onglets button:hover {
-		color: var(--text);
-		background: var(--color-paper-2, var(--surface));
+		color: var(--color-ink);
+		background: var(--color-paper-2);
 	}
 	.onglets button[aria-selected='true'] {
-		color: var(--text);
-		border-bottom-color: var(--enquete);
+		color: var(--color-ink);
+		border-bottom-color: var(--color-accent);
 	}
 	.corps {
 		flex: 1;
@@ -267,7 +272,7 @@
 	}
 	.non-couvert {
 		margin: 0 0 12px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.fil {
 		display: flex;
@@ -275,17 +280,17 @@
 		gap: 6px;
 		margin: 0 0 12px;
 		font-size: 14px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.lien {
-		color: var(--accent);
+		color: var(--color-rule-2);
 		text-decoration: underline;
 	}
 	.lien:hover {
-		color: var(--text);
+		color: var(--color-ink);
 		text-decoration-thickness: 2px;
 	}
 	.erreur {
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 </style>

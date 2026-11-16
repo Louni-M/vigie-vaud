@@ -74,16 +74,16 @@
 		display: block;
 		height: 14px;
 		border-radius: 7px;
-		background: var(--line);
+		background: var(--color-rule);
 	}
 	.squelette .grand {
 		height: 24px;
 	}
 	.muted {
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.erreur {
-		color: var(--erreur);
+		color: var(--color-erreur);
 	}
 	.source {
 		margin-top: 28px;

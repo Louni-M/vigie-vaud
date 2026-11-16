@@ -40,14 +40,14 @@
 		border: 0;
 		border-left: 4px solid var(--c);
 		border-radius: 10px;
-		background: var(--surface);
+		background: var(--color-sheet);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
 	}
 	.meta {
 		font-size: 13px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.titre {
 		display: -webkit-box;
@@ -57,18 +57,18 @@
 		-webkit-box-orient: vertical;
 		font-size: 15px;
 		font-weight: 600;
-		color: var(--text);
+		color: var(--color-ink);
 	}
 	.fiche {
 		font-size: 14px;
-		color: var(--muted);
+		color: var(--color-muted);
 	}
 	.nom {
-		color: var(--text);
+		color: var(--color-ink);
 		font-weight: 600;
 	}
 	.voir {
-		color: var(--accent);
+		color: var(--color-rule-2);
 		font-weight: 600;
 	}
 </style>

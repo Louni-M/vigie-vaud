@@ -45,7 +45,7 @@
 <style>
 	li {
 		list-style: none;
-		border-bottom: 1px solid var(--line);
+		border-bottom: 1px solid var(--color-rule);
 	}
 	.ligne {
 		display: grid;
@@ -63,7 +63,7 @@
 		cursor: pointer;
 	}
 	button.ligne:hover {
-		background: var(--bg);
+		background: var(--color-paper);
 	}
 	.meta {
 		display: flex;
@@ -75,7 +75,7 @@
 		color: var(--c);
 	}
 	.meta a {
-		color: var(--accent);
+		color: var(--color-rule-2);
 	}
 	.pastille {
 		flex: none;
