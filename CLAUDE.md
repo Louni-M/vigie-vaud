@@ -1,16 +1,18 @@
-## Agent skills
+## Compound Engineering
 
-### Issue tracker
+This repo is set up for the Compound Engineering skills. Team settings live in `.compound-engineering/config.yaml`. Documented solutions to past problems (bugs, best practices, workflow patterns) live in `docs/solutions/`, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`), and are relevant when implementing or debugging in a documented area.
 
-Issues live in GitHub Issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues, managed with the `gh` CLI.
 
-### Triage labels
+## Domain docs
 
-Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+The product, the code and the docs are in French. Write every new doc in French, Compound Engineering artifacts included, and follow the format of the file you add to.
 
-### Domain docs
-
-Single-context, in French: one root `GLOSSARY.md` + `docs/adr/`, with data sources in `docs/sources.md`. See `docs/agents/domain.md`. Documented solutions to past problems (bugs, best practices, workflow patterns) live in `docs/solutions/`, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`), and are relevant when implementing or debugging in a documented area.
+- `GLOSSARY.md`: the domain vocabulary, under `## Langage`. Read it before working in an area. When a plan, issue, commit or test names a domain concept, use the glossary's term, never a synonym listed under `_À éviter_`. A concept missing from it gets an entry rather than a new word.
+- `docs/adr/`: the decisions, numbered `NNNN-titre.md`. Read the ADRs that touch the area before planning or changing it. When a change contradicts one, say so explicitly and why it is worth reopening; never override it silently.
+- `docs/sources.md`: the inventory of data sources (used, rejected, not found) with their access path. Read it before adding, changing or debugging a source; update it when a source changes.
+- `docs/recherche/`: research notes, one per question, each tied to the issue that asked it.
+- `docs/feuille-de-route.md` (temporary): milestones J0–J6, phase 2, backlog and the owner's actions, until they move to GitHub milestones and issues.
 
 ## Code standards
 
