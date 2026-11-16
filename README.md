@@ -155,6 +155,8 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 - `pipeline/sites_communaux.py` : lecture du conseil d'une commune scrapée, aux mêmes `Bruts` qu'OpenParlData ;
 - `pipeline/lecture_iweb.py`, `pipeline/lecture_quicksite.py` : modules de lecture des plateformes i-web et
   Quicksite ;
+- `pipeline/socle_lecture.py` : ce que les modules de lecture partagent (journal, préambule de `lire`, requêtes,
+  date et heure, Séance, point et document à la forme d'OpenParlData) ;
 - `pipeline/pages_html.py` : analyse du HTML, partagée par les modules de lecture ;
 - `pipeline/sonde_sites.py` : sonde des sites communaux, la même pour toutes les plateformes.
 

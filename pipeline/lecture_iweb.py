@@ -28,17 +28,26 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urljoin, urlsplit
 
+import socle_lecture
 from bruts import Bruts
 from pages_html import Noeud, arbre, espaces, texte_html
-from mesure_sites import Mesure, PagesLues, RobotSansReseau, liens, sans_journal
+from mesure_sites import Mesure, PagesLues, RobotSansReseau, liens
 from robot_communal import PageNonLue, Robot
 from schema import Plateforme, Site, Source
+from socle_lecture import (
+    DATE_CHIFFRES,
+    document,
+    heure_de,
+    jour_en_chiffres,
+    journal,
+    meeting,
+    point,
+)
 
 TABLEAUX_SEANCES = ("icmsTableFutureSitzungen", "icmsTablePastSitzungen")
 TABLEAU_MEMBRES = "icmsTable-personList"
@@ -48,31 +57,22 @@ VARIANTES = ("seances",)
 def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
     """Le conseil de `source`, une commune i-web, lu sur son site : les Séances de la liste datées de `depuis` ou
     après (toutes sans `depuis`), chacune avec sa page."""
-    site, conseil = source.site, source.conseil
-    if site is None or conseil is None:
-        raise ValueError(f"{source.id} : ni bloc `site` ni bloc `conseil`")
-    if site.variante not in VARIANTES:
-        raise ValueError(f"{source.id} : variante i-web {site.variante} non lue")
+    site, conseil = socle_lecture.site_et_conseil(source, "i-web", VARIANTES)
     liste = robot.lire(site.seances, "import")
     seances = []
     for ligne in _lignes_de_seances(liste.texte, liste.url):
         if isinstance(ligne, str):
-            _journal(source.nom, f"ligne de Séance illisible ({ligne})")
+            journal(source.nom, f"ligne de Séance illisible ({ligne})")
             continue
         if depuis is not None and ligne.jour < depuis:
             continue
         try:
             page = robot.lire(ligne.lien, "import")
         except PageNonLue as e:
-            _journal(source.nom, f"Séance {ligne.lien} non lue ({e})")
+            journal(source.nom, f"Séance {ligne.lien} non lue ({e})")
             continue
-        seances.append(_meeting(ligne, page.texte, page.url))
+        seances.append(_seance(ligne, page.texte, page.url))
     return Bruts(conseil, objets=[], seances=seances, membres=_membres(robot, source))
-
-
-def _journal(nom: str, message: str) -> None:
-    """Note dans le journal du passage un élément sauté du conseil `nom` (le nom de sa source)."""
-    print(f"{nom} : élément sauté, {message}", file=sys.stderr)
 
 
 # --- Page de liste ------------------------------------------------------------------------------------------------
@@ -87,8 +87,6 @@ class _Ligne:
 
 
 _LIEN_ANLASS = re.compile(r"""href=["']([^"']*/_rte/anlass/\d+)["'][^>]*>(.*?)</a>""", re.S)
-_DATE = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
-_HEURE = re.compile(r"\b(\d{1,2})h(\d{2})\b")
 
 
 def _lignes_de_seances(texte: str, url: str) -> list[_Ligne | str]:
@@ -117,26 +115,20 @@ def _ligne(brute: object, url: str) -> _Ligne | str:
     if lien is None:
         return "sans lien vers sa page"
     datum = texte_html(str(brute.get("_datum") or ""))
-    jour = _DATE.search(datum)
+    jour = DATE_CHIFFRES.search(datum)
     if jour is None:
         return f"sans date : {lien[1]}"
     try:
-        quand = date(int(jour[3]), int(jour[2]), int(jour[1]))
+        quand = jour_en_chiffres(jour)
     except ValueError:
         return f"date impossible « {jour[0]} » : {lien[1]}"
-    heure = _HEURE.search(datum[jour.end() :])
-    return _Ligne(
-        nom=texte_html(lien[2]),
-        lien=urljoin(url, lien[1]),
-        jour=quand,
-        heure=f"{int(heure[1]):02d}:{heure[2]}" if heure else None,
-    )
+    return _Ligne(nom=texte_html(lien[2]), lien=urljoin(url, lien[1]), jour=quand, heure=heure_de(datum[jour.end() :]))
 
 
 # --- Page d'une Séance --------------------------------------------------------------------------------------------
 
 
-def _meeting(ligne: _Ligne, texte: str, url: str) -> dict:
+def _seance(ligne: _Ligne, texte: str, url: str) -> dict:
     """La Séance à la forme d'un *meeting* d'OpenParlData, réduit aux champs que l'import lit : ses points, sans
     Objet relié, et tous les documents de la page (ADR-0010). Un document n'a pas de date : i-web n'en affiche pas,
     ni sa mise en ligne."""
@@ -148,22 +140,8 @@ def _meeting(ligne: _Ligne, texte: str, url: str) -> dict:
         cellules = [c for c in tr.enfants_elements() if c.tag == "td"]
         if len(cellules) < 2:
             continue
-        points.append(
-            {
-                "item_number_display": espaces(cellules[0].texte()) or None,
-                "item_title": espaces(cellules[1].texte()),
-                "item_affair_number": None,
-            }
-        )
-    debut = ligne.jour.isoformat() + (f"T{ligne.heure}:00" if ligne.heure else "")
-    return {
-        "id": None,
-        "name": {"fr": ligne.nom},
-        "begin_date": debut,
-        "url_external": {"fr": ligne.lien},
-        "agendas": {"data": points},
-        "docs": {"data": _documents(racine, url)},
-    }
+        points.append(point(espaces(cellules[1].texte()), numero=espaces(cellules[0].texte())))
+    return meeting(ligne.nom, ligne.jour, _documents(racine, url), heure=ligne.heure, lien=ligne.lien, points=points)
 
 
 def _documents(racine: Noeud, url: str) -> list[dict]:
@@ -176,7 +154,7 @@ def _documents(racine: Noeud, url: str) -> list[dict]:
             continue
         vus.add(lien)
         nom = espaces(a.texte()) or a.attr("title") or lien.rsplit("/", 1)[-1]
-        documents.append({"name": nom, "url": lien, "date": None, "category": None})
+        documents.append(document(nom, lien))
     return documents
 
 
@@ -200,7 +178,7 @@ def _membres(robot: Robot, source: Source) -> list[str]:
     try:
         page = robot.lire(url, "import")
     except PageNonLue as e:
-        _journal(source.nom, f"page des membres {url} non lue ({e})")
+        journal(source.nom, f"page des membres {url} non lue ({e})")
         return []
     tableau = arbre(page.texte).premier(lambda n: n.tag == "table" and n.attr("id") == TABLEAU_MEMBRES)
     try:
@@ -208,7 +186,7 @@ def _membres(robot: Robot, source: Source) -> list[str]:
     except (ValueError, KeyError, TypeError):
         lignes = None
     if not isinstance(lignes, list):
-        _journal(source.nom, f"page des membres {page.url} sans tableau `{TABLEAU_MEMBRES}` lisible")
+        journal(source.nom, f"page des membres {page.url} sans tableau `{TABLEAU_MEMBRES}` lisible")
         return []
     membres = []
     for ligne in lignes:
@@ -280,8 +258,4 @@ def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | Non
     `depuis`, rejouée sans réseau sur les pages déjà lues : le lien stable d'une Séance jamais lue en
     coûte deux, le site le redirigeant. `robots.txt` et la sonde n'y sont pas. `None` si la lecture échoue."""
     robot = RobotSansReseau(pages.pages, lambda url: 2 if "/_rte/" in url else 1)
-    try:
-        sans_journal(lambda: lire(robot, source, depuis))  # type: ignore[arg-type]
-    except (ValueError, PageNonLue):
-        return None
-    return robot.requetes
+    return socle_lecture.requetes(lire, robot, source, depuis)

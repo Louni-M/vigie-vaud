@@ -85,17 +85,26 @@ dont aucun document ne se lit, lève `ValueError`.
 from __future__ import annotations
 
 import re
-import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urlencode, urljoin, urlsplit
 
+import socle_lecture
 from bruts import Bruts
-from mesure_sites import Mesure, PagesLues, RobotCompteur, liens, sans_journal
+from mesure_sites import Mesure, PagesLues, RobotCompteur, liens
 from pages_html import Noeud, arbre, espaces
 from robot_communal import PageNonLue, Reponse, Robot
 from schema import Coreapi, Plateforme, Site, Source, niveau_de
+from socle_lecture import (
+    DATE_CHIFFRES,
+    document,
+    heure_de,
+    jour_en_chiffres,
+    journal,
+    meeting,
+    point,
+)
 
 VARIANTES = ("ancienne", "coreapi", "conseil", "conseil-externe")
 TYPE_PREAVIS = "Préavis"  # le type d'un préavis lu dans une liste de documents
@@ -108,11 +117,7 @@ PAGES_MAX = 1000
 def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
     """Le conseil de `source`, une commune Quicksite, lu sur son site : les Séances datées de `depuis` ou après
     (toutes sans `depuis`), et, si son niveau en donne, ses préavis."""
-    site, conseil = source.site, source.conseil
-    if site is None or conseil is None:
-        raise ValueError(f"{source.id} : ni bloc `site` ni bloc `conseil`")
-    if site.variante not in VARIANTES:
-        raise ValueError(f"{source.id} : variante Quicksite {site.variante} pas encore lue")
+    site, conseil = socle_lecture.site_et_conseil(source, "Quicksite", VARIANTES)
     niveau = niveau_de(conseil.donne)
     avec_preavis = bool(niveau and niveau.objets)
     if site.variante == "ancienne":
@@ -128,11 +133,6 @@ def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
     return Bruts(conseil, objets=objets, seances=seances, membres=[])
 
 
-def _journal(nom: str, message: str) -> None:
-    """Note dans le journal du passage un élément sauté du conseil `nom` (le nom de sa source)."""
-    print(f"{nom} : élément sauté, {message}", file=sys.stderr)
-
-
 def _page_de_liste(robot: Robot, source: Source, url: str, page: int, liste: str = "la liste") -> Reponse | None:
     """La page `page` d'une liste paginée (`liste`, pour le journal : « la recherche du nœud 720 »). La première doit
     se lire (sinon l'import est en échec) ; une suivante qui ne se lit pas finit la liste, notée dans le journal (un
@@ -142,40 +142,18 @@ def _page_de_liste(robot: Robot, source: Source, url: str, page: int, liste: str
     try:
         return robot.lire(url, "import")
     except PageNonLue as e:
-        _journal(source.nom, f"page {page} de {liste} non lue ({e}), liste lue jusqu'à la page {page - 1}")
+        journal(source.nom, f"page {page} de {liste} non lue ({e}), liste lue jusqu'à la page {page - 1}")
         return None
 
 
 def _liste_tronquee(nom: str, liste: str | None = None) -> None:
     """Note dans le journal une liste paginée (`liste`, s'il faut la nommer) lue jusqu'à `PAGES_MAX` sans en voir la
     fin."""
-    _journal(
+    journal(
         nom,
         f"liste tronquée : {PAGES_MAX} pages lues sans en voir la fin, les suivantes ne le sont pas"
         + (f" ({liste})" if liste else ""),
     )
-
-
-def _meeting(
-    nom: str,
-    jour: date,
-    documents: list[dict],
-    *,
-    heure: str | None = None,
-    lien: str | None = None,
-    points: list[dict] | None = None,
-) -> dict:
-    """Une Séance à la forme d'un *meeting* d'OpenParlData, sans identifiant (ADR 0010) : son nom brut, son jour et
-    son heure (« 19:30 ») si le site la donne, sa page propre si elle en a une, les points de son ordre du jour s'il
-    est structuré, et ses documents."""
-    return {
-        "id": None,
-        "name": {"fr": nom},
-        "begin_date": jour.isoformat() + (f"T{heure}:00" if heure else ""),
-        "url_external": {"fr": lien} if lien else None,
-        "agendas": {"data": points or []},
-        "docs": {"data": documents},
-    }
 
 
 def _affair(
@@ -209,14 +187,14 @@ def _en_double(nom: str, objets: list[dict], numero: str, titre: str, regle: str
     avec celui que `regle` a gardé (« le premier du site », « le plus ancien »)."""
     garde = next((o for o in objets if o["number"] == numero), None)
     if garde is not None:
-        _journal(nom, f"Objet {numero} en double, {regle} gardé (« {garde['title']['fr']} ») : {titre}")
+        journal(nom, f"Objet {numero} en double, {regle} gardé (« {garde['title']['fr']} ») : {titre}")
     return garde is not None
 
 
 def _doc(d: _DocumentDeBibliotheque | _DocumentDeRecherche) -> dict:
     """Un document d'une liste, à la forme d'un document d'OpenParlData : son titre, son lien stable, sa
     publication et son type."""
-    return {"name": d.titre, "url": d.lien, "date": d.publie.isoformat() if d.publie else None, "category": d.type}
+    return document(d.titre, d.lien, publie=d.publie, type_=d.type)
 
 
 # --- Bibliothèque (ancienne génération) ----------------------------------------------------------------------------
@@ -282,12 +260,12 @@ def _page_de_bibliotheque(nom: str, texte: str, url: str) -> list[_DocumentDeBib
     documents: list[_DocumentDeBibliotheque] = []
     illisibles = 0
     for noeud in (n for n in liste.elements() if "tplDocumentSummaryItem" in n.classes()):
-        document = _document_de_bibliotheque(noeud, url)
-        if isinstance(document, str):
+        lu = _document_de_bibliotheque(noeud, url)
+        if isinstance(lu, str):
             illisibles += 1
-            _journal(nom, f"document illisible ({document})")
+            journal(nom, f"document illisible ({lu})")
         else:
-            documents.append(document)
+            documents.append(lu)
     if illisibles and not documents:
         raise ValueError(f"{url} : aucun document lisible dans la bibliothèque")
     return documents
@@ -321,12 +299,12 @@ def _bibliotheque(
             continue
         jour = _date_ecrite(d.titre) or _date_ecrite(d.description)
         if jour is None:
-            _journal(nom, f"document de Séance sans date : {d.titre}")
+            journal(nom, f"document de Séance sans date : {d.titre}")
             continue
         if depuis is None or jour >= depuis:
             par_seance.setdefault(jour, []).append(d)
     seances = [
-        _meeting(f"Séance du {_jour_en_lettres(jour)}", jour, [_doc(d) for d in docs])
+        meeting(f"Séance du {_jour_en_lettres(jour)}", jour, [_doc(d) for d in docs])
         for jour, docs in par_seance.items()
     ]
     if not avec_preavis:
@@ -337,7 +315,7 @@ def _bibliotheque(
             continue
         numero = _numero(d.titre)
         if numero is None:
-            _journal(nom, f"Objet sans numéro, non importé : {d.titre}")
+            journal(nom, f"Objet sans numéro, non importé : {d.titre}")
             continue
         if _en_double(nom, preavis, numero, d.titre, "le premier du site"):
             continue
@@ -478,12 +456,12 @@ def _page_de_resultats(nom: str, texte: str, url: str) -> tuple[list[_DocumentDe
     groupes = [n for n in liste.elements() if "accordion-item" in n.classes()]
     for groupe, seance in [(g, _libelle_du_groupe(g)) for g in groupes] or [(liste, None)]:
         for noeud, entete in _documents_et_entetes(groupe):
-            document = _document_de_recherche(noeud, seance or entete, url)
-            if isinstance(document, str):
+            lu = _document_de_recherche(noeud, seance or entete, url)
+            if isinstance(lu, str):
                 illisibles += 1
-                _journal(nom, f"document illisible ({document})")
+                journal(nom, f"document illisible ({lu})")
             else:
-                documents.append(document)
+                documents.append(lu)
     if illisibles and not documents:
         raise ValueError(f"{url} : aucun document lisible dans la page {debut}–{fin}")
     return documents, fin, total
@@ -583,17 +561,16 @@ _PAS_UN_PREAVIS = re.compile(
     re.I,
 )
 _TYPES_DE_PREAVIS = ("préavis", "preavis")
-_DATE_CHIFFRES = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
 _MOIS = "janvier février mars avril mai juin juillet août septembre octobre novembre décembre".split()
 _DATE_LETTRES = re.compile(rf"\b(\d{{1,2}})(?:er)?\s+({'|'.join(_MOIS)})\s+(\d{{4}})\b", re.I)
 
 
 def _date_ecrite(texte: str) -> date | None:
     """La première date d'un texte, en chiffres (« 09.11.2026 ») ou en lettres (« 1er octobre 2026 »)."""
-    chiffres, lettres = _DATE_CHIFFRES.search(texte), _DATE_LETTRES.search(texte)
+    chiffres, lettres = DATE_CHIFFRES.search(texte), _DATE_LETTRES.search(texte)
     try:
         if chiffres and (not lettres or chiffres.start() < lettres.start()):
-            return date(int(chiffres[3]), int(chiffres[2]), int(chiffres[1]))
+            return jour_en_chiffres(chiffres)
         if lettres:
             return date(int(lettres[3]), _MOIS.index(lettres[2].lower()) + 1, int(lettres[1]))
     except ValueError:
@@ -615,7 +592,7 @@ def _seances_et_preavis(
     for d in dans_la_fenetre:
         if d.jour is not None and d.seance is not None:
             par_seance.setdefault((d.jour, d.seance), []).append(d)
-    seances = [_meeting(libelle, jour, [_doc(d) for d in docs]) for (jour, libelle), docs in par_seance.items()]
+    seances = [meeting(libelle, jour, [_doc(d) for d in docs]) for (jour, libelle), docs in par_seance.items()]
     if not avec_preavis:
         return seances, []
     preavis: list[dict] = []
@@ -624,7 +601,7 @@ def _seances_et_preavis(
             continue
         numero = _numero_de_preavis(d)
         if numero is None:
-            _journal(nom, f"Objet sans numéro, non importé : {d.titre}")
+            journal(nom, f"Objet sans numéro, non importé : {d.titre}")
             continue
         if _en_double(nom, preavis, numero, d.titre, "le plus ancien"):
             continue
@@ -692,7 +669,7 @@ def _numero(titre: str) -> str | None:
     if m is None:
         return None
     numero = m["numero"].rstrip(".,;:")
-    return None if _DATE_CHIFFRES.fullmatch(numero) else numero
+    return None if DATE_CHIFFRES.fullmatch(numero) else numero
 
 
 def _titre_du_preavis(d: _DocumentDeRecherche, numero: str) -> str:
@@ -838,12 +815,7 @@ def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | Non
     """Les requêtes que coûterait la lecture de `source` (`lire`) au passage ordinaire dont la fenêtre part de
     `depuis`. Les pages qui manquent sont lues par le robot du script (une liste Quicksite en demande peu : pages de
     résultats, ou Séances et fiches du module Conseil) ; `None` si la lecture échoue."""
-    robot = RobotCompteur(pages.lire)
-    try:
-        sans_journal(lambda: lire(robot, source, depuis))  # type: ignore[arg-type]
-    except (ValueError, PageNonLue):
-        return None
-    return robot.requetes
+    return socle_lecture.requetes(lire, RobotCompteur(pages.lire), source, depuis)
 
 
 # --- Module Conseil (Montreux) ------------------------------------------------------------------------------------
@@ -860,11 +832,10 @@ class _SeanceListee:
 
     def meeting(self, points: list[dict] | None = None, documents: list[dict] | None = None) -> dict:
         """La Séance à la forme d'un *meeting*, avec les points et les documents de sa page."""
-        return _meeting(self.nom, self.jour, documents or [], heure=self.heure, lien=self.lien, points=points)
+        return meeting(self.nom, self.jour, documents or [], heure=self.heure, lien=self.lien, points=points)
 
 
 _MOIS_COURTS = {m: i for i, m in enumerate(_MOIS, start=1)}
-_HEURE = re.compile(r"\b(\d{1,2})\s*h\s*(\d{2})\b")
 _ANNEE = re.compile(r"\b(\d{4})\b")
 
 
@@ -879,7 +850,7 @@ def _module_conseil(robot: Robot, source: Source, depuis: date | None, avec_obje
     non_lues: set[str] = set()  # les fiches qui ne se lisent pas à ce passage
     for ligne in _liste_du_module(liste.texte, liste.url):
         if isinstance(ligne, str):
-            _journal(source.nom, f"ligne de Séance illisible ({ligne})")
+            journal(source.nom, f"ligne de Séance illisible ({ligne})")
             continue
         if depuis is not None and ligne.jour < depuis:
             continue
@@ -889,28 +860,28 @@ def _module_conseil(robot: Robot, source: Source, depuis: date | None, avec_obje
         try:
             page = robot.lire(ligne.lien, "import")
         except PageNonLue as e:
-            _journal(source.nom, f"Séance {ligne.lien} non lue ({e})")
+            journal(source.nom, f"Séance {ligne.lien} non lue ({e})")
             continue
         titre = arbre(page.texte).texte_du_premier(lambda n: n.tag == "h1")
         ligne = _SeanceListee(titre or ligne.nom, ligne.jour, ligne.heure, ligne.lien)  # le nom brut, celui de sa page
         points, documents = [], []
-        for point in _points_du_module(page.texte, page.url):
-            fiche = point.fiche if avec_objets else None
+        for lu in _points_du_module(page.texte, page.url):
+            fiche = lu.fiche if avec_objets else None
             if fiche is not None and fiche not in fiches and fiche not in non_lues:
                 try:
                     fiches[fiche] = _fiche_d_objet(robot, source, fiche)
                 except PageNonLue as e:
-                    _journal(source.nom, f"Objet {fiche} non lu ({e}), ni les documents de son point")
+                    journal(source.nom, f"Objet {fiche} non lu ({e}), ni les documents de son point")
                     non_lues.add(fiche)
             objet = fiches.get(fiche) if fiche is not None else None
             numero = objet["number"] if objet else None
-            points.append({"item_number_display": None, "item_title": point.titre, "item_affair_number": numero})
+            points.append(point(lu.titre, objet=numero))
             # Les documents d'un point sans Objet importé vont à la Séance : un point sans fiche, ou dont la fiche n'a
             # pas de numéro (une interpellation, non importée, d'un passage à l'autre). Ceux d'un point dont la fiche
             # ne se lit pas sont écartés pour ce passage : son Objet les retrouvera quand elle se relira, et à la
             # Séance l'import, qui garde les documents archivés, les y laisserait pour toujours.
             if numero is None and fiche not in non_lues:
-                documents += point.documents
+                documents += lu.documents
         seances.append(ligne.meeting(points, documents))
     for objet in fiches.values():
         if objet is None or _en_double(source.nom, objets, objet["number"], objet["title"]["fr"], "le premier du site"):
@@ -995,7 +966,7 @@ def _documents_du_module(noeud: Noeud, url: str) -> list[dict]:
         if "download.asp?d=" not in lien.lower() or lien in vus:
             continue
         vus.add(lien)
-        documents.append({"name": _nom_du_document(a, lien), "url": lien, "date": None, "category": None})
+        documents.append(document(_nom_du_document(a, lien), lien))
     return documents
 
 
@@ -1033,7 +1004,7 @@ def _fiche_d_objet(robot: Robot, source: Source, url: str) -> dict | None:
     entete = bloc.texte_du_premier(lambda n: n.tag == "h1")
     m = re.match(r"^(?P<type>\D+?)\s+(?:n[°o]\.?\s*)?(?P<numero>\d[\w/.-]*)", entete)
     if m is None:
-        _journal(source.nom, f"Objet sans numéro, non importé : {entete or url}")
+        journal(source.nom, f"Objet sans numéro, non importé : {entete or url}")
         return None
     texte = bloc.texte_du_premier(lambda n: n.tag == "h5")
     auteur = re.search(r"Auteur\s*:\s*(.+)", bloc.texte_du_premier(lambda n: n.tag == "small"))
@@ -1046,8 +1017,7 @@ def _fiche_d_objet(robot: Robot, source: Source, url: str) -> dict | None:
         jour = next((_date_ecrite(c) for c in reversed(colonnes) if _date_ecrite(c)), None)
         adresse = urljoin(page.url, lien.attr("href") or "")
         documents.append(
-            {"name": _nom_du_document(lien, adresse), "url": adresse, "date": jour.isoformat() if jour else None,
-             "category": colonnes[-2] if len(colonnes) >= 2 else None}
+            document(_nom_du_document(lien, adresse), adresse, publie=jour, type_=colonnes[-2] if len(colonnes) >= 2 else None)
         )
     contributeurs = []
     if auteur:
@@ -1071,7 +1041,7 @@ def _conseillers(robot: Robot, source: Source) -> list[str]:
         try:
             page = robot.lire(url, "import")
         except PageNonLue as e:
-            _journal(source.nom, f"page des membres {url} non lue ({e})")
+            journal(source.nom, f"page des membres {url} non lue ({e})")
             break
         racine = arbre(page.texte)
         for ligne in (n for n in racine.elements() if "table-row-body" in n.classes()):
@@ -1109,14 +1079,13 @@ def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -
         quand = _date_ecrite(titre)
         if quand is None:
             illisibles += 1
-            _journal(source.nom, f"ligne de Séance illisible (sans date : {titre})")
+            journal(source.nom, f"ligne de Séance illisible (sans date : {titre})")
             continue
         if depuis is not None and quand < depuis:
             continue
-        heure = _HEURE.search(titre)
         liens = (_lien_absolu(a.attr("href") or "", liste.url) for a in noeud.elements() if a.tag == "a")
         lien = next((p for p in map(_page_du_module, liens) if p), None)
-        ligne = _SeanceListee(titre, quand, f"{int(heure[1]):02d}:{heure[2]}" if heure else None, lien)
+        ligne = _SeanceListee(titre, quand, heure_de(titre), lien)
         if lien is None:
             seances.append(ligne.meeting())
             continue
@@ -1124,11 +1093,11 @@ def _module_conseil_externe(robot: Robot, source: Source, depuis: date | None) -
         try:
             page = robot.lire(lien, "import")
         except PageNonLue as e:
-            _journal(source.nom, f"Séance {lien} non lue ({e})")
+            journal(source.nom, f"Séance {lien} non lue ({e})")
             continue
         ordre_du_jour = _ordre_du_jour_du_module(page.texte, page.url)
         if ordre_du_jour is None:
-            _journal(source.nom, f"Séance {lien} illisible (aucun point centerGroup)")
+            journal(source.nom, f"Séance {lien} illisible (aucun point centerGroup)")
             continue
         pages_lues += 1
         seances.append(ligne.meeting(*ordre_du_jour))
@@ -1175,11 +1144,11 @@ def _ordre_du_jour_du_module(texte: str, url: str) -> tuple[list[dict], list[dic
         titre = groupe.texte_du_premier(lambda n: "title" in n.classes())
         sous = [n for n in groupe.elements() if n.tag == "li"]
         if not sous:
-            points.append({"item_number_display": numero or None, "item_title": titre, "item_affair_number": None})
+            points.append(point(titre, numero=numero))
         for li in sous:
             num = li.texte_du_premier(lambda n: "theme-num" in n.classes())
             sujet = li.texte_du_premier(lambda n: "theme" in n.classes())
-            points.append({"item_number_display": num or None, "item_title": sujet, "item_affair_number": None})
+            points.append(point(sujet, numero=num))
         documents += _documents_du_module(groupe, url)
     return points, documents
 
