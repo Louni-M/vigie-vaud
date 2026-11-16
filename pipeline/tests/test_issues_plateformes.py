@@ -44,7 +44,7 @@ def _deux_communes(horloge):
     """Préverenges et Blonay - Saint-Légier, deux communes i-web, sur deux réseaux, et Lausanne par OpenParlData."""
     reseau = _preverenges(horloge)
     reseau.adresses["www.blonay-saint-legier.ch"] = "193.34.137.9"
-    reseau.pages |= echantillon("i-web", "objets")
+    reseau.pages |= echantillon("i-web", "seances-blonay")
     return reseau, _sources(_opendata("5586"), SITE_PREVERENGES, SITE_BLONAY)
 
 
@@ -55,7 +55,7 @@ def _illisible(reseau, url):
 
 
 def _repare(reseau, url):
-    reseau.pages[url] = (echantillon("i-web", "seances") | echantillon("i-web", "objets"))[url]
+    reseau.pages[url] = (echantillon("i-web", "seances") | echantillon("i-web", "seances-blonay"))[url]
 
 
 def _de(issues, etiquette):

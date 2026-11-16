@@ -5,8 +5,9 @@
 	 * change de fiche. Le conseil est lu dans `conseils/index.json`.
 	 *
 	 * Commune dont le conseil est couvert : le nom du conseil (et, s'il ne donne que ses Séances, la note « Séances
-	 * seulement : les objets sont sur le site de la commune › », `noteDeNiveau`), l'en-tête de séance, « Objets récents », « Séances passées », puis, après un
-	 * séparateur, « Au Grand Conseil ». Commune non couverte : « Au Grand Conseil » seul, sous « Non couvert » ; une
+	 * seulement : les objets sont sur le site de la commune › », `noteDeNiveau`), l'en-tête de séance, « Objets récents »
+	 * (aussi pour un conseil en séances seulement dont l'archive garde des Objets, `listeDesObjets`), « Séances
+	 * passées », puis, après un séparateur, « Au Grand Conseil ». Commune non couverte : « Au Grand Conseil » seul, sous « Non couvert » ; une
 	 * commune scrapée passée non couverte garde sous sa raison ce qui a déjà été importé, que l'index liste encore.
 	 *
 	 * Fiche du Grand Conseil : l'en-tête de séance, « Objets récents » avec les puces « Tous · Nomment une commune ·
@@ -24,9 +25,9 @@
 	import { conseils } from './donnees.js';
 	import { coucheConseils, type ParametresConseils } from './index.js';
 	import ObjetsRecents from './ObjetsRecents.svelte';
-	import { donneDesObjets, SOURCES } from '#lib/sources.js';
+	import { SOURCES } from '#lib/sources.js';
 	import SeancesPassees from './SeancesPassees.svelte';
-	import { noteDeNiveau } from './source.js';
+	import { listeDesObjets, noteDeNiveau } from './source.js';
 	import TeteSeance from './TeteSeance.svelte';
 
 	let { ctx }: { ctx: Contexte<ParametresConseils> } = $props();
@@ -75,7 +76,7 @@
 				</p>
 			{/if}
 			<TeteSeance {conseil} {ouvrir} />
-			{#if donneDesObjets(conseil)}<ObjetsRecents {conseil} {ouvrir} />{/if}
+			{#if listeDesObjets(conseil)}<ObjetsRecents {conseil} {ouvrir} />{/if}
 			{#if conseil.donne.includes('seances')}<SeancesPassees {conseil} {ouvrir} />{/if}
 			<hr />
 		{/if}

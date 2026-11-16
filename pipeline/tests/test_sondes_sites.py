@@ -65,7 +65,7 @@ def _deux_communes(horloge):
     """Préverenges et Blonay - Saint-Légier, deux communes i-web, sur deux réseaux."""
     reseau = _preverenges(horloge)
     reseau.adresses["www.blonay-saint-legier.ch"] = "193.34.137.9"
-    reseau.pages |= echantillon("i-web", "objets")
+    reseau.pages |= echantillon("i-web", "seances-blonay")
     return reseau, _sources(_opendata("5586"), SITE_PREVERENGES, SITE_BLONAY)
 
 
@@ -275,7 +275,7 @@ def test_une_seule_issue_par_plateforme_ouverte_avec_la_premiere_commune_tenue_a
     passer(J1 + timedelta(minutes=30))
     reseau.pages[LISTE] = echantillon("i-web", "seances")[LISTE]
     passer(J1 + timedelta(minutes=60))
-    reseau.pages[f"{BLONAY}/seances"] = echantillon("i-web", "objets")[f"{BLONAY}/seances"]
+    reseau.pages[f"{BLONAY}/seances"] = echantillon("i-web", "seances-blonay")[f"{BLONAY}/seances"]
     passer(J1 + timedelta(minutes=90))
 
     preverenges = ("site-5643", "depuis le 2026-10-23 à 05:17 UTC, marqueur absent")
@@ -331,7 +331,7 @@ def test_dans_github_l_issue_de_la_plateforme_liste_les_communes_en_panne_et_se_
         "Communes en panne : Site de Blonay - Saint-Légier.\nDe nouveau disponibles : Site de Préverenges."
     )
 
-    reseau.pages[f"{BLONAY}/seances"] = echantillon("i-web", "objets")[f"{BLONAY}/seances"]
+    reseau.pages[f"{BLONAY}/seances"] = echantillon("i-web", "seances-blonay")[f"{BLONAY}/seances"]
     passer(J1 + timedelta(minutes=90))
     assert issue["state"] == "closed"
     assert issue["commentaires"][-1] == (

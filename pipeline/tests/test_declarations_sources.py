@@ -77,14 +77,13 @@ def test_une_commune_i_web_couverte_suit_la_forme_d_une_source_communale():
             assert s["conseil"]["body_key"] == str(ofs)
 
 
-def test_la_section_plateformes_porte_i_web_et_ses_trois_variantes():
+def test_la_section_plateformes_porte_i_web_et_sa_seule_variante():
+    # Les variantes Objets et pages sont retirées (#200) : i-web ne lit plus que son module Séances.
     fichier = json.loads(SOURCES.read_text(encoding="utf-8"))
 
     (iweb,) = [p for p in fichier["plateformes"] if p["id"] == "i-web"]
     assert {v["id"]: (v["marqueur"], v["niveaux"]) for v in iweb["variantes"]} == {
         "seances": ("icmsTablePastSitzungen", [["seances"]]),
-        "objets": ("icmsTablePastSitzungen", [["objets", "seances"], ["seances"]]),
-        "pages": ("icmsTablePastSitzungen", [["preavis", "seances"], ["seances"]]),
     }
 
 
@@ -97,7 +96,6 @@ PLATEFORMES = [
         "editeur": "Innovative Web AG",
         "variantes": [
             {"id": "seances", "marqueur": "icmsTablePastSitzungen", "niveaux": [["seances"]]},
-            {"id": "pages", "marqueur": "icmsTablePastSitzungen", "niveaux": [["preavis", "seances"], ["seances"]]},
         ],
     }
 ]

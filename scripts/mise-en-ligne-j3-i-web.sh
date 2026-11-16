@@ -416,9 +416,8 @@ sortie.write_text("\n".join(lignes) + "\n", encoding="utf-8")
 PY
   voir "$TRAVAIL/comptes.txt"
   say ""
-  say "Comparer au moins trois communes à leur site (une par variante : Préverenges, Puidoux, Blonay - Saint-Légier) :"
-  step "le nombre de Séances en ligne sur la page des Séances, et la plus ancienne ;"
-  step "pour Puidoux, le nombre de préavis."
+  say "Comparer au moins trois communes à leur site (Préverenges, Puidoux, Blonay - Saint-Légier) :"
+  step "le nombre de Séances en ligne sur la page des Séances, et la plus ancienne."
   if confirm "Ouvrir les pages des Séances de Préverenges, Puidoux et Blonay - Saint-Légier ?"; then
     local url
     for url in $(py <<'PY'
@@ -674,7 +673,7 @@ PY
 etape_interface() {
   say "Sur le site publié, sur bureau puis sur téléphone (ou la vue téléphone du navigateur) :"
   local pages=(
-    "commune/puidoux|Puidoux (séances et préavis), onglet Conseil : badge « Site de Puidoux », préavis récents, prochaine Séance, pied de fiche"
+    "commune/puidoux|Puidoux (séances seulement depuis #200), onglet Conseil : badge « Site de Puidoux », note « Séances seulement », préavis déjà importés gardés, prochaine Séance, pied de fiche"
     "commune/preverenges|Préverenges (séances seulement), onglet Conseil : note « Séances seulement », Séances et documents"
     "commune/ormont-dessous|Ormont-Dessous (non couverte), onglet Conseil : « Non couvert : » et sa raison, commune grisée volet ouvert"
     "couverture#plateforme-i-web|Couverture : fiche i-web (19 couvertes, 9 non couvertes), cellules des communes"

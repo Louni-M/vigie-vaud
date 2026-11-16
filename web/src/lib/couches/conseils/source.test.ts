@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { coucheConseils } from './index.js';
-import { mentionNonPublies, noteDeNiveau, nonCouvertConseils, piedDeFiche, sourcesDeLaCouche } from './source.js';
+import {
+	listeDesObjets,
+	mentionNonPublies,
+	noteDeNiveau,
+	nonCouvertConseils,
+	piedDeFiche,
+	sourcesDeLaCouche
+} from './source.js';
 import { messageNonCouvert } from '#lib/registre/onglet.js';
 import type { DonneeConseil } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
@@ -85,7 +92,7 @@ describe('mention du statut et des auteur·e·s dans la fiche d’un Objet', () 
 	});
 
 	it('ne dit rien d’un Objet scrapé dont le site publie le statut ou les auteur·e·s', () => {
-		// Puidoux publie un statut dans son tableau de préavis rédigé : il est montré, sans mention.
+		// Un site qui publie le statut d'un préavis : il est montré, sans mention.
 		const sources = preverenges(['preavis', 'seances']);
 		expect(mentionNonPublies('5643', { ...preavis, statut: { libelle: 'Déposé', date: null } }, sources)).toBeNull();
 		const auteur = { nom: 'Yann Exemple', parti: null, role: null, sorte: 'personne' as const };
@@ -93,7 +100,7 @@ describe('mention du statut et des auteur·e·s dans la fiche d’un Objet', () 
 	});
 
 	it('ne dit rien d’un Objet sans statut ni auteur·e d’un conseil scrapé qui publie statuts et auteur·e·s', () => {
-		// Le module Objets d'i-web (Blonay - Saint-Légier) : un Objet sans statut n'en a pas, le site ne le cache pas.
+		// Le module Conseil de Quicksite (Montreux) : un Objet sans statut n'en a pas, le site ne le cache pas.
 		expect(mentionNonPublies('5643', preavis, preverenges(['objets', 'seances']))).toBeNull();
 	});
 
@@ -177,5 +184,21 @@ describe('message « Non couvert » d’une commune', () => {
 		expect(messageNonCouvert(coucheConseils, BUSSIGNY)).toEqual({
 			texte: 'Vigie Vaud ne lit pas encore le site de cette commune.'
 		});
+	});
+});
+
+describe('Objets listés dans l’onglet Conseil', () => {
+	it('liste les Objets d’un conseil dont le niveau en donne, même sans Objet archivé', () => {
+		expect(listeDesObjets({ donne: ['preavis', 'seances'], objets: 0 })).toBe(true);
+		expect(listeDesObjets({ donne: ['objets', 'seances'], objets: 0 })).toBe(true);
+	});
+
+	it('liste les Objets archivés d’un conseil passé en séances seulement', () => {
+		// Puidoux : ses préavis déjà importés restent, sous la note « Séances seulement ».
+		expect(listeDesObjets({ donne: ['seances'], objets: 9 })).toBe(true);
+	});
+
+	it('ne liste rien pour un conseil en séances seulement sans Objet archivé', () => {
+		expect(listeDesObjets({ donne: ['seances'], objets: 0 })).toBe(false);
 	});
 });

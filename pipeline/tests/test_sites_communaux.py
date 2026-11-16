@@ -426,7 +426,7 @@ def test_deux_communes_d_un_meme_24_s_attendent(tmp_path, horloge):
     reseau = _preverenges(horloge)
     reseau.duree = 0.001  # chaque réponse prend un peu de temps réel : deux requêtes simultanées se verraient
     reseau.adresses["www.blonay-saint-legier.ch"] = "195.65.10.22"
-    reseau.pages |= echantillon("i-web", "objets")
+    reseau.pages |= echantillon("i-web", "seances-blonay")
     blonay = _site(5892, "Blonay - Saint-Légier", f"{BLONAY}/seances", f"{BLONAY}/conseil-communal")
 
     _passer(tmp_path, horloge, reseau, sources=_sources(SITE_PREVERENGES, blonay))
@@ -459,7 +459,7 @@ def test_une_page_en_iso_8859_1_est_lue_selon_son_content_type(tmp_path, horloge
 def test_les_points_d_une_seance_publies_en_html_sont_archives(tmp_path, horloge):
     # Blonay - Saint-Légier publie l'ordre du jour de ses Séances en HTML ; lue en séances seules, sans ses Objets.
     reseau = Reseau(horloge, adresses={"www.blonay-saint-legier.ch": "195.65.10.22"})
-    reseau.pages |= echantillon("i-web", "objets")
+    reseau.pages |= echantillon("i-web", "seances-blonay")
     blonay = _site(5892, "Blonay - Saint-Légier", f"{BLONAY}/seances", f"{BLONAY}/conseil-communal")
 
     _passer(tmp_path, horloge, reseau, sources=_sources(blonay))
