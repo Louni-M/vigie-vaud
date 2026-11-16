@@ -379,7 +379,6 @@
 		padding: 6px 10px;
 		border-radius: 8px;
 		background: var(--color-sheet);
-		color: var(--color-erreur);
 		font-size: 13px;
 	}
 	/* Région annoncée par les lecteurs d'écran : vide, elle ne doit pas créer d'espace. */

@@ -94,7 +94,6 @@
 	}
 	.erreur {
 		margin: 4px 0 0;
-		color: var(--color-erreur);
 	}
 	.petit {
 		margin-left: 6px;

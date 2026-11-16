@@ -132,9 +132,6 @@
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
-	.muted {
-		color: var(--color-muted);
-	}
 	.bas .muted:last-child {
 		font-family: var(--font-outlier);
 		font-size: var(--text-xs);

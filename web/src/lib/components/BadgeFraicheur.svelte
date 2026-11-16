@@ -27,16 +27,13 @@
 	});
 </script>
 
-<span class="badge" class:erreur={etat.erreur} title={source.nom}>{libelleBadge(source, etat, maintenant)}</span>
+<span class="badge" class:muted={!etat.erreur} class:erreur={etat.erreur} title={source.nom}>{libelleBadge(source, etat, maintenant)}</span>
 
 <style>
+	/* La couleur vient de `.muted`, ou de `.erreur` en cas d'échec (almanach.css). */
 	.badge {
 		font-size: 12px;
 		font-weight: 400;
-		color: var(--color-muted);
 		white-space: nowrap;
-	}
-	.erreur {
-		color: var(--color-erreur);
 	}
 </style>

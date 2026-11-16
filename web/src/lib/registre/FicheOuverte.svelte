@@ -290,7 +290,4 @@
 		color: var(--color-ink);
 		text-decoration-thickness: 2px;
 	}
-	.erreur {
-		color: var(--color-erreur);
-	}
 </style>

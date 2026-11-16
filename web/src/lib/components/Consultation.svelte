@@ -48,7 +48,6 @@
 		margin: 0;
 	}
 	.muted {
-		color: var(--color-muted);
 		font-size: 12.5px;
 	}
 	/* Les liens soulignés : au survol, le soulignement s'épaissit. */

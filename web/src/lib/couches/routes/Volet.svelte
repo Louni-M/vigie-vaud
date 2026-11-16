@@ -213,12 +213,6 @@
 		content-visibility: auto;
 		contain-intrinsic-size: auto 92px;
 	}
-	.muted {
-		color: var(--color-muted);
-	}
-	.erreur {
-		color: var(--color-erreur);
-	}
 	.source {
 		margin: 4px 0 0;
 	}
