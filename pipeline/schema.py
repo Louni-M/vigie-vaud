@@ -398,11 +398,6 @@ class FichierSources(Modele):
         """La plateforme déclarée sous cet identifiant, ou `None`."""
         return next((p for p in self.plateformes if p.id == id_plateforme), None)
 
-    def variante_de(self, site: Site) -> Variante | None:
-        """La variante du site d'une commune, ou `None` si sa plateforme ou sa variante n'est pas déclarée."""
-        plateforme = self.plateforme(site.plateforme)
-        return plateforme.variante(site.variante) if plateforme else None
-
     @model_validator(mode="after")
     def _ids_uniques(self) -> FichierSources:
         vus: set[str] = set()

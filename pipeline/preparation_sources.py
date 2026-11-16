@@ -2,14 +2,15 @@
 
 Les déclarations des communes scrapées ne changent que par une PR, jamais par le cron. Ce script aide à les écrire et à
 les tenir justes, en **remesurant les sites d'une plateforme** par le robot communal (ADR 0006 : une requête à la
-fois, 5 s au moins par /24, `VigieVaud-import`). La mesure propre à une plateforme est celle de son module de lecture
-(`sites_communaux.LECTEURS`, opérations `mesurer` et `requetes`) ; ce script n'en connaît aucune :
+fois, 5 s au moins par /24, `VigieVaud-import`). La mesure propre à une plateforme, ses variantes et leurs niveaux
+sont ceux de sa déclaration (`sites_communaux.PLATEFORMES`, opérations `mesurer` et `requetes`) ; ce script n'en
+connaît aucune :
 
 - la **plateforme réelle** : une page du conseil sans trace de la plateforme l'écarte (les 15 sites OIOI web que le
   recensement prenait pour i-web) ;
 - les **pages** : la liste des Séances (celle que la sonde lit, avec le marqueur de sa variante), la page des Objets
   ou des préavis, la page des membres ;
-- la **variante**, et le **niveau** : le plus haut de ceux que la variante permet (section `plateformes`) dont le
+- la **variante**, et le **niveau** : le plus haut de ceux que la variante permet (sa déclaration) dont le
   passage ordinaire tient sous le plafond de 60 requêtes, `robots.txt` et sonde compris ; ces requêtes sont comptées
   en rejouant le module de lecture sur les pages lues, sans réseau.
 
@@ -46,8 +47,9 @@ from pydantic_core import to_jsonable_python
 
 from mesure_sites import Mesure, PagesLues
 from robot_communal import PLAFOND, ErreurHttp, PageNonLue, Robot, robot_des_sources
-from schema import FUSEAU, RACINE, Coreapi, FichierSources, Plateforme, Site, Source, lire_sources, niveau_de
-from sites_communaux import LECTEURS, debut_de_fenetre
+from schema import FUSEAU, RACINE, Coreapi, FichierSources, Site, Source, lire_sources, niveau_de
+from sites_communaux import PLATEFORMES, debut_de_fenetre
+from socle_lecture import PlateformeLue
 
 LICENCE = "Actes officiels (art. 5 LDA) : métadonnées et liens seulement"
 # Les communes qui disparaissent au 1er janvier 2027 ne sont pas déclarées (spec de J3, « Sources communales »).
@@ -60,8 +62,9 @@ REQUETES_AVANT_L_IMPORT = 2  # `robots.txt` et la sonde, lus avant l'import
 
 def verifier_declarations(chemin_sources: Path, chemin_communes: Path) -> list[str]:
     """Les écarts de `sources.json` aux règles de déclaration, sans réseau : chaque n° OFS déclaré existe dans
-    `communes.json` ; un conseil n'a qu'une source ; la plateforme et la variante citées sont déclarées et permettent
-    le niveau ; une commune couverte d'une plateforme a un conseil. Une commune non couverte avec un conseil ou sans
+    `communes.json` ; un conseil n'a qu'une source ; la plateforme et la variante citées sont déclarées dans la section
+    `plateformes` (la copie des déclarations des plateformes, que les tests leur comparent) et permettent le niveau ;
+    une commune couverte d'une plateforme a un conseil. Une commune non couverte avec un conseil ou sans
     raison, ou un conseil scrapé sans variante ou sans page des Séances, sont refusés par le schéma lui-même
     (« sources.json invalide »). Liste vide : tout est juste."""
     try:
@@ -136,18 +139,15 @@ def _motif(erreur: PageNonLue) -> str:
 AuDela = list[tuple[list[str], int]]
 
 
-def _mesurer(pages: PagesLues, candidat: Candidat, plateforme: Plateforme, jour: date) -> tuple[Mesure, AuDela]:
-    """Le site du candidat mesuré par le module de lecture de la plateforme, puis son niveau : le premier des niveaux
-    de sa variante (section `plateformes`, du plus complet au moins complet) dont le passage ordinaire tient sous le
-    plafond, et ceux qui le dépassent."""
-    if plateforme.id not in LECTEURS:
-        raise ValueError(f"aucun module de lecture pour la plateforme {plateforme.id}")
-    module = LECTEURS[plateforme.id]
+def _mesurer(pages: PagesLues, candidat: Candidat, plateforme: PlateformeLue, jour: date) -> tuple[Mesure, AuDela]:
+    """Le site du candidat mesuré selon la déclaration de sa plateforme, puis son niveau : le premier des niveaux de
+    sa variante (du plus complet au moins complet) dont le passage ordinaire tient sous le plafond, et ceux qui le
+    dépassent."""
     au_dela: AuDela = []
     conseil = pages.lire(candidat.page)
     if isinstance(conseil, PageNonLue):
         return Mesure(None, remarques=[f"page du conseil {candidat.page} non lue ({_motif(conseil)})"]), au_dela
-    mesure = module.mesurer(pages, candidat.page, candidat.declare or Site(plateforme=plateforme.id), plateforme)
+    mesure = plateforme.mesurer(pages, candidat.page, candidat.declare or Site(plateforme=plateforme.id))
     if mesure.plateforme != plateforme.id or mesure.seances is None:
         return mesure, au_dela
     variante = plateforme.variante(mesure.variante)
@@ -157,7 +157,7 @@ def _mesurer(pages: PagesLues, candidat: Candidat, plateforme: Plateforme, jour:
     if variante.marqueur not in (pages.texte(mesure.seances) or ""):
         mesure.remarques.append(f"la page des Séances n'a pas le marqueur de la sonde ({variante.marqueur})")
     for niveau in variante.niveaux:
-        requetes = module.requetes(pages, _source_de_mesure(candidat, plateforme, mesure, niveau), debut_de_fenetre(jour))
+        requetes = plateforme.requetes(pages, _source_de_mesure(candidat, plateforme, mesure, niveau), debut_de_fenetre(jour))
         if requetes is None:
             mesure.remarques.append("la liste ne se lit pas par le module de lecture")
             return mesure, au_dela
@@ -170,7 +170,7 @@ def _mesurer(pages: PagesLues, candidat: Candidat, plateforme: Plateforme, jour:
     return mesure, au_dela
 
 
-def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure, niveau: Sequence[str]) -> Source:
+def _source_de_mesure(candidat: Candidat, plateforme: PlateformeLue, mesure: Mesure, niveau: Sequence[str]) -> Source:
     """La source que déclarerait la mesure, au `niveau` donné : de quoi rejouer le module de lecture."""
     return Source.model_validate(
         {
@@ -186,7 +186,7 @@ def _source_de_mesure(candidat: Candidat, plateforme: Plateforme, mesure: Mesure
     )
 
 
-def _site_mesure(plateforme: Plateforme, mesure: Mesure) -> dict:
+def _site_mesure(plateforme: PlateformeLue, mesure: Mesure) -> dict:
     """Le bloc `site` que déclarerait la mesure, au format de `sources.json` : sa variante, les pages trouvées et,
     pour la variante `coreapi`, ses recherches (`_coreapi_declare`)."""
     site = Site(
@@ -213,9 +213,9 @@ def verifier(robot: Robot, fichier: FichierSources, id_plateforme: str, jour: da
     sans rien écrire : plateforme, page des Séances (et son marqueur), variante, niveau, pages des Objets et des
     membres, requêtes au passage ordinaire face au plafond ; pour une commune non couverte, une page des Séances
     apparue."""
-    plateforme = fichier.plateforme(id_plateforme)
+    plateforme = PLATEFORMES.get(id_plateforme)
     if plateforme is None:
-        raise ValueError(f"plateforme {id_plateforme} absente de la section `plateformes`")
+        raise ValueError(f"plateforme {id_plateforme} non déclarée")
     pages = PagesLues(robot)
     ecarts = []
     for source in fichier.sources:
@@ -227,7 +227,7 @@ def verifier(robot: Robot, fichier: FichierSources, id_plateforme: str, jour: da
     return ecarts
 
 
-def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: Plateforme) -> list[str]:
+def _comparer(source: Source, mesure: Mesure, au_dela: AuDela, plateforme: PlateformeLue) -> list[str]:
     if mesure.plateforme is None:
         return mesure.remarques
     if mesure.plateforme != plateforme.id:
@@ -283,7 +283,7 @@ def _candidat_de_source(source: Source) -> Candidat:
 
 
 def brouillon(
-    robot: Robot, candidats: Sequence[Candidat], plateforme: Plateforme, jour: date
+    robot: Robot, candidats: Sequence[Candidat], plateforme: PlateformeLue, jour: date
 ) -> tuple[list[dict], dict[str, list[str]]]:
     """Remesure les `candidats` et rend le brouillon de leurs sources (au format de `sources.json`), avec les
     remarques à relire par source. Un candidat qui n'est pas sur la plateforme, ou dont la page du conseil ne se lit
@@ -336,7 +336,7 @@ def de_nom(nom: str) -> str:
     return f"de {nom}"
 
 
-def _declaration(candidat: Candidat, mesure: Mesure, plateforme: Plateforme) -> dict:
+def _declaration(candidat: Candidat, mesure: Mesure, plateforme: PlateformeLue) -> dict:
     """La source d'une commune mesurée, au format de `sources.json` (spec de J3, « Sources communales ») ; sans niveau
     sous le plafond, le moins complet de sa variante, à relire."""
     source = {
@@ -394,9 +394,9 @@ def main(argv: list[str] | None = None) -> int:
         if hors_ligne:
             return 1
     fichier = lire_sources(args.sources)
-    plateforme = fichier.plateforme(args.plateforme)
+    plateforme = PLATEFORMES.get(args.plateforme)
     if plateforme is None:
-        print(f"plateforme {args.plateforme} absente de la section `plateformes` de {args.sources}", file=sys.stderr)
+        print(f"plateforme {args.plateforme} non déclarée ({', '.join(PLATEFORMES)})", file=sys.stderr)
         return 2
     jour = datetime.now(FUSEAU).date()
     with httpx.Client() as http:

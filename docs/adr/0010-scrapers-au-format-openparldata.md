@@ -98,8 +98,9 @@ Les scrapers communaux, à partir de J3 Conseils communaux, produisent des séan
   dans le plafond de requêtes de la commune, et une recherche vide parmi elles met l'import en échec (seule la page
   des Séances est sondée) ; son niveau se déclare dans `conseil.donne` (Objets, préavis ou Séances
   seules), et non d'après ce que l'import trouve.
-  Une section `plateformes` déclare une fois chaque plateforme, ses variantes, leur marqueur de sonde et les niveaux
-  qu'elles permettent. Une commune non couverte d'une plateforme retenue a aussi sa source, sans conseil ni sonde,
+  Chaque plateforme se déclare une fois, avec ses variantes, leur marqueur de sonde et les niveaux qu'elles
+  permettent, dans son module de lecture, que lisent la sonde, l'import et le script de préparation (#202) ; la
+  section `plateformes` de `sources.json`, que lit le site, en est la copie, vérifiée par les tests. Une commune non couverte d'une plateforme retenue a aussi sa source, sans conseil ni sonde,
   avec une raison prise dans une liste fermée (« préavis seuls », « rien en ligne », « à la demande de la commune »,
   « le site refuse les robots », « nouveau site pas encore lu », « forme pas encore lue » : le site publie son
   conseil sous une forme que le module de sa plateforme ne lit pas encore, comme des pages rédigées ou une

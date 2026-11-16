@@ -1,7 +1,7 @@
-"""Module de lecture de la plateforme Quicksite d'eAdmin Solutions (ADR 0010) : une seule opération publique pour
-l'import, `lire`, qui lit le conseil d'une commune Quicksite par le robot communal et rend ses `Bruts`, à la forme
-d'OpenParlData ; et, pour le script de préparation des sources seulement, `mesurer` et `requetes`
-(`mesure_sites.py`).
+"""Module de lecture de la plateforme Quicksite d'eAdmin Solutions (ADR 0010) : une seule déclaration publique,
+`PLATEFORME` (`socle_lecture`), qui déclare la plateforme et ses variantes, lit le conseil d'une commune Quicksite par
+le robot communal et rend ses `Bruts`, à la forme d'OpenParlData, et, pour le script de préparation des sources
+seulement, mesure son site (`mesure_sites.py`).
 
 Variante **ancienne génération** (thème « Powered by quicksite v 5.5.3 », Aigle) : la page des documents
 (`site.seances`) est une bibliothèque rendue côté serveur, 20 documents par page (`?Page_0=<n>`), du plus récent au
@@ -85,19 +85,19 @@ dont aucun document ne se lit, lève `ValueError`.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urlencode, urljoin, urlsplit
 
-import socle_lecture
 from bruts import Bruts
 from mesure_sites import Mesure, PagesLues, RobotCompteur, liens
 from pages_html import Noeud, arbre, espaces
 from robot_communal import PageNonLue, Reponse, Robot
-from schema import Coreapi, Plateforme, Site, Source, niveau_de
+from schema import Conseil, Coreapi, Site, Source, niveau_de
 from socle_lecture import (
     DATE_CHIFFRES,
+    PlateformeLue,
+    VarianteLue,
     document,
     heure_de,
     jour_en_chiffres,
@@ -106,7 +106,6 @@ from socle_lecture import (
     point,
 )
 
-VARIANTES = ("ancienne", "coreapi", "conseil", "conseil-externe")
 TYPE_PREAVIS = "Préavis"  # le type d'un préavis lu dans une liste de documents
 # Pages lues au plus d'une liste paginée, même au rattrapage : un garde-fou contre une pagination sans fin, loin de tout
 # historique réel (20 000 documents d'une bibliothèque, 60 000 au moins d'une recherche `coreapi`). Atteint, il tronque
@@ -114,23 +113,36 @@ TYPE_PREAVIS = "Préavis"  # le type d'un préavis lu dans une liste de document
 PAGES_MAX = 1000
 
 
-def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
-    """Le conseil de `source`, une commune Quicksite, lu sur son site : les Séances datées de `depuis` ou après
-    (toutes sans `depuis`), et, si son niveau en donne, ses préavis."""
-    site, conseil = socle_lecture.site_et_conseil(source, "Quicksite", VARIANTES)
+def _avec_preavis(conseil: Conseil) -> bool:
+    """Le niveau du conseil donne-t-il des Objets (tous, ou ses préavis) ?"""
     niveau = niveau_de(conseil.donne)
-    avec_preavis = bool(niveau and niveau.objets)
-    if site.variante == "ancienne":
-        seances, objets = _bibliotheque(source.nom, _documents_bibliotheque(robot, source, depuis), depuis, avec_preavis)
-    elif site.variante == "conseil":
-        seances, objets = _module_conseil(robot, source, depuis, avec_objets=avec_preavis)
-        return Bruts(conseil, objets=objets, seances=seances, membres=_conseillers(robot, source))
-    elif site.variante == "conseil-externe":
-        return Bruts(conseil, objets=[], seances=_module_conseil_externe(robot, source, depuis), membres=[])
-    else:
-        documents = _documents_coreapi(robot, source)
-        seances, objets = _seances_et_preavis(source.nom, documents, depuis, avec_preavis)
+    return bool(niveau and niveau.objets)
+
+
+def _lire_ancienne(robot: Robot, source: Source, site: Site, conseil: Conseil, depuis: date | None) -> Bruts:
+    """Le conseil d'une commune de l'ancienne génération : les Séances datées de `depuis` ou après (toutes sans
+    `depuis`), et, si son niveau en donne, ses préavis, tirés de sa bibliothèque."""
+    documents = _documents_bibliotheque(robot, source, depuis)
+    seances, objets = _bibliotheque(source.nom, documents, depuis, _avec_preavis(conseil))
     return Bruts(conseil, objets=objets, seances=seances, membres=[])
+
+
+def _lire_coreapi(robot: Robot, source: Source, site: Site, conseil: Conseil, depuis: date | None) -> Bruts:
+    """Le conseil d'une commune de la variante `coreapi` : les Séances et, si son niveau en donne, les préavis, tirés
+    de sa recherche ou de ses recherches."""
+    seances, objets = _seances_et_preavis(source.nom, _documents_coreapi(robot, source), depuis, _avec_preavis(conseil))
+    return Bruts(conseil, objets=objets, seances=seances, membres=[])
+
+
+def _lire_conseil(robot: Robot, source: Source, site: Site, conseil: Conseil, depuis: date | None) -> Bruts:
+    """Le conseil d'une commune du module Conseil : ses Séances, ses Objets si son niveau en donne, ses conseillers."""
+    seances, objets = _module_conseil(robot, source, depuis, avec_objets=_avec_preavis(conseil))
+    return Bruts(conseil, objets=objets, seances=seances, membres=_conseillers(robot, source))
+
+
+def _lire_conseil_externe(robot: Robot, source: Source, site: Site, conseil: Conseil, depuis: date | None) -> Bruts:
+    """Le conseil d'une commune dont la liste des Séances du module Conseil est sur le site de la Ville."""
+    return Bruts(conseil, objets=[], seances=_module_conseil_externe(robot, source, depuis), membres=[])
 
 
 def _page_de_liste(robot: Robot, source: Source, url: str, page: int, liste: str = "la liste") -> Reponse | None:
@@ -705,12 +717,12 @@ _PROJET = re.compile(r"/coreapi/elasticsearch/projects/([\w-]+)/assets/js/elasti
 VUES_DU_CONSEIL = ("documentconseil", "documentconseildates", "documentconseilyears")
 
 
-def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
+def _mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: PlateformeLue) -> Mesure:
     """Le site d'une commune mesuré pour le script de préparation des sources, d'après sa page du conseil (déjà lue)
     et ses pages déjà déclarées : une page sans trace de Quicksite l'écarte (« autre ») ; puis, parmi les pages
     déclarées, la page du conseil et `ESSAIS` liens de son menu au plus, la première qui porte le marqueur de sonde
-    d'une variante, tel que `plateforme` le déclare (section `plateformes` de `sources.json`), et la liste qui va
-    avec : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers le
+    d'une variante de `plateforme` et que cette variante reconnaît, ses variantes essayées dans leur ordre sur chaque
+    page : la liste du module Conseil (`conseil`, ses conseillers en page des membres), la liste d'une ville vers le
     module (`conseil-externe`), la bibliothèque de l'ancienne génération (`ancienne`), ou la recherche `coreapi`
     d'une vue du conseil (`coreapi`, avec ses paramètres) et celles des autres pages de préavis ou de procès-verbaux
     du menu (`_recherches_separees`). Le niveau et les requêtes du passage ordinaire sont l'affaire du script
@@ -718,48 +730,57 @@ def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: P
     conseil = pages.texte(page_du_conseil) or ""
     if not _TRACE.search(conseil):
         return Mesure("autre", remarques=[f"aucune trace de Quicksite sur {page_du_conseil}"])
-    mesure = Mesure(plateforme.id)
-    marqueurs = {v.id: v.marqueur for v in plateforme.variantes}
-
-    def porte(texte: str, variante: str) -> bool:
-        """La page porte le marqueur de sonde de `variante` ; une variante que `plateforme` ne déclare pas, aucun."""
-        return variante in marqueurs and marqueurs[variante] in texte
-
     tous = [(u, f"{u} {t}") for u, t in liens(conseil, page_du_conseil) if not _HORS_SUJET.search(t)]
     menu = list(dict.fromkeys(u for motif in _LIENS_DU_MENU for u, texte in tous if motif.search(texte)))[:ESSAIS]
     module = [urljoin(page_du_conseil, h) for h in re.findall(r'href="([^"]*/conseilcommunal/public/ordredujour/)"', conseil)]
     essais = [u for u in (declare.seances, *module, page_du_conseil) if u] + menu
-    autres_vues = []
+    remarques = []
     for url in dict.fromkeys(essais):
         texte = pages.texte(url)
         if texte is None:
             continue
-        if porte(texte, "conseil"):
-            mesure.variante, mesure.seances = "conseil", url
-            conseillers = urljoin(url, "../conseillers/")  # avec sa barre : sans, le site redirige
-            if pages.texte(conseillers) and "tplCCIBPublicConseillers" in (pages.texte(conseillers) or ""):
-                mesure.membres = conseillers
-            return mesure
-        if porte(texte, "conseil-externe") and _ID_DU_MODULE.search(texte):
-            mesure.variante, mesure.seances = "conseil-externe", url
-            return mesure
-        if porte(texte, "ancienne"):
-            mesure.variante, mesure.seances = "ancienne", url
-            return mesure
-        if not porte(texte, "coreapi"):
-            continue
-        coreapi = _parametres_coreapi(texte)
-        if coreapi is not None:
-            mesure.variante, mesure.seances = "coreapi", url
-            mesure.recherches = _recherches_separees(pages, url, coreapi, tous, porte)
-            return mesure
-        vue = re.search(r'class="tplDeepsearch"[^>]*?data-elasticsearch-view="([^"]*)"', texte, re.S)
-        if vue:
-            autres_vues.append(f"{url} (vue {vue[1]})")
-    mesure.remarques.append("aucune page des documents du conseil Quicksite trouvée")
-    if autres_vues:
-        mesure.remarques.append(f"recherches d'une autre vue : {', '.join(autres_vues)}")
+        for variante in plateforme.variantes:
+            if variante.marqueur not in texte:
+                continue
+            trouvee = variante.reconnaitre(pages, url, texte, tous)
+            if isinstance(trouvee, Mesure):
+                trouvee.plateforme, trouvee.variante = plateforme.id, variante.id
+                return trouvee
+            if trouvee is not None:
+                remarques.append(trouvee)
+    mesure = Mesure(plateforme.id, remarques=["aucune page des documents du conseil Quicksite trouvée"])
+    if remarques:
+        mesure.remarques.append(f"recherches d'une autre vue : {', '.join(remarques)}")
     return mesure
+
+
+def _liste_du_conseil(pages: PagesLues, url: str, texte: str, tous: list[tuple[str, str]]) -> Mesure:
+    """La liste du module Conseil (`conseil`) : ses conseillers en page des membres, s'il les publie."""
+    mesure = Mesure(None, seances=url)
+    conseillers = urljoin(url, "../conseillers/")  # avec sa barre : sans, le site redirige
+    if pages.texte(conseillers) and "tplCCIBPublicConseillers" in (pages.texte(conseillers) or ""):
+        mesure.membres = conseillers
+    return mesure
+
+
+def _liste_de_la_ville(pages: PagesLues, url: str, texte: str, tous: list[tuple[str, str]]) -> Mesure | None:
+    """La liste d'une ville vers le module Conseil (`conseil-externe`) : elle cite une Séance du module."""
+    return Mesure(None, seances=url) if _ID_DU_MODULE.search(texte) else None
+
+
+def _bibliotheque_ancienne(pages: PagesLues, url: str, texte: str, tous: list[tuple[str, str]]) -> Mesure:
+    """La bibliothèque de l'ancienne génération (`ancienne`)."""
+    return Mesure(None, seances=url)
+
+
+def _recherche_du_conseil(pages: PagesLues, url: str, texte: str, tous: list[tuple[str, str]]) -> Mesure | str | None:
+    """La recherche `coreapi` d'une vue du conseil (`coreapi`), avec celles des autres pages de préavis ou de
+    procès-verbaux du menu ; une recherche d'une autre vue est notée pour les remarques."""
+    coreapi = _parametres_coreapi(texte)
+    if coreapi is not None:
+        return Mesure(None, seances=url, recherches=_recherches_separees(pages, url, coreapi, tous))
+    vue = re.search(r'class="tplDeepsearch"[^>]*?data-elasticsearch-view="([^"]*)"', texte, re.S)
+    return f"{url} (vue {vue[1]})" if vue else None
 
 
 def _genre(texte: str) -> str | None:
@@ -770,9 +791,7 @@ def _genre(texte: str) -> str | None:
     return "procès-verbaux" if _PROCES_VERBAUX.search(texte) else None
 
 
-def _recherches_separees(
-    pages: PagesLues, url: str, premiere: Coreapi, tous: list[tuple[str, str]], porte: Callable[[str, str], bool]
-) -> list[Coreapi]:
+def _recherches_separees(pages: PagesLues, url: str, premiere: Coreapi, tous: list[tuple[str, str]]) -> list[Coreapi]:
     """La recherche trouvée sur `url` (`premiere`), puis, quand `url` est une page de préavis ou de procès-verbaux,
     celles des pages de l'autre genre parmi les liens de la page du conseil (`tous`, `ESSAIS` au plus), chacune une
     fois par nœud : une commune qui sépare ses préavis et ses procès-verbaux (Duillier, Juriens) a une page et une
@@ -786,7 +805,7 @@ def _recherches_separees(
     recherches = [premiere]
     for autre_url in autres:
         texte = pages.texte(autre_url)
-        autre = _parametres_coreapi(texte) if texte is not None and porte(texte, "coreapi") else None
+        autre = _parametres_coreapi(texte) if texte is not None else None
         if autre is not None and autre.cle not in {r.cle for r in recherches}:
             recherches.append(autre)
     return recherches
@@ -809,13 +828,6 @@ def _parametres_coreapi(texte: str) -> Coreapi | None:
         taille=int(attrs.get("pagesize") or 60),
         tri=attrs.get("sort") or "date_extid",
     )
-
-
-def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | None:
-    """Les requêtes que coûterait la lecture de `source` (`lire`) au passage ordinaire dont la fenêtre part de
-    `depuis`. Les pages qui manquent sont lues par le robot du script (une liste Quicksite en demande peu : pages de
-    résultats, ou Séances et fiches du module Conseil) ; `None` si la lecture échoue."""
-    return socle_lecture.requetes(lire, RobotCompteur(pages.lire), source, depuis)
 
 
 # --- Module Conseil (Montreux) ------------------------------------------------------------------------------------
@@ -1152,3 +1164,46 @@ def _ordre_du_jour_du_module(texte: str, url: str) -> tuple[list[dict], list[dic
         documents += _documents_du_module(groupe, url)
     return points, documents
 
+
+# --- Déclaration de la plateforme -----------------------------------------------------------------------------------
+
+# Ses variantes, dans l'ordre où la mesure les essaie sur une même page. Les pages qui manquent à la lecture rejouée
+# par la mesure sont lues par le robot du script : une liste Quicksite en demande peu (pages de résultats, ou Séances
+# et fiches du module Conseil).
+PLATEFORME = PlateformeLue(
+    id="quicksite",
+    nom="Quicksite",
+    editeur="eAdmin Solutions SA",
+    variantes=(
+        VarianteLue(
+            "conseil",
+            marqueur="tplCCIBPublicOrdreJour",
+            niveaux=(("objets", "seances"), ("seances",)),
+            lire=_lire_conseil,
+            reconnaitre=_liste_du_conseil,
+        ),
+        VarianteLue(
+            "conseil-externe",
+            marqueur="teaser-agenda",
+            niveaux=(("seances",),),
+            lire=_lire_conseil_externe,
+            reconnaitre=_liste_de_la_ville,
+        ),
+        VarianteLue(
+            "ancienne",
+            marqueur="tplListDocumentSummary",
+            niveaux=(("preavis", "seances"), ("seances",)),
+            lire=_lire_ancienne,
+            reconnaitre=_bibliotheque_ancienne,
+        ),
+        VarianteLue(
+            "coreapi",
+            marqueur="tplDeepsearch",
+            niveaux=(("preavis", "seances"), ("seances",)),
+            lire=_lire_coreapi,
+            reconnaitre=_recherche_du_conseil,
+        ),
+    ),
+    mesure=_mesurer,
+    robot_de_mesure=lambda pages: RobotCompteur(pages.lire),
+)

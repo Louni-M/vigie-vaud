@@ -3,10 +3,26 @@ d'OpenParlData.
 
 `lire_site` lit le conseil d'une source communale (bloc `site`) par le robot communal, dans la fenêtre du passage,
 et rend les mêmes `Bruts` qu'OpenParlData (*affairs* et *meetings*, relations développées, réduits aux champs que
-l'import lit), que la suite de l'import (`vers_archive`, `lecture`, `ecrire`) traite comme les autres. Chaque
-plateforme a son module de lecture (`LECTEURS`), avec une seule opération publique pour l'import ; ses variantes et
-son analyse des pages restent privées. Le même module mesure les sites de sa plateforme pour le script de préparation
-des sources (`mesurer`, `requetes`), qui ne connaît aucune plateforme.
+l'import lit), que la suite de l'import (`vers_archive`, `lecture`, `ecrire`) traite comme les autres.
+
+**Une plateforme se déclare en un seul endroit** : la déclaration `PLATEFORME` de son module de lecture
+(`socle_lecture.PlateformeLue`), inscrite dans `PLATEFORMES`. Elle porte son nom et son éditeur, ses variantes (leur
+marqueur de sonde, les niveaux qu'elles permettent, leur lecture et leur reconnaissance par la mesure des sites) et
+la mesure de ses sites. La sonde (`sonde_sites`), l'import (`lire_site`), la mesure des sites (`mesure_sites`) et le
+script de préparation des sources (`preparation_sources`) ne lisent que cette déclaration : ajouter une variante,
+c'est ajouter une `VarianteLue` à sa plateforme ; ajouter une plateforme, c'est écrire son module et l'inscrire ici.
+Ce que la déclaration ne couvre pas :
+
+- la section `plateformes` de `sources.json`, que lisent le site (nom, éditeur), le cron pour ses issues par
+  plateforme et les règles de déclaration des sources (`preparation_sources.verifier_declarations`), en est une copie
+  (`PlateformeLue.declaration`), que les tests comparent à la déclaration : ils échouent tant qu'elle n'est pas
+  recopiée ;
+- la mesure ne présente à une variante que les pages que sa plateforme essaie (pages déclarées, page du conseil,
+  liens de son menu qui ressemblent à une page des Séances ou des documents du conseil) : une variante dont la page
+  ne s'atteint pas ainsi demande d'étendre la `mesure` de sa plateforme ;
+- chaque variante a son échantillon (`echantillon_sites.ECHANTILLONS`, ADR 0010), que les tests réclament aussi ;
+- une variante qui déclare d'autres paramètres de site, comme les recherches `coreapi` de Quicksite, les ajoute au
+  bloc `site` (`schema.Site`), à `mesure_sites.Mesure` et à la comparaison du script de préparation.
 
 **Fenêtre** : le passage ordinaire relit les pages de liste en entier et n'ouvre les pages d'une Séance ou d'un
 Objet que pour ceux des 6 derniers mois et à venir ; le rattrapage ouvre tout. Il n'y a pas de « depuis » pour un
@@ -18,39 +34,24 @@ from __future__ import annotations
 
 import calendar
 from datetime import date
-from typing import Protocol
 
 import lecture_iweb
 import lecture_quicksite
 from bruts import Bruts
-from mesure_sites import Mesure, PagesLues
 from robot_communal import Robot
-from schema import FichierSources, Plateforme, Site, Source
+from schema import Site, Source
+from socle_lecture import PlateformeLue, VarianteLue
 
 MOIS_DE_LA_FENETRE = 6
 
-
-class ModuleDeLecture(Protocol):
-    """Le module de lecture d'une plateforme (`lecture_iweb`…). Ajouter une plateforme, c'est écrire ce module et
-    l'inscrire dans `LECTEURS` : ni le robot, ni la sonde, ni l'import, ni le script de préparation n'en changent."""
-
-    def lire(self, robot: Robot, source: Source, depuis: date | None) -> Bruts:
-        """Le conseil de `source`, lu sur son site, dans la fenêtre qui part de `depuis` (`None` : tout)."""
-        ...
-
-    def mesurer(self, pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
-        """Pour le script de préparation des sources : la plateforme réelle, la variante et les pages du site d'une
-        commune, d'après sa page du conseil et ses pages déjà déclarées."""
-        ...
-
-    def requetes(self, pages: PagesLues, source: Source, depuis: date | None) -> int | None:
-        """Pour le script de préparation des sources : les requêtes que `lire` coûterait au passage ordinaire, sans
-        `robots.txt` ni la sonde, rejouée sur les pages déjà lues ; `None` si la lecture échoue."""
-        ...
+# Les plateformes déclarées, par identifiant : la déclaration `PLATEFORME` de chaque module de lecture.
+PLATEFORMES: dict[str, PlateformeLue] = {p.id: p for p in (lecture_iweb.PLATEFORME, lecture_quicksite.PLATEFORME)}
 
 
-# Le module de lecture de chaque plateforme.
-LECTEURS: dict[str, ModuleDeLecture] = {"i-web": lecture_iweb, "quicksite": lecture_quicksite}
+def variante_de(site: Site) -> VarianteLue | None:
+    """La variante du site d'une commune, ou `None` si sa plateforme ou sa variante n'est pas déclarée."""
+    plateforme = PLATEFORMES.get(site.plateforme)
+    return plateforme.variante(site.variante) if plateforme else None
 
 
 def mois_plus_tot(jour: date, mois: int) -> date:
@@ -64,21 +65,21 @@ def debut_de_fenetre(jour: date) -> date:
     return mois_plus_tot(jour, MOIS_DE_LA_FENETRE)
 
 
-def lire_site(robot: Robot, source: Source, sources: FichierSources, jour: date, rattrapage: bool = False) -> Bruts:
+def lire_site(robot: Robot, source: Source, jour: date, rattrapage: bool = False) -> Bruts:
     """Le conseil de `source` lu sur le site de sa commune, au passage du `jour` (à Lausanne) : les Séances et les
     Objets des 6 derniers mois et à venir, ou tous pour un `rattrapage`. Lève `ValueError` pour une plateforme ou une
-    variante non déclarée, ou sans module de lecture, et l'erreur du robot quand un réseau bloqué ou le plafond de
-    requêtes a interrompu la lecture."""
+    variante non déclarée, et l'erreur du robot quand un réseau bloqué ou le plafond de requêtes a interrompu la
+    lecture."""
     site = source.site
     if site is None or source.conseil is None:
         raise ValueError(f"{source.id} : ni bloc `site` ni bloc `conseil`")
-    plateforme = sources.plateforme(site.plateforme)
-    if plateforme is None or site.plateforme not in LECTEURS:
+    plateforme = PLATEFORMES.get(site.plateforme)
+    if plateforme is None:
         raise ValueError(f"{source.id} : plateforme {site.plateforme} non déclarée ou sans module de lecture")
-    if sources.variante_de(site) is None:
+    if plateforme.variante(site.variante) is None:
         raise ValueError(f"{source.id} : variante {site.variante} non déclarée dans {plateforme.nom}")
     lecteur = robot.pour(source.id)
-    bruts = LECTEURS[site.plateforme].lire(lecteur, source, None if rattrapage else debut_de_fenetre(jour))
+    bruts = plateforme.lire(lecteur, source, None if rattrapage else debut_de_fenetre(jour))
     # Un réseau bloqué ou le plafond atteint en cours de lecture met l'import en échec, même si le module de lecture
     # a sauté la page : l'import sera refait en entier au passage suivant.
     interruption = lecteur.interruption()

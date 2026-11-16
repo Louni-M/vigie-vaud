@@ -3,10 +3,11 @@ la mémoire des pages lues par le robot pendant un lancement du script de prépa
 (`preparation_sources.py`), la mesure qu'un module en tire, et le robot qui rejoue la lecture d'un module pour
 compter les requêtes d'un passage ordinaire (`RobotCompteur`, sans réseau : `RobotSansReseau`).
 
-Chaque module de lecture (`sites_communaux.LECTEURS`) mesure les sites de sa plateforme par deux opérations, à côté
-de `lire` : `mesurer` (la plateforme réelle, la variante et les pages d'une commune, d'après sa page du conseil et
-les pages déjà déclarées) et `requetes` (les requêtes que coûterait sa lecture au passage ordinaire). Le script de
-préparation ne connaît que ces deux opérations.
+La déclaration de chaque plateforme (`sites_communaux.PLATEFORMES`) mesure ses sites par deux opérations, à côté de
+`lire` : `mesurer` (la plateforme réelle, la variante et les pages d'une commune, d'après sa page du conseil et les
+pages déjà déclarées : chaque variante y reconnaît sa page) et `requetes` (les requêtes que coûterait sa lecture au
+passage ordinaire, rejouée avec le robot que la plateforme choisit). Le script de préparation ne connaît que ces deux
+opérations.
 """
 
 from __future__ import annotations

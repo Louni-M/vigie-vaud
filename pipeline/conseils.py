@@ -684,7 +684,7 @@ def importer_conseils(
     nouveaux: dict[str, Element] = {}
     membres: dict[str, MembresConseil] = {}
     a_importer = [s for s in sources.sources if s.conseil is not None and (dus is None or s.conseil.cle in dus)]
-    lus = _lire_les_sites(robot, [s for s in a_importer if s.site is not None], sources, jour, rattrapage)
+    lus = _lire_les_sites(robot, [s for s in a_importer if s.site is not None], jour, rattrapage)
     for source in a_importer:
         cle = source.conseil.cle
         if rattrapage:
@@ -738,13 +738,7 @@ def importer_conseils(
     return etat
 
 
-def _lire_les_sites(
-    robot: Robot | None,
-    sites: list[Source],
-    sources: FichierSources,
-    jour: date,
-    rattrapage: bool,
-) -> dict[str, Bruts | Exception]:
+def _lire_les_sites(robot: Robot | None, sites: list[Source], jour: date, rattrapage: bool) -> dict[str, Bruts | Exception]:
     """Les `Bruts` de chaque source communale, ou l'erreur qui a interrompu sa lecture, lus un fil par réseau /24 :
     les communes d'un même réseau à la suite, les réseaux en même temps (le robot n'envoie jamais deux requêtes à la
     fois)."""
@@ -755,7 +749,7 @@ def _lire_les_sites(
 
     def lire(source: Source) -> Bruts | Exception:
         try:
-            return lire_site(robot, source, sources, jour, rattrapage)
+            return lire_site(robot, source, jour, rattrapage)
         except Exception as e:  # rendue au fil principal, qui la traite comme tout échec d'un conseil
             return e
 

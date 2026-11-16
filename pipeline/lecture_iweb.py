@@ -1,6 +1,7 @@
-"""Module de lecture de la plateforme i-web (ADR 0010) : une seule opération publique pour l'import, `lire`, qui lit
-le conseil d'une commune i-web par le robot communal et rend ses `Bruts`, à la forme d'OpenParlData ; et, pour le
-script de préparation des sources seulement, `mesurer` et `requetes` (`mesure_sites.py`).
+"""Module de lecture de la plateforme i-web (ADR 0010) : une seule déclaration publique, `PLATEFORME` (`socle_lecture`),
+qui déclare la plateforme et sa variante, lit le conseil d'une commune i-web par le robot communal et rend ses `Bruts`,
+à la forme d'OpenParlData, et, pour le script de préparation des sources seulement, mesure son site
+(`mesure_sites.py`).
 
 Une seule variante, **Séances** (module Séances d'i-web, niveau « séances seulement ») : la page de liste
 (`site.seances`) porte deux tableaux, les Séances à venir (`icmsTableFutureSitzungen`) et passées
@@ -33,14 +34,15 @@ from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urljoin, urlsplit
 
-import socle_lecture
 from bruts import Bruts
 from pages_html import Noeud, arbre, espaces, texte_html
 from mesure_sites import Mesure, PagesLues, RobotSansReseau, liens
 from robot_communal import PageNonLue, Robot
-from schema import Plateforme, Site, Source
+from schema import Conseil, Site, Source
 from socle_lecture import (
     DATE_CHIFFRES,
+    PlateformeLue,
+    VarianteLue,
     document,
     heure_de,
     jour_en_chiffres,
@@ -51,13 +53,11 @@ from socle_lecture import (
 
 TABLEAUX_SEANCES = ("icmsTableFutureSitzungen", "icmsTablePastSitzungen")
 TABLEAU_MEMBRES = "icmsTable-personList"
-VARIANTES = ("seances",)
 
 
-def lire(robot: Robot, source: Source, depuis: date | None) -> Bruts:
-    """Le conseil de `source`, une commune i-web, lu sur son site : les Séances de la liste datées de `depuis` ou
-    après (toutes sans `depuis`), chacune avec sa page."""
-    site, conseil = socle_lecture.site_et_conseil(source, "i-web", VARIANTES)
+def _lire_seances(robot: Robot, source: Source, site: Site, conseil: Conseil, depuis: date | None) -> Bruts:
+    """Le conseil de `source`, une commune i-web de la variante Séances, lu sur son site : les Séances de la liste
+    datées de `depuis` ou après (toutes sans `depuis`), chacune avec sa page."""
     liste = robot.lire(site.seances, "import")
     seances = []
     for ligne in _lignes_de_seances(liste.texte, liste.url):
@@ -222,40 +222,72 @@ def _porte(texte: str, *tableaux: str) -> bool:
     return re.search(rf"""id=["'](?:{ids})["']""", texte) is not None
 
 
-def mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: Plateforme) -> Mesure:
+def _page_des_seances(pages: PagesLues, url: str, texte: str, liens_du_conseil: list[tuple[str, str]]) -> Mesure | None:
+    """La variante Séances reconnue sur `url` : la page porte l'un des tableaux du module Séances."""
+    return Mesure(None, seances=url) if _porte(texte, *TABLEAUX_SEANCES) else None
+
+
+def _mesurer(pages: PagesLues, page_du_conseil: str, declare: Site, plateforme: PlateformeLue) -> Mesure:
     """Le site d'une commune mesuré pour le script de préparation des sources, d'après sa page du conseil (déjà lue)
     et ses pages déjà déclarées : une page du conseil sans trace d'i-web l'écarte (« autre » : les sites OIOI web que
-    le recensement prenait pour i-web) ; puis la page des Séances (tableaux du module Séances) et celle des membres
-    (`personList`), cherchées d'abord parmi les pages déclarées, puis la page du conseil et `ESSAIS` liens de son menu au plus par sorte de page. Le
-    niveau et les requêtes du passage ordinaire sont l'affaire du script (`requetes`)."""
+    le recensement prenait pour i-web) ; puis la page des Séances, la première que reconnaît une variante de
+    `plateforme`, et celle des membres (`personList`), cherchées d'abord parmi les pages déclarées, puis la page du
+    conseil et `ESSAIS` liens de son menu au plus par sorte de page. Le niveau et les requêtes du passage ordinaire
+    sont l'affaire du script (`requetes`)."""
     conseil = pages.texte(page_du_conseil) or ""
     if not _TRACE.search(conseil):
         return Mesure("autre", remarques=[f"aucune trace d'i-web sur {page_du_conseil}"])
-    mesure = Mesure(plateforme.id)
-    menu = [(u, t) for u, t in liens(conseil, page_du_conseil) if not _TECHNIQUES.match(urlsplit(u).path)]
+    tous = liens(conseil, page_du_conseil)
+    menu = [(u, t) for u, t in tous if not _TECHNIQUES.match(urlsplit(u).path)]
 
-    def chercher(sorte: str, deja: list[str | None], trouve: Callable[[str, str], bool]) -> str | None:
+    def chercher(sorte: str, deja: list[str | None], trouve: Callable[[str, str], Mesure | None]) -> Mesure | None:
         essais = [u for u in deja if u] + [u for u, t in menu if _LIENS_DU_MENU[sorte].search(f"{u} {t}")][:ESSAIS]
         for url in dict.fromkeys(essais):
             texte = pages.texte(url)
-            if texte is not None and trouve(url, texte):
-                return url
+            trouvee = trouve(url, texte) if texte is not None else None
+            if trouvee is not None:
+                return trouvee
         return None
 
-    mesure.seances = chercher(
-        "seances", [declare.seances, page_du_conseil], lambda _, t: _porte(t, *TABLEAUX_SEANCES)
+    def variante_de(url: str, texte: str) -> Mesure | None:
+        for variante in plateforme.variantes:
+            trouvee = variante.reconnaitre(pages, url, texte, tous)
+            if isinstance(trouvee, Mesure):
+                trouvee.plateforme, trouvee.variante = plateforme.id, variante.id
+                return trouvee
+        return None
+
+    mesure = chercher("seances", [declare.seances, page_du_conseil], variante_de)
+    if mesure is None:
+        return Mesure(plateforme.id, remarques=["aucune page des Séances i-web trouvée"])
+    membres = chercher(
+        "membres",
+        [declare.membres, page_du_conseil],
+        lambda url, texte: Mesure(None, membres=url) if _porte(texte, TABLEAU_MEMBRES) else None,
     )
-    if mesure.seances is None:
-        mesure.remarques.append("aucune page des Séances i-web trouvée")
-        return mesure
-    mesure.variante = "seances"
-    mesure.membres = chercher("membres", [declare.membres, page_du_conseil], lambda _, t: _porte(t, TABLEAU_MEMBRES))
+    mesure.membres = membres.membres if membres else None
     return mesure
 
 
-def requetes(pages: PagesLues, source: Source, depuis: date | None) -> int | None:
-    """Les requêtes que coûterait la lecture de `source` (`lire`) au passage ordinaire dont la fenêtre part de
-    `depuis`, rejouée sans réseau sur les pages déjà lues : le lien stable d'une Séance jamais lue en
-    coûte deux, le site le redirigeant. `robots.txt` et la sonde n'y sont pas. `None` si la lecture échoue."""
-    robot = RobotSansReseau(pages.pages, lambda url: 2 if "/_rte/" in url else 1)
-    return socle_lecture.requetes(lire, robot, source, depuis)
+# Les requêtes de la lecture, rejouées sans réseau sur les pages déjà lues : le lien stable d'une Séance jamais lue en
+# coûte deux, le site le redirigeant.
+def _robot_de_mesure(pages: PagesLues) -> RobotSansReseau:
+    return RobotSansReseau(pages.pages, lambda url: 2 if "/_rte/" in url else 1)
+
+
+PLATEFORME = PlateformeLue(
+    id="i-web",
+    nom="i-web",
+    editeur="Innovative Web AG",
+    variantes=(
+        VarianteLue(
+            "seances",
+            marqueur="icmsTablePastSitzungen",
+            niveaux=(("seances",),),
+            lire=_lire_seances,
+            reconnaitre=_page_des_seances,
+        ),
+    ),
+    mesure=_mesurer,
+    robot_de_mesure=_robot_de_mesure,
+)

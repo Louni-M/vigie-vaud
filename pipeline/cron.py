@@ -839,7 +839,7 @@ def sonder_les_sites(
     def sonde(source: Source) -> tuple[str | None, datetime] | CrawlDelayTropLong:
         """La sonde d'une commune, et son heure ; sans état modifié, pour pouvoir passer dans le fil de son réseau."""
         try:
-            motif = sonder_site(robot, source, sources)
+            motif = sonder_site(robot, source)
         except CrawlDelayTropLong as e:
             return e
         return motif, _a_la_seconde(horloge())

@@ -1,9 +1,9 @@
 """La sonde des sites communaux (ADR 0010) : une seule implémentation pour toutes les plateformes.
 
 `sonder_site` lit la page de liste des Séances d'une commune scrapée (`site.seances`) par le robot communal, sous le
-nom `VigieVaud-sonde`, et y cherche le marqueur de sa variante, déclaré dans la section `plateformes` de
-`sources.json`. Aucune ligne de code n'est propre à une plateforme : une refonte du site fait disparaître le
-marqueur. Rien de la page n'est conservé.
+nom `VigieVaud-sonde`, et y cherche le marqueur de sa variante, déclaré par sa plateforme
+(`sites_communaux.PLATEFORMES`). Aucune ligne de code n'est propre à une plateforme : une refonte du site fait
+disparaître le marqueur. Rien de la page n'est conservé.
 
 **Pannes** : erreur HTTP, délai dépassé, site injoignable, erreur TLS, page illisible, page de liste interdite par
 `robots.txt` (« le site refuse les robots »), réseau bloqué (« accès refusé »), marqueur absent. **Pas des pannes** :
@@ -28,17 +28,18 @@ from robot_communal import (
     RobotsIndisponible,
     SiteBloque,
 )
-from schema import FichierSources, Source
+from schema import Source
+from sites_communaux import variante_de
 
 
-def sonder_site(robot: Robot, source: Source, sources: FichierSources) -> str | None:
+def sonder_site(robot: Robot, source: Source) -> str | None:
     """Sonde le site de `source` : `None` si la page de liste répond avec le marqueur de sa variante, sinon le motif
     court de l'échec (« HTTP 503 », « marqueur absent »…). Lève `CrawlDelayTropLong` quand le `Crawl-delay` du site
     est trop long pour qu'il soit lu : ce n'est ni un succès ni une panne, et la page n'est pas demandée."""
     site = source.site
     if site is None:
         raise ValueError(f"{source.id} : pas de bloc `site`")
-    variante = sources.variante_de(site)
+    variante = variante_de(site)
     if variante is None:
         return f"variante {site.plateforme}/{site.variante} non déclarée"
     try:
