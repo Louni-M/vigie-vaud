@@ -4,8 +4,8 @@
 import { RAISONS, declareNonCouverte } from '#lib/couverture.js';
 import { deNom } from '#lib/registre/elision.js';
 import type { MessageNonCouvert } from '#lib/registre/types.js';
-import type { Objet, Source } from '#lib/schema.js';
-import { SOURCES, niveauDe } from '#lib/sources.js';
+import type { ConseilIndexe, Objet, Source } from '#lib/schema.js';
+import { SOURCES, donneDesObjets, niveauDe } from '#lib/sources.js';
 import type { Commune } from '#lib/types.js';
 import { sourceDuConseil } from './cles.js';
 
@@ -53,6 +53,14 @@ export function noteDeNiveau(source: Source): NoteDeNiveau | null {
 	if (!note) return null;
 	return { ...note, lien: source.site?.seances ?? source.conseil?.page ?? null };
 }
+
+/**
+ * L'onglet liste-t-il les Objets du conseil : ceux que son niveau donne, ou ceux que l'archive garde d'un niveau plus
+ * complet. Une commune passée en séances seulement garde ainsi ses préavis déjà importés, sous la note de niveau qui
+ * dit que les nouveaux sont sur le site de la commune ; rien de l'archive ne disparaît de l'onglet.
+ */
+export const listeDesObjets = (conseil: Pick<ConseilIndexe, 'donne' | 'objets'>) =>
+	donneDesObjets(conseil) || conseil.objets > 0;
 
 /**
  * La mention de la fiche d'un Objet sans statut ni auteur·e, quand le conseil scrapé ne les publie pas : son niveau
