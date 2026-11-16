@@ -618,7 +618,7 @@
 
 	@media screen and (prefers-reduced-motion: no-preference) {
 		.bref li {
-			animation: monte 0.6s var(--ease-out) calc(0.25s + var(--rang, 0) * 0.07s) both;
+			animation: almanach-monte 0.6s var(--ease-out) calc(0.25s + var(--rang, 0) * 0.07s) both;
 		}
 		.bref li:nth-child(2) {
 			--rang: 1;
@@ -638,16 +638,6 @@
 		/* Le pictogramme se pose après sa ligne : il apparaît en se resserrant sur lui-même. */
 		.bref svg {
 			animation: apparait 0.9s var(--ease-out) calc(0.45s + var(--rang, 0) * 0.07s) both;
-		}
-	}
-	@keyframes monte {
-		from {
-			opacity: 0;
-			transform: translateY(0.6rem);
-		}
-		to {
-			opacity: 1;
-			transform: none;
 		}
 	}
 	@keyframes apparait {
