@@ -41,10 +41,11 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<!-- Aperçu des liens partagés : une image commune à tout le site, à l'adresse publique (absolue). -->
+	<!-- Aperçu des liens partagés : une image commune à tout le site, à l'adresse publique (absolue). LinkedIn garde
+		l'image en cache selon son adresse : quand apercu.png change, augmenter `v` pour qu'il la relise. -->
 	<meta property="og:site_name" content="Vigie Vaud" />
 	<meta property="og:locale" content="fr_CH" />
-	<meta property="og:image" content="{SITE}/apercu.png" />
+	<meta property="og:image" content="{SITE}/apercu.png?v=2" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta property="og:image:alt" content="Vigie Vaud : ce qui se passe dans votre commune, sur la carte du canton de Vaud" />
