@@ -306,6 +306,31 @@
 		document.querySelector<HTMLElement>('#carte .maplibregl-canvas')?.focus();
 	}
 
+	/**
+	 * Le volet affiché sur bureau : celui de l'adresse, une fois le Volet de sa couche chargé. Son module est chargé à
+	 * part, à la première ouverture ; ouvert plus tôt, le volet sortait en bulle avec sa seule tête, l'ancien se
+	 * repliait à cette taille, et la liste n'arrivait qu'à la fin de la bulle. L'ancien volet reste donc affiché
+	 * jusque-là ; le rail, lui, marque tout de suite la couche demandée. Un échec ouvre aussi le volet, qui le dit.
+	 */
+	let voletAffiche = $state(registre.volet);
+	$effect(() => {
+		const id = registre.volet;
+		const couche = COUCHES.find((c) => c.id === id);
+		const module = couche && registre.composant(couche, 'Volet');
+		if (!module) {
+			voletAffiche = id;
+			return;
+		}
+		let remplace = false;
+		const afficher = () => {
+			if (!remplace) voletAffiche = id;
+		};
+		module.then(afficher, afficher);
+		return () => {
+			remplace = true;
+		};
+	});
+
 	function fermerVolet() {
 		const id = registre.volet;
 		registre.volet = null;
@@ -394,12 +419,12 @@
 
 			<!-- Un bloc par couche : le volet qui se ferme garde sa couche pendant qu'il disparaît. -->
 			{#each COUCHES as c (c.id)}
-				{#if registre.volet === c.id && !telephone.current}
+				{#if voletAffiche === c.id && !telephone.current}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
 						class="volet"
 						in:bulleEntree={{ id: c.id }}
-						out:bulleSortie={{ id: c.id, ouvert: () => registre.volet }}
+						out:bulleSortie={{ id: c.id, ouvert: () => voletAffiche }}
 						onkeydown={(e) => e.key === 'Escape' && fermerVolet()}
 					>
 						<Volet couche={c} {registre} onfermer={fermerVolet} />
@@ -408,12 +433,12 @@
 			{/each}
 
 			<!-- Le fil cantonal, à la place des volets : ouvert à l'arrivée, sa colonne de fiche reste ouvrable à droite. -->
-			{#if registre.volet === FIL && !telephone.current}
+			{#if voletAffiche === FIL && !telephone.current}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="volet"
 					in:bulleEntree={{ id: FIL }}
-					out:bulleSortie={{ id: FIL, ouvert: () => registre.volet }}
+					out:bulleSortie={{ id: FIL, ouvert: () => voletAffiche }}
 					onkeydown={(e) => e.key === 'Escape' && fermerVolet()}
 				>
 					<Fil {registre} chargement={fil} communes={data.communes} onfermer={fermerVolet} />

@@ -1,3 +1,13 @@
+<script lang="ts" module>
+	import { browser } from '$app/env';
+	import { conseils } from './donnees.js';
+
+	// L'index des conseils se lit dès que le Volet est demandé (le pointeur sur son icône du rail) : le volet ne
+	// s'ouvre qu'une fois le Volet chargé, et l'index, lu à son ouverture, le faisait encore grandir pendant sa bulle.
+	// Un échec est oublié : le volet relit l'index à son ouverture et dit s'il n'est pas lisible.
+	if (browser) conseils.index().catch(() => {});
+</script>
+
 <script lang="ts">
 	/*
 	 * Volet de la couche Conseils, sous l'interrupteur, les badges et l'attribution du registre : la légende, puis la
@@ -13,7 +23,6 @@
 	import { TELEPHONE } from '#lib/socle/telephone.js';
 	import { carteConseil, lignesConseils, noteAutresCommunes } from './cartes.js';
 	import { FICHE_GRAND_CONSEIL } from './cles.js';
-	import { conseils } from './donnees.js';
 	import { COULEUR_CONSEILS, coucheConseils, type ParametresConseils } from './index.js';
 
 	let { ctx }: { ctx: Contexte<ParametresConseils> } = $props();

@@ -4,8 +4,9 @@
  * ne retire pas l'ancien volet : la nouvelle bulle part de sa propre icône et le recouvre, pendant que l'ancien se
  * replie dessous jusqu'à la taille du nouveau. Fermer le volet fait rentrer la bulle dans son icône.
  *
- * Le cercle est recalculé à chaque image, d'après la taille du volet à cet instant : le Volet d'une couche est chargé
- * à part et fait grandir le volet pendant la transition. Un rayon fixé au départ s'arrête avant le bas du volet, et le
+ * Le cercle est recalculé à chaque image, d'après la taille du volet à cet instant : les données que lit le Volet d'une
+ * couche (l'index des conseils) arrivent pendant la transition et font grandir le volet. Le module du Volet, lui, est
+ * déjà chargé : le volet ne s'ouvre qu'ensuite (`voletAffiche`, dans la mise en page de la carte). Un rayon fixé au départ s'arrête avant le bas du volet, et le
  * reste apparaît d'un coup à la fin ; gonflé d'avance (jusqu'au bas de la carte), il découvre tout le volet dans le
  * premier tiers, et le navigateur de Claude Desktop, à 30 images par seconde, n'en montre que six à-coups.
  *

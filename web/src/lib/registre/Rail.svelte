@@ -12,6 +12,11 @@
 	let { registre }: { registre: Registre } = $props();
 
 	const basculer = (id: string) => (registre.volet = registre.volet === id ? null : id);
+	/**
+	 * Le Volet d'une couche se charge dès que le pointeur ou le focus arrive sur son icône : le volet ne s'ouvre qu'une
+	 * fois chargé, et le clic qui suit l’attend moins. Un échec est oublié : l’ouverture réessaie, et le volet le dit.
+	 */
+	const precharger = (c: (typeof registre.couches)[number]) => registre.composant(c, 'Volet')?.catch(() => {});
 
 	/** Icône qui porte l'arrêt de tabulation : la dernière qui a eu le focus, sinon le Fil. */
 	let arret = $state<string>(FIL);
@@ -59,7 +64,11 @@
 			type="button"
 			data-couche={c.id}
 			tabindex={arret === c.id ? 0 : -1}
-			onfocus={() => (arret = c.id)}
+			onfocus={() => {
+				arret = c.id;
+				precharger(c);
+			}}
+			onpointerenter={() => precharger(c)}
 			class:ouvert={registre.volet === c.id}
 			aria-expanded={registre.volet === c.id}
 			aria-controls={registre.volet === c.id ? `volet-${c.id}` : undefined}
