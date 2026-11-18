@@ -201,14 +201,4 @@
 			transform: none;
 		}
 	}
-	@keyframes monte {
-		from {
-			opacity: 0;
-			transform: translateY(0.5rem);
-		}
-		to {
-			opacity: 1;
-			transform: none;
-		}
-	}
 </style>

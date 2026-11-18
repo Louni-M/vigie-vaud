@@ -242,7 +242,7 @@
 			animation: juge-verdict 1.2s var(--ease-out) var(--quand) both;
 		}
 		:global([data-js-etat='joue']) .verdicts li {
-			animation: monte 0.5s var(--ease-out) calc(var(--depart) + var(--t) * var(--lecture) + 0.5s) both;
+			animation: monte-court 0.5s var(--ease-out) calc(var(--depart) + var(--t) * var(--lecture) + 0.5s) both;
 		}
 		/* La coche se déplie de gauche à droite, dans le sens où elle se trace ; la croix s'ouvre depuis son centre. */
 		:global([data-js-etat='joue']) .verdicts svg {
@@ -254,7 +254,7 @@
 			animation-name: ouvre;
 		}
 		:global([data-js-etat='joue']) .resultat {
-			animation: monte 0.55s var(--ease-out) calc(var(--depart) + var(--lecture) + 0.8s) both;
+			animation: monte-court 0.55s var(--ease-out) calc(var(--depart) + var(--lecture) + 0.8s) both;
 		}
 	}
 	@keyframes lit {
@@ -305,20 +305,10 @@
 			opacity: 1;
 		}
 	}
-	@keyframes monte {
+	@keyframes monte-court {
 		from {
 			opacity: 0;
 			transform: translateY(0.4rem);
-		}
-		to {
-			opacity: 1;
-			transform: none;
-		}
-	}
-	@keyframes deplie {
-		from {
-			opacity: 0;
-			transform: scaleX(0);
 		}
 		to {
 			opacity: 1;

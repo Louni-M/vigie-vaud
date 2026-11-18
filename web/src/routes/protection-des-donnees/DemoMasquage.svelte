@@ -284,14 +284,4 @@
 			transform: none;
 		}
 	}
-	@keyframes deplie {
-		from {
-			opacity: 0;
-			transform: scaleX(0);
-		}
-		to {
-			opacity: 1;
-			transform: none;
-		}
-	}
 </style>

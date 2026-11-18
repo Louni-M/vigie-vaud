@@ -183,6 +183,5 @@
 	}
 	.erreur {
 		margin: 0;
-		color: var(--color-erreur);
 	}
 </style>

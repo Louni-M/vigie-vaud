@@ -405,12 +405,6 @@
 			display: none;
 		}
 	}
-	.muted {
-		color: var(--color-muted);
-	}
-	.erreur {
-		color: var(--color-erreur);
-	}
 	.source {
 		margin: 4px 0 0;
 	}

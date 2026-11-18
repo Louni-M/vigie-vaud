@@ -79,12 +79,6 @@
 	.squelette .grand {
 		height: 24px;
 	}
-	.muted {
-		color: var(--color-muted);
-	}
-	.erreur {
-		color: var(--color-erreur);
-	}
 	.source {
 		margin-top: 28px;
 	}

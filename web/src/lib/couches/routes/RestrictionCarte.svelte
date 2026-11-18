@@ -155,9 +155,6 @@
 	.source {
 		margin-left: auto;
 	}
-	.muted {
-		color: var(--color-muted);
-	}
 	/* Dans une liste, plus de carte encadrée : une ligne réglée par restriction ; celle survolée ou ouverte est posée
 	   sur le papier et marquée d'un trait orange. */
 	.en-liste {

@@ -108,12 +108,8 @@
 		display: grid;
 		gap: 8px;
 	}
-	.muted {
-		color: var(--color-muted);
-	}
 	.erreur {
 		margin: 10px 0;
-		color: var(--color-erreur);
 	}
 	.source {
 		margin-top: 28px;

@@ -232,12 +232,8 @@
 		font-size: 11px;
 		color: var(--color-muted);
 	}
-	.muted {
-		color: var(--color-muted);
-	}
 	.erreur {
 		margin: 0 0 10px;
-		color: var(--color-erreur);
 	}
 	.source {
 		margin-top: 28px;

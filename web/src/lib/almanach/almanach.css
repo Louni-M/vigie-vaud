@@ -161,6 +161,14 @@ a {
 	font-size: 12px;
 	color: var(--color-muted);
 }
+/* Un texte en retrait et un message d'échec : la couleur seulement. Le composant garde la marge, qui dépend de la
+   place de la ligne. Une règle d'un composant (`.badge`, `p`…) l'emporte : il ne la pose pas sur le même élément. */
+.muted {
+	color: var(--color-muted);
+}
+.erreur {
+	color: var(--color-erreur);
+}
 
 /* Les pages. */
 .almanach {
@@ -363,6 +371,28 @@ body:has(main.almanach) {
 		transform: scaleX(0);
 	}
 	to {
+		transform: none;
+	}
+}
+/* Les animations que plusieurs diagrammes partagent : une ligne qui monte en fondu, un trait qui se déplie. Chacun
+   les pose sous sa propre garde de mouvement réduit. */
+@keyframes monte {
+	from {
+		opacity: 0;
+		transform: translateY(0.5rem);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes deplie {
+	from {
+		opacity: 0;
+		transform: scaleX(0);
+	}
+	to {
+		opacity: 1;
 		transform: none;
 	}
 }

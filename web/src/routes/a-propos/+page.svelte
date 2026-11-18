@@ -575,16 +575,6 @@ Crawl-delay: 30</code></pre>
 			animation-delay: 0.45s;
 		}
 	}
-	@keyframes monte {
-		from {
-			opacity: 0;
-			transform: translateY(0.5rem);
-		}
-		to {
-			opacity: 1;
-			transform: none;
-		}
-	}
 
 	@media print {
 		.arret li,
