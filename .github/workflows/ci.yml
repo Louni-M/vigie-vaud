@@ -1,7 +1,8 @@
 name: Contrôles
 
 # Chaîne de contrôles de chaque PR, relancée sur chaque push vers main : une fusion fautive (conflit mal résolu,
-# PR fusionnée sans CI à jour) doit se voir avant le passage du cron et la prochaine publication.
+# PR fusionnée sans CI à jour) doit se voir avant la prochaine publication, et n'atteint pas le cron, qui ne tourne
+# qu'au dernier commit de main dont les contrôles sont verts (job `avancer-cron`).
 on:
   pull_request:
   push:
@@ -122,3 +123,50 @@ jobs:
 
       - name: pytest (groupe geo)
         run: uv run --locked --group geo pytest -m geo
+
+  # Le cron du dépôt de données appelle `cron.yml@cron` et clone son code au même commit (README, « Branche cron ») :
+  # la branche `cron` n'avance qu'à un commit de `main` dont les trois jobs ci-dessus sont verts. Sans force, elle ne
+  # fait qu'avancer : une CI plus ancienne qui finit après une plus récente voit son push refusé, ce qui n'est pas un
+  # échec. Le premier passage vert crée la branche.
+  # Le push passe par la clé de déploiement `CRON_CLE` (en écriture), pas par le `GITHUB_TOKEN` : GitHub refuse à ce
+  # jeton toute mise à jour d'une référence qui fait entrer un changement sous `.github/workflows/`, même vers un
+  # commit déjà dans le dépôt, et aucun bloc `permissions` ne lui en donne le droit. Le jeton reste donc en lecture.
+  avancer-cron:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [site, schema, pipeline]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      # Sans la clé, `actions/checkout` se rabattrait sur le jeton, et le push échouerait plus loin, moins clairement.
+      - name: Vérifier la clé de déploiement
+        env:
+          CRON_CLE: ${{ secrets.CRON_CLE }}
+        run: |
+          if [ -z "$CRON_CLE" ]; then
+            echo "::error::Secret CRON_CLE absent : cron ne peut pas avancer (README, « Branche cron », mise en place)"
+            exit 1
+          fi
+
+      # Tout l'historique, branche `cron` comprise : git ne pousse sans force qu'en voyant que l'ancien bout de
+      # `cron` est un ancêtre du commit poussé. La clé reste configurée pour le push de l'étape suivante.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ssh-key: ${{ secrets.CRON_CLE }}
+
+      # Un refus n'est sans gravité que si `cron` est déjà à ce commit ou au-delà. Tout autre échec (clé, réseau,
+      # refus de GitHub) fait échouer le job.
+      - name: Avancer la branche cron
+        run: |
+          if git push origin "$GITHUB_SHA:refs/heads/cron"; then
+            echo "::notice::cron avancée à $GITHUB_SHA"
+            exit 0
+          fi
+          git fetch --no-tags origin refs/heads/cron
+          if git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "::notice::cron est déjà à $(git rev-parse FETCH_HEAD), qui contient $GITHUB_SHA : elle n'avance pas"
+            exit 0
+          fi
+          echo "::error::cron n'a pas pu avancer à $GITHUB_SHA (elle est à $(git rev-parse FETCH_HEAD))"
+          exit 1

@@ -50,13 +50,26 @@ jobs:
         with:
           path: donnees
 
-      # Le dépôt principal, à la même branche que l'appel `cron.yml@main` du déclencheur. Son adresse est aussi
-      # dans `config.json` (`depot`), que ce workflow ne peut pas lire avant de l'avoir cloné.
+      # Le code du cron est cloné au commit même de ce workflow : celui où le déclencheur l'a appelé
+      # (`cron.yml@cron`, voir la README, « Branche cron »). `job.workflow_*` désigne le fichier qui définit le job, ce
+      # workflow réutilisable, alors que `github.*` désigne ici le déclencheur et le dépôt de données. Le déclencheur
+      # reste ainsi le seul à nommer la référence. Une valeur vide ferait cloner la branche par défaut, `main` : la
+      # vérification ci-dessous arrête le passage avant.
+      - name: Vérifier le commit du workflow
+        env:
+          DEPOT: ${{ job.workflow_repository }}
+          COMMIT: ${{ job.workflow_sha }}
+        run: |
+          if [ -z "$DEPOT" ] || [ -z "$COMMIT" ]; then
+            echo "::error::job.workflow_repository ou job.workflow_sha est vide : le code du cron ne serait pas celui de l'appel"
+            exit 1
+          fi
+          echo "Code du cron : $DEPOT@$COMMIT"
       - name: Cloner le code du cron
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: Louni-M/vigie-vaud
-          ref: main
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           path: code
           persist-credentials: false
 
