@@ -55,5 +55,9 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: web/build
+      # Un artefact finalisé n'est pas tout de suite listé pour le run : voir l'étape du même nom dans `cron.yml`.
+      - name: Laisser l'artefact apparaître
+        if: vars.PUBLIER == 'true'
+        run: sleep 10
       - if: vars.PUBLIER == 'true'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
