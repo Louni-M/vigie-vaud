@@ -5,7 +5,6 @@ export type DocumentCommun =
 	| Corrections
 	| Enveloppe
 	| EtatSources
-	| FilConseils
 	| ImportConseils
 	| IndexConseils
 	| ListeObjets
@@ -24,10 +23,9 @@ export type NumeroOfs = number;
 export type Corrections = Correction[];
 export type EtatSonde = 'disponible' | 'en_panne';
 export type Horodatage = string;
-export type CleElement = string;
 export type CleConseil = string;
-export type SorteElement = 'objet' | 'seance';
 export type DonneeConseil = 'objets' | 'preavis' | 'seances';
+export type CleElement = string;
 export type DateSeance = string;
 export type SorteContributeur = 'personne' | 'groupe';
 export type Lien = string;
@@ -144,50 +142,6 @@ export interface EtatReseau {
 	 * Ce qui a bloqué le réseau (« HTTP 429 », « délai dépassé »…).
 	 */
 	motif: string;
-}
-/**
- * `conseils/fil.json` : les Objets et les Séances de tous les conseils datés des 21 derniers jours (heure de
- * Suisse, marge pour des imports manqués) ou après, donc toutes les Séances à venir, du plus récent au plus ancien.
- * Le site filtre lui-même sur sa fenêtre.
- */
-export interface FilConseils {
-	/**
-	 * Version 1.
-	 */
-	version: 1;
-	/**
-	 * Heure du passage du cron qui a écrit le fichier (ISO 8601, UTC en Z).
-	 */
-	genere: string;
-	entrees: EntreeFil[];
-}
-/**
- * Un Objet ou une Séance, à la forme d'une entrée du fil cantonal.
- */
-export interface EntreeFil {
-	cle: CleElement;
-	conseil: CleConseil;
-	sorte: SorteElement;
-	/**
-	 * Objet : son type brut. Séance : `null`.
-	 */
-	type: string | null;
-	/**
-	 * Objet : jour de dépôt, sinon de sa première étape datée. Séance : son jour, avec l'heure quand la source la donne.
-	 */
-	date: string;
-	/**
-	 * Objet : son titre masqué. Séance : son nom brut (le site compose le sien).
-	 */
-	titre: string;
-	/**
-	 * Conseil communal : sa commune. Grand Conseil : les communes rattachées à l'Objet, dans l'ordre du rattachement ; aucune pour une Séance.
-	 */
-	communes: NumeroOfs[];
-	/**
-	 * Séance : nombre de points de l'ordre du jour. Objet : `null`.
-	 */
-	points: number | null;
 }
 /**
  * `conseils/import.json` : l'heure du dernier import réussi de chaque conseil, importé à part. C'est la

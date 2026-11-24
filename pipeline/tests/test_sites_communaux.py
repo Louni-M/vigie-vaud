@@ -236,7 +236,6 @@ def test_une_commune_passee_non_couverte_garde_en_ligne_ce_qui_a_ete_importe_san
         ["seances"],
         3,
     )
-    assert any(e["conseil"] == "5643" for e in _lire(tmp_path, "conseils/fil.json")["entrees"])
 
 
 # --- Cas instables, fabriqués par retouche de l'échantillon ---------------------------------------------------------

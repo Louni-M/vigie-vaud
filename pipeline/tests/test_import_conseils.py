@@ -437,7 +437,7 @@ def _schema_du_fichier(chemin):
         return "rattachements-commune"
     if chemin.name.startswith("objets-"):
         return "liste-objets"
-    noms = {"import.json": "import-conseils", "index.json": "index-conseils", "fil.json": "fil-conseils"}
+    noms = {"import.json": "import-conseils", "index.json": "index-conseils"}
     return noms.get(chemin.name, "liste-seances" if chemin.name == "seances.json" else None)
 
 
@@ -447,7 +447,7 @@ def test_chaque_fichier_ecrit_est_valide_au_json_schema(tmp_path):
     _passer(tmp_path, _monde(horloge), horloge)
 
     fichiers = sorted(tmp_path.rglob("*.json"))
-    assert len(fichiers) == 15  # 7 d'archive et d'import, 8 de lecture
+    assert len(fichiers) == 14  # 7 d'archive et d'import, 7 de lecture
     for fichier in fichiers:
         nom = _schema_du_fichier(fichier.relative_to(tmp_path))
         schema = json.loads((DOSSIER_SCHEMA / f"{nom}.schema.json").read_text(encoding="utf-8"))

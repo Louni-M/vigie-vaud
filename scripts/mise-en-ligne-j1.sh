@@ -453,7 +453,7 @@ resume = [
     f"Fichiers de lecture : {len(fichiers)}, {ko(sum(f.stat().st_size for f in fichiers))} en tout",
     f"Dossier conseils/ : {len(archive)} fichiers, {ko(sum(f.stat().st_size for f in archive))}",
     *(f"{(depot / n).relative_to(depot)} : {ko((depot / n).stat().st_size)}"
-      for n in ("conseils/index.json", "conseils/fil.json") if (depot / n).exists()),
+      for n in ("conseils/index.json",) if (depot / n).exists()),
 ]
 sortie.write_text("\n".join(resume + ["", "Les plus gros :"] + lignes) + "\n")
 print("\n".join("  " + l for l in resume + ["", "Les plus gros :"] + lignes[:15]))
@@ -462,7 +462,7 @@ PY
   gd count-objects -vH | grep -E "size-pack" | sed 's/^/  Clone (.git) : /'
   note "Liste complète : $TRAVAIL/tailles.txt"
   noter "Tailles : $(head -n 2 "$TRAVAIL/tailles.txt" | tr '\n' ';' )"
-  note "fil.json et index.json se chargent à l'ouverture du site ; un objets-<année>.json à l'ouverture d'une fiche."
+  note "index.json se charge à l'ouverture du site ; un objets-<année>.json à l'ouverture d'une fiche."
   say ""
   valider "Les tailles sont acceptables ?"
   suite
