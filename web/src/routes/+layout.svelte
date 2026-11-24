@@ -216,6 +216,13 @@
 			gap: var(--space-sm);
 			font-size: var(--text-xs);
 		}
+		/* Un libellé long (« Sources par commune ») passe sur deux lignes plutôt que de pousser le menu hors de l'écran. */
+		nav a {
+			max-width: 6.5em;
+			line-height: 1.15;
+			text-align: center;
+			white-space: normal;
+		}
 	}
 	/* Une page imprimée n'a que faire de la navigation. */
 	@media print {

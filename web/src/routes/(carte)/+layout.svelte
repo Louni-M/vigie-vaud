@@ -660,10 +660,13 @@
 		.app:not([data-affichage='panneau']) .vue-panneau {
 			visibility: hidden;
 		}
-		/* Sur téléphone, la légende passe en haut, sous la recherche : l'aperçu prend le bas de la carte. */
+		/* Sur téléphone, la légende passe en haut à gauche, sous la recherche : l'aperçu prend le bas de la carte, et les
+		   boutons de zoom la droite. */
 		.cote-legende {
 			top: 62px;
 			bottom: auto;
+			left: 10px;
+			right: auto;
 		}
 		/* La recherche, posée sur la carte, reste en tête du panneau. */
 		.app[data-affichage='panneau'] .recherche {

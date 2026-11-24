@@ -41,7 +41,7 @@
 	.legende {
 		display: flex;
 		flex-direction: column;
-		align-items: flex-end;
+		align-items: flex-start;
 		gap: 4px;
 		max-width: 280px;
 		font-size: 12px;
