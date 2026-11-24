@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carteConseil, lignesConseils, noteAutresCommunes } from './cartes.js';
+import { carteConseil, compteConseils, compteGrandConseil, lignesConseils, noteAutresCommunes } from './cartes.js';
 import { commune } from '#tests/faux-canton.js';
 import { conseilLausanne, conseilYverdon, grandConseil, ligneObjet } from '#tests/faux-conseils.js';
 
@@ -85,5 +85,19 @@ describe('lignes des conseils communaux, dans le volet Conseils', () => {
 	it('ne garde que les communes dont l’hôtel de ville est dans la zone affichée', () => {
 		const autourDeLausanne: [number, number, number, number] = [6.5, 46.45, 6.8, 46.65];
 		expect(lignesConseils(conseils, COMMUNES, autourDeLausanne).map((l) => l.commune)).toEqual(['Lausanne']);
+	});
+});
+
+describe('comptes des rubriques Conseils communaux et Grand Conseil', () => {
+	const conseils = [grandConseil({ objets: 1234 }), conseilLausanne(), conseilYverdon()];
+
+	it('Conseils communaux compte les communes suivies de la zone, comme la liste du volet', () => {
+		const autourDeLausanne: [number, number, number, number] = [6.5, 46.45, 6.8, 46.65];
+		expect(compteConseils(conseils, COMMUNES, autourDeLausanne)).toEqual({ etat: 'nombre', nombre: 1 });
+		expect(compteConseils(conseils, COMMUNES, [7.0, 46.0, 7.1, 46.1])).toEqual({ etat: 'nombre', nombre: 0 });
+	});
+
+	it('Grand Conseil compte tous ses Objets, pour tout le canton, pas les Objets récents', () => {
+		expect(compteGrandConseil(conseils)).toEqual({ etat: 'nombre', nombre: 1234 });
 	});
 });

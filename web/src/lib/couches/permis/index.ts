@@ -33,6 +33,22 @@ export const couchePermis: Couche<Parametres> = {
 	introuvable: (element) => `Aucun dossier n° ${element}.`,
 	titre: (element, nomDeLaFiche) => `Dossier n°\u00a0${element} – ${nomDeLaFiche} – Vigie Vaud`,
 	resume: 'les permis de construire à l’enquête, en direct depuis le canton',
+	// Son nombre est celui de sa liste à l'ouverture : les dossiers en cours de la zone, réglages par défaut.
+	rubriques: [
+		{
+			id: 'permis',
+			nom: 'Permis de construire',
+			phrase: 'Projets mis à l’enquête ou en attente de décision.',
+			rang: 10,
+			unite: { un: 'dossier en cours', plusieurs: 'dossiers en cours' },
+			portee: 'zone',
+			async compteur() {
+				const { permis, comptePermis } = await import('./donnees.svelte.js');
+				permis.chargerActifs().catch(() => {});
+				return (zone) => comptePermis(permis, zone);
+			}
+		}
+	],
 	// Les nouveaux dossiers sont lus dans les dossiers en cours, chargés une seule fois par visite et partagés
 	// avec la carte : un dossier reste « nouveau » même si son enquête est close. Une enquête qui ne commence que
 	// demain n'y est pas encore : « À venir » est fait des Séances annoncées.

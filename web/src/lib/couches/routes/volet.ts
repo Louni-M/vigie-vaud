@@ -1,6 +1,7 @@
 import type { Zone } from '#lib/types.js';
 import { ordreListe } from './cartes.js';
-import type { Restriction } from './donnees.svelte.js';
+import type { EtatCompte } from '#lib/registre/types.js';
+import type { DonneesRoutes, Restriction } from './donnees.svelte.js';
 import { ETATS, type EtatRestriction } from './etats.js';
 import { SORTES, type Sorte } from './sortes.js';
 import type { Point } from './trace.js';
@@ -83,4 +84,18 @@ export function visibles(restrictions: readonly Restriction[], filtres: Filtres,
 	return restrictions
 		.filter((r) => filtres.sortes.includes(r.sorte) && filtres.etats.includes(r.etat) && coupeLaZone(r.lignes, zone))
 		.sort(ordreListe);
+}
+
+/**
+ * Le nombre de la rubrique Routes : les restrictions de la zone, toutes puces allumées, comme la liste à l'arrivée.
+ * Tant que l'en cours ou l'à venir manque, il se charge, ou il est indisponible si la DGMR a échoué : jamais le
+ * nombre d'un seul des deux.
+ */
+export function compteRoutes(
+	donnees: Pick<DonneesRoutes, 'restrictions' | 'chargee' | 'source'>,
+	zone: Zone | null
+): EtatCompte {
+	if (FILTRES_INITIAUX.etats.every((e) => donnees.chargee(e)))
+		return { etat: 'nombre', nombre: visibles(donnees.restrictions, FILTRES_INITIAUX, zone).length };
+	return donnees.source.erreur ? { etat: 'indisponible' } : { etat: 'chargement' };
 }

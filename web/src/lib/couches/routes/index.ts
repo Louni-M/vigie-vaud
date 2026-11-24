@@ -1,6 +1,6 @@
 import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
 import { SORTES } from './sortes.js';
-import { FILTRES_INITIAUX, type Filtres } from './volet.js';
+import { compteRoutes, FILTRES_INITIAUX, type Filtres } from './volet.js';
 
 export { FILTRES_INITIAUX };
 
@@ -78,6 +78,22 @@ export const coucheRoutes: Couche<Filtres> = {
 	titre: (_, nomDeLaFiche) => `${RESTRICTION} – ${nomDeLaFiche} – Vigie Vaud`,
 	// Une phrase fixe : la page de la commune est pré-générée, les restrictions lues en direct.
 	resume: 'les restrictions de circulation en cours et à venir',
+	// Son nombre est celui de sa liste à l'ouverture : toutes les puces allumées, dans la zone de la carte.
+	rubriques: [
+		{
+			id: 'routes',
+			nom: 'Routes',
+			phrase: 'Fermetures, déviations et feux, en cours ou à venir.',
+			rang: 20,
+			unite: { un: 'restriction de circulation', plusieurs: 'restrictions de circulation', feminin: true },
+			portee: 'zone',
+			async compteur() {
+				const { routes } = await import('./donnees.svelte.js');
+				routes.charger().catch(() => {});
+				return (zone) => compteRoutes(routes, zone);
+			}
+		}
+	],
 	// Par leur début, jamais par leur levée, qui n'est pas datable : une restriction commencée avant la fenêtre
 	// n'entre pas, même si elle court encore. Une entrée par restriction, déviations comprises.
 	fil: {

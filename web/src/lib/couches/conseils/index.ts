@@ -1,7 +1,9 @@
 import type { Codec, Couche } from '#lib/registre/types.js';
 import { SOURCES } from '#lib/sources.js';
 import {
+	CLE_GRAND_CONSEIL,
 	FICHE_GRAND_CONSEIL,
+	lireCle,
 	TYPE_OBJETS,
 	TYPE_SEANCES,
 	libelleElement,
@@ -85,6 +87,42 @@ export const coucheConseils: Couche<ParametresConseils> = {
 	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
 	nonCouvert: (commune) => nonCouvertConseils(commune),
+	// Deux rubriques pour une couche : les conseils communaux ouvrent son volet, le Grand Conseil sa fiche. Leurs
+	// nombres viennent de `conseils/index.json`, lu une seule fois.
+	rubriques: [
+		{
+			id: 'conseils',
+			nom: 'Conseils communaux',
+			phrase: 'Séances et décisions des communes suivies.',
+			rang: 30,
+			unite: { un: 'commune suivie', plusieurs: 'communes suivies', feminin: true },
+			portee: 'zone',
+			async compteur() {
+				const [{ conseils }, { compteConseils }] = await Promise.all([import('./donnees.js'), import('./cartes.js')]);
+				const index = await conseils.index();
+				return (zone, communes) => compteConseils(index.conseils, communes, zone);
+			}
+		},
+		{
+			id: FICHE_GRAND_CONSEIL,
+			nom: 'Grand Conseil',
+			phrase: 'Textes déposés au Parlement vaudois, pour tout le canton.',
+			rang: 40,
+			unite: { un: 'texte déposé', plusieurs: 'textes déposés' },
+			portee: 'canton',
+			fiche: FICHE_GRAND_CONSEIL,
+			async compteur() {
+				const [{ conseils }, { compteGrandConseil }] = await Promise.all([
+					import('./donnees.js'),
+					import('./cartes.js')
+				]);
+				const index = await conseils.index();
+				return () => compteGrandConseil(index.conseils);
+			}
+		}
+	],
+	// Un élément du Grand Conseil va dans sa rubrique, celui d'un conseil communal dans Conseils communaux.
+	rubriqueDe: (cle) => (lireCle(cle)?.conseil === CLE_GRAND_CONSEIL ? FICHE_GRAND_CONSEIL : 'conseils'),
 	// Les Objets déposés et les Séances, lus dans le seul `conseils/fil.json` ; sans position, une entrée est dans
 	// la zone par les hôtels de ville de ses communes, et sans commune elle s'ouvre dans la fiche du Grand Conseil.
 	fil: {

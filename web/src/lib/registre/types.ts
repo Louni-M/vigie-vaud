@@ -151,6 +151,42 @@ export interface Fil {
 	sansCommune?: string;
 }
 
+/**
+ * Ce que la ligne d'une rubrique dit de son nombre : il se charge (la ligne garde sa hauteur), il est connu (zéro
+ * compris), ou sa source a échoué. Un nombre partiel n'est jamais montré : il passe pour « indisponible ».
+ */
+export type EtatCompte = { etat: 'chargement' } | { etat: 'nombre'; nombre: number } | { etat: 'indisponible' };
+
+/**
+ * Le compte d'une rubrique, pour la zone de la carte : celui de sa liste avec les réglages par défaut de sa couche.
+ * Il lit l'état des données de la couche, et suit donc leur chargement.
+ */
+export type Compter = (zone: Zone | null, communes: readonly Commune[]) => EtatCompte;
+
+/**
+ * Une rubrique du sommaire, déclarée par sa couche : un sujet tel que le visiteur le nomme. Elle ouvre le volet de
+ * sa couche, dont elle porte alors l'identifiant, ou sa fiche propre. Une couche peut en déclarer plusieurs
+ * (Conseils : Conseils communaux et Grand Conseil), au plus une à volet.
+ */
+export interface Rubrique {
+	/** Ce que porte le panneau quand elle est ouverte (`volet=routes`) ; celui de sa couche si elle ouvre son volet. */
+	id: string;
+	/** Son nom, au sommaire et en tête de sa liste (« Permis de construire »). */
+	nom: string;
+	/** Ce qu'on y trouve, en une phrase, sous son nom au sommaire. */
+	phrase: string;
+	/** Sa place au sommaire, par ordre croissant ; l'ordre des couches, celui du dessin, n'y compte pas. */
+	rang: number;
+	/** Ce que compte son nombre, au singulier et au pluriel (« dossier en cours »). */
+	unite: { un: string; plusieurs: string; feminin?: boolean };
+	/** `zone` : son nombre compte la zone de la carte ; `canton` : tout le canton, ses éléments n'ayant pas de position. */
+	portee: 'zone' | 'canton';
+	/** Sa fiche propre (son identifiant), qu'elle ouvre à la place d'un volet. */
+	fiche?: string;
+	/** Import dynamique, comme `localiser` : sa fonction de compte, une fois le chargement de ses données lancé. */
+	compteur(): Promise<Compter>;
+}
+
 /** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */
 export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ ctx: Contexte<P> } & Props> }>;
 
@@ -206,6 +242,10 @@ export interface Couche<P = unknown> {
 	nonCouvert?(commune: Commune): string | MessageNonCouvert;
 	/** Ce que la couche apporte au fil cantonal, quelle que soit son activation. */
 	fil?: Fil;
+	/** Ses rubriques au sommaire ; une couche sans rubrique n'y est pas (Hôtels de ville). */
+	rubriques?: Rubrique[];
+	/** La rubrique (son identifiant) où va un élément, d'après sa clé ; sans elle, la première de `rubriques`. */
+	rubriqueDe?(element: string): string;
 	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */
 	composants: {
 		Carte: Chargeur<P>;

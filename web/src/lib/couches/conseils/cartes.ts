@@ -1,6 +1,7 @@
 import type { ConseilIndexe } from '#lib/schema.js';
 import { donneDesObjets, libelleDonne } from '#lib/sources.js';
 import type { Commune, Zone } from '#lib/types.js';
+import type { EtatCompte } from '#lib/registre/types.js';
 
 /** Ce que montre la carte d'un conseil couvert, dans le volet Conseils. */
 export interface CarteConseil {
@@ -74,6 +75,22 @@ export function lignesConseils(
 			return [{ cle: conseil.cle, commune: commune.nom, slug: commune.slug, detail }];
 		})
 		.sort((a, b) => a.commune.localeCompare(b.commune, 'fr'));
+}
+
+/** Le nombre de la rubrique Conseils communaux : les communes suivies de la zone, une par ligne de la liste. */
+export const compteConseils = (
+	conseils: readonly ConseilIndexe[],
+	communes: readonly Commune[],
+	zone: Zone | null
+): EtatCompte => ({ etat: 'nombre', nombre: lignesConseils(conseils, communes, zone).length });
+
+/**
+ * Le nombre de la rubrique Grand Conseil : tous ses Objets, toutes années confondues, ceux que sa fiche liste sous
+ * « Tous les objets », pour tout le canton.
+ */
+export function compteGrandConseil(conseils: readonly ConseilIndexe[]): EtatCompte {
+	const gc = conseils.find((c) => c.commune === null);
+	return gc ? { etat: 'nombre', nombre: gc.objets } : { etat: 'indisponible' };
 }
 
 /**
