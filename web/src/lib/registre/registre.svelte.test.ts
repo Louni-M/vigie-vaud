@@ -345,9 +345,15 @@ describe('couche dessinée', () => {
 		expect(registre.dessinee).toBe('permis');
 		expect(registre.panneau).toBe('routes');
 
+		// La liste des restrictions reste chargée et comptée pendant que la carte dessine les permis de la fiche.
+		const routes = registre.contexte(COUCHES[2]);
+		expect([routes.listee, routes.dessinee]).toEqual([true, false]);
+		expect(registre.contexte(COUCHES[0]).dessinee).toBe(true);
+
 		registre.onglet = 'routes';
 		expect(registre.dessinee).toBe('routes');
 		expect(registre.panneau).toBe('routes');
+		expect([routes.listee, routes.dessinee]).toEqual([true, true]);
 	});
 
 	it('prend l’onglet de l’élément ouvert dans la fiche commune', async () => {

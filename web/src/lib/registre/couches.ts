@@ -5,7 +5,7 @@ import { coucheRoutes } from '#lib/couches/routes/index.js';
 import type { CoucheInscrite } from './types.js';
 
 /**
- * Les couches inscrites. Leur ordre est celui du rail et celui du dessin : la première est dessinée
+ * Les couches inscrites. Leur ordre est celui du dessin et des onglets de la fiche commune : la première est dessinée
  * en dessous des autres. Hôtels de ville est dessinée en dernier, au-dessus de toutes.
  */
 export const COUCHES: readonly CoucheInscrite[] = [couchePermis, coucheConseils, coucheRoutes, coucheHotelsDeVille];

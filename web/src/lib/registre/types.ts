@@ -220,7 +220,7 @@ export interface Couche<P = unknown> {
 	rubriques?: Rubrique[];
 	/** La rubrique (son identifiant) où va un élément, d'après sa clé ; sans elle, la première de `rubriques`. */
 	rubriqueDe?(element: string): string;
-	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */
+	/** Chargés à la demande : la `Carte` quand la couche est dessinée, le `Volet` à l'ouverture de sa rubrique. */
 	composants: {
 		Carte: Chargeur<P>;
 		Volet?: Chargeur<P>;

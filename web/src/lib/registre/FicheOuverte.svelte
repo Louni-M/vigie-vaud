@@ -4,7 +4,7 @@
 	 * jamais les deux.
 	 *
 	 * Fiche commune : en-tête (nom de la commune, adresse de son hôtel de ville ou « position approximative »,
-	 * anciennes communes et anciens noms), puis un onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
+	 * anciennes communes et anciens noms), puis un onglet par couche inscrite qui a un `Onglet`, dessinée ou non. La barre d'onglets est affichée même s'il n'y
 	 * a qu'un onglet ; sous le nom de chaque onglet, les badges de fraîcheur des seules sources qui concernent la
 	 * commune (`sourcesDeLOnglet`). Pour une commune que la couche ne couvre pas, « Non couvert » passe en tête de
 	 * l'onglet, qui reste rendu. L'onglet choisi est tenu par le registre (`ouvrir({ commune, onglet })` le choisit) :

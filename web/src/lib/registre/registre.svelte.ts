@@ -1,9 +1,10 @@
 import { createContext, untrack } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
+import { browser } from '$app/env';
 import { resolve } from '$app/paths';
 import type { Map as MlMap } from 'maplibre-gl';
 import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
-import type { Chargeur, Cible, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert, Rubrique } from './types.js';
+import type { Chargeur, Cible, Compter, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert, Rubrique } from './types.js';
 import { ecrireUrl, lireUrl, panneauDeLElement, SOMMAIRE, type EtatUrl } from './url.js';
 import { coucheDessinee, toujoursSurLaCarte } from './dessin.js';
 import { ongletCourant as ongletMontre, ongletsDeLaFiche } from './onglet.js';
@@ -64,10 +65,11 @@ const ouvertureDe = (f: Fiche | null, o: Ouvert | null): Ouverture => ({
 });
 
 /**
- * Le registre des couches à l'exécution : fiche ouverte (commune ou fiche propre), couches activées, paramètres des couches, vue,
- * élément ouvert, volet ouvert, vue du téléphone et onglet de la fiche commune. Il est le seul maître de l'adresse :
- * `brancherAdresse` synchronise son état avec la requête (`replace` pour la vue, les réglages et l'onglet, `push` pour
- * l'ouverture d'un élément ou d'une fiche, d'un volet ou d'une vue du téléphone).
+ * Le registre des couches à l'exécution : fiche ouverte (commune ou fiche propre), panneau (le sommaire ou une
+ * rubrique), couche dessinée, paramètres des couches, vue, élément ouvert, vue du téléphone et onglet de la fiche
+ * commune. Il est le seul maître de l'adresse : `brancherAdresse` synchronise son état avec la requête (`replace` pour
+ * la vue, les réglages et l'onglet, `push` pour l'ouverture d'un élément ou d'une fiche, d'une rubrique ou d'une vue
+ * du téléphone).
  * `communes` donne l'index des communes, connu dès le rendu de la page pré-générée. `navigateur` est son seul accès
  * à la navigation, à l'adresse et à l'historique : celui de SvelteKit sur le site (`navigateurSvelteKit`).
  */
@@ -188,9 +190,14 @@ export function creerRegistre(
 		return charges(`${c.id}:${nom}`, chargeur);
 	}
 
-	/** La fonction de compte d'une rubrique, importée une seule fois ; réimportée si l'import a échoué. */
+	/**
+	 * La fonction de compte d'une rubrique, importée une seule fois ; réimportée si l'import a échoué. Hors du navigateur
+	 * (pré-génération des pages), elle n'est jamais lancée : le compte lirait une source pendant la construction du
+	 * site, et la page pré-générée garde l'attente du nombre.
+	 */
 	const compteurs = memoPromesse<string>();
-	const compteur = (r: Rubrique) => compteurs(r.id, () => r.compteur());
+	const compteur = (r: Rubrique): Promise<Compter> =>
+		browser ? compteurs(r.id, () => r.compteur()) : new Promise<Compter>(() => {});
 
 	/* ---- Actions ---- */
 

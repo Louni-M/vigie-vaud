@@ -123,10 +123,10 @@ export interface Couverture {
 	 */
 	couvre(couche: string, bfs: number): boolean;
 	/**
-	 * Communes grisées sur la carte (bureau) quand le volet de cette couche est ouvert : celles qu'elle ne couvre
-	 * pas. Sans volet ouvert, aucune. Une panne ne grise rien : seul le mode compte, jamais l'état.
+	 * Communes grisées sur la carte quand cette couche est la couche dessinée : celles qu'elle ne couvre pas. Sans
+	 * couche dessinée, aucune. Une panne ne grise rien : seul le mode compte, jamais l'état.
 	 */
-	grisees(volet: string | null): number[];
+	grisees(couche: string | null): number[];
 }
 
 /**

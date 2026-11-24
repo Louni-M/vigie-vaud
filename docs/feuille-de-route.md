@@ -38,7 +38,7 @@ météo, radios, accidents.
 | Jalon | Contenu |
 |---|---|
 | **J0 Socle** | Renommage, licence, registre des couches, fiche commune à onglets (seulement ceux des couches présentes), hôtels de ville, dépôt de données et cron (qui surveille les sources pour la Couverture), page Couverture, badges de fraîcheur, permis migrés en couche, suppression du code de la version hébergée ; à la fin, dépôt rendu public sous le nom `vigie-vaud` et GitHub Pages activé. Décisions : carte [#1](https://github.com/Louni-M/CyberSwissNews/issues/1) |
-| **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal |
+| **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal (retiré depuis, ADR 0018) |
 | **J2 Routes** | Restrictions de circulation DGMR en cours et à venir |
 | **J3 Conseils communaux** | Scrapers des sites communaux pour couvrir le plus de communes possible dans la couche Conseils, plateforme par plateforme : i-web, Quicksite (avec Montreux et Vevey), Webcommunes et COMMUNEapp, publiés l'un après l'autre, en une étape de J3 par plateforme, chacune avec sa branche et sa PR (environ 80 communes et 230 000 habitants) ; une commune est couverte dès ses Séances. Décisions : carte « J3 Conseils communaux spécifié » ; spécification [#144](https://github.com/Louni-M/vigie-vaud/issues/144) |
 | **J4 Trains** | Panneau des perturbations CFF filtré sur Vaud ; gares sur la carte, départs et retards au clic |

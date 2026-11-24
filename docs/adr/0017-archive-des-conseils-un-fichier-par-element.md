@@ -2,7 +2,7 @@
 
 Le cron écrit chaque Objet et chaque Séance dans son propre fichier du dépôt de données
 (`conseils/vd/objets/26_INT_140.json`, `conseils/5586/seances/2026-10-06.json`) : c'est l'archive de l'ADR-0008, et
-le site le charge quand on ouvre l'élément. Ce que le site lit pour lister (index des conseils, fil, listes par conseil
+le site le charge quand on ouvre l'élément. Ce que le site lit pour lister (index des conseils, listes par conseil
 et par année, « Au Grand Conseil » par commune) est un ensemble de **fichiers de lecture** que le cron reconstruit en
 entier depuis l'archive à chaque import. Un élément est nommé par son conseil (`body_key` en minuscules, le n° OFS pour
 une commune) et par la référence que lui donne le conseil : le numéro d'un Objet, le jour d'une Séance. L'`id`

@@ -243,7 +243,7 @@
 		};
 	});
 
-	// Contrôle d'attribution, refait quand la liste change (couche activée ou désactivée).
+	// Contrôle d'attribution, refait quand la liste change (une autre couche dessinée).
 	$effect(() => {
 		const textes = attribution;
 		if (!pret || !map || !maplibre) return;
