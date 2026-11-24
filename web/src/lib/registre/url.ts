@@ -1,6 +1,6 @@
 import { lireAffichage, type Affichage } from '#lib/socle/telephone.js';
 import type { Centre } from '#lib/types.js';
-import { rubriqueDeLElement, rubriquesDuSommaire } from './rubriques.js';
+import { rubriqueAVolet, rubriqueDeLElement } from './rubriques.js';
 import type { CoucheInscrite, Lecteur, Ouvert } from './types.js';
 
 /** Le panneau à l'arrivée : le sommaire, à la place d'une rubrique ouverte. */
@@ -44,10 +44,6 @@ function lireVue(texte: string | null): Centre | null {
 	return v?.length === 3 && v.every(Number.isFinite) ? { lat: v[0], lon: v[1], zoom: v[2] } : null;
 }
 
-/** Une rubrique qui ouvre le volet de sa couche porte cet identifiant. */
-const aVolet = (couches: readonly CoucheInscrite[], id: string) =>
-	rubriquesDuSommaire(couches).some(({ rubrique: r }) => !r.fiche && r.id === id);
-
 /**
  * Le panneau qu'ouvre une adresse sans `volet=` : la rubrique de l'élément ouvert, si elle a un volet ; sinon le
  * sommaire.
@@ -69,7 +65,7 @@ export function lireUrl(couches: readonly CoucheInscrite[], params: Lecteur): Et
 		vue: lireVue(params.get('vue')),
 		ouvert,
 		parametres: Object.fromEntries(couches.flatMap((c) => (c.codec ? [[c.id, c.codec.lire(params)]] : []))),
-		panneau: volet === null ? panneauDeLElement(couches, ouvert) : aVolet(couches, volet) ? volet : SOMMAIRE,
+		panneau: volet === null ? panneauDeLElement(couches, ouvert) : rubriqueAVolet(couches, volet) ? volet : SOMMAIRE,
 		affichage: lireAffichage(affichage),
 		onglet: couches.find((c) => c.id === onglet && c.composants.Onglet)?.id ?? null
 	};

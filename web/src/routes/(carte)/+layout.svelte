@@ -33,7 +33,7 @@
 	import { legendeDeLaCarte } from '#lib/registre/dessin.js';
 	import Legende from '#lib/socle/Legende.svelte';
 	import { clicSimple } from '#lib/registre/liens.js';
-	import { rubriquesDuSommaire } from '#lib/registre/rubriques.js';
+	import { rubriqueAVolet } from '#lib/registre/rubriques.js';
 	import Sommaire from '#lib/registre/Sommaire.svelte';
 	import Volet from '#lib/registre/Volet.svelte';
 	import FicheOuverte from '#lib/registre/FicheOuverte.svelte';
@@ -284,9 +284,7 @@
 	/* ---- Panneau : le sommaire ou une rubrique ---- */
 
 	/** La rubrique que montre le panneau, et la couche qui la déclare ; `null` : le sommaire. */
-	const ouverte = $derived(
-		rubriquesDuSommaire(COUCHES).find(({ rubrique: r }) => !r.fiche && r.id === registre.panneau) ?? null
-	);
+	const ouverte = $derived(rubriqueAVolet(COUCHES, registre.panneau));
 
 	/** Une ligne du sommaire ouvre sa rubrique : le focus va sur son titre. */
 	async function ouvrirRubrique(id: string) {

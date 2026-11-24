@@ -320,6 +320,28 @@ describe('panneau : le sommaire ou une rubrique', () => {
 		expect(registre.panneau).toBe(SOMMAIRE);
 	});
 
+	it('ouvre un élément cherché dans sa rubrique, en une seule entrée que le retour défait', async () => {
+		const { nav, registre } = await arriver('/');
+		registre.ouvrir(DOSSIER, { rubrique: true });
+		await calme();
+		expect(nav.historique).toEqual(['/', '/commune/pully?d=1']);
+		expect(registre.panneau).toBe('permis');
+
+		await nav.precedent();
+		await calme();
+		expect(nav.adresse).toBe('/');
+		expect(registre.panneau).toBe(SOMMAIRE);
+	});
+
+	it('laisse le panneau tel quel quand l’élément cherché est introuvable', async () => {
+		const { nav, registre } = await arriver('/');
+		registre.ouvrir({ couche: 'permis', element: '404' }, { rubrique: true });
+		await calme();
+		expect(registre.avis).toBe('Aucun dossier n° 404.');
+		expect(registre.panneau).toBe(SOMMAIRE);
+		expect(nav.historique).toEqual(['/']);
+	});
+
 	it('reste sur le sommaire à la fiche du Grand Conseil, dont la rubrique n’a pas de volet', async () => {
 		const { registre } = await arriver('/grand-conseil');
 		expect(registre.panneau).toBe(SOMMAIRE);

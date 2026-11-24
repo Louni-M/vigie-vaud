@@ -7,6 +7,7 @@ import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
 import type { Chargeur, Cible, Compter, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert, Rubrique } from './types.js';
 import { ecrireUrl, lireUrl, panneauDeLElement, SOMMAIRE, type EtatUrl } from './url.js';
 import { coucheDessinee, toujoursSurLaCarte } from './dessin.js';
+import { rubriqueAVolet } from './rubriques.js';
 import { ongletCourant as ongletMontre, ongletsDeLaFiche } from './onglet.js';
 import {
 	affichageApres,
@@ -344,13 +345,18 @@ export function creerRegistre(
 	 * une entrée d'historique : le retour du navigateur ramène à la fiche précédente. Passer d'un élément à un autre
 	 * dans la même fiche remplace l'entrée.
 	 */
-	async function ouvrirElement(cible: Ouvert & { position?: [number, number] }) {
+	async function ouvrirElement(cible: Ouvert & { position?: [number, number] }, rubrique: boolean) {
 		const o: Ouvert = { couche: cible.couche, element: cible.element };
 		avis = null;
+		/** Le panneau passe à la rubrique de l'élément, avec lui : une fois trouvé, dans l'entrée qu'il écrit. */
+		const suivreRubrique = () => {
+			if (rubrique) panneau = panneauDeLElement(couches, o);
+		};
 		if (cible.position) carteSocle()?.voler(cible.position[0], cible.position[1], ZOOM_ELEMENT);
 		// Téléphone : depuis le panneau, la carte tout de suite, pour l'aperçu.
 		const quitte = telephone() && affichageOuverture(affichage) !== affichage;
 		if (memeElement(ouvert, o)) {
+			suivreRubrique();
 			if (quitte) montrer(affichageOuverture(affichage));
 			return;
 		}
@@ -367,6 +373,7 @@ export function creerRegistre(
 		if (lieu === 'echec') return void (avis = avisNonCherche(couches, o));
 		const k = corrigerChemin(fiche, lieu);
 		if (k === 'retirer') return introuvable(o);
+		suivreRubrique();
 		if (!cible.position) montrerElement(lieu!, k ?? fiche!, false);
 		if (k === null) {
 			// Même fiche : l'adresse suit l'état (entrée poussée si rien n'était ouvert, ou si l'on a quitté le panneau du
@@ -421,7 +428,7 @@ export function creerRegistre(
 
 	/**
 	 * `rubrique` : l'élément ouvert vient de la recherche, et le panneau passe à sa rubrique (le sommaire si elle n'a
-	 * pas de volet), dans la même entrée d'historique.
+	 * pas de volet) une fois l'élément trouvé, dans l'entrée d'historique qu'il écrit ; introuvable, rien ne change.
 	 */
 	function ouvrir(cible: Cible, { rubrique = false }: { rubrique?: boolean } = {}) {
 		if ('commune' in cible) {
@@ -429,8 +436,7 @@ export function creerRegistre(
 			return ouvrirFiche({ commune: cible.commune });
 		}
 		if ('fiche' in cible) return ouvrirFiche({ fiche: cible.fiche });
-		if (rubrique) panneau = panneauDeLElement(couches, cible);
-		ouvrirElement(cible);
+		ouvrirElement(cible, rubrique);
 	}
 
 	/**
@@ -471,7 +477,7 @@ export function creerRegistre(
 				return c.permanente || c.id === dessinee;
 			},
 			get listee() {
-				return (c.rubriques ?? []).some((r) => !r.fiche && r.id === panneau);
+				return rubriqueAVolet(couches, panneau)?.couche === c;
 			},
 			get ouvert() {
 				return ouvert;

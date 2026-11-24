@@ -16,6 +16,10 @@ export function rubriquesDuSommaire(couches: readonly CoucheInscrite[]): Rubriqu
 		.sort((a, b) => a.rubrique.rang - b.rubrique.rang);
 }
 
+/** La rubrique à volet d'identifiant `id` (celle que le panneau ouvre sous `volet=id`) ; `null` s'il n'y en a pas. */
+export const rubriqueAVolet = (couches: readonly CoucheInscrite[], id: string): RubriqueInscrite | null =>
+	rubriquesDuSommaire(couches).find(({ rubrique: r }) => !r.fiche && r.id === id) ?? null;
+
 /** La rubrique où va un élément : celle que sa couche nomme d'après sa clé, sinon sa première ; `null` sans rubrique. */
 export function rubriqueDeLElement(couches: readonly CoucheInscrite[], o: Ouvert): RubriqueInscrite | null {
 	const couche = couches.find((c) => c.id === o.couche);

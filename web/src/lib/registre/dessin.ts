@@ -1,7 +1,7 @@
 // Ce que la carte dessine, tiré de l'état du registre : une seule couche à la fois, en plus de celles qui le sont
 // toujours. Le dessin des couches, le grisage, la légende et l'attribution de la carte en dépendent.
 import { nomOnglet } from './onglet.js';
-import { rubriquesDuSommaire } from './rubriques.js';
+import { rubriqueAVolet } from './rubriques.js';
 import type { CoucheInscrite, EntreeLegende } from './types.js';
 
 /**
@@ -13,7 +13,7 @@ export function coucheDessinee(
 	{ panneau, ongletCommune }: { panneau: string; ongletCommune: string | null }
 ): string | null {
 	if (ongletCommune !== null) return ongletCommune;
-	return rubriquesDuSommaire(couches).find(({ rubrique: r }) => !r.fiche && r.id === panneau)?.couche.id ?? null;
+	return rubriqueAVolet(couches, panneau)?.couche.id ?? null;
 }
 
 /**
