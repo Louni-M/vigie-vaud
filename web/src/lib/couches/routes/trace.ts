@@ -32,7 +32,7 @@ export function longueur(lignes: Point[][]): number {
 
 /**
  * Le point à mi-longueur du tracé, `MultiLineString` comprise (les morceaux mis bout à bout, dans leur ordre).
- * C'est le point de la carte sous le zoom 11, la position de la restriction et celle de son entrée dans le fil.
+ * C'est le point de la carte sous le zoom 11 et la position de la restriction.
  */
 export function milieu(lignes: Point[][]): Point {
 	let reste = longueur(lignes) / 2;

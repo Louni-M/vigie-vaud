@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { visibles, type Parametres } from './donnees.svelte.js';
+import { comptePermis, visibles, type Parametres } from './donnees.svelte.js';
 import type { Dossier, PointHisto, Zone } from '#lib/types.js';
 
 /** Zone visible : Lausanne et environs. */
@@ -108,5 +108,27 @@ describe('visibles', () => {
 
 	it('ne montre rien tant que la zone visible est inconnue', () => {
 		expect(visibles(null, EN_COURS, { actifs: [dossier(1)], histo: [] })).toEqual([]);
+	});
+});
+
+describe('compte de la rubrique Permis de construire', () => {
+	const source = { erreur: null };
+	const actifs = [dossier(1), dossier(2, { statut: 'procedure' }), dossier(3, { lat: 46.55 }), dossier(4, { lon: 7.2 })];
+
+	it('compte les dossiers en cours de la zone, comme la liste avec les réglages par défaut', () => {
+		expect(comptePermis({ actifs, histo: [], source }, ZONE)).toEqual({ etat: 'nombre', nombre: 3 });
+		expect(visibles(ZONE, EN_COURS, { actifs, histo: [] })).toHaveLength(3);
+	});
+
+	it('ne suit pas les filtres de l’adresse : seuls les réglages par défaut comptent', () => {
+		expect(visibles(ZONE, { ...EN_COURS, statuts: ['procedure'] }, { actifs, histo: [] })).toHaveLength(1);
+		expect(comptePermis({ actifs, histo: [], source }, ZONE)).toEqual({ etat: 'nombre', nombre: 3 });
+	});
+
+	it('se charge tant que les dossiers en cours ne sont pas là, et est indisponible si le canton a échoué', () => {
+		expect(comptePermis({ actifs: [], histo: [], source }, ZONE)).toEqual({ etat: 'chargement' });
+		expect(comptePermis({ actifs: [], histo: [], source: { erreur: 'indisponible' } }, ZONE)).toEqual({
+			etat: 'indisponible'
+		});
 	});
 });

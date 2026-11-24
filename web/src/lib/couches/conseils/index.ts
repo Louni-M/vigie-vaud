@@ -1,9 +1,9 @@
 import type { Codec, Couche } from '#lib/registre/types.js';
 import { SOURCES } from '#lib/sources.js';
 import {
+	CLE_GRAND_CONSEIL,
 	FICHE_GRAND_CONSEIL,
-	TYPE_OBJETS,
-	TYPE_SEANCES,
+	lireCle,
 	libelleElement,
 	messageIntrouvable,
 	titreElement
@@ -49,11 +49,8 @@ export const codecConseils: Codec<ParametresConseils> = {
 export const coucheConseils: Couche<ParametresConseils> = {
 	id: 'conseils',
 	nom: 'Conseils',
-	nomOnglet: 'Conseil',
 	sources: sourcesDeLaCouche(),
 	permanente: false,
-	activeParDefaut: true,
-	icone: { signe: 'C', couleur: COULEUR_CONSEILS },
 	// La fiche du Grand Conseil, au Parlement : son marqueur et sa carte dans le volet l'ouvrent.
 	fiche: {
 		id: FICHE_GRAND_CONSEIL,
@@ -85,19 +82,49 @@ export const coucheConseils: Couche<ParametresConseils> = {
 	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
 	nonCouvert: (commune) => nonCouvertConseils(commune),
-	// Les Objets déposés et les Séances, lus dans le seul `conseils/fil.json` ; sans position, une entrée est dans
-	// la zone par les hôtels de ville de ses communes, et sans commune elle s'ouvre dans la fiche du Grand Conseil.
-	fil: {
-		types: [
-			{ id: TYPE_OBJETS, nom: 'Objets', signe: '§', couleur: COULEUR_CONSEILS },
-			{ id: TYPE_SEANCES, nom: 'Séances', signe: '◷', couleur: COULEUR_CONSEILS }
+	// Le marqueur du Grand Conseil est toujours sur la carte ; la rubrique Conseils communaux grise les autres communes.
+	legende: {
+		toujours: [
+			{ signe: 'fronton', couleur: COULEUR_CONSEILS, texte: 'Grand Conseil, au Parlement\u00a0: un clic ouvre sa fiche.' }
 		],
-		async entrees(depuis) {
-			const { conseils } = await import('./donnees.js');
-			return conseils.entreesFil(depuis);
-		},
-		sansCommune: 'Grand Conseil, sans commune nommée'
+		dessinee: [{ signe: 'aplat', couleur: '#5b6170', texte: 'Commune grisée\u00a0: pas de conseil suivi.' }]
 	},
+	// Deux rubriques pour une couche : les conseils communaux ouvrent son volet, le Grand Conseil sa fiche. Leurs
+	// nombres viennent de `conseils/index.json`, lu une seule fois.
+	rubriques: [
+		{
+			id: 'conseils',
+			nom: 'Conseils communaux',
+			phrase: 'Séances et décisions des communes suivies.',
+			rang: 30,
+			unite: { un: 'commune suivie', plusieurs: 'communes suivies', feminin: true },
+			portee: 'zone',
+			async compteur() {
+				const [{ conseils }, { compteConseils }] = await Promise.all([import('./donnees.js'), import('./cartes.js')]);
+				const index = await conseils.index();
+				return (zone, communes) => compteConseils(index.conseils, communes, zone);
+			}
+		},
+		{
+			id: FICHE_GRAND_CONSEIL,
+			nom: 'Grand Conseil',
+			phrase: 'Textes déposés au Parlement vaudois, pour tout le canton.',
+			rang: 40,
+			unite: { un: 'texte déposé', plusieurs: 'textes déposés' },
+			portee: 'canton',
+			fiche: FICHE_GRAND_CONSEIL,
+			async compteur() {
+				const [{ conseils }, { compteGrandConseil }] = await Promise.all([
+					import('./donnees.js'),
+					import('./cartes.js')
+				]);
+				const index = await conseils.index();
+				return () => compteGrandConseil(index.conseils);
+			}
+		}
+	],
+	// Un élément du Grand Conseil va dans sa rubrique, celui d'un conseil communal dans Conseils communaux.
+	rubriqueDe: (cle) => (lireCle(cle)?.conseil === CLE_GRAND_CONSEIL ? FICHE_GRAND_CONSEIL : 'conseils'),
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),

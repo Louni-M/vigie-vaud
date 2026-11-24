@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fauxDgmr, heureLocale, restriction, type RestrictionDgmr } from '#tests/faux-dgmr.js';
 import { creerDonneesRoutes, type Restriction } from './donnees.svelte.js';
 import { SORTES } from './sortes.js';
-import { basculer, FILTRES_INITIAUX, sortesDesPuces, visibles, type Filtres } from './volet.js';
+import { basculer, compteRoutes, FILTRES_INITIAUX, sortesDesPuces, visibles, type Filtres } from './volet.js';
 
 // Le module de données refuse d'interroger la DGMR ailleurs que dans un navigateur.
 vi.mock('$app/env', () => ({ browser: true }));
@@ -91,6 +91,15 @@ describe('visibles', () => {
 		});
 		expect(ids(visibles(rs, FILTRES_INITIAUX, ZONE))).toEqual([4, 2, 1, 3, 6, 7, 5]);
 	});
+
+	it('range par début, le plus récent d’abord, quand on le demande', async () => {
+		const quand = (debut: string, fin: string) => ({ DATE_DEBUT: heureLocale(debut), DATE_FIN: heureLocale(fin) });
+		const rs = await lues({
+			enCours: [restriction(1, quand('2026-10-01', '2026-10-23')), restriction(2, quand('2026-10-15', '2026-11-30'))],
+			aVenir: [restriction(3, quand('2026-10-28', '2026-11-06')), restriction(4, quand('2026-10-21', '2026-11-06'))]
+		});
+		expect(ids(visibles(rs, { ...FILTRES_INITIAUX, ordre: 'recent' }, ZONE))).toEqual([3, 4, 2, 1]);
+	});
 });
 
 describe('puces des sortes', () => {
@@ -119,5 +128,33 @@ describe('clic sur une puce', () => {
 		expect(basculer(['fermeture', 'feux'], 'feux')).toEqual(['fermeture']);
 		expect(basculer(['fermeture'], 'feux')).toEqual(['fermeture', 'feux']);
 		expect(basculer([], 'a_venir')).toEqual(['a_venir']);
+	});
+});
+
+describe('compte de la rubrique Routes', () => {
+	beforeEach(() => vi.useFakeTimers());
+	afterEach(() => vi.useRealTimers());
+
+	it('compte les restrictions de la zone avec toutes les puces allumées, zéro compris', async () => {
+		const dgmr = fauxDgmr({ enCours: [restriction(1), restriction(2, { RESTRICTION: 'Feux' })], aVenir: [restriction(3)] });
+		const routes = creerDonneesRoutes({ fetch: dgmr.fetch, maintenant });
+		await routes.rattachees();
+		expect(compteRoutes(routes, ZONE)).toEqual({ etat: 'nombre', nombre: 3 });
+		expect(compteRoutes(routes, [7.0, 46.7, 7.1, 46.8])).toEqual({ etat: 'nombre', nombre: 0 });
+	});
+
+	it('se charge tant que l’en cours ou l’à venir manque', () => {
+		const routes = creerDonneesRoutes({ fetch: fauxDgmr({ enCours: [restriction(1)] }).fetch, maintenant });
+		expect(compteRoutes(routes, ZONE)).toEqual({ etat: 'chargement' });
+	});
+
+	it('est indisponible quand l’à venir a échoué, jamais le nombre de l’en cours seul', async () => {
+		const dgmr = fauxDgmr({ enCours: [restriction(1)], aVenir: [restriction(2)] });
+		dgmr.panne(500, 595);
+		const routes = creerDonneesRoutes({ fetch: dgmr.fetch, maintenant });
+		routes.charger().catch(() => {});
+		await vi.advanceTimersByTimeAsync(6_000);
+		expect(routes.restrictions).toHaveLength(1);
+		expect(compteRoutes(routes, ZONE)).toEqual({ etat: 'indisponible' });
 	});
 });

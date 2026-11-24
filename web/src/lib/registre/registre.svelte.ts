@@ -1,10 +1,14 @@
 import { createContext, untrack } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
+import { browser } from '$app/env';
 import { resolve } from '$app/paths';
 import type { Map as MlMap } from 'maplibre-gl';
 import type { Commune, Centre, Emprise, Zone } from '#lib/types.js';
-import type { Chargeur, Cible, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert } from './types.js';
-import { ecrireUrl, FIL, lireUrl, type EtatUrl } from './url.js';
+import type { Chargeur, Cible, Compter, Contexte, CoucheInscrite, Fiche, Lecteur, Lieu, Ouvert, Rubrique } from './types.js';
+import { ecrireUrl, lireUrl, panneauDeLElement, SOMMAIRE, type EtatUrl } from './url.js';
+import { coucheDessinee, toujoursSurLaCarte } from './dessin.js';
+import { rubriqueAVolet } from './rubriques.js';
+import { ongletCourant as ongletMontre, ongletsDeLaFiche } from './onglet.js';
 import {
 	affichageApres,
 	affichageArrivee,
@@ -27,11 +31,10 @@ import { cheminFiche } from './liens.js';
 import { titreFiche } from './tete.js';
 import { avisIntrouvable, avisNonCherche } from './avis.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
-import { zoneDuFil } from '#lib/fil/fil.js';
 import type { Navigateur, OptionsNavigation } from './navigateur.js';
 import { memoPromesse } from '#lib/chargement.js';
 
-export { FIL };
+export { SOMMAIRE };
 
 /** Ce que le registre demande à la carte du socle quand l'adresse change sous lui. */
 export interface VueCarte {
@@ -63,10 +66,11 @@ const ouvertureDe = (f: Fiche | null, o: Ouvert | null): Ouverture => ({
 });
 
 /**
- * Le registre des couches à l'exécution : fiche ouverte (commune ou fiche propre), couches activées, paramètres des couches, vue,
- * élément ouvert, volet ouvert, vue du téléphone et onglet de la fiche commune. Il est le seul maître de l'adresse :
- * `brancherAdresse` synchronise son état avec la requête (`replace` pour la vue, les réglages et l'onglet, `push` pour
- * l'ouverture d'un élément ou d'une fiche, d'un volet ou d'une vue du téléphone).
+ * Le registre des couches à l'exécution : fiche ouverte (commune ou fiche propre), panneau (le sommaire ou une
+ * rubrique), couche dessinée, paramètres des couches, vue, élément ouvert, vue du téléphone et onglet de la fiche
+ * commune. Il est le seul maître de l'adresse : `brancherAdresse` synchronise son état avec la requête (`replace` pour
+ * la vue, les réglages et l'onglet, `push` pour l'ouverture d'un élément ou d'une fiche, d'une rubrique ou d'une vue
+ * du téléphone).
  * `communes` donne l'index des communes, connu dès le rendu de la page pré-générée. `navigateur` est son seul accès
  * à la navigation, à l'adresse et à l'historique : celui de SvelteKit sur le site (`navigateurSvelteKit`).
  */
@@ -78,7 +82,6 @@ export function creerRegistre(
 	const { page } = navigateur;
 	const depart = lireUrl(couches, new URLSearchParams());
 
-	let actives = $state<string[]>(depart.actives);
 	let parametres = $state.raw<Record<string, unknown>>(depart.parametres);
 	let vue = $state<Centre | null>(null);
 	/** Dernier centre de la carte, même quand c'est une vue par défaut (canton, commune cadrée). */
@@ -86,13 +89,11 @@ export function creerRegistre(
 	let zone = $state.raw<Zone | null>(null);
 	let ouvert = $state<Ouvert | null>(null);
 	let map = $state.raw<MlMap | null>(null);
-	/** Zone du fil : celle du dernier déplacement fait par la personne (`zoneDuFil`). */
-	let zoneFil = $state.raw<Zone | null>(null);
 	/**
-	 * Volet ouvert sur la carte (bureau) : l'id d'une couche, ou `'fil'` pour le fil cantonal, ouvert à l'arrivée.
-	 * Un seul à la fois ; dans l'adresse (`volet=conseils`, `volet=` quand aucun n'est ouvert), sauf le fil.
+	 * Ce que montre le panneau : le sommaire (à l'arrivée), ou une seule rubrique à volet à la fois. Dans l'adresse
+	 * (`volet=routes`), sauf quand c'est celui que donne l'élément ouvert.
 	 */
-	let volet = $state<string | null>(depart.volet);
+	let panneau = $state<string>(depart.panneau);
 	/**
 	 * Onglet choisi dans la fiche commune (l'id de sa couche) ; `null` : le premier. Il reste quand on change de
 	 * commune, et entre dans l'adresse de la fiche commune (`onglet=conseils`), sauf le premier et celui de l'élément
@@ -103,8 +104,11 @@ export function creerRegistre(
 	const premierOnglet = couches.find((c) => c.composants.Onglet)?.id ?? null;
 	/** Message près de la recherche : élément introuvable (« Aucun dossier n° … ») ou impossible à localiser. */
 	let avis = $state<string | null>(null);
-	/** Couches activées au moins une fois : leur `Carte` reste montée, pour le fondu à la désactivation. */
-	const montees = new SvelteSet<string>(depart.actives);
+	/**
+	 * Couches dont la `Carte` est montée : dès l'arrivée celles qui dessinent toujours, puis chaque couche dessinée une
+	 * fois, dont la `Carte` reste montée pour le fondu quand une autre la remplace.
+	 */
+	const montees = new SvelteSet<string>(couches.filter(toujoursSurLaCarte).map((c) => c.id));
 
 	/** Slug de la commune dont la fiche est ouverte, lu dans le chemin. */
 	const slug = $derived(page.route.id === ROUTE_COMMUNE ? (page.params.slug ?? null) : null);
@@ -117,25 +121,33 @@ export function creerRegistre(
 		slug !== null ? { commune: slug } : propre ? { fiche: propre.fiche.id } : null
 	);
 	const commune = $derived(slug === null ? null : (communes().find((c) => c.slug === slug) ?? null));
+	/** L'onglet montré dans la fiche commune ouverte (l'id de sa couche) ; `null` sans fiche commune. */
+	const ongletCourant = $derived(
+		slug === null ? null : (ongletMontre(ongletsDeLaFiche(couches, null), onglet, ouvert)?.id ?? null)
+	);
+	/** La couche que la carte dessine, en plus de celles qui le sont toujours (`coucheDessinee`). */
+	const dessinee = $derived(coucheDessinee(couches, { panneau, ongletCommune: ongletCourant }));
 
 	/** Le téléphone, branché par `brancherAdresse` : sur bureau, sa vue n'entre pas dans l'adresse. */
 	let telephone: () => boolean = () => false;
 	/**
-	 * Vue plein écran du téléphone. Elle suit l'adresse (`affichage=fil`), et sinon le chemin : la fiche quand une fiche
-	 * est ouverte, la carte sinon.
+	 * Vue plein écran du téléphone. Elle suit l'adresse (`affichage=carte`), et sinon celle de l'arrivée : la fiche
+	 * quand une fiche est ouverte, la carte quand un élément ou une vue de la carte l'est, le panneau sinon.
 	 */
-	let affichage = $state<Affichage>(untrack(() => affichageArrivee(ouvertureDe(fiche, null))));
+	let affichage = $state<Affichage>(untrack(() => affichageArrivee(ouvertureDe(fiche, null), false)));
+	/** La dernière vue autre que la fiche : celle où ramène la fermeture d'une fiche. */
+	let origine: Affichage = 'panneau';
 
 	/**
 	 * L'adresse de l'état, pour la fiche `f` du chemin, avec `changes` : la vue du téléphone et l'onglet n'y sont
-	 * que s'ils diffèrent de ceux qui vont avec ce chemin.
+	 * que s'ils diffèrent de ceux que donnerait la lecture de l'adresse entière, vue de la carte comprise.
 	 */
 	function adresse(f: Fiche | null, changes: Partial<Etat> = {}): EtatUrl {
-		const e: Etat = { actives, vue, ouvert, parametres, volet, affichage, onglet, ...changes };
-		const vueDuChemin = affichageArrivee(ouvertureDe(f, null));
+		const e: Etat = { vue, ouvert, parametres, panneau, affichage, onglet, ...changes };
+		const vueDeLAdresse = affichageArrivee(ouvertureDe(f, e.ouvert), e.vue !== null);
 		return {
 			...e,
-			affichage: telephone() && e.affichage !== vueDuChemin ? e.affichage : null,
+			affichage: telephone() && e.affichage !== vueDeLAdresse ? e.affichage : null,
 			onglet:
 				f && 'commune' in f && e.onglet !== premierOnglet && e.ouvert?.couche !== e.onglet ? e.onglet : null
 		};
@@ -144,27 +156,27 @@ export function creerRegistre(
 
 	/**
 	 * Vue du téléphone quand la personne ouvre ou ferme une fiche, ou ouvre un élément (`affichageApres`) ; sur bureau,
-	 * celle qui va avec le nouveau chemin.
+	 * celle de l'arrivée sur le nouveau chemin.
 	 */
 	function vueApres(f: Fiche | null, o: Ouvert | null): Affichage {
 		const apres = ouvertureDe(f, o);
-		return telephone() ? affichageApres(affichage, ouvertureDe(fiche, ouvert), apres) : affichageArrivee(apres);
+		return telephone()
+			? affichageApres(affichage, ouvertureDe(fiche, ouvert), apres, origine)
+			: affichageArrivee(apres, false);
 	}
 	/** Titre du document quand une fiche est ouverte ; il suit l'élément ouvert. */
 	const nomFiche = $derived(commune?.nom ?? propre?.fiche.nom ?? null);
 	const titre = $derived(nomFiche === null ? null : titreFiche(nomFiche, ouvert, couches));
 
 	function appliquer(e: EtatUrl) {
-		actives = e.actives;
-		for (const id of e.actives) montees.add(id);
 		parametres = e.parametres;
 		ouvert = e.ouvert;
-		// Un élément fermé par `fermer` garde le volet, la vue et l'onglet qu'on avait : l'entrée où l'on revient
+		// Un élément fermé par `fermer` garde le panneau, la vue et l'onglet qu'on avait : l'entrée où l'on revient
 		// ne les connaît pas.
 		const g = garde;
 		garde = null;
-		volet = g ? g.volet : e.volet;
-		affichage = g ? g.affichage : affichageDeLAdresse(e.affichage, ouvertureDe(fiche, e.ouvert));
+		panneau = g ? g.panneau : e.panneau;
+		affichage = g ? g.affichage : affichageDeLAdresse(e.affichage, ouvertureDe(fiche, e.ouvert), e.vue !== null);
 		// Sur la carte seule ou une fiche propre, l'onglet de la fiche commune reste celui d'avant.
 		if (fiche && 'commune' in fiche) onglet = g ? g.onglet : e.onglet;
 	}
@@ -179,23 +191,32 @@ export function creerRegistre(
 		return charges(`${c.id}:${nom}`, chargeur);
 	}
 
+	/**
+	 * La fonction de compte d'une rubrique, importée une seule fois ; réimportée si l'import a échoué. Hors du navigateur
+	 * (pré-génération des pages), elle n'est jamais lancée : le compte lirait une source pendant la construction du
+	 * site, et la page pré-générée garde l'attente du nombre.
+	 */
+	const compteurs = memoPromesse<string>();
+	const compteur = (r: Rubrique): Promise<Compter> =>
+		browser ? compteurs(r.id, () => r.compteur()) : new Promise<Compter>(() => {});
+
 	/* ---- Actions ---- */
 
 	/**
 	 * La prochaine écriture de l'adresse crée une entrée d'historique, avec cet état, au lieu de remplacer la courante :
-	 * `element` pour un élément ouvert (`fermeture`), `pardessus()` pour un volet ou une vue du téléphone.
+	 * `element` pour un élément ouvert (`fermeture`), `pardessus()` pour une rubrique ou une vue du téléphone.
 	 */
 	let nouvelleEntree: App.PageState | null = null;
 	/**
-	 * Un élément ouvert depuis la vue Fil ou Couches du téléphone a déjà mené à la carte : l'adresse attend qu'il soit
+	 * Un élément ouvert depuis le panneau du téléphone a déjà mené à la carte : l'adresse attend qu'il soit
 	 * localisé, pour n'écrire qu'une entrée d'historique.
 	 */
 	let retenue = $state(false);
-	/** Volet, vue et onglet au moment où `fermer` remonte l'historique : ils l'emportent sur ceux de l'entrée où l'on revient. */
-	let garde: { volet: string | null; affichage: Affichage; onglet: string | null } | null = null;
+	/** Panneau, vue et onglet au moment où `fermer` remonte l'historique : ils l'emportent sur ceux de l'entrée où l'on revient. */
+	let garde: { panneau: string; affichage: Affichage; onglet: string | null } | null = null;
 
 	/**
-	 * L'état d'une entrée poussée par-dessus la courante (volet, vue du téléphone) : un élément que l'application a
+	 * L'état d'une entrée poussée par-dessus la courante (rubrique, vue du téléphone) : un élément que l'application a
 	 * ouvert reste refermable par le retour arrière, d'une entrée de plus.
 	 */
 	const pardessus = (): App.PageState => {
@@ -228,16 +249,6 @@ export function creerRegistre(
 		if (a === affichage) return;
 		affichage = a;
 		nouvelleEntree = pardessus();
-	}
-
-	function activer(id: string, oui: boolean) {
-		const c = couches.find((c) => c.id === id);
-		if (!c || c.permanente) return;
-		if (oui) montees.add(id);
-		const suivantes = new Set(actives);
-		if (oui) suivantes.add(id);
-		else suivantes.delete(id);
-		actives = couches.filter((c) => suivantes.has(c.id)).map((c) => c.id);
 	}
 
 	function regler(id: string, partiel: object) {
@@ -334,13 +345,18 @@ export function creerRegistre(
 	 * une entrée d'historique : le retour du navigateur ramène à la fiche précédente. Passer d'un élément à un autre
 	 * dans la même fiche remplace l'entrée.
 	 */
-	async function ouvrirElement(cible: Ouvert & { position?: [number, number] }) {
+	async function ouvrirElement(cible: Ouvert & { position?: [number, number] }, rubrique: boolean) {
 		const o: Ouvert = { couche: cible.couche, element: cible.element };
 		avis = null;
+		/** Le panneau passe à la rubrique de l'élément, avec lui : une fois trouvé, dans l'entrée qu'il écrit. */
+		const suivreRubrique = () => {
+			if (rubrique) panneau = panneauDeLElement(couches, o);
+		};
 		if (cible.position) carteSocle()?.voler(cible.position[0], cible.position[1], ZOOM_ELEMENT);
-		// Téléphone : depuis la vue Fil ou Couches, la carte tout de suite, pour l'aperçu.
+		// Téléphone : depuis le panneau, la carte tout de suite, pour l'aperçu.
 		const quitte = telephone() && affichageOuverture(affichage) !== affichage;
 		if (memeElement(ouvert, o)) {
+			suivreRubrique();
 			if (quitte) montrer(affichageOuverture(affichage));
 			return;
 		}
@@ -357,10 +373,11 @@ export function creerRegistre(
 		if (lieu === 'echec') return void (avis = avisNonCherche(couches, o));
 		const k = corrigerChemin(fiche, lieu);
 		if (k === 'retirer') return introuvable(o);
+		suivreRubrique();
 		if (!cible.position) montrerElement(lieu!, k ?? fiche!, false);
 		if (k === null) {
-			// Même fiche : l'adresse suit l'état (entrée poussée si rien n'était ouvert, ou si l'on a quitté la vue Fil ou
-			// Couches du téléphone, que le retour arrière doit retrouver).
+			// Même fiche : l'adresse suit l'état (entrée poussée si rien n'était ouvert, ou si l'on a quitté le panneau du
+			// téléphone, que le retour arrière doit retrouver).
 			nouvelleEntree = ouvert === null ? { element: { depuis: fiche } } : quitte ? pardessus() : null;
 			ouvert = o;
 			return;
@@ -409,24 +426,28 @@ export function creerRegistre(
 		affichage = a;
 	}
 
-	function ouvrir(cible: Cible) {
+	/**
+	 * `rubrique` : l'élément ouvert vient de la recherche, et le panneau passe à sa rubrique (le sommaire si elle n'a
+	 * pas de volet) une fois l'élément trouvé, dans l'entrée d'historique qu'il écrit ; introuvable, rien ne change.
+	 */
+	function ouvrir(cible: Cible, { rubrique = false }: { rubrique?: boolean } = {}) {
 		if ('commune' in cible) {
 			if (cible.onglet) onglet = cible.onglet;
 			return ouvrirFiche({ commune: cible.commune });
 		}
 		if ('fiche' in cible) return ouvrirFiche({ fiche: cible.fiche });
-		ouvrirElement(cible);
+		ouvrirElement(cible, rubrique);
 	}
 
 	/**
 	 * Fermer l'élément ramène à l'onglet de sa couche, sans bouger la carte : retour en arrière si l'application a
-	 * poussé l'entrée depuis la même fiche (d'autant d'entrées qu'on en a poussé par-dessus, en gardant le volet, la
+	 * poussé l'entrée depuis la même fiche (d'autant d'entrées qu'on en a poussé par-dessus, en gardant le panneau, la
 	 * vue et l'onglet), sinon l'adresse est remplacée par le chemin de la fiche.
 	 */
 	function fermer() {
 		if (!ouvert) return;
 		if (fermeture(page.state, fiche) === 'retour') {
-			garde = { volet, affichage, onglet };
+			garde = { panneau, affichage, onglet };
 			navigateur.reculer(page.state.element?.pas ?? 1);
 		} else ouvert = null;
 	}
@@ -452,8 +473,11 @@ export function creerRegistre(
 				return parametres[c.id];
 			},
 			regler: (partiel) => regler(c.id, partiel as object),
-			get active() {
-				return actives.includes(c.id);
+			get dessinee() {
+				return c.permanente || c.id === dessinee;
+			},
+			get listee() {
+				return rubriqueAVolet(couches, panneau)?.couche === c;
 			},
 			get ouvert() {
 				return ouvert;
@@ -486,28 +510,9 @@ export function creerRegistre(
 		map = m;
 	}
 
-	/** Jusqu'à cet instant (ms), les déplacements comptent comme faits par la personne : elle a cherché un lieu. */
-	let vouluJusqua = 0;
-	/** Délai laissé à la carte pour aller vers le lieu cherché (ouverture de la fiche, puis cadrage). */
-	const DELAI_VOULU = 3_000;
-
-	/**
-	 * La personne a choisi un lieu dans la recherche (commune, adresse) : les déplacements qui suivent, même lancés
-	 * par le registre ou le socle, sont les siens, et déplacent la zone du fil.
-	 */
-	function deplacementVoulu() {
-		vouluJusqua = Date.now() + DELAI_VOULU;
-	}
-
-	/**
-	 * Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. `parLaPersonne` :
-	 * elle a glissé ou zoomé ; la zone du fil ne suit que ses déplacements.
-	 */
-	function deplacement(z: Zone, c: Centre, parDefaut: boolean, parLaPersonne = false) {
-		// Tous les déplacements de ce délai comptent : la colonne de la fiche s'ouvre, puis la commune est cadrée.
-		const voulu = Date.now() < vouluJusqua;
+	/** Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. */
+	function deplacement(z: Zone, c: Centre, parDefaut: boolean) {
 		zone = z;
-		zoneFil = zoneDuFil(zoneFil, z, parLaPersonne || voulu);
 		centre = c;
 		vue = parDefaut ? null : c;
 	}
@@ -542,6 +547,18 @@ export function creerRegistre(
 			else if (m && typeof m === 'object') cadrerFiche(m.cadrer, !initial);
 			if (nouveau) corriger(e.ouvert!, m === 'element', initial);
 		}
+
+		// La vue d'où l'on ouvre une fiche est celle où ramène sa fermeture.
+		$effect(() => {
+			const a = affichage;
+			if (a !== 'fiche') origine = a;
+		});
+
+		// Une couche dessinée une fois garde sa `Carte` montée, pour le fondu quand une autre la remplace.
+		$effect(() => {
+			const d = dessinee;
+			if (d) untrack(() => montees.add(d));
+		});
 
 		// Précédent ou suivant : la Recherche plein écran est refermée (son entrée n'est plus la courante).
 		$effect(() => navigateur.surParcours(() => (recherche = false)));
@@ -604,15 +621,8 @@ export function creerRegistre(
 
 	return {
 		couches,
-		get actives() {
-			return actives;
-		},
 		get zone() {
 			return zone;
-		},
-		/** Zone du fil, distincte de celle de la carte : les vols lancés par le registre ne la changent pas. */
-		get zoneFil() {
-			return zoneFil;
 		},
 		get map() {
 			return map;
@@ -636,6 +646,14 @@ export function creerRegistre(
 		get adresseSansElement() {
 			return fiche && `${cheminFiche(couches, fiche)}${ecrireUrl(couches, adresse(fiche, { ouvert: null }))}`;
 		},
+		/**
+		 * Adresse de la page courante avec ce panneau ouvert (le sommaire ou une rubrique), sans l'élément ouvert : celle
+		 * d'une ligne du sommaire et du lien de retour, que Cmd/Ctrl-clic ouvre dans un nouvel onglet.
+		 */
+		adressePanneau(id: string) {
+			const chemin = fiche ? cheminFiche(couches, fiche) : resolve('/(carte)');
+			return `${chemin}${ecrireUrl(couches, adresse(fiche, { panneau: id, ouvert: null }))}`;
+		},
 		/** Titre du document quand une fiche est ouverte (`null` sinon). */
 		get titre() {
 			return titre;
@@ -645,14 +663,22 @@ export function creerRegistre(
 			return avis;
 		},
 		oublierAvis: () => (avis = null),
-		/** Volet ouvert sur la carte (bureau) ; en ouvrir ou en fermer un crée une entrée d'historique. */
-		get volet() {
-			return volet;
+		/** Le sommaire (`SOMMAIRE`) ou la rubrique ouverte ; en changer crée une entrée d'historique. */
+		get panneau() {
+			return panneau;
 		},
-		set volet(id: string | null) {
-			if (id === volet) return;
-			volet = id;
+		set panneau(id: string) {
+			if (id === panneau) return;
+			panneau = id;
 			nouvelleEntree = pardessus();
+		},
+		/** La couche que la carte dessine, en plus de celles qui le sont toujours ; `null` au sommaire. */
+		get dessinee() {
+			return dessinee;
+		},
+		/** L'onglet montré dans la fiche commune ouverte (l'id de sa couche) ; `null` sans fiche commune. */
+		get ongletCourant() {
+			return ongletCourant;
 		},
 		/** Vue plein écran du téléphone ; en changer crée une entrée d'historique. */
 		get affichage() {
@@ -675,18 +701,16 @@ export function creerRegistre(
 			onglet = id;
 		},
 		choisirOnglet,
-		/** La `Carte` de cette couche doit être montée (activée, ou désactivée après l'avoir été). */
-		montee: (id: string) => montees.has(id),
-		active: (id: string) => actives.includes(id),
-		activer,
+		/** La `Carte` de cette couche doit être montée (elle dessine, ou a dessiné, quelque chose). */
+		montee: (id: string) => montees.has(id) || id === dessinee,
 		ouvrir,
 		fermer,
 		fermerFiche,
 		composant,
+		compteur,
 		contexte,
 		carte,
 		deplacement,
-		deplacementVoulu,
 		brancherAdresse
 	};
 }

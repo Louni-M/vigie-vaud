@@ -5,6 +5,7 @@ import {
 	affichageDeLAdresse,
 	affichageOuverture,
 	decalageAuDessus,
+	lireAffichage,
 	recherchePleine,
 	texteApresRecherche
 } from './telephone.js';
@@ -16,52 +17,55 @@ const GRAND_CONSEIL = { fiche: 'fiche:grand-conseil', element: null };
 const SEANCE = { fiche: 'fiche:grand-conseil', element: 'conseils:vd/2026-10-06' };
 
 describe('vue affichée sur téléphone quand ce qui est ouvert change', () => {
-	it('quitte la vue Fiche pour la carte quand plus rien n’est ouvert', () => {
-		expect(affichageApres('fiche', PULLY, RIEN)).toBe('carte');
-		expect(affichageApres('fiche', GRAND_CONSEIL, RIEN)).toBe('carte');
+	it('quitte la vue Fiche pour la vue d’où la fiche a été ouverte quand plus rien n’est ouvert', () => {
+		expect(affichageApres('fiche', PULLY, RIEN, 'panneau')).toBe('panneau');
+		expect(affichageApres('fiche', GRAND_CONSEIL, RIEN, 'carte')).toBe('carte');
 	});
-	it('revient à la carte quand on ouvre un dossier depuis la liste de la vue Couches, pour son aperçu', () => {
-		expect(affichageApres('couches', RIEN, DOSSIER)).toBe('carte');
-		expect(affichageApres('couches', PULLY, DOSSIER)).toBe('carte');
+	it('passe du panneau à la carte quand on ouvre un élément depuis une liste, pour son aperçu', () => {
+		expect(affichageApres('panneau', RIEN, DOSSIER, 'panneau')).toBe('carte');
+		expect(affichageApres('panneau', PULLY, DOSSIER, 'panneau')).toBe('carte');
+		expect(affichageApres('panneau', RIEN, SEANCE, 'panneau')).toBe('carte');
 	});
-	it('revient à la carte quand on ouvre une entrée depuis la vue Fil, pour son aperçu', () => {
-		expect(affichageApres('fil', RIEN, DOSSIER)).toBe('carte');
-		expect(affichageApres('fil', RIEN, SEANCE)).toBe('carte');
+	it('passe du panneau à la fiche quand on y ouvre une fiche, sans élément', () => {
+		expect(affichageApres('panneau', RIEN, PULLY, 'panneau')).toBe('fiche');
+		expect(affichageApres('panneau', RIEN, GRAND_CONSEIL, 'panneau')).toBe('fiche');
 	});
 	it('reste sur la fiche quand on y ouvre ou ferme un dossier, ou qu’on change de commune', () => {
 		const pullyDossier = { fiche: 'commune:pully', element: 'permis:250001' };
-		expect(affichageApres('fiche', PULLY, pullyDossier)).toBe('fiche');
-		expect(affichageApres('fiche', pullyDossier, PULLY)).toBe('fiche');
-		expect(affichageApres('fiche', PULLY, DOSSIER)).toBe('fiche');
-		expect(affichageApres('fiche', GRAND_CONSEIL, SEANCE)).toBe('fiche');
+		expect(affichageApres('fiche', PULLY, pullyDossier, 'carte')).toBe('fiche');
+		expect(affichageApres('fiche', pullyDossier, PULLY, 'carte')).toBe('fiche');
+		expect(affichageApres('fiche', PULLY, DOSSIER, 'carte')).toBe('fiche');
+		expect(affichageApres('fiche', GRAND_CONSEIL, SEANCE, 'carte')).toBe('fiche');
 	});
 	it('reste sur la carte, où l’aperçu montre ce qu’on vient d’ouvrir, commune ou fiche du Grand Conseil', () => {
-		expect(affichageApres('carte', RIEN, PULLY)).toBe('carte');
-		expect(affichageApres('carte', PULLY, DOSSIER)).toBe('carte');
-		expect(affichageApres('carte', RIEN, GRAND_CONSEIL)).toBe('carte');
+		expect(affichageApres('carte', RIEN, PULLY, 'carte')).toBe('carte');
+		expect(affichageApres('carte', PULLY, DOSSIER, 'carte')).toBe('carte');
+		expect(affichageApres('carte', RIEN, GRAND_CONSEIL, 'carte')).toBe('carte');
 	});
-	it('reste sur la vue Couches ou Fil quand rien de nouveau ne s’ouvre', () => {
-		expect(affichageApres('couches', DOSSIER, { fiche: 'commune:lutry', element: null })).toBe('couches');
-		expect(affichageApres('couches', PULLY, RIEN)).toBe('couches');
-		expect(affichageApres('fil', PULLY, RIEN)).toBe('fil');
+	it('reste sur le panneau quand rien de nouveau ne s’ouvre', () => {
+		expect(affichageApres('panneau', DOSSIER, { fiche: 'commune:lutry', element: null }, 'panneau')).toBe('panneau');
+		expect(affichageApres('panneau', PULLY, RIEN, 'panneau')).toBe('panneau');
 	});
 });
 
 describe('vue affichée à l’arrivée sur téléphone', () => {
 	it('montre la fiche quand on arrive sur celle d’une commune ou sur /grand-conseil', () => {
-		expect(affichageArrivee(PULLY)).toBe('fiche');
-		expect(affichageArrivee(GRAND_CONSEIL)).toBe('fiche');
-		expect(affichageArrivee(SEANCE)).toBe('fiche');
+		expect(affichageArrivee(PULLY, false)).toBe('fiche');
+		expect(affichageArrivee(GRAND_CONSEIL, true)).toBe('fiche');
+		expect(affichageArrivee(SEANCE, false)).toBe('fiche');
 	});
-	it('montre la carte quand on arrive sur la carte seule', () => {
-		expect(affichageArrivee(RIEN)).toBe('carte');
+	it('montre la carte quand l’adresse ouvre un élément ou nomme une vue de la carte', () => {
+		expect(affichageArrivee({ fiche: null, element: 'permis:248845' }, false)).toBe('carte');
+		expect(affichageArrivee(RIEN, true)).toBe('carte');
+	});
+	it('montre le panneau sinon', () => {
+		expect(affichageArrivee(RIEN, false)).toBe('panneau');
 	});
 });
 
-describe('vue affichée dès qu’on ouvre quelque chose', () => {
-	it('passe des vues Couches et Fil à la carte, pour l’aperçu', () => {
-		expect(affichageOuverture('couches')).toBe('carte');
-		expect(affichageOuverture('fil')).toBe('carte');
+describe('vue affichée dès qu’on ouvre un élément', () => {
+	it('passe du panneau à la carte, pour l’aperçu', () => {
+		expect(affichageOuverture('panneau')).toBe('carte');
 	});
 	it('reste sur la carte ou la fiche', () => {
 		expect(affichageOuverture('carte')).toBe('carte');
@@ -70,17 +74,32 @@ describe('vue affichée dès qu’on ouvre quelque chose', () => {
 });
 
 describe('vue que donne l’adresse', () => {
-	it('suit la requête (`affichage=fil`)', () => {
-		expect(affichageDeLAdresse('fil', RIEN)).toBe('fil');
-		expect(affichageDeLAdresse('carte', PULLY)).toBe('carte');
-		expect(affichageDeLAdresse('couches', SEANCE)).toBe('couches');
+	it('suit la requête (`affichage=panneau`)', () => {
+		expect(affichageDeLAdresse('panneau', RIEN, true)).toBe('panneau');
+		expect(affichageDeLAdresse('carte', PULLY, false)).toBe('carte');
 	});
-	it('prend celle qui va avec le chemin quand la requête n’en dit rien', () => {
-		expect(affichageDeLAdresse(null, RIEN)).toBe('carte');
-		expect(affichageDeLAdresse(null, PULLY)).toBe('fiche');
+	it('prend celle de l’arrivée quand la requête n’en dit rien', () => {
+		expect(affichageDeLAdresse(null, RIEN, false)).toBe('panneau');
+		expect(affichageDeLAdresse(null, RIEN, true)).toBe('carte');
+		expect(affichageDeLAdresse(null, PULLY, true)).toBe('fiche');
 	});
-	it('montre la carte pour « Fiche » sans fiche ouverte', () => {
-		expect(affichageDeLAdresse('fiche', RIEN)).toBe('carte');
+	it('prend celle de l’arrivée pour « Fiche » sans fiche ouverte', () => {
+		expect(affichageDeLAdresse('fiche', RIEN, false)).toBe('panneau');
+		expect(affichageDeLAdresse('fiche', RIEN, true)).toBe('carte');
+	});
+});
+
+describe('vue lue dans l’adresse', () => {
+	it('lit les anciennes vues Fil et Couches comme le panneau', () => {
+		expect(lireAffichage('fil')).toBe('panneau');
+		expect(lireAffichage('couches')).toBe('panneau');
+	});
+	it('lit les vues connues, et rien pour une autre', () => {
+		expect(lireAffichage('carte')).toBe('carte');
+		expect(lireAffichage('panneau')).toBe('panneau');
+		expect(lireAffichage('fiche')).toBe('fiche');
+		expect(lireAffichage('plan')).toBeNull();
+		expect(lireAffichage(null)).toBeNull();
 	});
 });
 
@@ -95,13 +114,12 @@ describe('décalage d’un dossier vers lequel la carte vole sur téléphone', (
 });
 
 describe('Recherche plein écran sur téléphone', () => {
-	it('s’affiche par-dessus la vue Carte une fois ouverte', () => {
+	it('s’affiche par-dessus la vue Carte ou le panneau une fois ouverte', () => {
 		expect(recherchePleine(true, 'carte', true)).toBe(true);
+		expect(recherchePleine(true, 'panneau', true)).toBe(true);
 		expect(recherchePleine(true, 'carte', false)).toBe(false);
 	});
-	it('ne s’ouvre que depuis la vue Carte', () => {
-		expect(recherchePleine(true, 'fil', true)).toBe(false);
-		expect(recherchePleine(true, 'couches', true)).toBe(false);
+	it('ne s’ouvre pas depuis la vue Fiche, qui n’a pas de recherche', () => {
 		expect(recherchePleine(true, 'fiche', true)).toBe(false);
 	});
 	it('ne s’ouvre jamais sur bureau, ni au-delà de 760 px de large', () => {

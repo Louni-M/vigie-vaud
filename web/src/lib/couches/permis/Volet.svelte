@@ -1,8 +1,8 @@
 <script lang="ts">
 	/*
-	 * Volet de la couche Permis : puces de statut (qui servent de légende), nature, tri, historique et curseur
-	 * d'années, puis le compteur et la liste des dossiers de la zone visible, masqués quand la couche est
-	 * désactivée. Le registre a déjà rendu l'interrupteur et l'attribution au-dessus.
+	 * La rubrique Permis de construire : puces de statut (qui servent de légende), nature, tri, historique et curseur
+	 * d'années, puis le compte et la liste des dossiers de la zone visible. Le registre rend en tête le lien de retour
+	 * et le nom de la rubrique, et ses sources après la liste.
 	 */
 	import { nombre } from '#lib/almanach/typographie.js';
 	import DossierCarte from '#lib/components/DossierCarte.svelte';
@@ -11,23 +11,26 @@
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Dossier, PointHisto, Statut } from '#lib/types.js';
 	import { permis, visibles as dossiersVisibles, type Parametres } from './donnees.svelte.js';
-	import { ANNEE_MIN, dossierOuvert, ouvrirDossier, statutsProposes } from './index.js';
+	import { phraseCompte } from '#lib/registre/rubriques.js';
+	import { ANNEE_MIN, couchePermis, dossierOuvert, ouvrirDossier, statutsProposes } from './index.js';
 
 	let { ctx }: { ctx: Contexte<Parametres> } = $props();
 
 	const ANNEE_COURANTE = new Date().getFullYear();
+	/** La rubrique qu'ouvre ce volet : sa phrase de compte est celle du sommaire. */
+	const rubrique = couchePermis.rubriques![0];
 	/** Dossiers listés au plus : au-delà, on invite à zoomer. */
 	const LISTE_MAX = 150;
 
 	const p = $derived(ctx.parametres);
 	const proposes = $derived(statutsProposes(p.historique));
 	const actifs = $derived(permis.actifs);
-	const visibles = $derived(ctx.active ? dossiersVisibles(ctx.zone, p, permis) : []);
+	const visibles = $derived(ctx.listee ? dossiersVisibles(ctx.zone, p, permis) : []);
 
 	/* ---- Chargement des dossiers en cours ; un échec est porté par l'état de la source, que « Réessayer » recharge. ---- */
 
 	$effect(() => {
-		if (ctx.active) permis.chargerActifs().catch(() => {});
+		if (ctx.listee) permis.chargerActifs().catch(() => {});
 	});
 
 	/* ---- Fiches complètes des dossiers d'historique en tête de liste, chargées quand la carte s'arrête ---- */
@@ -144,7 +147,7 @@
 	{/if}
 </div>
 
-{#if ctx.active}
+{#if ctx.listee}
 	<div class="zone">
 		<div class="tete">
 			<p class="compte">
@@ -156,8 +159,8 @@
 					<strong>{nombre.format(visibles.length)}</strong>&nbsp;dossier{visibles.length > 1 ? 's' : ''} dans la zone
 					affichée, historique depuis {p.depuis} compris
 				{:else}
-					<strong>{nombre.format(visibles.length)}</strong>&nbsp;dossier{visibles.length > 1 ? 's' : ''} en cours dans la
-					zone affichée
+					{@const c = phraseCompte(rubrique, visibles.length)}
+					{#if c.nombre}<strong>{c.nombre}</strong>{/if}{c.texte}
 				{/if}
 			</p>
 			<!--

@@ -38,20 +38,20 @@ function age(date: Date, maintenant: Date): string {
 type SansMillesime = Exclude<SorteFraicheur, 'millesime'>;
 
 /** Ce qui précède l'âge de la dernière donnée. */
-const PREFIXES: Record<SansMillesime, string> = { requete: 'consulté ', donnee: '', import: 'importé ' };
+const PREFIXES: Record<SansMillesime, string> = { requete: 'consulté ', donnee: '', import: 'mis à jour ' };
 
 /** Tant que rien n'a été obtenu ; pour un conseil, `conseils/import.json` manque ou ne le cite pas. */
 const PAS_ENCORE: Record<SansMillesime, string> = {
 	requete: 'pas encore consulté',
 	donnee: 'pas encore chargé',
-	import: 'dernier import inconnu'
+	import: 'dernière mise à jour inconnue'
 };
 
 /**
  * Libellé du badge d'une source, suivi de son nom court : « consulté il y a 2 min · CAMAC » ou « consulté il y a
  * 2 min · DGMR » (`requete`), « il y a 4 min · … » (`donnee`, l'âge de la donnée elle-même, qu'aucune source ne
- * donne encore), « édition 2025 · UCV » (`millesime`), « importé il y a 6 h · Grand Conseil » (`import`, dernier
- * import réussi du conseil), ou la cause d'un échec.
+ * donne encore), « édition 2025 · UCV » (`millesime`), « mis à jour il y a 6 h · Grand Conseil » (`import`,
+ * dernier import réussi du conseil), ou la cause d'un échec.
  */
 export function libelleBadge(
 	source: Pick<Source, 'fraicheur' | 'nom_court'>,
@@ -72,19 +72,20 @@ export function libelleBadge(
 }
 
 /**
- * Libellé du badge des sites d'une plateforme, dans le volet de la couche : un seul badge pour toutes ses communes
- * couvertes, qui donne le plus ancien de leurs derniers imports réussis (« importés il y a 45 min · 19 sites
- * i-web »), ou combien ont déjà été importées (« importé il y a 45 min · 1 sur 19 sites i-web »). Le badge de chaque
- * site reste sous l'onglet Conseil de sa commune.
+ * Libellé du badge des sites d'une plateforme, après la liste de la rubrique : un seul badge pour toutes ses communes
+ * couvertes, qui donne le plus ancien de leurs derniers imports réussis (« mis à jour il y a 45 min · sites de
+ * 19 communes »), ou combien l'ont déjà été (« mis à jour il y a 45 min · 1 site de commune sur 19 »). Le nom de la
+ * plateforme n'y est pas : il ne dit rien au visiteur. Le badge de chaque site reste sous l'onglet de sa commune.
  */
-export function libelleBadgeSites(plateforme: string, imports: readonly (Date | null)[], maintenant: Date): string {
+export function libelleBadgeSites(imports: readonly (Date | null)[], maintenant: Date): string {
 	const total = imports.length;
-	const sites = `${total} site${total > 1 ? 's' : ''} ${plateforme}`;
+	const sites = `site${total > 1 ? 's' : ''} de ${total}\u00a0commune${total > 1 ? 's' : ''}`;
 	const dates = imports.filter((d): d is Date => d != null);
-	if (dates.length === 0) return `dernier import inconnu · ${sites}`;
+	if (dates.length === 0) return `dernière mise à jour inconnue · ${sites}`;
 	const plusAncien = new Date(Math.min(...dates.map((d) => d.getTime())));
-	const quand = `importé${dates.length > 1 ? 's' : ''} ${age(plusAncien, maintenant)}`;
-	return dates.length === total ? `${quand} · ${sites}` : `${quand} · ${dates.length} sur ${sites}`;
+	const quand = `mis à jour ${age(plusAncien, maintenant)}`;
+	if (dates.length === total) return `${quand} · ${sites}`;
+	return `${quand} · ${dates.length}\u00a0site${dates.length > 1 ? 's' : ''} de commune sur ${total}`;
 }
 
 /** La cause d'un échec, dans le message d'échec. */

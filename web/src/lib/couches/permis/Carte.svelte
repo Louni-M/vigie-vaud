@@ -1,7 +1,7 @@
 <script lang="ts">
 	/*
 	 * Carte de la couche Permis : sources MapLibre des dossiers en cours et de l'historique, filtres, fondu
-	 * à l'activation, clic qui ouvre un dossier (la carte vole vers lui tout de suite) et anneau qui marque
+	 * quand elle est dessinée, clic qui ouvre un dossier (la carte vole vers lui tout de suite) et anneau qui marque
 	 * le dossier ouvert.
 	 */
 	import { onMount, untrack } from 'svelte';
@@ -26,7 +26,7 @@
 	const ACTIFS = 'permis-actifs';
 	const HISTO = 'permis-historique';
 	const SELECTION = 'permis-selection';
-	/** Fondu à l'activation et à la désactivation, sauf si le visiteur a demandé moins d'animations. */
+	/** Fondu quand la couche est dessinée ou cesse de l'être, sauf si le visiteur a demandé moins d'animations. */
 	const FONDU = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350;
 	/** Opacités pleines des calques ; le fondu les multiplie par 0 ou 1. */
 	const OPACITES: [string, 'circle-opacity' | 'circle-stroke-opacity', number][] = [
@@ -148,7 +148,7 @@
 	function clic(e: MapMouseEvent) {
 		const calques = [ACTIFS, HISTO].filter((id) => map.getLayoutProperty(id, 'visibility') !== 'none');
 		// Un hôtel de ville sous le clic, dessiné au-dessus, l'emporte sur les dossiers voisins.
-		if (!ctx.active || !calques.length || ctx.recouvert([e.point.x, e.point.y])) return;
+		if (!ctx.dessinee || !calques.length || ctx.recouvert([e.point.x, e.point.y])) return;
 		const r = 8;
 		const proches = map.queryRenderedFeatures(
 			[
@@ -167,7 +167,7 @@
 		if (f?.properties?.id == null) return;
 		ouvrirDossier(ctx, Number(f.properties.id), position(f));
 	}
-	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
+	const pointeur = () => (map.getCanvas().style.cursor = ctx.dessinee ? 'pointer' : '');
 	const sansPointeur = () => (map.getCanvas().style.cursor = '');
 	map.on('click', clic);
 	for (const id of [ACTIFS, HISTO]) {
@@ -190,7 +190,7 @@
 		return () => (actuel = false);
 	});
 	$effect(() => {
-		(map.getSource(SELECTION) as GeoJSONSource).setData(unPoint(ctx.active ? anneau : null));
+		(map.getSource(SELECTION) as GeoJSONSource).setData(unPoint(ctx.dessinee ? anneau : null));
 	});
 
 	onMount(() => {
@@ -233,22 +233,22 @@
 	 * jusqu'à « depuis ». Le curseur des années passe par toutes les valeurs : on attend qu'il s'arrête.
 	 */
 	$effect(() => {
-		if (!ctx.active || !ctx.parametres.historique) return;
+		if (!ctx.dessinee || !ctx.parametres.historique) return;
 		const depuis = ctx.parametres.depuis;
 		const t = setTimeout(() => permis.chargerHisto(depuis), 250);
 		return () => clearTimeout(t);
 	});
 
-	// Fondu : les points apparaissent ou disparaissent, puis les calques désactivés sont retirés du rendu.
+	// Fondu : les points apparaissent ou disparaissent, puis les calques qui ne sont plus dessinés sont retirés du rendu.
 	$effect(() => {
-		const active = ctx.active;
+		const dessinee = ctx.dessinee;
 		const historique = ctx.parametres.historique;
-		if (active) {
+		if (dessinee) {
 			map.setLayoutProperty(ACTIFS, 'visibility', 'visible');
 			map.setLayoutProperty(HISTO, 'visibility', historique ? 'visible' : 'none');
 		}
-		for (const [id, prop, pleine] of OPACITES) map.setPaintProperty(id, prop, active ? pleine : 0);
-		if (active) return;
+		for (const [id, prop, pleine] of OPACITES) map.setPaintProperty(id, prop, dessinee ? pleine : 0);
+		if (dessinee) return;
 		const t = setTimeout(() => {
 			for (const id of [ACTIFS, HISTO]) map.setLayoutProperty(id, 'visibility', 'none');
 		}, FONDU);

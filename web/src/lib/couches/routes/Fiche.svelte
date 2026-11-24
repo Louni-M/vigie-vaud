@@ -12,7 +12,7 @@
 	import { typographier } from '#lib/almanach/typographie.js';
 	import { ErreurApi } from '#lib/api.js';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
-	import { jourDe } from '#lib/fil/fil.js';
+	import { jourDe } from '#lib/dates.js';
 	import { clicSimple, lienCommune, lienElement } from '#lib/registre/liens.js';
 	import type { Contexte } from '#lib/registre/types.js';
 	import type { Filtres } from './volet.js';

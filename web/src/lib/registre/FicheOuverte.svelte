@@ -4,7 +4,7 @@
 	 * jamais les deux.
 	 *
 	 * Fiche commune : en-tête (nom de la commune, adresse de son hôtel de ville ou « position approximative »,
-	 * anciennes communes et anciens noms), puis un onglet par couche inscrite qui a un `Onglet`, activée ou non. La barre d'onglets est affichée même s'il n'y
+	 * anciennes communes et anciens noms), puis un onglet par couche inscrite qui a un `Onglet`, dessinée ou non. La barre d'onglets est affichée même s'il n'y
 	 * a qu'un onglet ; sous le nom de chaque onglet, les badges de fraîcheur des seules sources qui concernent la
 	 * commune (`sourcesDeLOnglet`). Pour une commune que la couche ne couvre pas, « Non couvert » passe en tête de
 	 * l'onglet, qui reste rendu. L'onglet choisi est tenu par le registre (`ouvrir({ commune, onglet })` le choisit) :
@@ -30,7 +30,7 @@
 	import { enteteFiche } from './entete.js';
 	import type { FicheDeCouche } from './fiches.js';
 	import { clicSimple } from './liens.js';
-	import { messageNonCouvert, nomOnglet, sourcesDeLOnglet } from './onglet.js';
+	import { messageNonCouvert, nomOnglet, ongletCourant, ongletsDeLaFiche, sourcesDeLOnglet } from './onglet.js';
 	import type { Registre } from './registre.svelte.js';
 
 	let { registre, ouverte }: { registre: Registre; ouverte: Commune | FicheDeCouche } = $props();
@@ -44,18 +44,17 @@
 	/** « Fermer la fiche d’Yverdon-les-Bains » ; une fiche propre est nommée telle quelle, sans en supposer le genre. */
 	const fermerLibelle = $derived(commune ? `Fermer la fiche ${deNom(nom)}` : `Fermer la fiche : ${nom}`);
 
-	const onglets = $derived(
-		propre
-			? propre.couche.composants.Onglet
-				? [propre.couche]
-				: []
-			: registre.couches.filter((c) => c.composants.Onglet)
-	);
+	const onglets = $derived(ongletsDeLaFiche(registre.couches, propre?.couche ?? null));
 	/** Couche de l'élément ouvert, quand elle a un onglet et une `Fiche` pour l'y afficher. */
 	const avecFiche = $derived(
 		onglets.find((c) => c.id === registre.ouvert?.couche && c.composants.Fiche) ?? null
 	);
-	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === registre.onglet) ?? onglets[0]);
+	/** L'onglet montré : celui que tient le registre pour une fiche commune (la carte le dessine), le seul d'une fiche propre. */
+	const courant = $derived(
+		commune
+			? onglets.find((c) => c.id === registre.ongletCourant)
+			: ongletCourant(onglets, registre.onglet, registre.ouvert)
+	);
 	const element = $derived(avecFiche === courant ? registre.ouvert : null);
 	const couvert = $derived(!courant || !commune || couvertureCourante().couvre(courant.id, commune.bfs));
 	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil d'Ariane, croix) y ramène, même quand
@@ -124,7 +123,7 @@
 	</div>
 
 	<!-- svelte-ignore a11y_interactive_supports_focus -->
-	<div class="onglets" role="tablist" aria-label="Couches de la fiche" tabindex="-1" onkeydown={clavier}>
+	<div class="onglets" role="tablist" aria-label="Sujets de la fiche" tabindex="-1" onkeydown={clavier}>
 		{#each onglets as c (c.id)}
 			<button
 				type="button"
@@ -135,7 +134,7 @@
 				tabindex={c === courant ? 0 : -1}
 				onclick={() => choisir(c.id)}
 			>
-				{nomOnglet(c)}
+				{nomOnglet(c, propre?.fiche.id ?? null)}
 				{#each sourcesDeLOnglet(c, SOURCES, commune?.bfs ?? null) as s (s.id)}<BadgeFraicheur source={s} />{/each}
 			</button>
 		{/each}
@@ -148,9 +147,9 @@
 					{#if !couvert && commune}
 						{@const message = messageNonCouvert(courant, commune)}
 						<p class="non-couvert">
-							<strong>Non couvert</strong>&nbsp;: {insecables(message.texte)}
+							{insecables(message.texte)}
 							{#if message.lien}<a href={message.lien.url} target="_blank" rel="noopener">{message.lien.texte}</a>{/if}
-							<a href={resolve('/couverture')}>Voir la Couverture</a>
+							<a href={resolve('/couverture')}>Sources par commune</a>
 						</p>
 					{/if}
 					{#await registre.composant(courant, 'Onglet') then module}
@@ -162,7 +161,7 @@
 			{/key}
 			{#if element}
 				<nav class="fil" aria-label="Fil d’Ariane">
-					<a class="lien" href={registre.adresseSansElement} onclick={retourOnglet}>{nomOnglet(courant)}</a>
+					<a class="lien" href={registre.adresseSansElement} onclick={retourOnglet}>{nomOnglet(courant, propre?.fiche.id ?? null)}</a>
 					<span aria-hidden="true">›</span>
 					<span aria-current="page">{courant.libelle?.(element.element) ?? `n° ${element.element}`}</span>
 				</nav>
@@ -238,10 +237,15 @@
 		border-bottom: 1px solid var(--color-rule);
 		overflow-x: auto;
 	}
+	/* Les onglets se partagent la largeur de la fiche : un nom de sujet long passe à la ligne plutôt que de pousser le
+	   dernier onglet hors de la vue. */
 	.onglets button {
+		flex: 1 1 0;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
+		text-align: left;
 		gap: 1px;
 		padding: 8px 10px 6px;
 		border: 0;
@@ -252,7 +256,10 @@
 		font-weight: 600;
 		color: var(--color-muted);
 		cursor: pointer;
-		white-space: nowrap;
+	}
+	/* Le badge de fraîcheur sous le nom passe lui aussi à la ligne, dans la largeur de son onglet. */
+	.onglets button :global(.badge) {
+		white-space: normal;
 	}
 	.onglets button:hover {
 		color: var(--color-ink);

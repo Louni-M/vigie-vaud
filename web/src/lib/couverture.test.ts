@@ -39,8 +39,6 @@ const couche = (id: string, sources: string[], onglet = true): CoucheInscrite =>
 	nom: id,
 	sources,
 	permanente: !onglet,
-	activeParDefaut: true,
-	icone: { signe: id, couleur: '#000' },
 	composants: onglet ? { Carte: charger, Onglet: charger } : { Carte: charger }
 });
 

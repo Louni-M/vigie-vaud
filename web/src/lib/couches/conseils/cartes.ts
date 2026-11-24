@@ -1,59 +1,32 @@
 import type { ConseilIndexe } from '#lib/schema.js';
-import { donneDesObjets, libelleDonne } from '#lib/sources.js';
+import { libelleDonneVisiteur } from '#lib/sources.js';
 import type { Commune, Zone } from '#lib/types.js';
-
-/** Ce que montre la carte d'un conseil couvert, dans le volet Conseils. */
-export interface CarteConseil {
-	/** Nom du conseil tel que la source le donne (« Conseil communal de Lausanne »). */
-	nom: string;
-	/** « objets et séances », « séances seulement ». */
-	donne: string;
-	/** « 3 objets récents » (les 14 derniers jours) ; `null` pour un conseil qui ne donne pas ses Objets. */
-	recents: string | null;
-	/** « Prochaine séance : mar. 20 oct. », sinon la dernière ; `null` si aucune n'est connue. */
-	seance: string | null;
-	/** Slug de la commune d'un conseil communal ; `null` pour le Grand Conseil. */
-	commune: string | null;
-}
+import type { EtatCompte } from '#lib/registre/types.js';
 
 const jour = new Intl.DateTimeFormat('fr-CH', { weekday: 'short', day: 'numeric', month: 'short' });
 
 /** Jour d'une Séance, tiré de sa clé (`5586/2026-10-20`) : « mar. 20 oct. ». */
 const jourDe = (cle: string) => jour.format(new Date(`${cle.split('/')[1].slice(0, 10)}T00:00:00`));
 
-function recents(n: number): string {
-	return n === 0 ? 'aucun objet récent' : n === 1 ? '1 objet récent' : `${n} objets récents`;
+/** « prochaine séance mar. 20 oct. », sinon la dernière ; `null` si aucune n'est connue. */
+function seanceDuConseil({ prochaine_seance: prochaine, derniere_seance: derniere }: ConseilIndexe): string | null {
+	if (prochaine) return `prochaine séance ${jourDe(prochaine)}`;
+	return derniere ? `dernière séance ${jourDe(derniere)}` : null;
 }
 
-/** La carte d'un conseil de `conseils/index.json` ; sa commune est traduite en slug par l'index des communes. */
-export function carteConseil(conseil: ConseilIndexe, communes: readonly Commune[]): CarteConseil {
-	const { prochaine_seance: prochaine, derniere_seance: derniere } = conseil;
-	return {
-		nom: conseil.nom,
-		donne: libelleDonne(conseil),
-		recents: donneDesObjets(conseil) ? recents(conseil.recents.length) : null,
-		seance: prochaine
-			? `Prochaine séance : ${jourDe(prochaine)}`
-			: derniere
-				? `Dernière séance : ${jourDe(derniere)}`
-				: null,
-		commune: conseil.commune === null ? null : (communes.find((c) => c.bfs === conseil.commune)?.slug ?? null)
-	};
-}
-
-/** Une ligne de la liste des conseils communaux du volet : la commune, puis ce que donne son conseil. */
+/** Une ligne de la liste des communes suivies : la commune, puis ce que donne son conseil et sa Séance. */
 export interface LigneConseil {
 	cle: string;
 	/** Nom de la commune (« Villeneuve »), qui suffit dans la liste des conseils communaux. */
 	commune: string;
 	slug: string;
-	/** « séances seulement · prochaine séance jeu. 10 déc. ». */
+	/** « textes déposés et séances · prochaine séance jeu. 10 déc. ». */
 	detail: string;
 }
 
 /**
  * Les conseils communaux du volet dont l'hôtel de ville est dans la zone affichée (tous tant que la carte n'a rien
- * affiché), une ligne chacun, par nom de commune. Le Grand Conseil n'y est pas : il garde sa carte.
+ * affiché), une ligne chacun, par nom de commune. Le Grand Conseil n'y est pas : il a sa propre rubrique.
  */
 export function lignesConseils(
 	conseils: readonly ConseilIndexe[],
@@ -67,20 +40,28 @@ export function lignesConseils(
 		.flatMap((conseil) => {
 			const commune = conseil.commune === null ? undefined : parNumero.get(conseil.commune);
 			if (!commune || !dans(commune.hotel)) return [];
-			const { seance } = carteConseil(conseil, communes);
-			const detail = [libelleDonne(conseil), seance && seance.charAt(0).toLowerCase() + seance.slice(1).replace(' :', '')]
-				.filter(Boolean)
-				.join(' · ');
+			const detail = [libelleDonneVisiteur(conseil), seanceDuConseil(conseil)].filter(Boolean).join(' · ');
 			return [{ cle: conseil.cle, commune: commune.nom, slug: commune.slug, detail }];
 		})
 		.sort((a, b) => a.commune.localeCompare(b.commune, 'fr'));
 }
 
+/** Le nombre de la rubrique Conseils communaux : les communes suivies de la zone, une par ligne de la liste. */
+export const compteConseils = (
+	conseils: readonly ConseilIndexe[],
+	communes: readonly Commune[],
+	zone: Zone | null
+): EtatCompte => ({ etat: 'nombre', nombre: lignesConseils(conseils, communes, zone).length });
+
 /**
- * La phrase sous les conseils couverts, sur les communes grisées : sur bureau, le grisage suit le volet
- * ouvert ; sur téléphone, il suit « Voir sur la carte » (`grisage-mobile`).
+ * Le nombre de la rubrique Grand Conseil : tous ses Objets, toutes années confondues, ceux que sa fiche liste sous
+ * « Tous les objets », pour tout le canton.
  */
-export function noteAutresCommunes(autres: number, telephone: boolean): string {
-	const quand = telephone ? 'sur la carte par « Voir sur la carte »' : 'tant que ce volet est ouvert';
-	return `Les ${autres} autres communes : pas de conseil couvert, grisées ${quand}. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.`;
+export function compteGrandConseil(conseils: readonly ConseilIndexe[]): EtatCompte {
+	const gc = conseils.find((c) => c.commune === null);
+	return gc ? { etat: 'nombre', nombre: gc.objets } : { etat: 'indisponible' };
 }
+
+/** La phrase sous les communes suivies, sur les communes grisées tant que la rubrique est ouverte. */
+export const noteAutresCommunes = (autres: number): string =>
+	`Les ${autres} autres communes : pas de conseil suivi, grisées sur la carte. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.`;

@@ -6,7 +6,7 @@ raisons :
 
 - **Rattachement** : un objet du Grand Conseil n'atteint une commune que par son nom, cherché dans son titre et le
   texte de ses documents, avec des exclusions. Le navigateur ne peut pas faire ce calcul sur tout le canton à chaque
-  visite. Le fil cantonal et la section « Au Grand Conseil » ont besoin du rattachement déjà calculé.
+  visite. La section « Au Grand Conseil » de la fiche commune a besoin du rattachement déjà calculé.
 - **Archive** : l'ADR-0008 conserve les objets parlementaires sans limite de durée. OpenParlData a des trous, n'a ni
   changelog ni politique de dépréciation, et publie « actuellement » sous CC BY 4.0. L'historique git du dépôt de
   données est donc l'archive.

@@ -1,6 +1,7 @@
 import type { Zone } from '#lib/types.js';
 import { ordreListe } from './cartes.js';
-import type { Restriction } from './donnees.svelte.js';
+import type { EtatCompte } from '#lib/registre/types.js';
+import type { DonneesRoutes, Restriction } from './donnees.svelte.js';
 import { ETATS, type EtatRestriction } from './etats.js';
 import { SORTES, type Sorte } from './sortes.js';
 import type { Point } from './trace.js';
@@ -11,19 +12,33 @@ import type { Point } from './trace.js';
  */
 
 /**
- * Les puces allumées du volet : les sortes et les états montrés. Ce sont les réglages de la couche, dans l'adresse
- * (`codecRoutes`), que partagent le volet (la liste) et la carte (ses filtres).
+ * Ordre de la liste : `echeance`, l'en cours par fin la plus proche puis l'à venir par début (`ordreListe`) ; `recent`,
+ * par début, le plus récent d'abord.
+ */
+export type OrdreRoutes = 'echeance' | 'recent';
+
+/**
+ * Les puces allumées du volet, les sortes et les états montrés, et l'ordre de la liste. Ce sont les réglages de la
+ * couche, dans l'adresse (`codecRoutes`), que partagent le volet (la liste) et la carte (ses filtres).
  */
 export interface Filtres {
 	sortes: readonly Sorte[];
 	etats: readonly EtatRestriction[];
+	ordre: OrdreRoutes;
 }
 
-/** Toutes les puces allumées : les puces du volet à l'arrivée, quand l'adresse n'en dit rien (`codecRoutes`). */
+/**
+ * Toutes les puces allumées, la liste par échéance : les réglages du volet à l'arrivée, quand l'adresse n'en dit rien
+ * (`codecRoutes`).
+ */
 export const FILTRES_INITIAUX: Filtres = {
 	sortes: Object.keys(SORTES) as Sorte[],
-	etats: Object.keys(ETATS) as EtatRestriction[]
+	etats: Object.keys(ETATS) as EtatRestriction[],
+	ordre: 'echeance'
 };
+
+/** Début le plus récent d'abord ; à égalité, par `OBJECTID`. */
+const parDebutRecent = (a: Restriction, b: Restriction) => b.dateDebut - a.dateDebut || a.id - b.id;
 
 /** La liste avec `x` allumé s'il était éteint, éteint s'il était allumé : le clic sur une puce. */
 export const basculer = <T>(liste: readonly T[], x: T): T[] =>
@@ -75,12 +90,26 @@ function coupeLaZone(lignes: readonly Point[][], zone: Zone): boolean {
 
 /**
  * La liste du volet : les restrictions que montrent les puces et dont le tracé coupe la zone visible (le milieu du
- * tracé peut être hors de la zone), en cours d'abord par fin la plus proche, puis à venir par jour de début. Rien
- * tant que la zone est inconnue.
+ * tracé peut être hors de la zone), dans l'ordre choisi : en cours d'abord par fin la plus proche, puis à venir par
+ * jour de début, ou par début le plus récent. Rien tant que la zone est inconnue.
  */
 export function visibles(restrictions: readonly Restriction[], filtres: Filtres, zone: Zone | null): Restriction[] {
 	if (!zone) return [];
 	return restrictions
 		.filter((r) => filtres.sortes.includes(r.sorte) && filtres.etats.includes(r.etat) && coupeLaZone(r.lignes, zone))
-		.sort(ordreListe);
+		.sort(filtres.ordre === 'recent' ? parDebutRecent : ordreListe);
+}
+
+/**
+ * Le nombre de la rubrique Routes : les restrictions de la zone, toutes puces allumées, comme la liste à l'arrivée.
+ * Tant que l'en cours ou l'à venir manque, il se charge, ou il est indisponible si la DGMR a échoué : jamais le
+ * nombre d'un seul des deux.
+ */
+export function compteRoutes(
+	donnees: Pick<DonneesRoutes, 'restrictions' | 'chargee' | 'source'>,
+	zone: Zone | null
+): EtatCompte {
+	if (FILTRES_INITIAUX.etats.every((e) => donnees.chargee(e)))
+		return { etat: 'nombre', nombre: visibles(donnees.restrictions, FILTRES_INITIAUX, zone).length };
+	return donnees.source.erreur ? { etat: 'indisponible' } : { etat: 'chargement' };
 }

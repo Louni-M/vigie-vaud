@@ -12,17 +12,20 @@ propre PR.
 
 ## Interface visée (J0)
 
-- **Écrans** : conçu d'abord pour le bureau ; sur mobile, la carte passe en plein écran et la fiche en tiroir.
-- **Couches** activables depuis un panneau : Permis, Hôtels de ville, Routes, Trains, Incidents, Météo, Presse…
+- **Écrans** : conçu d'abord pour le bureau ; sur téléphone, une vue plein écran à la fois : le panneau, la carte ou
+  la fiche (ADR 0018).
+- **Sommaire** à l'arrivée, dans un panneau posé sur la carte : une ligne par rubrique (Permis de construire, Routes,
+  Conseils communaux, Grand Conseil, puis Trains, Incidents, Météo, Presse…), avec son nombre ; une ligne ouvre la
+  liste de son sujet, et la carte ne dessine que lui.
 - **Un marqueur « hôtel de ville » par commune** (position : voir `docs/sources.md`).
-- Un clic sur ce marqueur ouvre la **fiche commune**, organisée en onglets : Conseil, Permis, Presse, Radio,
-  Météo. Elle remplace et étend `/commune/[slug]`.
+- Un clic sur ce marqueur ouvre la **fiche commune**, organisée en onglets, un par sujet : Permis de construire,
+  Conseils communaux, Routes, puis Presse, Radio, Météo. Elle remplace et étend `/commune/[slug]`.
 - **Le Grand Conseil** a son propre marqueur, au Parlement vaudois (Cité, Lausanne).
-- **Fil cantonal** en colonne latérale : les nouveautés de toutes les sources, filtrables par type et recadrées
-  sur la zone visible de la carte.
-- **État dans l'URL** : couches actives et commune ouverte, comme aujourd'hui.
+- **Une légende de la carte** explique chaque marqueur visible, hôtels de ville compris.
+- **État dans l'URL** : rubrique ouverte et commune ouverte. Le fil cantonal des premiers jalons est retiré
+  (ADR 0018).
 - **Transparence** :
-  - une page **Couverture** liste les 300 communes avec l'état de chaque source (API, scrapé, non couvert, en
+  - une page **Couverture** (« Sources par commune ») liste les 300 communes avec l'état de chaque source (API, scrapé, non couvert, en
     panne depuis…) ;
   - les communes non couvertes sont grisées sur la carte ;
   - chaque couche porte un **badge de fraîcheur** (« consulté il y a 2 min · DGMR ») et l'attribution de sa source.
@@ -35,7 +38,7 @@ météo, radios, accidents.
 | Jalon | Contenu |
 |---|---|
 | **J0 Socle** | Renommage, licence, registre des couches, fiche commune à onglets (seulement ceux des couches présentes), hôtels de ville, dépôt de données et cron (qui surveille les sources pour la Couverture), page Couverture, badges de fraîcheur, permis migrés en couche, suppression du code de la version hébergée ; à la fin, dépôt rendu public sous le nom `vigie-vaud` et GitHub Pages activé. Décisions : carte [#1](https://github.com/Louni-M/CyberSwissNews/issues/1) |
-| **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal |
+| **J1 Conseils** | OpenParlData (Grand Conseil, conseil communal de Lausanne, séances d'Yverdon) ; section « Au Grand Conseil » dans la fiche de chaque commune mentionnée ; fil cantonal (retiré depuis, ADR 0018) |
 | **J2 Routes** | Restrictions de circulation DGMR en cours et à venir |
 | **J3 Conseils communaux** | Scrapers des sites communaux pour couvrir le plus de communes possible dans la couche Conseils, plateforme par plateforme : i-web, Quicksite (avec Montreux et Vevey), Webcommunes et COMMUNEapp, publiés l'un après l'autre, en une étape de J3 par plateforme, chacune avec sa branche et sa PR (environ 80 communes et 230 000 habitants) ; une commune est couverte dès ses Séances. Décisions : carte « J3 Conseils communaux spécifié » ; spécification [#144](https://github.com/Louni-M/vigie-vaud/issues/144) |
 | **J4 Trains** | Panneau des perturbations CFF filtré sur Vaud ; gares sur la carte, départs et retards au clic |

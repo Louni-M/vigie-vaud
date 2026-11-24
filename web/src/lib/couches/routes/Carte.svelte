@@ -2,7 +2,7 @@
 	/*
 	 * Carte de la couche Routes : un tracé par restriction de circulation, coloré par sorte sur un liseré blanc ; les
 	 * déviations en tirets plus fins, toujours visibles ; l'à venir plus pâle, et l'en cours dessiné au-dessus de lui.
-	 * Sous le zoom 11, un point par restriction au milieu de son tracé, sauf les déviations. Fondu à l'activation.
+	 * Sous le zoom 11, un point par restriction au milieu de son tracé, sauf les déviations. Fondu quand elle est dessinée ou cesse de l'être.
 	 * Un clic ouvre le tracé le plus contraignant sous le doigt (la carte vole vers lui tout de suite), et la
 	 * restriction ouverte est soulignée d'un contour noir, sous ses couleurs. Les puces du volet, réglages de la
 	 * couche (`ctx.parametres`), filtrent les calques : un tracé masqué n'est ni dessiné ni cliquable.
@@ -33,7 +33,7 @@
 	const SELECTION = 'routes-selection';
 	/** Sous ce zoom, un point par restriction s'ajoute aux tracés, trop fins pour être vus à l'échelle du canton. */
 	const ZOOM_POINTS = 11;
-	/** Fondu à l'activation et à la désactivation, sauf si le visiteur a demandé moins d'animations. */
+	/** Fondu quand la couche est dessinée ou cesse de l'être, sauf si le visiteur a demandé moins d'animations. */
 	const FONDU = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 350;
 	const transition = { duration: FONDU, delay: 0 };
 
@@ -175,7 +175,7 @@
 	 */
 	function clic(e: MapMouseEvent) {
 		// Un hôtel de ville sous le clic, dessiné au-dessus, l'emporte sur les tracés voisins.
-		if (!ctx.active || ctx.recouvert([e.point.x, e.point.y])) return;
+		if (!ctx.dessinee || ctx.recouvert([e.point.x, e.point.y])) return;
 		const r = 8;
 		const touches = map.queryRenderedFeatures(
 			[
@@ -188,7 +188,7 @@
 		const choisie = plusContraignante(routes.restrictions.filter((x) => touchees.has(x.id)));
 		if (choisie) ouvrirRestriction(ctx, choisie);
 	}
-	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
+	const pointeur = () => (map.getCanvas().style.cursor = ctx.dessinee ? 'pointer' : '');
 	const sansPointeur = () => (map.getCanvas().style.cursor = '');
 	map.on('click', clic);
 	for (const id of cliquables) {
@@ -211,7 +211,7 @@
 		return () => (actuelle = false);
 	});
 	$effect(() => {
-		(map.getSource(SELECTION) as GeoJSONSource).setData(traces(ctx.active && ouverte ? [ouverte] : []));
+		(map.getSource(SELECTION) as GeoJSONSource).setData(traces(ctx.dessinee && ouverte ? [ouverte] : []));
 	});
 
 	/*
@@ -250,13 +250,13 @@
 		(map.getSource(MILIEUX) as GeoJSONSource).setData(milieux(rs));
 	});
 
-	// Fondu : les tracés apparaissent ou disparaissent, puis les calques désactivés sont retirés du rendu.
+	// Fondu : les tracés apparaissent ou disparaissent, puis les calques qui ne sont plus dessinés sont retirés du rendu.
 	$effect(() => {
-		const active = ctx.active;
-		if (active) for (const id of ids) map.setLayoutProperty(id, 'visibility', 'visible');
+		const dessinee = ctx.dessinee;
+		if (dessinee) for (const id of ids) map.setLayoutProperty(id, 'visibility', 'visible');
 		for (const { spec, opacites } of calques)
-			for (const [prop, pleine] of opacites) map.setPaintProperty(spec.id, prop, active ? pleine : 0);
-		if (active) return;
+			for (const [prop, pleine] of opacites) map.setPaintProperty(spec.id, prop, dessinee ? pleine : 0);
+		if (dessinee) return;
 		const t = setTimeout(() => {
 			for (const id of ids) map.setLayoutProperty(id, 'visibility', 'none');
 		}, FONDU);

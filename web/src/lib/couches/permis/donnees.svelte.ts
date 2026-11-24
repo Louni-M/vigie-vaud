@@ -6,6 +6,8 @@ import { masquerNoms, nettoyer } from '#lib/masquage.js';
 import { source } from '#lib/sources.js';
 import { typographier } from '#lib/almanach/typographie.js';
 import type { Commune, Dossier, PointHisto, Statut, Zone } from '#lib/types.js';
+import type { EtatCompte } from '#lib/registre/types.js';
+import { couchePermis } from './index.js';
 
 /**
  * Module de données de la couche Permis, partagé par ses composants : dossiers CAMAC lus en direct sur
@@ -366,6 +368,23 @@ export function visibles(
 			if (!idsActifs.has(d.id) && annee(d) >= parametres.depuis && garde(d)) liste.push(d);
 	}
 	return liste.sort(parametres.tri === 'fin' ? parFin : parPublication);
+}
+
+/** Les réglages de la couche quand l'adresse n'en dit rien : ceux du compte de sa rubrique. */
+const PAR_DEFAUT = couchePermis.codec!.lire(new URLSearchParams());
+
+/**
+ * Le nombre de la rubrique Permis de construire : les dossiers de la zone que montre la liste avec les réglages par
+ * défaut, quels que soient ceux de l'adresse. Comme la liste, il attend les dossiers en cours, et il est indisponible
+ * quand leur lecture a échoué.
+ */
+export function comptePermis(
+	donnees: { actifs: Dossier[]; histo: PointHisto[]; source: Pick<EtatSourceExecution, 'erreur'> },
+	zone: Zone | null
+): EtatCompte {
+	if (donnees.source.erreur) return { etat: 'indisponible' };
+	if (!donnees.actifs.length) return { etat: 'chargement' };
+	return { etat: 'nombre', nombre: visibles(zone, PAR_DEFAUT, donnees).length };
 }
 
 /** Enquêtes en cours d'abord, la plus proche de sa fin en tête ; ensuite par publication. */

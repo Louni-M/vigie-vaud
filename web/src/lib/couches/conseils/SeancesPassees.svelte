@@ -5,7 +5,7 @@
 	 * ligne nouvellement affichée.
 	 */
 	import { tick, untrack } from 'svelte';
-	import { jourDe } from '#lib/fil/fil.js';
+	import { jourDe } from '#lib/dates.js';
 	import { nombre } from '#lib/almanach/typographie.js';
 	import type { ConseilIndexe, LigneSeance } from '#lib/schema.js';
 	import { conseils } from './donnees.js';

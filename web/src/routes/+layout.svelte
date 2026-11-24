@@ -33,7 +33,7 @@
 	// « Carte » reste marqué comme page courante quand une fiche commune est ouverte sur la carte.
 	const nav = [
 		{ href: resolve('/(carte)'), label: 'Carte', groupe: '/(carte)' },
-		{ href: resolve('/couverture'), label: 'Couverture', groupe: '/couverture' },
+		{ href: resolve('/couverture'), label: 'Sources par commune', groupe: '/couverture' },
 		{ href: resolve('/a-propos'), label: 'À propos', groupe: '/a-propos' }
 	];
 	const courant = (groupe: string) => page.route.id === groupe || !!page.route.id?.startsWith(`${groupe}/`);
@@ -215,6 +215,13 @@
 		nav {
 			gap: var(--space-sm);
 			font-size: var(--text-xs);
+		}
+		/* Un libellé long (« Sources par commune ») passe sur deux lignes plutôt que de pousser le menu hors de l'écran. */
+		nav a {
+			max-width: 6.5em;
+			line-height: 1.15;
+			text-align: center;
+			white-space: normal;
 		}
 	}
 	/* Une page imprimée n'a que faire de la navigation. */

@@ -1,7 +1,5 @@
 import type {
 	ConseilIndexe,
-	EntreeFil,
-	FilConseils,
 	IndexConseils,
 	LigneObjet,
 	Objet,
@@ -169,26 +167,6 @@ export function indexConseils(champs: Partial<IndexConseils> = {}): IndexConseil
 /** `conseils/communes/<ofs>.json` : les Objets du Grand Conseil rattachés à la commune (Pully par défaut). */
 export function rattachementsCommune(objets: LigneObjet[], commune = 5590): RattachementsCommune {
 	return { version: 1, genere: GENERE, commune, objets };
-}
-
-/** Une entrée de `conseils/fil.json` ; par défaut, l'Objet de `ligneObjet()`. */
-export function entreeFil(champs: Partial<EntreeFil> = {}): EntreeFil {
-	return {
-		cle: 'vd/26_INT_140',
-		conseil: 'vd',
-		sorte: 'objet',
-		type: 'Interpellation',
-		date: '2026-10-06',
-		titre: 'Quelle politique pour les transports publics régionaux ?',
-		communes: [],
-		points: null,
-		...champs
-	};
-}
-
-/** `conseils/fil.json`. */
-export function filConseils(entrees: EntreeFil[] = [entreeFil()]): FilConseils {
-	return { version: 1, genere: GENERE, entrees };
 }
 
 /** Le fichier d'archive d'un Objet ; par défaut, celui de `ligneObjet()`. */

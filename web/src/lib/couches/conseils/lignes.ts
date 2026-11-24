@@ -139,11 +139,11 @@ export function ordreDuJour(points: readonly PointOrdreDuJour[]): GroupePoints[]
 /** Puce des Objets récents du Grand Conseil : tous, ceux qui nomment une commune, ceux qui n'en nomment aucune. */
 export type PuceObjets = 'tous' | 'avec' | 'sans';
 
-/** Les puces, dans l'ordre : « Tous · Nomment une commune · Sans commune ». */
+/** Les puces, dans l'ordre : « Tous · Nomment une commune · Ne nomment aucune commune ». */
 export const PUCES_OBJETS: { id: PuceObjets; nom: string }[] = [
 	{ id: 'tous', nom: 'Tous' },
 	{ id: 'avec', nom: 'Nomment une commune' },
-	{ id: 'sans', nom: 'Sans commune' }
+	{ id: 'sans', nom: 'Ne nomment aucune commune' }
 ];
 
 /** Les Objets que garde la puce, dans leur ordre, par leurs communes rattachées. */

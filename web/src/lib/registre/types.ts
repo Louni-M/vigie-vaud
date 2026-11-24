@@ -87,8 +87,13 @@ export interface Contexte<P = unknown> {
 	readonly parametres: P;
 	/** Change une partie des paramètres ; l'adresse est remplacée, sans nouvelle entrée d'historique. */
 	regler(partiel: Partial<P>): void;
-	/** La couche est activée : sa `Carte` reste montée quand on la désactive, pour le fondu. */
-	readonly active: boolean;
+	/**
+	 * La carte dessine la couche : sa rubrique est ouverte, ou l'onglet courant de la fiche commune est le sien (une
+	 * couche permanente l'est toujours). Sa `Carte` reste montée quand une autre la remplace, pour le fondu.
+	 */
+	readonly dessinee: boolean;
+	/** Le panneau montre la rubrique à volet de la couche : son `Volet` charge et compte sa liste. */
+	readonly listee: boolean;
 	readonly ouvert: Ouvert | null;
 	/** Commune dont la fiche est ouverte (celle que montre l'`Onglet`), ou `null`. */
 	readonly commune: Commune | null;
@@ -105,50 +110,57 @@ export interface Contexte<P = unknown> {
 	fermer(): void;
 }
 
-/** Ce qui suit « Non couvert : » en tête de l'onglet : une phrase, puis un lien facultatif (son texte et son adresse). */
+/** L'explication en tête de l'onglet d'une commune non couverte : une phrase, puis un lien facultatif (son texte et son adresse). */
 export interface MessageNonCouvert {
 	texte: string;
 	lien?: { texte: string; url: string };
 }
 
-/** Un type d'entrée du fil cantonal (« Nouveaux dossiers ») : une puce et la pastille de ses entrées. */
-export interface TypeFil {
+/**
+ * Ce que la ligne d'une rubrique dit de son nombre : il se charge (la ligne garde sa hauteur), il est connu (zéro
+ * compris), ou sa source a échoué. Un nombre partiel n'est jamais montré : il passe pour « indisponible ».
+ */
+export type EtatCompte = { etat: 'chargement' } | { etat: 'nombre'; nombre: number } | { etat: 'indisponible' };
+
+/**
+ * Le compte d'une rubrique, pour la zone de la carte : celui de sa liste avec les réglages par défaut de sa couche.
+ * Il lit l'état des données de la couche, et suit donc leur chargement.
+ */
+export type Compter = (zone: Zone | null, communes: readonly Commune[]) => EtatCompte;
+
+/**
+ * Une rubrique du sommaire, déclarée par sa couche : un sujet tel que le visiteur le nomme. Elle ouvre le volet de
+ * sa couche, dont elle porte alors l'identifiant, ou sa fiche propre. Une couche peut en déclarer plusieurs
+ * (Conseils : Conseils communaux et Grand Conseil), au plus une à volet.
+ */
+export interface Rubrique {
+	/** Ce que porte le panneau quand elle est ouverte (`volet=routes`) ; celui de sa couche si elle ouvre son volet. */
 	id: string;
+	/** Son nom, au sommaire et en tête de sa liste (« Permis de construire »). */
 	nom: string;
-	signe: string;
+	/** Ce qu'on y trouve, en une phrase, sous son nom au sommaire. */
+	phrase: string;
+	/** Sa place au sommaire, par ordre croissant ; l'ordre des couches, celui du dessin, n'y compte pas. */
+	rang: number;
+	/** Ce que compte son nombre, au singulier et au pluriel (« dossier en cours »). */
+	unite: { un: string; plusieurs: string; feminin?: boolean };
+	/** `zone` : son nombre compte la zone de la carte ; `canton` : tout le canton, ses éléments n'ayant pas de position. */
+	portee: 'zone' | 'canton';
+	/** Sa fiche propre (son identifiant), qu'elle ouvre à la place d'un volet. */
+	fiche?: string;
+	/** Import dynamique, comme `localiser` : sa fonction de compte, une fois le chargement de ses données lancé. */
+	compteur(): Promise<Compter>;
+}
+
+/**
+ * Une entrée de la légende de la carte : un signe, masqué aux lecteurs d'écran, et le texte qui dit ce qu'il montre.
+ * `rond` : un point plein ; `hotel` : le marqueur d'un hôtel de ville ; `fronton` : celui du Grand Conseil ; `trait`
+ * et `tirets` : un tracé ; `aplat` : une surface (le grisage).
+ */
+export interface EntreeLegende {
+	signe: 'rond' | 'hotel' | 'fronton' | 'trait' | 'tirets' | 'aplat';
 	couleur: string;
-}
-
-/** Une entrée du fil cantonal, toute faite par sa couche. */
-export interface EntreeFil {
-	/** Ce que reçoit `ouvrir()`. */
-	element: string;
-	/** Un des types déclarés par la couche. */
-	type: string;
-	/** AAAA-MM-JJ ; « À venir » si elle est dans le futur. */
-	date: string;
-	/** « Construction nouvelle », « Motion ». */
-	sorte: string;
-	/** « Lutry », « Conseil communal de Lausanne ». */
-	qui: string;
-	titre: string;
-	/** Slugs dans l'ordre du rattachement ; vide : sans commune. */
-	communes: string[];
-	/** Sinon, les hôtels de ville de ses communes. */
-	position?: [number, number];
-}
-
-/** Ce qu'une couche apporte au fil cantonal. */
-export interface Fil {
-	/** Statiques : les puces s'affichent avant les données. */
-	types: TypeFil[];
-	/** Import dynamique, comme `localiser`. Rejette en cas d'échec. `depuis` : AAAA-MM-JJ, premier jour du fil. */
-	entrees(depuis: string): Promise<EntreeFil[]>;
-	/**
-	 * L'aide de la section « Sans commune » pour celles de ses entrées qui n'ont pas de commune (« Grand Conseil,
-	 * sans commune nommée »). Une couche qui la déclare fait toujours afficher la section, même vide.
-	 */
-	sansCommune?: string;
+	texte: string;
 }
 
 /** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */
@@ -157,17 +169,12 @@ export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ c
 /** Description légère d'une couche, inscrite au registre. */
 export interface Couche<P = unknown> {
 	id: string;
-	/** Nom du rail et du volet (« Conseils »). */
+	/** Nom de la couche, dans les messages qui la nomment (« Conseils »). */
 	nom: string;
-	/** Nom de son onglet dans une fiche et du fil d'Ariane de l'élément ouvert (« Conseil ») ; sinon `nom`. */
-	nomOnglet?: string;
 	/** Identifiants de `sources.json`. */
 	sources: string[];
-	/** Toujours affichée, sans interrupteur. */
+	/** Toujours dessinée sur la carte, quelle que soit la rubrique ouverte (Hôtels de ville). */
 	permanente: boolean;
-	activeParDefaut: boolean;
-	/** Pastille du rail : un signe et sa couleur. */
-	icone: { signe: string; couleur: string };
 	codec?: Codec<P>;
 	/** Sa fiche propre, avec sa page (« /grand-conseil ») ; seul son `Onglet` y est rendu. */
 	fiche?: FichePropre;
@@ -204,9 +211,16 @@ export interface Couche<P = unknown> {
 	 * message commun du registre.
 	 */
 	nonCouvert?(commune: Commune): string | MessageNonCouvert;
-	/** Ce que la couche apporte au fil cantonal, quelle que soit son activation. */
-	fil?: Fil;
-	/** Chargés à la demande, à l'activation de la couche ou à l'ouverture de son volet. */
+	/**
+	 * Ce que la légende de la carte dit de la couche : `toujours`, ce qu'elle dessine en tout temps (les hôtels de ville,
+	 * le marqueur du Grand Conseil) ; `dessinee`, ce qu'elle ajoute quand elle est la couche dessinée.
+	 */
+	legende?: { toujours?: EntreeLegende[]; dessinee?: EntreeLegende[] };
+	/** Ses rubriques au sommaire ; une couche sans rubrique n'y est pas (Hôtels de ville). */
+	rubriques?: Rubrique[];
+	/** La rubrique (son identifiant) où va un élément, d'après sa clé ; sans elle, la première de `rubriques`. */
+	rubriqueDe?(element: string): string;
+	/** Chargés à la demande : la `Carte` quand la couche est dessinée, le `Volet` à l'ouverture de sa rubrique. */
 	composants: {
 		Carte: Chargeur<P>;
 		Volet?: Chargeur<P>;

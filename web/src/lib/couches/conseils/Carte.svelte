@@ -3,7 +3,8 @@
 	 * Carte de la couche Conseils : le seul marqueur du Grand Conseil, un fronton sarcelle, au Parlement. Aux petits
 	 * zooms, il est décalé à l'écran vers le nord-est, pour qu'on puisse cliquer aussi sur l'hôtel de ville de Lausanne
 	 * tout proche ; le décalage s'annule vers le zoom 14. C'est un calque de la carte, et non un marqueur HTML : les
-	 * hôtels de ville, dessinés au-dessus de toutes les couches, restent ainsi au-dessus de lui. Fondu à l'activation.
+	 * hôtels de ville, dessinés au-dessus de toutes les couches, restent ainsi au-dessus de lui. Il est
+	 * toujours dessiné, quelle que soit la couche dessinée : il apparaît en fondu à l'arrivée.
 	 * Un clic sur le marqueur ouvre la fiche du Grand Conseil, sauf si un hôtel de ville, au-dessus, est sous le clic.
 	 */
 	import { onMount, untrack } from 'svelte';
@@ -103,22 +104,15 @@
 		avant
 	);
 
-	// Fondu : le marqueur apparaît ou disparaît, puis il est retiré du rendu.
-	$effect(() => {
-		const active = ctx.active;
-		if (active) map.setLayoutProperty(MARQUEUR, 'visibility', 'visible');
-		map.setPaintProperty(MARQUEUR, 'icon-opacity', active ? 1 : 0);
-		if (active) return;
-		const t = setTimeout(() => map.setLayoutProperty(MARQUEUR, 'visibility', 'none'), FONDU);
-		return () => clearTimeout(t);
-	});
+	// Fondu à l'arrivée : le marqueur est ajouté transparent, puis apparaît.
+	map.setPaintProperty(MARQUEUR, 'icon-opacity', 1);
 
 	/** Le marqueur ouvre la fiche du Grand Conseil ; l'hôtel de ville de Lausanne, dessiné au-dessus, l'emporte. */
 	function clic(e: MapLayerMouseEvent) {
-		if (!ctx.active || ctx.recouvert([e.point.x, e.point.y])) return;
+		if (ctx.recouvert([e.point.x, e.point.y])) return;
 		ctx.ouvrir({ fiche: FICHE_GRAND_CONSEIL });
 	}
-	const pointeur = () => (map.getCanvas().style.cursor = ctx.active ? 'pointer' : '');
+	const pointeur = () => (map.getCanvas().style.cursor = 'pointer');
 	const sansPointeur = () => (map.getCanvas().style.cursor = '');
 	map.on('click', MARQUEUR, clic);
 	map.on('mouseenter', MARQUEUR, pointeur);

@@ -36,10 +36,9 @@
 		onpret?: (map: MlMap) => void;
 		/**
 		 * Fin d'un déplacement. `parDefaut` : la vue du canton (au chargement, ou rétablie par `vueCanton`),
-		 * qui n'est pas un choix du visiteur. `parLaPersonne` : le visiteur a glissé, zoomé (molette, doigts,
-		 * clavier ou boutons) ; faux pour les vols et cadrages demandés à la carte.
+		 * qui n'est pas un choix du visiteur ; un déplacement du visiteur ne l'est jamais.
 		 */
-		onvue?: (zone: Zone, centre: Centre, parDefaut: boolean, parLaPersonne: boolean) => void;
+		onvue?: (zone: Zone, centre: Centre, parDefaut: boolean) => void;
 	}
 
 	let { repere = null, attribution = [], bounds = CANTON, interactive = true, onpret, onvue }: Props = $props();
@@ -85,8 +84,7 @@
 		onvue(
 			[b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
 			{ lon: c.lng, lat: c.lat, zoom: map.getZoom() },
-			actuelleParDefaut,
-			parLaPersonne
+			actuelleParDefaut
 		);
 	}
 
@@ -245,7 +243,7 @@
 		};
 	});
 
-	// Contrôle d'attribution, refait quand la liste change (couche activée ou désactivée).
+	// Contrôle d'attribution, refait quand la liste change (une autre couche dessinée).
 	$effect(() => {
 		const textes = attribution;
 		if (!pret || !map || !maplibre) return;

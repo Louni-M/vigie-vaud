@@ -1,6 +1,6 @@
 import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
-import { SORTES } from './sortes.js';
-import { FILTRES_INITIAUX, type Filtres } from './volet.js';
+import { enTirets, SORTES, type Sorte } from './sortes.js';
+import { compteRoutes, FILTRES_INITIAUX, type Filtres } from './volet.js';
 
 export { FILTRES_INITIAUX };
 
@@ -9,9 +9,6 @@ const RESTRICTION = 'Restriction de circulation';
 
 /** L'`OBJECTID` que porte un élément `?r=`, ou `null` s'il n'en est pas un. */
 const idRestriction = (element: string) => (/^\d+$/.test(element) ? Number(element) : null);
-
-/** Pastille du rail, reprise par la puce du fil. */
-const ICONE = { signe: 'R', couleur: SORTES.fermeture.couleur };
 
 /** Les valeurs de `toutes` que nomme la liste `texte` (« fermeture,feux »), dans l'ordre de `toutes` ; sans liste, toutes. */
 function choisies<T extends string>(texte: string | null, toutes: readonly T[]): T[] {
@@ -25,15 +22,16 @@ function liste<T extends string>(choisies: readonly T[], toutes: readonly T[]): 
 }
 
 /**
- * Codec des puces du volet Routes, qui filtrent la carte comme la liste : `sortes` (« fermeture,feux ») et `etats`
- * (« a_venir »), chacune écrite seulement si une puce est éteinte ; vide (`sortes=`) quand toutes le sont. Une valeur
- * inconnue est ignorée.
+ * Codec des réglages du volet Routes : les puces, qui filtrent la carte comme la liste, `sortes` (« fermeture,feux »)
+ * et `etats` (« a_venir »), chacune écrite seulement si une puce est éteinte, vide (`sortes=`) quand toutes le sont ;
+ * puis l'ordre de la liste, `ordre=recent` (la clé `tri` est celle des Permis). Une valeur inconnue est ignorée.
  */
 export const codecRoutes: Codec<Filtres> = {
-	cles: ['sortes', 'etats'],
+	cles: ['sortes', 'etats', 'ordre'],
 	lire: (params) => ({
 		sortes: choisies(params.get('sortes'), FILTRES_INITIAUX.sortes),
-		etats: choisies(params.get('etats'), FILTRES_INITIAUX.etats)
+		etats: choisies(params.get('etats'), FILTRES_INITIAUX.etats),
+		ordre: params.get('ordre') === 'recent' ? 'recent' : FILTRES_INITIAUX.ordre
 	}),
 	ecrire(p) {
 		const paires: [string, string][] = [];
@@ -41,6 +39,7 @@ export const codecRoutes: Codec<Filtres> = {
 		const etats = liste(p.etats, FILTRES_INITIAUX.etats);
 		if (sortes !== null) paires.push(['sortes', sortes]);
 		if (etats !== null) paires.push(['etats', etats]);
+		if (p.ordre !== FILTRES_INITIAUX.ordre) paires.push(['ordre', p.ordre]);
 		return paires;
 	}
 };
@@ -54,11 +53,8 @@ export const codecRoutes: Codec<Filtres> = {
 export const coucheRoutes: Couche<Filtres> = {
 	id: 'routes',
 	nom: 'Routes',
-	nomOnglet: 'Routes',
 	sources: ['dgmr-restrictions'],
 	permanente: false,
-	activeParDefaut: true,
-	icone: ICONE,
 	// `?r=<OBJECTID>` : l'élément ouvert, à côté des puces du volet (`?sortes=`, `?etats=`).
 	cleElement: 'r',
 	codec: codecRoutes,
@@ -78,30 +74,30 @@ export const coucheRoutes: Couche<Filtres> = {
 	titre: (_, nomDeLaFiche) => `${RESTRICTION} – ${nomDeLaFiche} – Vigie Vaud`,
 	// Une phrase fixe : la page de la commune est pré-générée, les restrictions lues en direct.
 	resume: 'les restrictions de circulation en cours et à venir',
-	// Par leur début, jamais par leur levée, qui n'est pas datable : une restriction commencée avant la fenêtre
-	// n'entre pas, même si elle court encore. Une entrée par restriction, déviations comprises.
-	fil: {
-		types: [{ id: 'restrictions', nom: 'Restrictions', ...ICONE }],
-		async entrees(depuis) {
-			const [{ routes }, { instant }] = await Promise.all([import('./donnees.svelte.js'), import('./horaires.js')]);
-			// Une restriction hors de toute commune (hors du canton) n'a ni ligne ni fiche.
-			return (await routes.depuis(depuis)).flatMap((r) =>
-				r.communes?.length
-					? {
-							element: String(r.id),
-							type: 'restrictions',
-							// Le jour tel qu'écrit par la DGMR : « À venir » s'il est dans le futur.
-							date: instant(r.dateDebut).jour,
-							sorte: r.libelleSorte,
-							qui: r.communes[0].commune.nom,
-							titre: r.nom,
-							communes: r.communes.map((p) => p.commune.slug),
-							position: r.milieu
-						}
-					: []
-			);
-		}
+	// Les sortes que publie la DGMR ; « Autres » n'a sa puce dans la rubrique que si une restriction en est.
+	legende: {
+		dessinee: (['fermeture', 'deviation', 'feux', 'particuliere'] satisfies Sorte[]).map((s) => ({
+			signe: enTirets(s) ? 'tirets' : 'trait',
+			couleur: SORTES[s].couleur,
+			texte: SORTES[s].nom
+		}))
 	},
+	// Son nombre est celui de sa liste à l'ouverture : toutes les puces allumées, dans la zone de la carte.
+	rubriques: [
+		{
+			id: 'routes',
+			nom: 'Routes',
+			phrase: 'Fermetures, déviations et feux, en cours ou à venir.',
+			rang: 20,
+			unite: { un: 'restriction de circulation', plusieurs: 'restrictions de circulation', feminin: true },
+			portee: 'zone',
+			async compteur() {
+				const { routes } = await import('./donnees.svelte.js');
+				routes.charger().catch(() => {});
+				return (zone) => compteRoutes(routes, zone);
+			}
+		}
+	],
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),

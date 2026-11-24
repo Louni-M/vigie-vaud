@@ -1,17 +1,18 @@
 <script lang="ts">
 	/*
-	 * Volet Routes : sous l'interrupteur, le badge et l'attribution du registre, l'échec de la DGMR s'il y en a un,
-	 * avec « Réessayer » ; puis les puces par sorte (qui servent de légende) et En cours / À venir, qui filtrent la
-	 * carte comme la liste : ce sont les réglages de la couche (`ctx.parametres`), dans l'adresse (`?sortes=`,
-	 * `?etats=`) ; enfin le compte et la liste des restrictions de la zone visible, en cartes de restriction qui
-	 * ouvrent la leur, masqués quand la couche est désactivée. La couche ne grise aucune commune.
+	 * La rubrique Routes : l'échec de la DGMR s'il y en a un, avec « Réessayer » ; puis les puces par sorte (qui servent
+	 * de légende) et En cours / À venir, qui filtrent la carte comme la liste, et l'ordre de la liste : ce sont les
+	 * réglages de la couche (`ctx.parametres`), dans l'adresse (`?sortes=`, `?etats=`, `?ordre=`) ; enfin le compte et
+	 * la liste des restrictions de la zone visible, en cartes de restriction qui ouvrent la leur. Le registre rend en
+	 * tête le lien de retour et le nom de la rubrique, et ses sources après la liste. La couche ne grise aucune commune.
 	 */
 	import { nombre } from '#lib/almanach/typographie.js';
 	import EchecSource from '#lib/components/EchecSource.svelte';
 	import type { Contexte } from '#lib/registre/types.js';
 	import { routes } from './donnees.svelte.js';
 	import { ETATS, type EtatRestriction } from './etats.js';
-	import { ouvrirRestriction, restrictionOuverte } from './index.js';
+	import { phraseCompte } from '#lib/registre/rubriques.js';
+	import { coucheRoutes, ouvrirRestriction, restrictionOuverte } from './index.js';
 	import RestrictionCarte from './RestrictionCarte.svelte';
 	import { enTirets, SORTES } from './sortes.js';
 	import { basculer, sortesDesPuces, visibles as restrictionsVisibles, type Filtres } from './volet.js';
@@ -21,10 +22,12 @@
 	/** Restrictions listées au plus : au-delà, on invite à zoomer. */
 	const LISTE_MAX = 150;
 	const etats = Object.keys(ETATS) as EtatRestriction[];
+	/** La rubrique qu'ouvre ce volet : sa phrase de compte est celle du sommaire. */
+	const rubrique = coucheRoutes.rubriques![0];
 
 	const f = $derived(ctx.parametres);
 	const sortes = $derived(sortesDesPuces(routes.restrictions));
-	const visibles = $derived(ctx.active ? restrictionsVisibles(routes.restrictions, f, ctx.zone) : []);
+	const visibles = $derived(ctx.listee ? restrictionsVisibles(routes.restrictions, f, ctx.zone) : []);
 	const ouverte = $derived(restrictionOuverte(ctx.ouvert));
 
 	/** Les états demandés par les puces : chargés, en cours de chargement, ou manqués (la source est en erreur). */
@@ -34,7 +37,7 @@
 	// La carte charge déjà les restrictions ; le volet s'en assure (la promesse est partagée). Un échec est porté par
 	// l'état de la source, que « Réessayer » recharge.
 	$effect(() => {
-		if (ctx.active) routes.charger().catch(() => {});
+		if (ctx.listee) routes.charger().catch(() => {});
 	});
 </script>
 
@@ -70,9 +73,17 @@
 			</button>
 		{/each}
 	</div>
+	<select
+		value={f.ordre}
+		onchange={(e) => ctx.regler({ ordre: e.currentTarget.value === 'recent' ? 'recent' : 'echeance' })}
+		aria-label="Ordre de la liste"
+	>
+		<option value="echeance">En cours d’abord, fin la plus proche</option>
+		<option value="recent">Plus récentes d’abord</option>
+	</select>
 </div>
 
-{#if ctx.active}
+{#if ctx.listee}
 	<div class="zone">
 		<p class="compte">
 			{#if f.etats.length && !charges.length}
@@ -82,7 +93,8 @@
 					Chargement des restrictions auprès de la DGMR…
 				{/if}
 			{:else}
-				<strong>{nombre.format(visibles.length)}</strong>&nbsp;restriction{visibles.length > 1 ? 's' : ''} de circulation dans la zone affichée
+				{@const c = phraseCompte(rubrique, visibles.length)}
+				{#if c.nombre}<strong>{c.nombre}</strong>{/if}{c.texte}
 				{#each enAttente as e (e)}
 					{#if routes.source.erreur}
 						<span class="erreur"> · les restrictions {ETATS[e].minuscules} n’ont pas pu être chargées</span>
@@ -118,6 +130,19 @@
 </p>
 
 <style>
+	select {
+		align-self: flex-start;
+		min-height: 40px;
+		padding: 7px 8px;
+		border: 0;
+		border-bottom: var(--rule-bar) solid var(--color-rule-2);
+		border-radius: 0;
+		background-color: var(--color-paper);
+		font: inherit;
+		font-size: 13.5px;
+		color: var(--color-ink);
+		max-width: 100%;
+	}
 	.reglages,
 	.zone {
 		display: flex;

@@ -2,12 +2,9 @@ import type { Page } from '@playwright/test';
 import { arriver, expect, test } from './banc.js';
 
 /*
- * Retrouver le focus après la fermeture d'un volet. Sur bureau, le volet d'une couche se ferme par sa croix ou par
- * Échap, et le focus revient à l'icône du rail qui l'avait ouvert.
- *
- * Le téléphone n'a pas de volet qui se ferme : la vue Couches les empile, sans croix. Ce qui s'y ouvre et s'y ferme en
- * gardant le focus, c'est l'élément ouvert dans une fiche (un dossier) : le fermer par le fil d'Ariane rend le focus à
- * l'onglet de sa couche.
+ * Retrouver le focus. Le retour d'une rubrique au sommaire, par Échap ou son lien, rend le focus à la ligne de la
+ * rubrique quittée (`sommaire.e2e.ts`). L'élément ouvert dans une fiche (un dossier) : le fermer par le fil d'Ariane
+ * rend le focus à l'onglet de sa couche.
  *
  * Fermer une fiche, par sa croix ou celle de son aperçu (téléphone), ou la Recherche plein écran du téléphone, au
  * clavier, rend le focus au champ de recherche qui les avait ouvertes.
@@ -37,7 +34,8 @@ async function activerAuClavier(page: Page, nom: string | RegExp) {
 }
 
 test('fermer la fiche par sa croix rend le focus au champ de recherche qui l’avait ouverte', async ({ page }) => {
-	await arriver(page, '/');
+	// Sur téléphone, depuis la vue Carte : la commune choisie s'y ouvre en aperçu, sous le champ.
+	await arriver(page, '/?affichage=carte');
 	await ouvrirPullyAuClavier(page);
 	const titre = page.getByRole('heading', { name: 'Pully', level: 2 });
 	// Sur téléphone, la fiche s'ouvre d'abord en aperçu, sur la carte.
@@ -53,33 +51,10 @@ test('fermer la fiche par sa croix rend le focus au champ de recherche qui l’a
 	await expect(page.getByRole('button', { name: 'Annuler' })).toBeHidden();
 });
 
-test.describe('sur bureau', { tag: '@bureau' }, () => {
-	test('fermer le volet par Échap ou par sa croix rend le focus à l’icône du rail qui l’avait ouvert', async ({ page }) => {
-		await arriver(page, '/');
-		const icone = page.getByRole('toolbar', { name: 'Couches' }).getByRole('button', { name: /Permis/ });
-		const volet = page.getByRole('region', { name: 'Permis' });
-
-		// Échap, le focus dans le volet.
-		await icone.click();
-		await expect(icone).toHaveAttribute('aria-expanded', 'true');
-		await volet.getByRole('switch').focus();
-		await expect(volet.getByRole('switch')).toBeFocused();
-		await page.keyboard.press('Escape');
-		await expect(volet).toBeHidden();
-		await expect(icone).toBeFocused();
-		await expect(icone).toHaveAttribute('aria-expanded', 'false');
-
-		// La croix.
-		await icone.click();
-		await volet.getByRole('button', { name: 'Fermer le volet Permis' }).click();
-		await expect(volet).toBeHidden();
-		await expect(icone).toBeFocused();
-	});
-});
-
 test.describe('sur téléphone', { tag: '@telephone' }, () => {
 	test('fermer l’aperçu par sa croix rend le focus au champ de recherche qui l’avait ouvert', async ({ page }) => {
-		await arriver(page, '/');
+		// L'aperçu est celui de la carte : depuis le panneau, la commune s'ouvrirait dans la vue Détail.
+		await arriver(page, '/?affichage=carte');
 		await ouvrirPullyAuClavier(page);
 		const apercu = page.getByRole('button', { name: /Pully · Voir la fiche/ });
 		await expect(apercu).toBeVisible();
@@ -119,7 +94,7 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 	test('ouverte au doigt, la Recherche se referme sans focus sur le champ, pour fermer le clavier de l’écran', async ({
 		page
 	}) => {
-		await arriver(page, '/');
+		await arriver(page, '/?affichage=carte');
 		const champ = page.getByRole('searchbox');
 		const annuler = page.getByRole('button', { name: 'Annuler' });
 
