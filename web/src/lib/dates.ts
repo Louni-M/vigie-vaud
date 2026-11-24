@@ -12,3 +12,7 @@ export function joursRestants(fin?: string | null, aujourdhui = new Date()): num
 	const today = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate());
 	return Math.round((parse(fin).getTime() - today.getTime()) / 86_400_000);
 }
+
+const JOUR_A_LAUSANNE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' });
+/** Le jour d'un instant à Lausanne, AAAA-MM-JJ. */
+export const jourDe = (d: Date) => JOUR_A_LAUSANNE.format(d);

@@ -9,8 +9,6 @@ const SANS_ONGLET: CoucheInscrite = {
 	nom: 'Sans onglet',
 	sources: [],
 	permanente: false,
-	activeParDefaut: false,
-	icone: { signe: 'S', couleur: '#000' },
 	introuvable: () => 'Introuvable.',
 	composants: { Carte: () => Promise.reject(new Error()) }
 };

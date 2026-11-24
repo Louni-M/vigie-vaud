@@ -11,8 +11,6 @@ export const coucheHotelsDeVille: Couche<undefined> = {
 	nom: 'Hôtels de ville',
 	sources: ['ucv-annuaire', 'swisstopo-adresses', 'swisstopo-lacs'],
 	permanente: true,
-	activeParDefaut: true,
-	icone: { signe: 'H', couleur: '#1f3a5f' },
 	legende: {
 		toujours: [
 			{

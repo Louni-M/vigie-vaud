@@ -4,7 +4,6 @@ import { inscrireEtat, type CauseEchec, type EtatSourceExecution } from '#lib/fr
 import { getCommunes, getLimites } from '#lib/socle/communes.js';
 import { creerClientDgmr, type EntiteDgmr } from './dgmr.js';
 import type { EtatRestriction } from './etats.js';
-import { instant } from './horaires.js';
 import { rattacher, type CommuneLimitee, type Passage } from './rattachement.js';
 import { sorteDe, type Sorte } from './sortes.js';
 import { lignesDe, longueur, milieu, type Point } from './trace.js';
@@ -51,11 +50,11 @@ export interface Restriction {
 	lignes: Point[][];
 	/** Longueur du tracé, en mètres. */
 	longueur: number;
-	/** Point à mi-longueur du tracé : sa position sur la carte et dans le fil. */
+	/** Point à mi-longueur du tracé : sa position sur la carte. */
 	milieu: Point;
 	/**
 	 * Les communes que parcourt le tracé, de la plus grande longueur à la plus petite (la première est celle de sa
-	 * fiche et du fil) ; `null` tant que les limites des communes ne sont pas chargées.
+	 * fiche) ; `null` tant que les limites des communes ne sont pas chargées.
 	 */
 	communes: Passage[] | null;
 }
@@ -122,15 +121,8 @@ export interface DonneesRoutes {
 	 */
 	restriction(id: number): Promise<Restriction | null>;
 	/**
-	 * Pour le fil : les restrictions rattachées qui commencent le jour `jour` (AAAA-MM-JJ) ou après, à venir
-	 * comprises, par `OBJECTID` croissant. La 596 n'est demandée que pour `DATE_DEBUT >= jour`, la 595 en entier ;
-	 * un état déjà chargé en entier sert sans nouvelle requête. Rejette si l'une des deux échoue (la source passe
-	 * alors en erreur), ou si les limites des communes n'ont pas pu être chargées.
-	 */
-	depuis(jour: string): Promise<Restriction[]>;
-	/**
 	 * État de la source DGMR : heure de la dernière consultation réussie, échec, nouvel essai. Toute lecture de la DGMR
-	 * le met à jour, celle de la carte comme celles du fil et d'un lien vers une restriction.
+	 * le met à jour, celle de la carte comme celle d'un lien vers une restriction.
 	 */
 	readonly source: EtatSourceExecution;
 }
@@ -163,7 +155,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	let erreur = $state<CauseEchec | null>(null);
 
 	/**
-	 * Une lecture de la DGMR, quel que soit l'usage (carte, fil, lien vers une restriction) : son échec met la source
+	 * Une lecture de la DGMR, quel que soit l'usage (carte, liste, lien vers une restriction) : son échec met la source
 	 * en erreur ou hors ligne, sa réussite la rétablit. Les limites des communes n'en sont pas : elles ne viennent
 	 * pas de la DGMR.
 	 */
@@ -235,7 +227,7 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 	const charger = retenue<void, Restriction[]>(() =>
 		suivie(
 			Promise.allSettled([chargerEtat('en_cours'), chargerEtat('a_venir')]).then((resultats) => {
-				// Après le premier affichage des restrictions : les limites ne retardent ni la carte ni le fil.
+				// Après le premier affichage des restrictions : les limites ne retardent pas la carte.
 				chargerLimites().catch(() => {});
 				const echec = resultats.find((r) => r.status === 'rejected');
 				if (echec) throw echec.reason;
@@ -276,32 +268,6 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		return restrictions.find((x) => x.id === id) ?? { ...r, communes: communesDe(r, communes!) };
 	}
 
-	/* ---- Le fil : ce qui a commencé depuis son premier jour, et tout l'à venir. ---- */
-
-	/** La 596 réduite au fil, par premier jour, gardée pour la visite ; un échec est oublié. */
-	const reduite = retenue((jour: string) =>
-		avecRetente('en_cours', `DATE_DEBUT >= DATE '${jour}'`).then((es) =>
-			es.flatMap((e) => versRestriction(e, 'en_cours') ?? [])
-		)
-	);
-
-	function enCoursDepuis(jour: string): Promise<Restriction[]> {
-		// La carte l'a déjà demandée en entier (ou est en train de le faire) : le fil s'en sert.
-		if (chargerEtat.demandee('en_cours')) return chargerEtat('en_cours').then(() => lues.en_cours);
-		return reduite(jour);
-	}
-
-	async function depuis(jour: string): Promise<Restriction[]> {
-		const [enCours] = await suivie(Promise.all([enCoursDepuis(jour), chargerEtat('a_venir')]));
-		// Comme pour la carte : les limites ne retardent pas la lecture de la DGMR.
-		await chargerLimites();
-		const cs = communes!;
-		// La date telle qu'écrite par la DGMR, sans conversion de fuseau.
-		return reunir(enCours, lues.a_venir)
-			.filter((r) => instant(r.dateDebut).jour >= jour)
-			.map((r) => ({ ...r, communes: communesDe(r, cs) }));
-	}
-
 	return {
 		get restrictions() {
 			return restrictions;
@@ -313,7 +279,6 @@ export function creerDonneesRoutes({ fetch: f, maintenant = () => new Date() }: 
 		charger,
 		rattachees,
 		restriction,
-		depuis,
 		source: {
 			get derniere() {
 				return derniere;

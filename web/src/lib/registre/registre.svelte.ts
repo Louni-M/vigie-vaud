@@ -29,7 +29,6 @@ import { cheminFiche } from './liens.js';
 import { titreFiche } from './tete.js';
 import { avisIntrouvable, avisNonCherche } from './avis.js';
 import { ancre, calquesAuDessus } from './recouvrement.js';
-import { zoneDuFil } from '#lib/fil/fil.js';
 import type { Navigateur, OptionsNavigation } from './navigateur.js';
 import { memoPromesse } from '#lib/chargement.js';
 
@@ -87,8 +86,6 @@ export function creerRegistre(
 	let zone = $state.raw<Zone | null>(null);
 	let ouvert = $state<Ouvert | null>(null);
 	let map = $state.raw<MlMap | null>(null);
-	/** Zone du fil : celle du dernier déplacement fait par la personne (`zoneDuFil`). */
-	let zoneFil = $state.raw<Zone | null>(null);
 	/**
 	 * Ce que montre le panneau : le sommaire (à l'arrivée), ou une seule rubrique à volet à la fois. Dans l'adresse
 	 * (`volet=routes`), sauf quand c'est celui que donne l'élément ouvert.
@@ -500,28 +497,9 @@ export function creerRegistre(
 		map = m;
 	}
 
-	/** Jusqu'à cet instant (ms), les déplacements comptent comme faits par la personne : elle a cherché un lieu. */
-	let vouluJusqua = 0;
-	/** Délai laissé à la carte pour aller vers le lieu cherché (ouverture de la fiche, puis cadrage). */
-	const DELAI_VOULU = 3_000;
-
-	/**
-	 * La personne a choisi un lieu dans la recherche (commune, adresse) : les déplacements qui suivent, même lancés
-	 * par le registre ou le socle, sont les siens, et déplacent la zone du fil.
-	 */
-	function deplacementVoulu() {
-		vouluJusqua = Date.now() + DELAI_VOULU;
-	}
-
-	/**
-	 * Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. `parLaPersonne` :
-	 * elle a glissé ou zoomé ; la zone du fil ne suit que ses déplacements.
-	 */
-	function deplacement(z: Zone, c: Centre, parDefaut: boolean, parLaPersonne = false) {
-		// Tous les déplacements de ce délai comptent : la colonne de la fiche s'ouvre, puis la commune est cadrée.
-		const voulu = Date.now() < vouluJusqua;
+	/** Fin d'un déplacement de la carte ; la vue du canton par défaut n'entre pas dans l'adresse. */
+	function deplacement(z: Zone, c: Centre, parDefaut: boolean) {
 		zone = z;
-		zoneFil = zoneDuFil(zoneFil, z, parLaPersonne || voulu);
 		centre = c;
 		vue = parDefaut ? null : c;
 	}
@@ -633,10 +611,6 @@ export function creerRegistre(
 		get zone() {
 			return zone;
 		},
-		/** Zone du fil, distincte de celle de la carte : les vols lancés par le registre ne la changent pas. */
-		get zoneFil() {
-			return zoneFil;
-		},
 		get map() {
 			return map;
 		},
@@ -724,7 +698,6 @@ export function creerRegistre(
 		contexte,
 		carte,
 		deplacement,
-		deplacementVoulu,
 		brancherAdresse
 	};
 }

@@ -22,8 +22,6 @@ const couche = (id: string, rubriques: Rubrique[]): CoucheInscrite => ({
 	nom: id,
 	sources: [],
 	permanente: false,
-	activeParDefaut: false,
-	icone: { signe: '', couleur: '' },
 	rubriques,
 	composants: { Carte: async () => ({ default: () => ({}) }) }
 });

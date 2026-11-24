@@ -4,8 +4,6 @@ import {
 	CLE_GRAND_CONSEIL,
 	FICHE_GRAND_CONSEIL,
 	lireCle,
-	TYPE_OBJETS,
-	TYPE_SEANCES,
 	libelleElement,
 	messageIntrouvable,
 	titreElement
@@ -54,8 +52,6 @@ export const coucheConseils: Couche<ParametresConseils> = {
 	nomOnglet: 'Conseil',
 	sources: sourcesDeLaCouche(),
 	permanente: false,
-	activeParDefaut: true,
-	icone: { signe: 'C', couleur: COULEUR_CONSEILS },
 	// La fiche du Grand Conseil, au Parlement : son marqueur et sa carte dans le volet l'ouvrent.
 	fiche: {
 		id: FICHE_GRAND_CONSEIL,
@@ -130,19 +126,6 @@ export const coucheConseils: Couche<ParametresConseils> = {
 	],
 	// Un élément du Grand Conseil va dans sa rubrique, celui d'un conseil communal dans Conseils communaux.
 	rubriqueDe: (cle) => (lireCle(cle)?.conseil === CLE_GRAND_CONSEIL ? FICHE_GRAND_CONSEIL : 'conseils'),
-	// Les Objets déposés et les Séances, lus dans le seul `conseils/fil.json` ; sans position, une entrée est dans
-	// la zone par les hôtels de ville de ses communes, et sans commune elle s'ouvre dans la fiche du Grand Conseil.
-	fil: {
-		types: [
-			{ id: TYPE_OBJETS, nom: 'Objets', signe: '§', couleur: COULEUR_CONSEILS },
-			{ id: TYPE_SEANCES, nom: 'Séances', signe: '◷', couleur: COULEUR_CONSEILS }
-		],
-		async entrees(depuis) {
-			const { conseils } = await import('./donnees.js');
-			return conseils.entreesFil(depuis);
-		},
-		sansCommune: 'Grand Conseil, sans commune nommée'
-	},
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),

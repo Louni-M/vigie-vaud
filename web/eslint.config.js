@@ -31,8 +31,6 @@ const ETAT_DE_REFERENCE = {
 	'src/lib/couches/routes/Fiche.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/lib/couches/routes/donnees.svelte.ts': ['svelte/prefer-svelte-reactivity'],
 	'src/lib/couverture-courante.svelte.ts': ['svelte/prefer-svelte-reactivity'],
-	'src/lib/fil/Fil.svelte': ['svelte/no-navigation-without-resolve'],
-	'src/lib/fil/chargement.svelte.ts': ['prefer-const'],
 	'src/lib/masquage.ts': ['no-control-regex'],
 	'src/lib/registre/FicheOuverte.svelte': ['svelte/no-navigation-without-resolve', 'svelte/no-unused-svelte-ignore'],
 	'src/lib/registre/Volet.svelte': ['svelte/no-navigation-without-resolve', 'svelte/prefer-svelte-reactivity'],

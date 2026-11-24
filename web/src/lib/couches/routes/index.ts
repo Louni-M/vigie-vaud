@@ -10,9 +10,6 @@ const RESTRICTION = 'Restriction de circulation';
 /** L'`OBJECTID` que porte un élément `?r=`, ou `null` s'il n'en est pas un. */
 const idRestriction = (element: string) => (/^\d+$/.test(element) ? Number(element) : null);
 
-/** Pastille du rail, reprise par la puce du fil. */
-const ICONE = { signe: 'R', couleur: SORTES.fermeture.couleur };
-
 /** Les valeurs de `toutes` que nomme la liste `texte` (« fermeture,feux »), dans l'ordre de `toutes` ; sans liste, toutes. */
 function choisies<T extends string>(texte: string | null, toutes: readonly T[]): T[] {
 	const noms = texte?.split(',');
@@ -59,8 +56,6 @@ export const coucheRoutes: Couche<Filtres> = {
 	nomOnglet: 'Routes',
 	sources: ['dgmr-restrictions'],
 	permanente: false,
-	activeParDefaut: true,
-	icone: ICONE,
 	// `?r=<OBJECTID>` : l'élément ouvert, à côté des puces du volet (`?sortes=`, `?etats=`).
 	cleElement: 'r',
 	codec: codecRoutes,
@@ -104,30 +99,6 @@ export const coucheRoutes: Couche<Filtres> = {
 			}
 		}
 	],
-	// Par leur début, jamais par leur levée, qui n'est pas datable : une restriction commencée avant la fenêtre
-	// n'entre pas, même si elle court encore. Une entrée par restriction, déviations comprises.
-	fil: {
-		types: [{ id: 'restrictions', nom: 'Restrictions', ...ICONE }],
-		async entrees(depuis) {
-			const [{ routes }, { instant }] = await Promise.all([import('./donnees.svelte.js'), import('./horaires.js')]);
-			// Une restriction hors de toute commune (hors du canton) n'a ni ligne ni fiche.
-			return (await routes.depuis(depuis)).flatMap((r) =>
-				r.communes?.length
-					? {
-							element: String(r.id),
-							type: 'restrictions',
-							// Le jour tel qu'écrit par la DGMR : « À venir » s'il est dans le futur.
-							date: instant(r.dateDebut).jour,
-							sorte: r.libelleSorte,
-							qui: r.communes[0].commune.nom,
-							titre: r.nom,
-							communes: r.communes.map((p) => p.commune.slug),
-							position: r.milieu
-						}
-					: []
-			);
-		}
-	},
 	composants: {
 		Carte: () => import('./Carte.svelte'),
 		Volet: () => import('./Volet.svelte'),

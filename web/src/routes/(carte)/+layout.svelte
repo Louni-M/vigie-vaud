@@ -139,9 +139,7 @@
 
 	function choix(r: Resultat) {
 		registre.oublierAvis();
-		// Chercher un lieu déplace la zone du fil ; chercher un élément ou une fiche propre, non : c'est le registre
-		// qui vole vers eux. Un élément cherché s'ouvre dans sa rubrique.
-		if (r.type === 'adresse' || r.type === 'commune') registre.deplacementVoulu();
+		// Un élément cherché s'ouvre dans sa rubrique.
 		if (r.type === 'adresse') {
 			repere = [r.lon, r.lat];
 			carte?.voler(r.lon, r.lat, r.categorie === 'Position' ? 15 : 16);
@@ -559,7 +557,7 @@
 	 *
 	 * Le volet pend sous la recherche, à sa largeur : son filet de tête passe sous celui du champ (46 px de haut, filet
 	 * de 2 px compris). Ni écart ni débord où la carte devrait se voir : un vieux navigateur Windows y laissait le fond
-	 * de la page, en gris, au-dessus du fil.
+	 * de la page, en gris, au-dessus du panneau.
 	 */
 	.volet {
 		position: absolute;

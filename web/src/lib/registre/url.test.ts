@@ -14,8 +14,6 @@ const couche = (id: string, champs: Partial<CoucheInscrite> = {}): CoucheInscrit
 	nom: id,
 	sources: [],
 	permanente: false,
-	activeParDefaut: false,
-	icone: { signe: id, couleur: '#000' },
 	composants: { Carte: () => Promise.reject(new Error('non chargé')) },
 	...champs
 });

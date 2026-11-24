@@ -3,10 +3,9 @@
 // contenu est valide au JSON Schema dès l'écriture, côté cron.
 import { lireJsonVersionne, memoPromesse } from '#lib/chargement.js';
 import { DONNEES } from '#lib/config.js';
-import type { EntreeFil, Fiche, Lieu } from '#lib/registre/types.js';
+import type { Fiche, Lieu } from '#lib/registre/types.js';
 import type {
 	ConseilIndexe,
-	FilConseils,
 	IndexConseils,
 	LigneObjet,
 	ListeObjets,
@@ -18,8 +17,7 @@ import type {
 } from '#lib/schema.js';
 import { SOURCES } from '#lib/sources.js';
 import type { Commune } from '#lib/types.js';
-import { FICHE_GRAND_CONSEIL, TYPE_OBJETS, TYPE_SEANCES, lireCle, nomConseil, sourceDuConseil } from './cles.js';
-import { nomSeance } from './lignes.js';
+import { FICHE_GRAND_CONSEIL, lireCle, sourceDuConseil } from './cles.js';
 
 /** Seule version des fichiers des conseils que le site connaît. */
 export const VERSION_CONSEILS = 1;
@@ -67,11 +65,6 @@ export interface DonneesConseils {
 	 */
 	localiser(cle: string): Promise<Lieu | null>;
 	/**
-	 * Les entrées du fil cantonal, lues dans le seul `conseils/fil.json` : celles datées au moins de `depuis`
-	 * (AAAA-MM-JJ), dont les Séances à venir. Rejette si le fichier n'a pas pu être lu.
-	 */
-	entreesFil(depuis: string): Promise<EntreeFil[]>;
-	/**
 	 * « Au Grand Conseil » : les Objets du Grand Conseil rattachés à la commune (n° OFS), par date de dernière étape
 	 * décroissante. `conseils/communes/<ofs>.json` n'est lu que si l'index en annonce au moins un : sinon, une liste
 	 * vide sans autre requête. Rejette si l'un des deux fichiers n'a pas pu être lu.
@@ -91,10 +84,6 @@ export interface Options {
 
 /** L'index des communes du site, importé seulement quand on localise un élément. */
 const communesDuSite = async () => (await import('#lib/socle/communes.js')).getCommunes((e, i) => fetch(e, i));
-
-/** Le titre d'une Séance dans le fil : « Séance du mardi 6 octobre 2026 · 12 points », sans points s'il n'y en a pas. */
-const titreSeance = (date: string, points: number) =>
-	points > 0 ? `${nomSeance(date)} · ${points} point${points > 1 ? 's' : ''}` : nomSeance(date);
 
 /** Les années d'Objets d'un conseil, de la plus récente à la plus ancienne. */
 const annees = (conseil: ConseilIndexe) =>
@@ -168,25 +157,6 @@ export function creerDonneesConseils({
 			// Le Grand Conseil : un Objet s'ouvre aussi dans les communes qu'il nomme, une Séance dans sa seule fiche.
 			const rattachees = 'ordre_du_jour' in lu ? [] : lu.communes;
 			return { fiches: [...rattachees.flatMap((c) => fiche(c.ofs)), { fiche: FICHE_GRAND_CONSEIL }] };
-		},
-		async entreesFil(depuis) {
-			const [fil, index] = await Promise.all([lireUneFois<FilConseils>('conseils/fil.json'), communes()]);
-			const slugs = new Map(index.map((c) => [c.bfs, c.slug]));
-			return fil.entrees
-				.filter((e) => e.date.slice(0, 10) >= depuis)
-				.map((e) => {
-					const seance = e.sorte === 'seance';
-					return {
-						element: e.cle,
-						type: seance ? TYPE_SEANCES : TYPE_OBJETS,
-						date: e.date.slice(0, 10),
-						sorte: seance ? 'Séance' : (e.type ?? ''),
-						qui: nomConseil(e.conseil, sources) ?? e.conseil,
-						// Le nom brut d'une Séance n'est jamais affiché : le site compose le sien, depuis sa date.
-						titre: seance ? titreSeance(e.date, e.points ?? 0) : e.titre,
-						communes: e.communes.flatMap((ofs) => slugs.get(ofs) ?? [])
-					};
-				});
 		}
 	};
 

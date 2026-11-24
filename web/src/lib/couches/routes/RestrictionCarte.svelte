@@ -7,7 +7,7 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import { typographier } from '#lib/almanach/typographie.js';
-	import { jourDe } from '#lib/fil/fil.js';
+	import { jourDe } from '#lib/dates.js';
 	import { carteRestriction } from './cartes.js';
 	import type { Restriction } from './donnees.svelte.js';
 

@@ -39,8 +39,6 @@ const COUCHES: CoucheInscrite[] = [
 		nom: 'Permis',
 		sources: [],
 		permanente: false,
-		activeParDefaut: true,
-		icone: { signe: 'P', couleur: '#000' },
 		cleElement: 'd',
 		localiser: async (element) => LIEUX[element] ?? null,
 		introuvable: (element) => `Aucun dossier n° ${element}.`,
@@ -52,8 +50,6 @@ const COUCHES: CoucheInscrite[] = [
 		nom: 'Conseils',
 		sources: [],
 		permanente: false,
-		activeParDefaut: false,
-		icone: { signe: 'C', couleur: '#000' },
 		fiche: {
 			id: 'grand-conseil',
 			chemin: '/grand-conseil',
@@ -70,8 +66,6 @@ const COUCHES: CoucheInscrite[] = [
 		nom: 'Routes',
 		sources: [],
 		permanente: false,
-		activeParDefaut: false,
-		icone: { signe: 'R', couleur: '#000' },
 		rubriques: [rubrique('routes')],
 		composants: { Carte: composant, Volet: composant, Onglet: composant }
 	}

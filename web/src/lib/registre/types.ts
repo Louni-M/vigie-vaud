@@ -116,46 +116,6 @@ export interface MessageNonCouvert {
 	lien?: { texte: string; url: string };
 }
 
-/** Un type d'entrée du fil cantonal (« Nouveaux dossiers ») : une puce et la pastille de ses entrées. */
-export interface TypeFil {
-	id: string;
-	nom: string;
-	signe: string;
-	couleur: string;
-}
-
-/** Une entrée du fil cantonal, toute faite par sa couche. */
-export interface EntreeFil {
-	/** Ce que reçoit `ouvrir()`. */
-	element: string;
-	/** Un des types déclarés par la couche. */
-	type: string;
-	/** AAAA-MM-JJ ; « À venir » si elle est dans le futur. */
-	date: string;
-	/** « Construction nouvelle », « Motion ». */
-	sorte: string;
-	/** « Lutry », « Conseil communal de Lausanne ». */
-	qui: string;
-	titre: string;
-	/** Slugs dans l'ordre du rattachement ; vide : sans commune. */
-	communes: string[];
-	/** Sinon, les hôtels de ville de ses communes. */
-	position?: [number, number];
-}
-
-/** Ce qu'une couche apporte au fil cantonal. */
-export interface Fil {
-	/** Statiques : les puces s'affichent avant les données. */
-	types: TypeFil[];
-	/** Import dynamique, comme `localiser`. Rejette en cas d'échec. `depuis` : AAAA-MM-JJ, premier jour du fil. */
-	entrees(depuis: string): Promise<EntreeFil[]>;
-	/**
-	 * L'aide de la section « Sans commune » pour celles de ses entrées qui n'ont pas de commune (« Grand Conseil,
-	 * sans commune nommée »). Une couche qui la déclare fait toujours afficher la section, même vide.
-	 */
-	sansCommune?: string;
-}
-
 /**
  * Ce que la ligne d'une rubrique dit de son nombre : il se charge (la ligne garde sa hauteur), il est connu (zéro
  * compris), ou sa source a échoué. Un nombre partiel n'est jamais montré : il passe pour « indisponible ».
@@ -209,17 +169,14 @@ export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ c
 /** Description légère d'une couche, inscrite au registre. */
 export interface Couche<P = unknown> {
 	id: string;
-	/** Nom du rail et du volet (« Conseils »). */
+	/** Nom de la couche, dans les messages qui la nomment (« Conseils »). */
 	nom: string;
 	/** Nom de son onglet dans une fiche et du fil d'Ariane de l'élément ouvert (« Conseil ») ; sinon `nom`. */
 	nomOnglet?: string;
 	/** Identifiants de `sources.json`. */
 	sources: string[];
-	/** Toujours affichée, sans interrupteur. */
+	/** Toujours dessinée sur la carte, quelle que soit la rubrique ouverte (Hôtels de ville). */
 	permanente: boolean;
-	activeParDefaut: boolean;
-	/** Pastille du rail : un signe et sa couleur. */
-	icone: { signe: string; couleur: string };
 	codec?: Codec<P>;
 	/** Sa fiche propre, avec sa page (« /grand-conseil ») ; seul son `Onglet` y est rendu. */
 	fiche?: FichePropre;
@@ -256,8 +213,6 @@ export interface Couche<P = unknown> {
 	 * message commun du registre.
 	 */
 	nonCouvert?(commune: Commune): string | MessageNonCouvert;
-	/** Ce que la couche apporte au fil cantonal, quelle que soit son activation. */
-	fil?: Fil;
 	/**
 	 * Ce que la légende de la carte dit de la couche : `toujours`, ce qu'elle dessine en tout temps (les hôtels de ville,
 	 * le marqueur du Grand Conseil) ; `dessinee`, ce qu'elle ajoute quand elle est la couche dessinée.
