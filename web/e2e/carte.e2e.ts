@@ -56,7 +56,7 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 		const titre = page.getByRole('heading', { name: 'Aclens', level: 2 });
 		await expect(titre).toBeVisible();
 		await expect(titre).toBeFocused();
-		await expect(page.getByRole('button', { name: 'Fiche', exact: true })).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByRole('button', { name: 'Détail', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
 		// Retour à l'aperçu, puis à la carte seule.
 		await page.goBack();

@@ -1,11 +1,10 @@
 <script lang="ts">
 	/*
-	 * Volet d'une couche, assemblé par le registre : interrupteur (ou « permanente »), badge de fraîcheur de chaque
-	 * source et lien vers la page Couverture, attribution de chaque source tirée de sources.json, puis le `Volet` de
-	 * la couche. Les sites des communes y sont regroupés par plateforme : un badge et une attribution pour toutes ses
-	 * communes couvertes, qui renvoie à sa fiche de la page Couverture ; une commune non couverte n'y figure pas.
-	 * Sans `onfermer` (vue Couches du téléphone), le volet n'a pas de croix. Avec `onvoir` (téléphone, couche qui
-	 * grise au moins une commune), il a en tête un bouton « Voir sur la carte », qui montre ce grisage.
+	 * Une rubrique ouverte dans le panneau, assemblée par le registre : en tête le lien de retour au sommaire et le nom
+	 * de la rubrique, puis le `Volet` de sa couche (ses filtres et sa liste), et après la liste ses sources : badge de
+	 * fraîcheur de chaque source et lien vers la page Couverture, attribution de chaque source tirée de sources.json. Les
+	 * sites des communes y sont regroupés par plateforme : un badge et une attribution pour toutes ses communes
+	 * couvertes, qui renvoie à sa fiche de la page Couverture ; une commune non couverte n'y figure pas.
 	 */
 	import { resolve } from '$app/paths';
 	import BadgeFraicheur from '#lib/components/BadgeFraicheur.svelte';
@@ -14,16 +13,22 @@
 	import type { Source } from '#lib/schema.js';
 	import { nomDePlateforme, source } from '#lib/sources.js';
 	import type { Registre } from './registre.svelte.js';
-	import type { CoucheInscrite } from './types.js';
+	import type { CoucheInscrite, Rubrique } from './types.js';
+	import { SOMMAIRE } from './url.js';
 
 	let {
+		rubrique,
 		couche,
 		registre,
-		onfermer,
-		onvoir
-	}: { couche: CoucheInscrite; registre: Registre; onfermer?: () => void; onvoir?: () => void } = $props();
+		onretour
+	}: {
+		rubrique: Rubrique;
+		couche: CoucheInscrite;
+		registre: Registre;
+		/** Le lien de retour, d'un clic simple : le panneau revient au sommaire. */
+		onretour: (e: MouseEvent) => void;
+	} = $props();
 
-	const active = $derived(registre.active(couche.id));
 	const toutes = $derived(couche.sources.map(source));
 	const sources = $derived(toutes.filter((s) => !s.site));
 	// Les sites couverts, par plateforme, dans l'ordre de leur première apparition.
@@ -44,55 +49,41 @@
 
 <section class="volet" id="volet-{couche.id}" aria-labelledby={titre}>
 	<div class="tete">
-		<h2 id={titre}>{couche.nom}</h2>
-		{#if couche.permanente}
-			<span class="permanente">permanente</span>
-		{:else}
-			<label class="interrupteur">
-				<input
-					type="checkbox"
-					role="switch"
-					checked={active}
-					onchange={(e) => registre.activer(couche.id, e.currentTarget.checked)}
-				/>
-				Affichée
-			</label>
-		{/if}
-		{#if onfermer}
-			<button class="fermer" type="button" aria-label="Fermer le volet {couche.nom}" onclick={onfermer}>×</button>
-		{/if}
+		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- l'adresse vient du registre, qui la construit avec resolve -->
+		<a class="retour" href={registre.adressePanneau(SOMMAIRE)} onclick={onretour}
+			><span aria-hidden="true">‹ </span>Tous les sujets</a
+		>
+		<h2 id={titre} tabindex="-1">{rubrique.nom}</h2>
 	</div>
-
-	{#if onvoir}
-		<button class="bouton secondaire voir" type="button" onclick={onvoir}>Voir sur la carte</button>
-	{/if}
-
-	<p class="badges">
-		{#each sources as s (s.id)}<BadgeFraicheur source={s} />{/each}
-		{#each plateformes as p (p.id)}<BadgeSites plateforme={p.nom} sources={p.sites} />{/each}
-		<a class="couverture" href={resolve('/couverture')}>Couverture</a>
-	</p>
-
-	<p class="attribution">
-		{#each attributions as s, i (s.id)}
-			{#if i > 0}<span aria-hidden="true"> · </span>{/if}
-			<a href={s.attribution.lien} target="_blank" rel="noopener">{typographier(s.attribution.texte)}</a>
-		{/each}
-		{#each plateformes as p, i (p.id)}
-			{#if attributions.length > 0 || i > 0}<span aria-hidden="true"> · </span>{/if}
-			<a href="{resolve('/couverture')}#plateforme-{p.id}"
-					>Sites de {p.sites.length}&nbsp;commune{p.sites.length > 1 ? 's' : ''} ({p.nom})</a
-				>
-		{/each}
-	</p>
 
 	{#await registre.composant(couche, 'Volet') then module}
 		{#if module}
 			<module.default ctx={registre.contexte(couche)} />
 		{/if}
 	{:catch}
-		<p class="erreur">Le volet n’a pas pu être chargé. Rechargez la page.</p>
+		<p class="erreur">La liste n’a pas pu être chargée. Rechargez la page.</p>
 	{/await}
+
+	<footer class="sources">
+		<p class="badges">
+			{#each sources as s (s.id)}<BadgeFraicheur source={s} />{/each}
+			{#each plateformes as p (p.id)}<BadgeSites plateforme={p.nom} sources={p.sites} />{/each}
+			<a class="couverture" href={resolve('/couverture')}>Couverture</a>
+		</p>
+
+		<p class="attribution">
+			{#each attributions as s, i (s.id)}
+				{#if i > 0}<span aria-hidden="true"> · </span>{/if}
+				<a href={s.attribution.lien} target="_blank" rel="noopener">{typographier(s.attribution.texte)}</a>
+			{/each}
+			{#each plateformes as p, i (p.id)}
+				{#if attributions.length > 0 || i > 0}<span aria-hidden="true"> · </span>{/if}
+				<a href="{resolve('/couverture')}#plateforme-{p.id}"
+						>Sites de {p.sites.length}&nbsp;commune{p.sites.length > 1 ? 's' : ''} ({p.nom})</a
+					>
+			{/each}
+		</p>
+	</footer>
 </section>
 
 <style>
@@ -108,8 +99,25 @@
 	}
 	.tete {
 		display: flex;
-		align-items: center;
-		gap: 10px;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+	}
+	.retour {
+		font-size: 13px;
+		color: var(--color-muted);
+	}
+	.retour:hover {
+		color: var(--color-ink);
+		text-decoration-thickness: var(--rule-bar);
+	}
+	.sources {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+		margin-top: var(--space-xs);
+		padding-top: var(--space-sm);
+		border-top: 1px solid var(--color-rule);
 	}
 	h2 {
 		flex: 1;
@@ -119,48 +127,11 @@
 		letter-spacing: var(--tracking-display);
 		color: var(--color-ink);
 	}
-	.interrupteur,
-	.permanente {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 13px;
-		color: var(--color-muted);
-	}
-	.interrupteur {
-		cursor: pointer;
-	}
-	.interrupteur input {
-		width: 18px;
-		height: 18px;
-		margin: 0;
-		accent-color: var(--color-ink);
-	}
-	.fermer {
-		width: 32px;
-		height: 32px;
-		margin: -4px -6px -4px 0;
-		border: 0;
-		background: none;
-		font-size: 22px;
-		line-height: 1;
-		color: var(--color-muted);
-		cursor: pointer;
-	}
-	.fermer:hover {
-		background: var(--color-paper);
-		color: var(--color-ink);
-	}
-	.voir {
-		align-self: flex-start;
-		min-height: 44px;
-		margin-top: -2px;
-	}
 	.badges {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 2px 12px;
-		margin: -6px 0 0;
+		margin: 0;
 		font-size: var(--text-xs);
 	}
 	.couverture {
@@ -168,7 +139,7 @@
 		color: var(--color-muted);
 	}
 	.attribution {
-		margin: -8px 0 0;
+		margin: 0;
 		font-size: var(--text-xs);
 		color: var(--color-muted);
 	}

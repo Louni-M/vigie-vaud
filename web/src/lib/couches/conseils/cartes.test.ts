@@ -48,16 +48,10 @@ describe('carte d’un conseil couvert, dans le volet Conseils', () => {
 	});
 });
 
-describe('phrase sur les communes grisées, sous les cartes', () => {
-	it('sur bureau, le grisage suit le volet ouvert', () => {
-		expect(noteAutresCommunes(298, false)).toBe(
-			'Les 298 autres communes : pas de conseil couvert, grisées tant que ce volet est ouvert. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
-		);
-	});
-
-	it('sur téléphone, il suit « Voir sur la carte »', () => {
-		expect(noteAutresCommunes(298, true)).toBe(
-			'Les 298 autres communes : pas de conseil couvert, grisées sur la carte par « Voir sur la carte ». Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
+describe('phrase sur les communes grisées, sous les communes suivies', () => {
+	it('dit qu’elles sont grisées sur la carte', () => {
+		expect(noteAutresCommunes(298)).toBe(
+			'Les 298 autres communes\u00a0: pas de conseil suivi, grisées sur la carte. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.'
 		);
 	});
 });

@@ -2,7 +2,7 @@
 // fraîcheur sous son nom et le message « Non couvert » en tête (spec J1, « Couverture d'une couche »).
 import type { Source } from '#lib/schema.js';
 import type { Commune } from '#lib/types.js';
-import type { CoucheInscrite, MessageNonCouvert } from './types.js';
+import type { CoucheInscrite, MessageNonCouvert, Ouvert } from './types.js';
 
 /**
  * Les sources de la couche qui concernent la commune, pour les badges sous le nom de l'onglet : d'abord celles dont
@@ -19,6 +19,26 @@ export function sourcesDeLOnglet(couche: CoucheInscrite, sources: readonly Sourc
 	);
 	const canton = declarees.filter((s) => !s.couverture);
 	return [...couvrent, ...canton];
+}
+
+/**
+ * Les onglets d'une fiche : un par couche qui a un `Onglet` pour une fiche commune, le seul de sa couche pour une
+ * fiche propre (`propre` : la couche qui la déclare).
+ */
+export const ongletsDeLaFiche = (couches: readonly CoucheInscrite[], propre: CoucheInscrite | null): CoucheInscrite[] =>
+	propre ? (propre.composants.Onglet ? [propre] : []) : couches.filter((c) => c.composants.Onglet);
+
+/**
+ * L'onglet montré : celui de la couche de l'élément ouvert quand il s'y affiche (elle a une `Fiche`), sinon l'onglet
+ * choisi, sinon le premier.
+ */
+export function ongletCourant(
+	onglets: readonly CoucheInscrite[],
+	choisi: string | null,
+	ouvert: Ouvert | null
+): CoucheInscrite | undefined {
+	const avecFiche = onglets.find((c) => c.id === ouvert?.couche && c.composants.Fiche);
+	return avecFiche ?? onglets.find((c) => c.id === choisi) ?? onglets[0];
 }
 
 /** Nom de l'onglet de la couche dans une fiche, et du fil d'Ariane de son élément ouvert (« Conseil › … »). */

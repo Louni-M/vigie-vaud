@@ -1,43 +1,32 @@
-<script lang="ts" module>
-	import { browser } from '$app/env';
-	import { conseils } from './donnees.js';
-
-	// L'index des conseils se lit dès que le Volet est demandé (le pointeur sur son icône du rail) : le volet ne
-	// s'ouvre qu'une fois le Volet chargé, et l'index, lu à son ouverture, le faisait encore grandir pendant sa bulle.
-	// Un échec est oublié : le volet relit l'index à son ouverture et dit s'il n'est pas lisible.
-	if (browser) conseils.index().catch(() => {});
-</script>
-
 <script lang="ts">
 	/*
-	 * Volet de la couche Conseils, sous l'interrupteur, les badges et l'attribution du registre : la légende, puis la
-	 * carte du Grand Conseil et une ligne par conseil communal de la zone affichée, lus dans `conseils/index.json`, et
-	 * la phrase sur les communes grisées. Un conseil communal ouvre la fiche de sa commune, sur l'onglet Conseil ; le
-	 * Grand Conseil ouvre la sienne. Ce sont des liens vers leur page : un clic simple ouvre la fiche par le registre,
-	 * Cmd/Ctrl-clic ou le clic du milieu l'ouvrent dans un nouvel onglet.
+	 * La rubrique Conseils communaux : le compte, puis une ligne par commune suivie de la zone affichée, avec ce que
+	 * donne son conseil et sa prochaine Séance, lus dans `conseils/index.json`, et la phrase sur les communes grisées.
+	 * Une ligne ouvre la fiche de sa commune, sur l'onglet Conseil : c'est un lien vers sa page, qu'un clic simple ouvre
+	 * par le registre, Cmd/Ctrl-clic ou le clic du milieu dans un nouvel onglet. Le Grand Conseil a sa propre rubrique.
 	 */
-	import { clicSimple, lienCommune, lienFiche } from '#lib/registre/liens.js';
+	import { clicSimple, lienCommune } from '#lib/registre/liens.js';
+	import { conseils } from './donnees.js';
+	import { phraseCompte } from '#lib/registre/rubriques.js';
 	import type { Cible, Contexte } from '#lib/registre/types.js';
 	import { listerConseils, SOURCES } from '#lib/sources.js';
-	import { MediaQuery } from 'svelte/reactivity';
-	import { TELEPHONE } from '#lib/socle/telephone.js';
-	import { carteConseil, lignesConseils, noteAutresCommunes } from './cartes.js';
-	import { FICHE_GRAND_CONSEIL } from './cles.js';
+	import { lignesConseils, noteAutresCommunes } from './cartes.js';
 	import { COULEUR_CONSEILS, coucheConseils, type ParametresConseils } from './index.js';
 
 	let { ctx }: { ctx: Contexte<ParametresConseils> } = $props();
 
 	let lecture = $state(conseils.index());
 
-	/** Les communes dont le conseil n'est pas couvert, grisées tant que le volet est ouvert. */
+	/** La rubrique de la couche qu'ouvre ce volet : sa phrase de compte est celle du sommaire. */
+	const rubrique = coucheConseils.rubriques!.find((r) => r.id === coucheConseils.id)!;
+
+	/** Les communes dont le conseil n'est pas couvert, grisées tant que la rubrique est ouverte. */
 	const couvertes = new Set(
 		listerConseils(SOURCES).flatMap(({ source }) =>
 			Array.isArray(source.couverture?.communes) ? source.couverture.communes : []
 		)
 	);
 	const autres = $derived(ctx.communes.filter((c) => !couvertes.has(c.bfs)).length);
-	/** Sur téléphone, le grisage ne suit pas le volet mais « Voir sur la carte » : la phrase le dit. */
-	const telephone = new MediaQuery(TELEPHONE, false);
 
 	/** Un clic simple ouvre la cible par le registre ; avec une touche ou un autre bouton, le navigateur suit le lien. */
 	function ouvrirAuClic(e: MouseEvent, cible: Cible) {
@@ -47,59 +36,27 @@
 	}
 </script>
 
-<ul class="legende" style:--c={COULEUR_CONSEILS}>
-	<li><span class="fronton" aria-hidden="true">GC</span> Le Grand Conseil, au Parlement&nbsp;: un clic ouvre sa fiche.</li>
-	<li>
-		<span class="hotel" aria-hidden="true"></span> Les conseils communaux sont dans la fiche de leur commune, onglet
-		Conseil.
-	</li>
-	<li>
-		<span class="pastilles" aria-hidden="true"><span class="seance"></span><span class="objet"></span></span>
-		Une pastille cerclée pour une Séance, pleine pour un Objet.
-	</li>
-</ul>
-
-<section aria-labelledby="conseils-couverts">
-	<h3 id="conseils-couverts">Conseils couverts</h3>
+<section aria-label="Communes suivies">
 	{#await lecture}
 		<p class="note">Lecture des conseils…</p>
 	{:then index}
-		{@const communaux = index.conseils.filter((c) => c.commune !== null)}
 		{@const lignes = lignesConseils(index.conseils, ctx.communes, ctx.zone)}
-		<ul class="conseils" style:--c={COULEUR_CONSEILS}>
-			{#each index.conseils.filter((c) => c.commune === null) as conseil (conseil.cle)}
+		{@const c = phraseCompte(rubrique, lignes.length)}
+		<p class="compte">{#if c.nombre}<strong>{c.nombre}</strong>{/if}{c.texte}</p>
+		<ul class="lignes" style:--c={COULEUR_CONSEILS}>
+			{#each lignes as ligne (ligne.cle)}
 				<li>
 					<a
-						class="carte"
-						href={lienFiche(FICHE_GRAND_CONSEIL)}
-						onclick={(e) => ouvrirAuClic(e, { fiche: FICHE_GRAND_CONSEIL })}
+						class="ligne"
+						href={lienCommune(ligne.slug, coucheConseils.id)}
+						onclick={(e) => ouvrirAuClic(e, { commune: ligne.slug, onglet: coucheConseils.id })}
 					>
-						{@render contenu(carteConseil(conseil, ctx.communes))}
+						<strong>{ligne.commune}</strong>
+						<span>{ligne.detail}</span>
 					</a>
 				</li>
 			{/each}
 		</ul>
-		{#if communaux.length}
-			<p class="compte">
-				<strong>{communaux.length}</strong> conseil{communaux.length > 1 ? 's' : ''} communa{communaux.length > 1
-					? 'ux'
-					: 'l'}{#if lignes.length < communaux.length}, dont <strong>{lignes.length}</strong> dans la zone affichée{/if}
-			</p>
-			<ul class="lignes" style:--c={COULEUR_CONSEILS}>
-				{#each lignes as ligne (ligne.cle)}
-					<li>
-						<a
-							class="ligne"
-							href={lienCommune(ligne.slug, coucheConseils.id)}
-							onclick={(e) => ouvrirAuClic(e, { commune: ligne.slug, onglet: coucheConseils.id })}
-						>
-							<strong>{ligne.commune}</strong>
-							<span>{ligne.detail}</span>
-						</a>
-					</li>
-				{/each}
-			</ul>
-		{/if}
 	{:catch}
 		<p class="erreur" role="alert">
 			Les conseils couverts n’ont pas pu être chargés.
@@ -108,20 +65,10 @@
 			</button>
 		</p>
 	{/await}
-	<p class="note">{noteAutresCommunes(autres, telephone.current)}</p>
+	<p class="note">{noteAutresCommunes(autres)}</p>
 </section>
 
-{#snippet contenu(carte: ReturnType<typeof carteConseil>)}
-	<strong>{carte.nom}</strong>
-	<span>{carte.donne}{#if carte.recents}{` · ${carte.recents}`}{/if}</span>
-	{#if carte.seance}<span>{carte.seance}</span>{/if}
-{/snippet}
-
 <style>
-	h3 {
-		margin: 4px 0 6px;
-		font-size: 13px;
-	}
 	.note {
 		margin: 8px 0 0;
 		font-size: 12px;
@@ -135,97 +82,6 @@
 		margin-left: 6px;
 		padding: 6px 10px;
 		font-size: 13px;
-	}
-	.legende {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: 6px;
-		font-size: 13px;
-		line-height: 1.4;
-	}
-	.legende li {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-	}
-	.fronton {
-		flex: none;
-		display: grid;
-		place-items: center;
-		width: 26px;
-		height: 22px;
-		padding-top: 4px;
-		box-sizing: border-box;
-		background: var(--c);
-		color: #fff;
-		font-size: 10px;
-		font-weight: 700;
-		clip-path: polygon(50% 0, 100% 28%, 100% 100%, 0 100%, 0 28%);
-	}
-	.hotel {
-		flex: none;
-		width: 14px;
-		height: 14px;
-		margin: 0 6px;
-		border-radius: 50%;
-		background: #1f3a5f;
-		border: 2px solid #fff;
-		box-shadow: 0 0 0 1px #1f3a5f;
-		box-sizing: border-box;
-	}
-	.pastilles {
-		flex: none;
-		display: flex;
-		gap: 4px;
-		width: 26px;
-		justify-content: center;
-	}
-	.pastilles span {
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-		box-sizing: border-box;
-	}
-	.seance {
-		border: 2px solid var(--c);
-	}
-	.objet {
-		background: var(--c);
-	}
-	.conseils {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: 6px;
-	}
-	.carte {
-		display: grid;
-		gap: 1px;
-		width: 100%;
-		box-sizing: border-box;
-		padding: 8px 10px;
-		border: 1px solid var(--color-rule);
-		border-radius: 8px;
-		background: var(--color-sheet);
-		font: inherit;
-		font-size: 12px;
-		color: var(--color-muted);
-		text-align: left;
-		text-decoration: none;
-	}
-	a.carte:hover,
-	a.carte:focus-visible {
-		border-color: var(--c);
-	}
-	a.carte:hover {
-		background: var(--color-paper);
-	}
-	.carte strong {
-		font-size: 14px;
-		color: var(--color-ink);
 	}
 	.compte {
 		margin: 10px 0 4px;

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { test as base, expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 import { entite, fauxCanton } from '../tests/faux-canton.js';
-import { DONNEES, GENERE, filConseils, fauxDepotConseils, indexConseils } from '../tests/faux-conseils.js';
+import { DONNEES, GENERE, filConseils, fauxDepotConseils, indexConseils, ligneObjet } from '../tests/faux-conseils.js';
 import { fauxDgmr } from '../tests/faux-dgmr.js';
 
 /*
@@ -91,6 +91,8 @@ async function installerServices(context: BrowserContext) {
 	const dgmr = fauxDgmr({});
 	const depot = fauxDepotConseils({
 		'conseils/index.json': indexConseils(),
+		// L'Objet du Grand Conseil de l'index, qui ne nomme aucune commune : la fiche du Grand Conseil le liste.
+		'conseils/vd/objets-2026.json': { version: 1, genere: GENERE, conseil: 'vd', annee: 2026, objets: [ligneObjet()] },
 		'conseils/fil.json': filConseils([]),
 		'conseils/import.json': { version: 1, genere: GENERE, conseils: {} },
 		'etat-sources.json': { version: 1, genere: GENERE, sources: {} }
@@ -108,8 +110,8 @@ async function installerServices(context: BrowserContext) {
 	// Service du canton : permis CAMAC (537), restrictions de la DGMR en cours (596) et à venir (595).
 	await context.route(/^https:\/\/www\.ogc\.vd\.ch\/.*\/MapServer\/537\/query/, (r) => servir(r, canton.fetch));
 	await context.route(/^https:\/\/www\.ogc\.vd\.ch\/.*\/MapServer\/59[56]\/query/, (r) => servir(r, dgmr.fetch));
-	// Dépôt de données : l'index des trois conseils couverts, un fil vide, des états sans rien ; tout autre fichier est
-	// absent (404).
+	// Dépôt de données : l'index des trois conseils couverts, l'Objet du Grand Conseil, un fil vide, des états sans
+	// rien ; tout autre fichier est absent (404).
 	await context.route(`${DEPOT_DONNEES}/**`, (r) =>
 		servir(r, depot.fetch, r.request().url().replace(DEPOT_DONNEES, DONNEES))
 	);

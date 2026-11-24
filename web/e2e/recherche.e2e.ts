@@ -72,7 +72,7 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 	test('la Recherche plein écran se parcourt au clavier ; Entrée la referme sur l’aperçu de la commune', async ({
 		page
 	}) => {
-		await arriver(page, '/');
+		await arriver(page, '/?affichage=carte');
 		await page.getByRole('searchbox').click();
 		await expect(page.getByRole('button', { name: 'Annuler' })).toBeVisible();
 		await expect(page.getByRole('searchbox')).toBeFocused();
@@ -86,7 +86,7 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 	});
 
 	test('le retour du navigateur referme la Recherche plein écran sans rien ouvrir', async ({ page }) => {
-		await arriver(page, '/');
+		await arriver(page, '/?affichage=carte');
 		await page.getByRole('searchbox').click();
 		await page.keyboard.type('Pully');
 		await expect(page.getByRole('list', { name: 'Résultats de recherche' }).getByRole('button')).toHaveCount(2);

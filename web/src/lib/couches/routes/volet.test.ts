@@ -91,6 +91,15 @@ describe('visibles', () => {
 		});
 		expect(ids(visibles(rs, FILTRES_INITIAUX, ZONE))).toEqual([4, 2, 1, 3, 6, 7, 5]);
 	});
+
+	it('range par début, le plus récent d’abord, quand on le demande', async () => {
+		const quand = (debut: string, fin: string) => ({ DATE_DEBUT: heureLocale(debut), DATE_FIN: heureLocale(fin) });
+		const rs = await lues({
+			enCours: [restriction(1, quand('2026-10-01', '2026-10-23')), restriction(2, quand('2026-10-15', '2026-11-30'))],
+			aVenir: [restriction(3, quand('2026-10-28', '2026-11-06')), restriction(4, quand('2026-10-21', '2026-11-06'))]
+		});
+		expect(ids(visibles(rs, { ...FILTRES_INITIAUX, ordre: 'recent' }, ZONE))).toEqual([3, 4, 2, 1]);
+	});
 });
 
 describe('puces des sortes', () => {

@@ -25,15 +25,16 @@ function liste<T extends string>(choisies: readonly T[], toutes: readonly T[]): 
 }
 
 /**
- * Codec des puces du volet Routes, qui filtrent la carte comme la liste : `sortes` (« fermeture,feux ») et `etats`
- * (« a_venir »), chacune écrite seulement si une puce est éteinte ; vide (`sortes=`) quand toutes le sont. Une valeur
- * inconnue est ignorée.
+ * Codec des réglages du volet Routes : les puces, qui filtrent la carte comme la liste, `sortes` (« fermeture,feux »)
+ * et `etats` (« a_venir »), chacune écrite seulement si une puce est éteinte, vide (`sortes=`) quand toutes le sont ;
+ * puis l'ordre de la liste, `ordre=recent` (la clé `tri` est celle des Permis). Une valeur inconnue est ignorée.
  */
 export const codecRoutes: Codec<Filtres> = {
-	cles: ['sortes', 'etats'],
+	cles: ['sortes', 'etats', 'ordre'],
 	lire: (params) => ({
 		sortes: choisies(params.get('sortes'), FILTRES_INITIAUX.sortes),
-		etats: choisies(params.get('etats'), FILTRES_INITIAUX.etats)
+		etats: choisies(params.get('etats'), FILTRES_INITIAUX.etats),
+		ordre: params.get('ordre') === 'recent' ? 'recent' : FILTRES_INITIAUX.ordre
 	}),
 	ecrire(p) {
 		const paires: [string, string][] = [];
@@ -41,6 +42,7 @@ export const codecRoutes: Codec<Filtres> = {
 		const etats = liste(p.etats, FILTRES_INITIAUX.etats);
 		if (sortes !== null) paires.push(['sortes', sortes]);
 		if (etats !== null) paires.push(['etats', etats]);
+		if (p.ordre !== FILTRES_INITIAUX.ordre) paires.push(['ordre', p.ordre]);
 		return paires;
 	}
 };

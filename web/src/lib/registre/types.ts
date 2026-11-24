@@ -87,8 +87,13 @@ export interface Contexte<P = unknown> {
 	readonly parametres: P;
 	/** Change une partie des paramètres ; l'adresse est remplacée, sans nouvelle entrée d'historique. */
 	regler(partiel: Partial<P>): void;
-	/** La couche est activée : sa `Carte` reste montée quand on la désactive, pour le fondu. */
-	readonly active: boolean;
+	/**
+	 * La carte dessine la couche : sa rubrique est ouverte, ou l'onglet courant de la fiche commune est le sien (une
+	 * couche permanente l'est toujours). Sa `Carte` reste montée quand une autre la remplace, pour le fondu.
+	 */
+	readonly dessinee: boolean;
+	/** Le panneau montre la rubrique à volet de la couche : son `Volet` charge et compte sa liste. */
+	readonly listee: boolean;
 	readonly ouvert: Ouvert | null;
 	/** Commune dont la fiche est ouverte (celle que montre l'`Onglet`), ou `null`. */
 	readonly commune: Commune | null;

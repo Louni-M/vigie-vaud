@@ -29,15 +29,20 @@ describe('adresse d’une restriction ouverte', () => {
 	const ouverte = { couche: 'routes', element: '5031' };
 
 	it('fait l’aller-retour par `?r=<OBJECTID>`', () => {
-		const etat = { ...lireUrl(COUCHES, new URLSearchParams()), ouvert: ouverte };
+		// Ouverte depuis sa rubrique : l'adresse n'a pas à la nommer.
+		const etat = { ...lireUrl(COUCHES, new URLSearchParams()), ouvert: ouverte, panneau: 'routes' };
 
 		expect(ecrireUrl(COUCHES, etat)).toBe('?r=5031');
 		expect(lireUrl(COUCHES, new URLSearchParams('r=5031')).ouvert).toEqual(ouverte);
 	});
 
 	it('garde l’élément ouvert à côté des puces du volet', () => {
-		const etat = { ...lireUrl(COUCHES, new URLSearchParams()), ouvert: ouverte };
-		const requete = ecrireUrl(COUCHES, { ...etat, parametres: { ...etat.parametres, routes: { sortes: ['feux'], etats: ['a_venir'] } } });
+		// Ouverte depuis sa rubrique : l'adresse n'a pas à la nommer.
+		const etat = { ...lireUrl(COUCHES, new URLSearchParams()), ouvert: ouverte, panneau: 'routes' };
+		const requete = ecrireUrl(COUCHES, {
+			...etat,
+			parametres: { ...etat.parametres, routes: { ...FILTRES_INITIAUX, sortes: ['feux'], etats: ['a_venir'] } }
+		});
 
 		expect(requete).toBe('?r=5031&sortes=feux&etats=a_venir');
 		expect(lireUrl(COUCHES, new URLSearchParams(requete.slice(1))).ouvert).toEqual(ouverte);
@@ -55,27 +60,31 @@ describe('puces du volet Routes dans l’adresse', () => {
 	});
 
 	it('n’écrit que les puces allumées, dans l’ordre de la légende, et seulement si l’une est éteinte', () => {
-		expect(codec.ecrire({ sortes: ['feux', 'fermeture'], etats: FILTRES_INITIAUX.etats })).toEqual([
-			['sortes', 'fermeture,feux']
-		]);
-		expect(codec.ecrire({ sortes: FILTRES_INITIAUX.sortes, etats: ['en_cours'] })).toEqual([['etats', 'en_cours']]);
-		expect(codec.ecrire({ sortes: [], etats: [] })).toEqual([
+		expect(codec.ecrire({ ...FILTRES_INITIAUX, sortes: ['feux', 'fermeture'] })).toEqual([['sortes', 'fermeture,feux']]);
+		expect(codec.ecrire({ ...FILTRES_INITIAUX, etats: ['en_cours'] })).toEqual([['etats', 'en_cours']]);
+		expect(codec.ecrire({ ...FILTRES_INITIAUX, sortes: [], etats: [] })).toEqual([
 			['sortes', ''],
 			['etats', '']
 		]);
 	});
 
 	it.each<[string, Filtres]>([
-		['sortes=feux,fermeture', { sortes: ['fermeture', 'feux'], etats: FILTRES_INITIAUX.etats }],
-		['etats=a_venir', { sortes: FILTRES_INITIAUX.sortes, etats: ['a_venir'] }],
-		['sortes=&etats=', { sortes: [], etats: [] }],
-		['sortes=feux,inconnue&etats=hier', { sortes: ['feux'], etats: [] }]
+		['sortes=feux,fermeture', { ...FILTRES_INITIAUX, sortes: ['fermeture', 'feux'] }],
+		['etats=a_venir', { ...FILTRES_INITIAUX, etats: ['a_venir'] }],
+		['sortes=&etats=', { ...FILTRES_INITIAUX, sortes: [], etats: [] }],
+		['sortes=feux,inconnue&etats=hier', { ...FILTRES_INITIAUX, sortes: ['feux'], etats: [] }],
+		['ordre=recent', { ...FILTRES_INITIAUX, ordre: 'recent' }],
+		['ordre=inconnu', FILTRES_INITIAUX]
 	])('lit « %s »', (requete, attendu) => {
 		expect(lire(requete)).toEqual(attendu);
 	});
 
 	it('fait l’aller-retour', () => {
-		for (const f of [FILTRES_INITIAUX, { sortes: ['deviation', 'autre'], etats: ['a_venir'] }, { sortes: [], etats: [] }] as Filtres[])
+		for (const f of [
+			FILTRES_INITIAUX,
+			{ sortes: ['deviation', 'autre'], etats: ['a_venir'], ordre: 'recent' },
+			{ sortes: [], etats: [], ordre: 'echeance' }
+		] as Filtres[])
 			expect(lire(new URLSearchParams(codec.ecrire(f)).toString())).toEqual(f);
 	});
 

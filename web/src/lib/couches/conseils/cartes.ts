@@ -93,11 +93,6 @@ export function compteGrandConseil(conseils: readonly ConseilIndexe[]): EtatComp
 	return gc ? { etat: 'nombre', nombre: gc.objets } : { etat: 'indisponible' };
 }
 
-/**
- * La phrase sous les conseils couverts, sur les communes grisées : sur bureau, le grisage suit le volet
- * ouvert ; sur téléphone, il suit « Voir sur la carte » (`grisage-mobile`).
- */
-export function noteAutresCommunes(autres: number, telephone: boolean): string {
-	const quand = telephone ? 'sur la carte par « Voir sur la carte »' : 'tant que ce volet est ouvert';
-	return `Les ${autres} autres communes : pas de conseil couvert, grisées ${quand}. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.`;
-}
+/** La phrase sous les communes suivies, sur les communes grisées tant que la rubrique est ouverte. */
+export const noteAutresCommunes = (autres: number): string =>
+	`Les ${autres} autres communes : pas de conseil suivi, grisées sur la carte. Leur onglet Conseil montre ce que le Grand Conseil dit d’elles.`;

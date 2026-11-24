@@ -1,6 +1,7 @@
 // Les rubriques du sommaire, déclarées par les couches : le registre les range et les compte sans en nommer aucune.
 import { nombre } from '#lib/almanach/typographie.js';
-import type { CoucheInscrite, Ouvert, Rubrique } from './types.js';
+import type { Commune, Zone } from '#lib/types.js';
+import type { Compter, CoucheInscrite, EtatCompte, Ouvert, Rubrique } from './types.js';
 
 /** Une rubrique et la couche qui la déclare. */
 export interface RubriqueInscrite {
@@ -23,6 +24,17 @@ export function rubriqueDeLElement(couches: readonly CoucheInscrite[], o: Ouvert
 	const rubrique = rubriques.find((r) => r.id === id);
 	return couche && rubrique ? { rubrique, couche } : null;
 }
+
+/**
+ * Le nombre d'une rubrique pour la zone de la carte. Tant que la carte n'a rien affiché, celui d'une rubrique qui
+ * compte la zone se charge.
+ */
+export const etatDuCompte = (
+	r: Pick<Rubrique, 'portee'>,
+	compter: Compter,
+	zone: Zone | null,
+	communes: readonly Commune[]
+): EtatCompte => (r.portee === 'zone' && zone === null ? { etat: 'chargement' } : compter(zone, communes));
 
 /**
  * La phrase du nombre d'une rubrique, que partagent sa ligne du sommaire et sa liste : le nombre (à mettre en

@@ -3,7 +3,7 @@ import type { Centre } from '#lib/types.js';
 import { COUCHES } from './couches.js';
 import { fichePropre } from './fiches.js';
 import type { CoucheInscrite, Fiche } from './types.js';
-import { ecrireUrl, lireUrl, type EtatUrl } from './url.js';
+import { ecrireUrl, lireUrl, panneauDeLElement, type EtatUrl } from './url.js';
 
 /*
  * Constructeurs de liens du registre : seul le registre sait écrire l'adresse de la carte.
@@ -39,7 +39,9 @@ export const lienFiche = (id: string) => cheminFiche(COUCHES, { fiche: id });
 /** La carte, avec ce qui diffère de l'état par défaut. */
 export function lienCarte(etat: Partial<EtatUrl> = {}): string {
 	const defaut = lireUrl(COUCHES, new URLSearchParams());
-	return `${resolve('/(carte)')}${ecrireUrl(COUCHES, { ...defaut, ...etat })}`;
+	// Un élément s'ouvre dans sa rubrique, sauf si le lien en nomme une autre.
+	const panneau = etat.panneau ?? panneauDeLElement(COUCHES, etat.ouvert ?? null);
+	return `${resolve('/(carte)')}${ecrireUrl(COUCHES, { ...defaut, ...etat, panneau })}`;
 }
 
 /** La carte centrée sur une vue. */

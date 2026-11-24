@@ -30,7 +30,7 @@
 	import { enteteFiche } from './entete.js';
 	import type { FicheDeCouche } from './fiches.js';
 	import { clicSimple } from './liens.js';
-	import { messageNonCouvert, nomOnglet, sourcesDeLOnglet } from './onglet.js';
+	import { messageNonCouvert, nomOnglet, ongletCourant, ongletsDeLaFiche, sourcesDeLOnglet } from './onglet.js';
 	import type { Registre } from './registre.svelte.js';
 
 	let { registre, ouverte }: { registre: Registre; ouverte: Commune | FicheDeCouche } = $props();
@@ -44,18 +44,17 @@
 	/** « Fermer la fiche d’Yverdon-les-Bains » ; une fiche propre est nommée telle quelle, sans en supposer le genre. */
 	const fermerLibelle = $derived(commune ? `Fermer la fiche ${deNom(nom)}` : `Fermer la fiche : ${nom}`);
 
-	const onglets = $derived(
-		propre
-			? propre.couche.composants.Onglet
-				? [propre.couche]
-				: []
-			: registre.couches.filter((c) => c.composants.Onglet)
-	);
+	const onglets = $derived(ongletsDeLaFiche(registre.couches, propre?.couche ?? null));
 	/** Couche de l'élément ouvert, quand elle a un onglet et une `Fiche` pour l'y afficher. */
 	const avecFiche = $derived(
 		onglets.find((c) => c.id === registre.ouvert?.couche && c.composants.Fiche) ?? null
 	);
-	const courant = $derived(avecFiche ?? onglets.find((c) => c.id === registre.onglet) ?? onglets[0]);
+	/** L'onglet montré : celui que tient le registre pour une fiche commune (la carte le dessine), le seul d'une fiche propre. */
+	const courant = $derived(
+		commune
+			? onglets.find((c) => c.id === registre.ongletCourant)
+			: ongletCourant(onglets, registre.onglet, registre.ouvert)
+	);
 	const element = $derived(avecFiche === courant ? registre.ouvert : null);
 	const couvert = $derived(!courant || !commune || couvertureCourante().couvre(courant.id, commune.bfs));
 	// L'onglet de l'élément ouvert devient l'onglet choisi : fermer l'élément (fil d'Ariane, croix) y ramène, même quand
