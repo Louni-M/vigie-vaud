@@ -4,20 +4,23 @@ Tableau de bord du canton de Vaud, commune par commune, destiné d'abord aux hab
 ce qui se passe dans chaque commune et informe sans prendre position. Chantiers Vaud, l'ancien nom du site, désigne
 désormais sa couche Permis.
 
-Le vocabulaire (couche, volet, fiche commune, Objet, Séance, sonde, rattrapage…) est défini dans
+Le vocabulaire (couche, rubrique, sommaire, fiche commune, Objet, Séance, sonde, rattrapage…) est défini dans
 [`GLOSSARY.md`](GLOSSARY.md), les décisions dans [`docs/adr/`](docs/adr/) et les sources dans
 [`docs/sources.md`](docs/sources.md).
 
 ## Le site
 
-Une carte du canton, un **panneau des couches** où chaque couche s'active et ouvre son volet, et le **fil
-cantonal**. Un clic sur l'hôtel de ville d'une commune ouvre sa **fiche commune**, qui a un onglet par couche (sauf
-Hôtels de ville). Sur téléphone, une seule vue à la fois (Carte, Fil, Couches, Fiche), choisie dans la barre du bas.
+Une carte du canton et, posé dessus, un **panneau** qui montre à l'arrivée le **sommaire** : une ligne par
+**rubrique** (Permis de construire, Routes, Conseils communaux, Grand Conseil), avec son nombre d'éléments dans la zone
+affichée. Une ligne ouvre la liste de sa rubrique, ou la fiche du Grand Conseil ; la carte ne dessine que ce sujet, en
+plus des hôtels de ville et du marqueur du Grand Conseil, et sa légende le dit (ADR 0018). Un clic sur l'hôtel de
+ville d'une commune ouvre sa **fiche commune**, qui a un onglet par couche (sauf Hôtels de ville) ; la carte dessine
+alors l'onglet ouvert. Sur téléphone, une seule vue à la fois (Sujets, Carte, Détail), choisie dans la barre du bas.
 
 ### Les couches
 
-L'ordre est celui du panneau des couches ([`web/src/lib/registre/couches.ts`](web/src/lib/registre/couches.ts)) ;
-chaque couche a son dossier dans `web/src/lib/couches/`.
+L'ordre est celui du dessin ([`web/src/lib/registre/couches.ts`](web/src/lib/registre/couches.ts)) ; celui du
+sommaire vient du rang que chaque couche donne à ses rubriques. Chaque couche a son dossier dans `web/src/lib/couches/`.
 
 - **Permis** (`web/src/lib/couches/permis/`) : les dossiers de la CAMAC, enquêtes publiques en cours avec leur date
   de fin, procédures en attente de décision et historique depuis 1999, une année à la fois. Voie d'accès Direct :
@@ -28,8 +31,9 @@ chaque couche a son dossier dans `web/src/lib/couches/`.
   Lausanne, Yverdon-les-Bains) ou du site de la commune par le robot communal (ADR 0006 et 0010), puis les garde
   dans le dépôt de données ; le site lit les fichiers que celui-ci publie (voir [Cron et dépôt de
   données](#cron-et-dépôt-de-données)). Sur la carte, seul le marqueur du Grand Conseil, qui ouvre la fiche du
-  Grand Conseil ; les conseils communaux sont dans l'onglet Conseil de leur fiche commune. Les Objets du Grand
-  Conseil sont rattachés aux communes qu'ils nomment (ADR 0016), sous « Au Grand Conseil ».
+  Grand Conseil ; les conseils communaux sont dans l'onglet Conseils communaux de leur fiche commune. Deux rubriques :
+  Conseils communaux (les communes suivies) et Grand Conseil (sa fiche). Les Objets du Grand Conseil sont rattachés
+  aux communes qu'ils nomment (ADR 0016), sous « Au Grand Conseil ».
 - **Routes** (`web/src/lib/couches/routes/`) : les restrictions de circulation en cours et à venir de la DGMR
   (fermetures, déviations, feux…) ; chaque restriction renvoie aux autres de ses travaux. Voie d'accès Direct, sur le même service du canton que les
   Permis ; chaque restriction est rattachée à chaque commune qu'elle traverse.
@@ -38,22 +42,24 @@ chaque couche a son dossier dans `web/src/lib/couches/`.
   autres. Voie d'accès Préparée : les positions viennent de `pipeline/hotels-de-ville.csv` par
   `pipeline/communes.py`.
 
-Le volet de chaque couche porte le badge de fraîcheur de ses sources. La page `/couverture` dit ce que chaque source apporte à chaque commune
-(Couverture : mode et état, mesuré par les sondes du cron).
+La liste de chaque rubrique porte, après ses éléments, le badge de fraîcheur de ses sources. La page `/couverture`
+(« Sources par commune ») dit ce que chaque source apporte à chaque commune (Couverture : mode et état, mesuré par les
+sondes du cron).
 
-### Le fil cantonal
+### Le sommaire et les rubriques
 
-Le fil cantonal ([`web/src/lib/fil/`](web/src/lib/fil/)) liste les nouveautés des 14 derniers jours de toutes les
-couches qui en déclarent : Objets déposés et Séances tenues, nouveaux dossiers, restrictions de circulation
-commencées ; puis les Séances et les restrictions à venir, groupées par jour. Il est filtrable par type, limité à la
-zone visible de la carte ou étendu au canton, et ne dépend pas des couches activées. Chaque entrée ouvre son élément
-sur la carte.
+Chaque couche déclare ses rubriques (nom, phrase, rang, et une fonction de compte chargée à la demande) ; le registre
+les range au sommaire et les compte sans en nommer aucune
+([`web/src/lib/registre/rubriques.ts`](web/src/lib/registre/rubriques.ts)). Le nombre d'une ligne est celui de la
+liste qu'elle ouvre, avec les réglages par défaut de la couche et la zone de la carte ; une source en échec la rend
+« indisponible ». La couche que dessine la carte se déduit du panneau et de l'onglet de la fiche commune ouverte
+([`web/src/lib/registre/dessin.ts`](web/src/lib/registre/dessin.ts)), comme la légende et l'attribution.
 
 ### Pages et adresses
 
 | Chemin | Contenu |
 |---|---|
-| `/` | La carte, avec le fil cantonal ouvert |
+| `/` | La carte, avec le sommaire |
 | `/commune/<slug>` | La carte, avec la fiche d'une commune ouverte (300 pages pré-générées, ADR 0012) |
 | `/grand-conseil` | La carte, avec la fiche du Grand Conseil ouverte |
 | `/a-propos` | Les couches, le robot de Vigie Vaud, les sources, le contact, la licence |
@@ -67,10 +73,11 @@ l'adresse, lue et écrite par le registre ([`web/src/lib/registre/url.ts`](web/s
 
 - l'élément ouvert, par la clé de sa couche : `?d=<n° CAMAC>` (dossier), `?c=<conseil>/<numéro ou date>` (Objet ou
   Séance, par exemple `?c=vd/26_INT_140`), `?r=<n°>` (restriction de circulation) ;
-- `couches` (couches activées), `vue` (centre et zoom), `volet` (volet ouvert), `affichage` (vue du téléphone),
-  `onglet` (onglet de la fiche commune) ;
+- `vue` (centre et zoom), `volet` (la rubrique ouverte ; `volet=sommaire` pour un élément ouvert depuis le sommaire),
+  `affichage` (vue du téléphone : `panneau`, `carte`, `fiche`), `onglet` (onglet de la fiche commune) ; une ancienne
+  adresse à `couches=`, `volet=fil` ou `affichage=fil` s'ouvre toujours, sur le sommaire ;
 - les réglages des couches : `statuts`, `nature`, `historique`, `depuis` et `tri` (Permis), `communes` (Conseils),
-  `sortes` et `etats` (Routes).
+  `sortes`, `etats` et `ordre` (Routes).
 
 Le marqueur « Autour de moi » n'est jamais écrit dans l'adresse ; le centre de la carte, lui, l'est. La mesure
 d'audience GoatCounter, active seulement si `VITE_GOATCOUNTER` est défini à la construction, compte chaque page par
@@ -118,7 +125,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 
 | Dossier | Rôle |
 |---|---|
-| `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) : pages dans `src/routes/`, couches dans `src/lib/couches/`, registre (adresse, volets, fiches) dans `src/lib/registre/`, carte et recherche dans `src/lib/socle/`, fil cantonal dans `src/lib/fil/` |
+| `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) : pages dans `src/routes/`, couches dans `src/lib/couches/`, registre (adresse, sommaire, rubriques, fiches) dans `src/lib/registre/`, carte, légende et recherche dans `src/lib/socle/` |
 | `pipeline/` | Python (uv) : préparation des communes, cron, import des conseils, robot communal, schéma commun (voir ci-dessous) |
 | `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
 | `cas-partages/` | Cas de test des règles écrites en Python et en TypeScript (Masquage, nom du conseil, clé d'un Objet, niveaux), lus par les deux suites |

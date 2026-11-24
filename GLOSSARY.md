@@ -9,15 +9,41 @@ l'ancien nom du site, désigne désormais sa couche Permis.
 ### Carte et interface
 
 **Couche** :
-Ensemble d'éléments d'un même domaine, affiché sur la carte et activable depuis le panneau des couches (Permis,
-Hôtels de ville, Routes, Trains, Incidents, Météo, Presse…). Une couche s'appuie sur une ou plusieurs sources ; la
-fiche commune a un onglet par couche, qu'elle soit activée ou non. La couche Hôtels de ville est **permanente** :
-on ne peut pas la désactiver.
+Ensemble d'éléments d'un même domaine, dessiné sur la carte (Permis, Hôtels de ville, Routes, Trains, Incidents,
+Météo, Presse…). Une couche s'appuie sur une ou plusieurs sources et déclare ses rubriques ; la fiche commune a un
+onglet par couche. La carte ne dessine qu'une couche à la fois, la **couche dessinée** : celle de l'onglet de la fiche
+commune ouverte, sinon celle de la rubrique ouverte, sinon aucune. La couche Hôtels de ville est **permanente** :
+toujours dessinée, comme le marqueur du Grand Conseil.
+_Mot visiteur_ : aucun ; le visiteur voit des rubriques.
 _À éviter_ : calque, layer, module
 
+**Sommaire** :
+Ce que montre le panneau à l'arrivée : une ligne par rubrique, avec son nom, une phrase et son nombre d'éléments dans
+la zone affichée (pour tout le canton, au Grand Conseil). Il remplace le fil cantonal comme écran d'arrivée. Ce n'est
+pas le sommaire d'une page Almanach (À propos, Protection des données), qui liste ses parties.
+_Mot visiteur_ : « Ce que montre Vigie Vaud » ; le lien qui y ramène, « Tous les sujets ».
+_À éviter_ : accueil, menu, fil
+
+**Rubrique** :
+Un sujet tel que le visiteur le nomme, déclaré par une couche : son nom, sa phrase, son rang au sommaire, et ce qu'il
+ouvre, la liste de la couche dans le panneau ou une fiche propre. Une rubrique n'est pas une couche : la couche
+Conseils en déclare deux, Conseils communaux (sa liste) et Grand Conseil (sa fiche). Un sujet porte le nom de sa
+rubrique partout : sommaire, liste, légende, onglet de la fiche commune.
+_Mot visiteur_ : son nom (« Permis de construire », « Routes », « Conseils communaux », « Grand Conseil ») ;
+ensemble, les « sujets ».
+_À éviter_ : catégorie, thème, couche (pour la rubrique)
+
+**Panneau** :
+La feuille posée sur la carte, à gauche sur bureau et en plein écran sur téléphone : le sommaire, ou la rubrique
+qu'on y a ouverte, une seule à la fois. Il est dans l'adresse sous la clé `volet`.
+_Mot visiteur_ : « Sujets », dans la barre du bas du téléphone.
+_À éviter_ : colonne, barre latérale
+
 **Volet** :
-Le panneau d'une couche, ouvert depuis le panneau des couches : interrupteur, badge de fraîcheur, attribution, puis
-ce que la couche y ajoute (réglages, légende, liste des éléments de la zone visible pour les Permis).
+La liste d'une rubrique ouverte dans le panneau : le lien de retour au sommaire et le nom de la rubrique, puis ce que
+la couche y met (réglages, compte et liste des éléments de la zone affichée), et après la liste les badges de
+fraîcheur et l'attribution de ses sources.
+_Mot visiteur_ : aucun ; le visiteur voit la rubrique ouverte.
 _À éviter_ : réglages (pour le volet entier), tiroir
 
 **Commune** :
@@ -32,11 +58,14 @@ _À éviter_ : commune fusionnée (ambigu : désigne aussi la nouvelle commune)
 **Hôtel de ville** :
 Le marqueur unique d'une commune sur la carte, qui ouvre sa fiche commune. Il est placé sur le siège de son
 administration communale ; à défaut, sur un point de la commune en terre ferme, et sa position est alors dite
-**approximative**. Les anciennes communes n'ont pas de marqueur.
+**approximative**. Les anciennes communes n'ont pas de marqueur. La légende de la carte l'explique.
+_Mot visiteur_ : « Hôtel de ville ».
 _À éviter_ : mairie, marqueur commune
 
 **Fiche commune** :
-Le panneau d'une commune, organisé en onglets (Conseil, Permis, Presse, Radio, Météo).
+Le panneau d'une commune, organisé en onglets, un par couche, chacun au nom de sa rubrique (Permis de construire,
+Conseils communaux, Routes).
+_Mot visiteur_ : la fiche ; « Détail » dans la barre du bas du téléphone.
 _À éviter_ : page commune, profil
 
 **Fiche du Grand Conseil** :
@@ -48,18 +77,6 @@ _À éviter_ : page du Grand Conseil, fiche cantonale
 **Dossier** :
 Une demande de permis de construire de la CAMAC, identifiée par son numéro CAMAC.
 _À éviter_ : permis (pour un dossier isolé), demande
-
-**Fil cantonal** :
-La colonne qui liste les nouveautés de toutes les sources des 14 derniers jours (Objets déposés, Séances tenues,
-nouveaux dossiers, restrictions de circulation commencées), plus les Séances et les restrictions à venir, groupées par
-jour. Une restriction y entre par son début, jamais par sa levée. Elle est filtrable par type et limitée à la zone
-visible de la carte ou étendue à tout le canton. Elle ne dépend pas des couches activées : l'interrupteur d'une couche
-gouverne la carte, pas le fil.
-_À éviter_ : flux, timeline, actualités
-
-**Nouveau dossier** :
-Un dossier dont l'enquête publique a débuté depuis moins de 14 jours.
-_À éviter_ : nouveau permis
 
 **Restriction de circulation** :
 Un tronçon de route touché par une mesure publiée par la DGMR (fermeture, déviation, feux, restriction particulière…),
@@ -87,7 +104,8 @@ _À éviter_ : incident (réservé à la police), restriction (réservé aux Rou
 L'indication, sur chaque couche, de l'âge de la dernière donnée et de sa source. Pour une source lue en direct qui ne
 date pas ses données (la CAMAC, la DGMR), c'est l'heure de la dernière consultation (« consulté il y a 2 min ·
 DGMR ») ; pour une source qui passe par le cron une fois par jour (les conseils), l'âge du dernier import réussi
-(« importé il y a 6 h · Grand Conseil »).
+(« mis à jour il y a 6 h · Grand Conseil »). Les sites d'une plateforme ont un seul badge, qui ne nomme pas la
+plateforme (« mis à jour il y a 1 j · sites de 19 communes »).
 
 **Couverture** :
 Ce qu'une source apporte à chaque commune, selon deux axes : son **mode** (API, scrapé ou non couvert), déclaré
@@ -102,13 +120,15 @@ La source d'un conseil communal déclare aussi son **niveau**, ce qu'elle en don
 « séances et préavis » ou « séances seulement ». Un niveau ne change ni le mode ni l'état.
 Une source peut déclarer ses **limites** : ce qu'elle ne publie pas toujours dans les communes qu'elle couvre (la
 DGMR : les routes communales). Elles ne changent ni le mode ni l'état.
-Une commune **non couverte** par la couche choisie (sur bureau, celle dont le volet est ouvert ; sur mobile, celle
-dont on a demandé à voir la Couverture) est grisée sur la carte ; une panne ne grise rien.
+Une commune **non couverte** par la couche dessinée est grisée sur la carte ; une panne ne grise rien.
+_Mot visiteur_ : « Sources par commune » (la page `/couverture` et ses liens) ; en tête de l'onglet d'une commune non
+couverte, « Pas encore de données … pour cette commune ».
 _À éviter_ : disponibilité (pour la Couverture entière)
 
 **Vue** :
-Sur téléphone, l'un des quatre écrans plein écran (Carte, Fil, Couches, Fiche), choisi dans la barre du bas ; une
-seule est affichée à la fois.
+Sur téléphone, l'un des trois écrans plein écran, choisi dans la barre du bas : le panneau, la carte et la fiche ;
+une seule est affichée à la fois. La fiche n'a son bouton que quand une fiche est ouverte.
+_Mot visiteur_ : « Sujets », « Carte », « Détail ».
 _À éviter_ : onglet (réservé aux onglets d'une fiche commune), page
 
 **Aperçu** :
@@ -118,8 +138,8 @@ _À éviter_ : popup, carte (ambigu avec la carte géographique)
 
 **Recherche** :
 Le champ « Adresse, commune, n° de dossier ou d'objet » et ses résultats : communes, fiches, éléments des couches,
-adresses et lieux, et « Autour de moi ». Sur téléphone, elle s'ouvre en plein écran par-dessus la vue Carte et se
-referme sur la carte ; ce n'est pas une cinquième vue.
+adresses et lieux, et « Autour de moi ». Sur téléphone, elle est en tête de la carte et du panneau, s'ouvre en plein
+écran par-dessus eux et se referme sur la vue d'où on l'a ouverte ; ce n'est pas une quatrième vue.
 _À éviter_ : barre d'adresse, géocodeur
 
 ### Données
@@ -171,8 +191,7 @@ L'association d'un élément à une commune : par sa position (dossiers ; restri
 chaque commune qu'elles traversent), par son conseil (Objets et Séances d'un conseil communal, qui n'appartiennent
 qu'à leur commune), ou, pour une source qui porte sur le canton (Grand Conseil, presse), par le nom de la commune dans
 son texte. Le nom d'une ancienne commune ou un ancien nom rattache à la commune actuelle. Un élément sans
-rattachement n'a pas de fiche commune : il n'apparaît que dans le fil cantonal et, s'il vient du Grand Conseil, dans
-la fiche du Grand Conseil.
+rattachement n'a pas de fiche commune : s'il vient du Grand Conseil, il apparaît dans la fiche du Grand Conseil.
 _À éviter_ : géolocalisation, affectation
 
 **Masquage** :
@@ -211,6 +230,7 @@ quand le conseil les publie, ses auteur·e·s et son statut. Le numéro, unique 
 lui donne (`26_INT_140`, `INT26/056`). Le type et le statut sont ceux que le conseil leur donne, sans regroupement de
 notre part ; ce qu'il ne publie pas reste inconnu, jamais déduit (un préavis n'a pas d'office la Municipalité pour
 auteure, ni un statut « adopté » parce que sa Séance est passée). Correspond aux *affairs* d'OpenParlData.
+_Mot visiteur_ : « texte déposé » ; un préavis, « proposition de la Municipalité ».
 _À éviter_ : affaire, intervention
 
 **Séance** :
