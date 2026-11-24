@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Commune } from '#lib/types.js';
 import { COUCHES } from './couches.js';
 import { resultatsCouches } from './recherche.js';
 
@@ -43,5 +44,7 @@ describe('nom des résultats des couches', () => {
 	it('donne à chaque élément le nom de sa rubrique, pas celui de sa couche', () => {
 		expect(resultatsCouches(COUCHES, '123456', []).map((r) => r.nomRubrique)).toEqual(['Permis de construire']);
 		expect(resultatsCouches(COUCHES, '26 int 140', []).map((r) => r.nomRubrique)).toEqual(['Grand Conseil']);
+		const lausanne = [{ bfs: 5586, nom: 'Lausanne' }] as Commune[];
+		expect(resultatsCouches(COUCHES, 'int 26/56', lausanne).map((r) => r.nomRubrique)).toEqual(['Conseils communaux']);
 	});
 });
