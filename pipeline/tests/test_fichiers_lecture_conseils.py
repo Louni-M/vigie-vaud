@@ -235,8 +235,8 @@ def test_la_reconstruction_refait_les_fichiers_de_lecture_depuis_l_archive_sans_
     assert (tmp_path / "conseils/import.json").read_text(encoding="utf-8") == import_avant
 
 
-def test_le_passage_supprime_le_fil_que_le_site_ne_lit_plus(tmp_path):
-    # `conseils/fil.json`, écrit par les passages d'avant l'ADR 0018, n'est plus produit : le passage suivant le retire.
+def test_l_import_supprime_le_fil_que_le_site_ne_lit_plus(tmp_path):
+    # `conseils/fil.json`, écrit par les imports d'avant l'ADR 0018, n'est plus produit : l'import suivant le retire.
     horloge = HorlogeFactice(T0)
     fil = tmp_path / "conseils/fil.json"
     fil.parent.mkdir(parents=True)

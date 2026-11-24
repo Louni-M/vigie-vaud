@@ -41,7 +41,7 @@ Archive = Mapping[str, Objet | Seance]
 FENETRE_RECENTS = timedelta(days=14)
 # Où sont les fichiers de lecture dans le dépôt (motifs de `Path.glob`) : `lecture` produit tout ce qui doit y être,
 # le reste est périmé. Les fichiers d'archive (`conseils/<conseil>/objets/`, `…/seances/`) n'y sont pas.
-# `conseils/fil.json` n'est plus produit (ADR 0018) : son motif reste pour que le passage suivant le supprime du dépôt.
+# `conseils/fil.json` n'est plus produit (ADR 0018) : son motif reste pour que le prochain import le supprime du dépôt.
 MOTIFS_LECTURE = (
     "conseils/index.json",
     "conseils/fil.json",
