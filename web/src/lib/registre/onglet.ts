@@ -42,9 +42,10 @@ export function ongletCourant(
 }
 
 /**
- * Nom de l'onglet de la couche dans une fiche, et du fil d'Ariane de son élément ouvert (« Routes › … ») : celui de sa
- * rubrique, pour qu'un sujet porte le même nom partout. Dans une fiche propre (`fiche` : son identifiant), celui de la
- * rubrique qui l'ouvre ; dans une fiche commune, celui de sa rubrique à volet ; à défaut, le nom de la couche.
+ * Nom de l'onglet de la couche dans une fiche, du fil d'Ariane de son élément ouvert (« Routes › … ») et d'une fiche
+ * propre dans les résultats de la recherche : celui de sa rubrique, pour qu'un sujet porte le même nom partout. Dans
+ * une fiche propre (`fiche` : son identifiant), celui de la rubrique qui l'ouvre ; dans une fiche commune, celui de sa
+ * rubrique à volet ; à défaut, le nom de la couche.
  */
 export function nomOnglet(couche: Pick<CoucheInscrite, 'nom' | 'rubriques'>, fiche: string | null = null): string {
 	const rubriques = couche.rubriques ?? [];

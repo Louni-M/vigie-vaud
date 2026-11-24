@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { COUCHES } from './couches.js';
 import { resultatsCouches } from './recherche.js';
 
-const GRAND_CONSEIL = { type: 'fiche', nomCouche: 'Conseils', libelle: 'Grand Conseil', fiche: 'grand-conseil' };
+const GRAND_CONSEIL = { type: 'fiche', nomRubrique: 'Grand Conseil', libelle: 'Grand Conseil', fiche: 'grand-conseil' };
 
 describe('recherche des fiches propres', () => {
 	it.each(['gr', 'Grand', 'grand conseil', 'GRAND-CONSEIL', 'pa', 'parl', 'Parlement', 'GC', 'gc', ' gc '])(
@@ -30,11 +30,18 @@ describe('ordre des résultats des couches', () => {
 		expect(numero).toEqual([
 			{
 				type: 'element',
-				nomCouche: 'Conseils',
+				nomRubrique: 'Grand Conseil',
 				libelle: 'Objet 26_INT_140 · Grand Conseil',
 				couche: 'conseils',
 				element: 'vd/26_INT_140'
 			}
 		]);
+	});
+});
+
+describe('nom des résultats des couches', () => {
+	it('donne à chaque élément le nom de sa rubrique, pas celui de sa couche', () => {
+		expect(resultatsCouches(COUCHES, '123456', []).map((r) => r.nomRubrique)).toEqual(['Permis de construire']);
+		expect(resultatsCouches(COUCHES, '26 int 140', []).map((r) => r.nomRubrique)).toEqual(['Grand Conseil']);
 	});
 });

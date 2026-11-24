@@ -68,12 +68,12 @@ export interface Centre {
 	zoom: number;
 }
 
-/** Résultat de la recherche du socle ; `libelle` est le texte affiché. */
+/** Résultat de la recherche du socle ; `libelle` est le texte affiché, `nomRubrique` le nom du sujet qui le précède. */
 export type Resultat =
 	/** Lieu de swisstopo, ou la position de l'appareil ; `categorie` : « Adresse », « Lieu », « Position »… */
 	| { type: 'adresse'; categorie: string; libelle: string; lon: number; lat: number }
 	| { type: 'commune'; libelle: string; commune: Commune }
 	/** Fiche propre d'une couche (« Grand Conseil »), trouvée par son nom ou un alias ; `fiche` est son identifiant. */
-	| { type: 'fiche'; nomCouche: string; libelle: string; fiche: string }
+	| { type: 'fiche'; nomRubrique: string; libelle: string; fiche: string }
 	/** Élément d'une couche, fourni par son `chercher`. */
-	| { type: 'element'; nomCouche: string; libelle: string; couche: string; element: string };
+	| { type: 'element'; nomRubrique: string; libelle: string; couche: string; element: string };
