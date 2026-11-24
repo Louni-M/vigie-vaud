@@ -192,6 +192,17 @@ export interface Rubrique {
 	compteur(): Promise<Compter>;
 }
 
+/**
+ * Une entrée de la légende de la carte : un signe, masqué aux lecteurs d'écran, et le texte qui dit ce qu'il montre.
+ * `rond` : un point plein ; `hotel` : le marqueur d'un hôtel de ville ; `fronton` : celui du Grand Conseil ; `trait`
+ * et `tirets` : un tracé ; `aplat` : une surface (le grisage).
+ */
+export interface EntreeLegende {
+	signe: 'rond' | 'hotel' | 'fronton' | 'trait' | 'tirets' | 'aplat';
+	couleur: string;
+	texte: string;
+}
+
 /** Composant d'une couche, importé à la demande ; `Props` s'ajoute au contexte. */
 export type Chargeur<P, Props = object> = () => Promise<{ default: Component<{ ctx: Contexte<P> } & Props> }>;
 
@@ -247,6 +258,11 @@ export interface Couche<P = unknown> {
 	nonCouvert?(commune: Commune): string | MessageNonCouvert;
 	/** Ce que la couche apporte au fil cantonal, quelle que soit son activation. */
 	fil?: Fil;
+	/**
+	 * Ce que la légende de la carte dit de la couche : `toujours`, ce qu'elle dessine en tout temps (les hôtels de ville,
+	 * le marqueur du Grand Conseil) ; `dessinee`, ce qu'elle ajoute quand elle est la couche dessinée.
+	 */
+	legende?: { toujours?: EntreeLegende[]; dessinee?: EntreeLegende[] };
 	/** Ses rubriques au sommaire ; une couche sans rubrique n'y est pas (Hôtels de ville). */
 	rubriques?: Rubrique[];
 	/** La rubrique (son identifiant) où va un élément, d'après sa clé ; sans elle, la première de `rubriques`. */

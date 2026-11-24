@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COUCHES } from './couches.js';
-import { coucheDessinee, couchesSurLaCarte } from './dessin.js';
+import { coucheDessinee, couchesSurLaCarte, entreesLegende } from './dessin.js';
 import { SOMMAIRE } from './url.js';
 
 describe('couche dessinée', () => {
@@ -28,3 +28,25 @@ describe('couches sur la carte', () => {
 	});
 });
 
+describe('légende de la carte', () => {
+	const textes = (dessinee: string | null) => entreesLegende(COUCHES, dessinee).map((e) => e.texte);
+
+	it('nomme au sommaire l’hôtel de ville, ce qu’ouvre un clic, et le Grand Conseil', () => {
+		const t = textes(null);
+		expect(t).toHaveLength(2);
+		expect(t[0]).toMatch(/^Hôtel de ville.*un clic ouvre la fiche de la commune/);
+		expect(t[1]).toMatch(/^Grand Conseil/);
+	});
+
+	it('ajoute après eux ce que dessine la rubrique Routes', () => {
+		expect(textes('routes').slice(2)).toEqual(['Fermeture', 'Déviation', 'Feux', 'Restriction particulière']);
+	});
+
+	it('montre les statuts des permis quand la carte les dessine', () => {
+		expect(textes('permis').slice(2)).toEqual(['À l’enquête', 'Décision attendue']);
+	});
+
+	it('dit ce que grise la rubrique Conseils communaux', () => {
+		expect(textes('conseils').slice(2)).toEqual([expect.stringMatching(/^Commune grisée/)]);
+	});
+});

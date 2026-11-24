@@ -1,5 +1,5 @@
 import type { Codec, Contexte, Couche, Ouvert } from '#lib/registre/types.js';
-import { SORTES } from './sortes.js';
+import { enTirets, SORTES, type Sorte } from './sortes.js';
 import { compteRoutes, FILTRES_INITIAUX, type Filtres } from './volet.js';
 
 export { FILTRES_INITIAUX };
@@ -80,6 +80,14 @@ export const coucheRoutes: Couche<Filtres> = {
 	titre: (_, nomDeLaFiche) => `${RESTRICTION} – ${nomDeLaFiche} – Vigie Vaud`,
 	// Une phrase fixe : la page de la commune est pré-générée, les restrictions lues en direct.
 	resume: 'les restrictions de circulation en cours et à venir',
+	// Les sortes que publie la DGMR ; « Autres » n'a sa puce dans la rubrique que si une restriction en est.
+	legende: {
+		dessinee: (['fermeture', 'deviation', 'feux', 'particuliere'] satisfies Sorte[]).map((s) => ({
+			signe: enTirets(s) ? 'tirets' : 'trait',
+			couleur: SORTES[s].couleur,
+			texte: SORTES[s].nom
+		}))
+	},
 	// Son nombre est celui de sa liste à l'ouverture : toutes les puces allumées, dans la zone de la carte.
 	rubriques: [
 		{

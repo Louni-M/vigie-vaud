@@ -30,6 +30,8 @@
 	import { creerRegistre, fournirRegistre, SOMMAIRE, type VueCarte } from '#lib/registre/registre.svelte.js';
 	import { navigateurSvelteKit } from '#lib/registre/navigateur.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
+	import { entreesLegende } from '#lib/registre/dessin.js';
+	import Legende from '#lib/socle/Legende.svelte';
 	import { clicSimple } from '#lib/registre/liens.js';
 	import { rubriquesDuSommaire } from '#lib/registre/rubriques.js';
 	import Sommaire from '#lib/registre/Sommaire.svelte';
@@ -117,6 +119,13 @@
 	const couverture = $derived(couvertureCourante(data.communes));
 	/** Le grisage suit la couche dessinée : la rubrique ouverte, ou l'onglet de la fiche commune ouverte. */
 	const grisees = $derived(couverture.grisees(registre.dessinee));
+
+	/** La légende dit ce que la carte dessine ; ouverte sur bureau, repliée dès que l'écran est celui d'un téléphone. */
+	const legende = $derived(entreesLegende(COUCHES, registre.dessinee));
+	let legendeOuverte = $state(true);
+	$effect(() => {
+		if (telephone.current) untrack(() => (legendeOuverte = false));
+	});
 
 	// Un même texte (« © swisstopo », pour le fond, les adresses et les lacs) n'est cité qu'une fois.
 	const attribution = $derived(
@@ -370,6 +379,10 @@
 				</div>
 			{/if}
 
+			<div class="cote-legende">
+				<Legende entrees={legende} bind:ouverte={legendeOuverte} />
+			</div>
+
 			<p class="liens">
 				<a href={resolve('/a-propos')}>À propos</a> ·
 				<a href={resolve('/protection-des-donnees')}>Protection des données</a>
@@ -565,6 +578,13 @@
 	.volet > :global(*) {
 		flex: 1 0 auto;
 	}
+	/* En bas à droite, au-dessus du bouton des sources de la carte. */
+	.cote-legende {
+		position: absolute;
+		z-index: 2;
+		right: 10px;
+		bottom: 40px;
+	}
 	.liens {
 		position: absolute;
 		z-index: 2;
@@ -640,6 +660,11 @@
 		.app:not([data-affichage='fiche']) .colonne,
 		.app:not([data-affichage='panneau']) .vue-panneau {
 			visibility: hidden;
+		}
+		/* Sur téléphone, la légende passe en haut, sous la recherche : l'aperçu prend le bas de la carte. */
+		.cote-legende {
+			top: 62px;
+			bottom: auto;
 		}
 		/* La recherche, posée sur la carte, reste en tête du panneau. */
 		.app[data-affichage='panneau'] .recherche {

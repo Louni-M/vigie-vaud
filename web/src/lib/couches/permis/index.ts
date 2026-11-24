@@ -33,6 +33,10 @@ export const couchePermis: Couche<Parametres> = {
 	introuvable: (element) => `Aucun dossier n° ${element}.`,
 	titre: (element, nomDeLaFiche) => `Dossier n°\u00a0${element} – ${nomDeLaFiche} – Vigie Vaud`,
 	resume: 'les permis de construire à l’enquête, en direct depuis le canton',
+	// Les statuts des dossiers en cours, dessinés à l'arrivée ; ceux de l'historique ont leurs puces dans la rubrique.
+	legende: {
+		dessinee: STATUTS_EN_COURS.map((s) => ({ signe: 'rond', couleur: STATUTS[s].couleur, texte: STATUTS[s].court }))
+	},
 	// Son nombre est celui de sa liste à l'ouverture : les dossiers en cours de la zone, réglages par défaut.
 	rubriques: [
 		{

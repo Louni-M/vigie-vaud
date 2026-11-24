@@ -118,6 +118,24 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 		await expect(ligne(page, 'Routes')).toBeFocused();
 	});
 
+	test('la légende de la carte dit ce que montre chaque marqueur, et suit ce que la carte dessine', async ({ page }) => {
+		await arriver(page, '/');
+		const legende = page.getByRole('region', { name: 'Légende de la carte' });
+		await expect(legende.getByRole('button', { name: 'Légende' })).toHaveAttribute('aria-expanded', 'true');
+		await expect(legende).toContainText('Hôtel de ville : un clic ouvre la fiche de la commune');
+		await expect(legende).toContainText('Grand Conseil, au Parlement');
+		await expect(legende).not.toContainText('Fermeture');
+
+		await ligne(page, 'Routes').click();
+		await expect(legende).toContainText('Fermeture');
+		await expect(legende).toContainText('Restriction particulière');
+
+		// La fiche de Pully, sur son premier onglet : la carte dessine les permis, et la légende leurs statuts.
+		await page.goto('/commune/pully?volet=routes');
+		await expect(legende).toContainText('À l’enquête');
+		await expect(legende).not.toContainText('Fermeture');
+	});
+
 	test('Routes se trie par début, le plus récent d’abord, et l’adresse le garde', async ({ page }) => {
 		await arriver(page, '/?volet=routes');
 		await page.getByRole('combobox', { name: 'Ordre de la liste' }).selectOption('recent');
@@ -136,6 +154,15 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 			expect(b.y + b.height, 'au-dessus de la barre du bas').toBeLessThanOrEqual(barre.y);
 		}
 		await expect(page.getByText(/Pose de panneaux solaires/)).toBeHidden();
+	});
+
+	test('la légende est repliée, et son bouton dit qu’elle se déplie', async ({ page }) => {
+		await arriver(page, '/?affichage=carte');
+		const bouton = page.getByRole('region', { name: 'Légende de la carte' }).getByRole('button', { name: 'Légende' });
+		await expect(bouton).toHaveAttribute('aria-expanded', 'false');
+		await bouton.click();
+		await expect(bouton).toHaveAttribute('aria-expanded', 'true');
+		await expect(page.getByText(/^Hôtel de ville/)).toBeVisible();
 	});
 
 	test('une rubrique ouverte passe à la carte et en revient, seule dans le panneau', async ({ page }) => {

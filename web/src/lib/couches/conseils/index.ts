@@ -87,6 +87,13 @@ export const coucheConseils: Couche<ParametresConseils> = {
 	libelle: libelleElement,
 	resume: resumeConseils(SOURCES),
 	nonCouvert: (commune) => nonCouvertConseils(commune),
+	// Le marqueur du Grand Conseil est toujours sur la carte ; la rubrique Conseils communaux grise les autres communes.
+	legende: {
+		toujours: [
+			{ signe: 'fronton', couleur: COULEUR_CONSEILS, texte: 'Grand Conseil, au Parlement\u00a0: un clic ouvre sa fiche.' }
+		],
+		dessinee: [{ signe: 'aplat', couleur: '#5b6170', texte: 'Commune grisée\u00a0: pas de conseil suivi.' }]
+	},
 	// Deux rubriques pour une couche : les conseils communaux ouvrent son volet, le Grand Conseil sa fiche. Leurs
 	// nombres viennent de `conseils/index.json`, lu une seule fois.
 	rubriques: [

@@ -24,7 +24,6 @@ const ETAT_DE_REFERENCE = {
 	'src/lib/couches/conseils/TeteSeance.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/lib/couches/conseils/Volet.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/lib/couches/conseils/numeros.ts': ['prefer-const'],
-	'src/lib/couches/hotels-de-ville/Volet.svelte': ['no-empty-pattern'],
 	'src/lib/couches/permis/Fiche.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/lib/couches/permis/Onglet.svelte': ['svelte/no-navigation-without-resolve'],
 	'src/lib/couches/permis/Volet.svelte': ['svelte/no-navigation-without-resolve'],
