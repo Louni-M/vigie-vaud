@@ -55,7 +55,7 @@ describe('badges sous le nom d’un onglet', () => {
 			libelleBadge(s, { derniere: dernierImport(imports, s), erreur: null }, maintenant)
 		);
 
-		expect(badges).toEqual(['importé il y a 6 h · Site de Préverenges', 'dernier import inconnu · Grand Conseil']);
+		expect(badges).toEqual(['mis à jour il y a 6 h · Site de Préverenges', 'dernière mise à jour inconnue · Grand Conseil']);
 	});
 
 	it('dans une commune non couverte, pas de badge pour la source qui la déclare non couverte', () => {
@@ -71,11 +71,13 @@ describe('badges sous le nom d’un onglet', () => {
 	});
 });
 
-describe('« Non couvert » en tête de l’onglet', () => {
-	it('dit ce qui manque, dans les mots de la couche, sans lien', () => {
+describe('message en tête de l’onglet d’une commune non couverte', () => {
+	it('dit qu’il n’y a pas encore de données, puis ce qui manque dans les mots de la couche, sans lien', () => {
 		const couche = { ...couchePermis, nonCouvert: () => 'la commune ne publie pas ses permis.' };
 
-		expect(messageNonCouvert(couche, BUSSIGNY)).toEqual({ texte: 'la commune ne publie pas ses permis.' });
+		expect(messageNonCouvert(couche, BUSSIGNY)).toEqual({
+			texte: 'Pas encore de données Permis de construire pour cette commune\u00a0: la commune ne publie pas ses permis.'
+		});
 	});
 
 	it('avec un lien, quand la couche en donne un', () => {
@@ -88,24 +90,29 @@ describe('« Non couvert » en tête de l’onglet', () => {
 		};
 
 		expect(messageNonCouvert(couche, BUSSIGNY)).toEqual({
-			texte: 'la commune publie ses permis sur son site.',
+			texte: 'Pas encore de données Permis de construire pour cette commune\u00a0: la commune publie ses permis sur son site.',
 			lien: { texte: 'Les permis sur le site de la commune ›', url: 'https://www.exemple-vd.ch/permis' }
 		});
 	});
 
-	it('sinon, que la couche n’a pas de source pour la commune', () => {
+	it('sinon, qu’il n’y a pas encore de données pour cette commune', () => {
 		expect(messageNonCouvert(couchePermis, BUSSIGNY)).toEqual({
-			texte: 'la couche Permis n’a pas de source pour Bussigny.'
+			texte: 'Pas encore de données Permis de construire pour cette commune.'
 		});
 	});
 });
 
 describe('nom d’un onglet et du fil d’Ariane', () => {
-	it('est le libellé d’onglet de la couche : « Conseil », quand le volet et le rail disent « Conseils »', () => {
-		expect([coucheConseils.nom, nomOnglet(coucheConseils)]).toEqual(['Conseils', 'Conseil']);
+	it('est le nom de la rubrique de la couche, comme au sommaire et dans la liste', () => {
+		expect(nomOnglet(couchePermis)).toBe('Permis de construire');
+		expect(nomOnglet(coucheConseils)).toBe('Conseils communaux');
+	});
+
+	it('est, dans une fiche propre, le nom de la rubrique qui l’ouvre', () => {
+		expect(nomOnglet(coucheConseils, 'grand-conseil')).toBe('Grand Conseil');
 	});
 
 	it('est à défaut le nom de la couche', () => {
-		expect(nomOnglet(couchePermis)).toBe('Permis');
+		expect(nomOnglet({ nom: 'Trains' })).toBe('Trains');
 	});
 });

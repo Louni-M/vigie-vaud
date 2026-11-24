@@ -1,5 +1,5 @@
 import type { ConseilIndexe } from '#lib/schema.js';
-import { donneDesObjets, libelleDonne } from '#lib/sources.js';
+import { donneDesObjets, libelleDonne, libelleDonneVisiteur } from '#lib/sources.js';
 import type { Commune, Zone } from '#lib/types.js';
 import type { EtatCompte } from '#lib/registre/types.js';
 
@@ -48,7 +48,7 @@ export interface LigneConseil {
 	/** Nom de la commune (« Villeneuve »), qui suffit dans la liste des conseils communaux. */
 	commune: string;
 	slug: string;
-	/** « séances seulement · prochaine séance jeu. 10 déc. ». */
+	/** « textes déposés et séances · prochaine séance jeu. 10 déc. ». */
 	detail: string;
 }
 
@@ -69,7 +69,7 @@ export function lignesConseils(
 			const commune = conseil.commune === null ? undefined : parNumero.get(conseil.commune);
 			if (!commune || !dans(commune.hotel)) return [];
 			const { seance } = carteConseil(conseil, communes);
-			const detail = [libelleDonne(conseil), seance && seance.charAt(0).toLowerCase() + seance.slice(1).replace(' :', '')]
+			const detail = [libelleDonneVisiteur(conseil), seance && seance.charAt(0).toLowerCase() + seance.slice(1).replace(' :', '')]
 				.filter(Boolean)
 				.join(' · ');
 			return [{ cle: conseil.cle, commune: commune.nom, slug: commune.slug, detail }];

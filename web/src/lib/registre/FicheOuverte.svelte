@@ -123,7 +123,7 @@
 	</div>
 
 	<!-- svelte-ignore a11y_interactive_supports_focus -->
-	<div class="onglets" role="tablist" aria-label="Couches de la fiche" tabindex="-1" onkeydown={clavier}>
+	<div class="onglets" role="tablist" aria-label="Sujets de la fiche" tabindex="-1" onkeydown={clavier}>
 		{#each onglets as c (c.id)}
 			<button
 				type="button"
@@ -134,7 +134,7 @@
 				tabindex={c === courant ? 0 : -1}
 				onclick={() => choisir(c.id)}
 			>
-				{nomOnglet(c)}
+				{nomOnglet(c, propre?.fiche.id ?? null)}
 				{#each sourcesDeLOnglet(c, SOURCES, commune?.bfs ?? null) as s (s.id)}<BadgeFraicheur source={s} />{/each}
 			</button>
 		{/each}
@@ -147,9 +147,9 @@
 					{#if !couvert && commune}
 						{@const message = messageNonCouvert(courant, commune)}
 						<p class="non-couvert">
-							<strong>Non couvert</strong>&nbsp;: {insecables(message.texte)}
+							{insecables(message.texte)}
 							{#if message.lien}<a href={message.lien.url} target="_blank" rel="noopener">{message.lien.texte}</a>{/if}
-							<a href={resolve('/couverture')}>Voir la Couverture</a>
+							<a href={resolve('/couverture')}>Sources par commune</a>
 						</p>
 					{/if}
 					{#await registre.composant(courant, 'Onglet') then module}
@@ -161,7 +161,7 @@
 			{/key}
 			{#if element}
 				<nav class="fil" aria-label="Fil d’Ariane">
-					<a class="lien" href={registre.adresseSansElement} onclick={retourOnglet}>{nomOnglet(courant)}</a>
+					<a class="lien" href={registre.adresseSansElement} onclick={retourOnglet}>{nomOnglet(courant, propre?.fiche.id ?? null)}</a>
 					<span aria-hidden="true">›</span>
 					<span aria-current="page">{courant.libelle?.(element.element) ?? `n° ${element.element}`}</span>
 				</nav>
@@ -237,10 +237,15 @@
 		border-bottom: 1px solid var(--color-rule);
 		overflow-x: auto;
 	}
+	/* Les onglets se partagent la largeur de la fiche : un nom de sujet long passe à la ligne plutôt que de pousser le
+	   dernier onglet hors de la vue. */
 	.onglets button {
+		flex: 1 1 0;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: flex-start;
+		text-align: left;
 		gap: 1px;
 		padding: 8px 10px 6px;
 		border: 0;
@@ -251,7 +256,10 @@
 		font-weight: 600;
 		color: var(--color-muted);
 		cursor: pointer;
-		white-space: nowrap;
+	}
+	/* Le badge de fraîcheur sous le nom passe lui aussi à la ligne, dans la largeur de son onglet. */
+	.onglets button :global(.badge) {
+		white-space: normal;
 	}
 	.onglets button:hover {
 		color: var(--color-ink);

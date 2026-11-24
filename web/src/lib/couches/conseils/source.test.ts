@@ -180,9 +180,10 @@ describe('message « Non couvert » d’une commune', () => {
 		});
 	});
 
-	it('est celui que le registre met en tête de l’onglet Conseil', () => {
+	it('est celui que le registre met en tête de l’onglet Conseils communaux', () => {
 		expect(messageNonCouvert(coucheConseils, BUSSIGNY)).toEqual({
-			texte: 'Vigie Vaud ne lit pas encore le site de cette commune.'
+			texte:
+				'Pas encore de données Conseils communaux pour cette commune\u00a0: Vigie Vaud ne lit pas encore le site de cette commune.'
 		});
 	});
 });

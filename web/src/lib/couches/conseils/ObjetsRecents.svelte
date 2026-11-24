@@ -98,7 +98,7 @@
 
 <section aria-labelledby="objets-{conseil.cle}" style:--c={COULEUR_CONSEILS} bind:this={section}>
 	<svelte:element this={`h${niveau}`} class="titre-section" id="objets-{conseil.cle}" tabindex="-1"
-		>Objets récents</svelte:element
+		>Textes déposés récents</svelte:element
 	>
 	{#if choisir}
 		<div class="puces" role="group" aria-label="Communes nommées">
@@ -124,7 +124,7 @@
 		</ul>
 		{#if !tous && resteAMontrer}
 			<button class="plus" type="button" onclick={toutMontrer}>
-				Tous les objets{puce === 'tous' ? ` (${nombre.format(conseil.objets)})` : ''}
+				Tous les textes déposés{puce === 'tous' ? ` (${nombre.format(conseil.objets)})` : ''}
 			</button>
 		{:else if tous && suite === 'echec'}
 			<p class="erreur" role="alert">
@@ -135,7 +135,7 @@
 			</p>
 		{:else if tous && suite === null && page.suivante !== null}
 			<button class="plus" type="button" onclick={() => lireSuivante(montres.length)}>
-				Objets de {page.suivante} ({nombre.format(conseil.objets_par_annee[page.suivante] ?? 0)})
+				Textes déposés en {page.suivante} ({nombre.format(conseil.objets_par_annee[page.suivante] ?? 0)})
 			</button>
 		{/if}
 	{/if}

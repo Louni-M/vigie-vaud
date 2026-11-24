@@ -65,7 +65,7 @@ describe('lignes des conseils communaux, dans le volet Conseils', () => {
 				cle: conseilLausanne().cle,
 				commune: 'Lausanne',
 				slug: 'lausanne',
-				detail: 'objets et séances · prochaine séance mar. 20 oct.'
+				detail: 'textes déposés et séances · prochaine séance mar. 20 oct.'
 			},
 			{
 				cle: conseilYverdon().cle,

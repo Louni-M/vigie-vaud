@@ -1,5 +1,6 @@
 // Ce que la carte dessine, tiré de l'état du registre : une seule couche à la fois, en plus de celles qui le sont
 // toujours. Le dessin des couches, le grisage, la légende et l'attribution de la carte en dépendent.
+import { nomOnglet } from './onglet.js';
 import { rubriquesDuSommaire } from './rubriques.js';
 import type { CoucheInscrite, EntreeLegende } from './types.js';
 
@@ -25,15 +26,24 @@ export const toujoursSurLaCarte = (c: CoucheInscrite) => c.permanente || c.fiche
 export const couchesSurLaCarte = (couches: readonly CoucheInscrite[], dessinee: string | null): string[] =>
 	couches.filter((c) => toujoursSurLaCarte(c) || c.id === dessinee).map((c) => c.id);
 
+/** La légende de la carte : ce qui est toujours dessiné, puis le sujet dessiné, sous le nom de sa rubrique. */
+export interface Legende {
+	toujours: EntreeLegende[];
+	/** Le nom de la rubrique de la couche dessinée, en tête de ses entrées ; `null` sans couche dessinée. */
+	sujet: string | null;
+	dessinee: EntreeLegende[];
+}
+
 /**
- * Les entrées de la légende de la carte : ce que dessinent toujours les couches permanentes (les hôtels de ville),
- * puis les autres couches (le marqueur du Grand Conseil), puis ce qu'ajoute la couche dessinée.
+ * La légende de la carte : ce que dessinent toujours les couches permanentes (les hôtels de ville), puis les autres
+ * couches (le marqueur du Grand Conseil), puis ce qu'ajoute la couche dessinée.
  */
-export function entreesLegende(couches: readonly CoucheInscrite[], dessinee: string | null): EntreeLegende[] {
+export function legendeDeLaCarte(couches: readonly CoucheInscrite[], dessinee: string | null): Legende {
 	const toujours = (c: CoucheInscrite) => (toujoursSurLaCarte(c) ? (c.legende?.toujours ?? []) : []);
-	return [
-		...couches.filter((c) => c.permanente).flatMap(toujours),
-		...couches.filter((c) => !c.permanente).flatMap(toujours),
-		...(couches.find((c) => c.id === dessinee)?.legende?.dessinee ?? [])
-	];
+	const couche = couches.find((c) => c.id === dessinee);
+	return {
+		toujours: [...couches.filter((c) => c.permanente), ...couches.filter((c) => !c.permanente)].flatMap(toujours),
+		sujet: couche ? nomOnglet(couche) : null,
+		dessinee: couche?.legende?.dessinee ?? []
+	};
 }

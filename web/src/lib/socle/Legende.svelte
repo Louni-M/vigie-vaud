@@ -5,9 +5,10 @@
 	 * signe masqué aux lecteurs d'écran. Ouverte à l'arrivée sur bureau, repliée sur téléphone, où l'écran est petit ;
 	 * le bouton « Légende » annonce son état.
 	 */
+	import type { Legende } from '#lib/registre/dessin.js';
 	import type { EntreeLegende } from '#lib/registre/types.js';
 
-	let { entrees, ouverte = $bindable(true) }: { entrees: readonly EntreeLegende[]; ouverte?: boolean } = $props();
+	let { legende, ouverte = $bindable(true) }: { legende: Legende; ouverte?: boolean } = $props();
 </script>
 
 <section class="legende" aria-label="Légende de la carte">
@@ -21,14 +22,20 @@
 		Légende
 	</button>
 	<ul id="legende-entrees" hidden={!ouverte}>
-		{#each entrees as e (e.texte)}
-			<li>
-				<span class="signe {e.signe}" style:--c={e.couleur} aria-hidden="true"></span>
-				<span>{e.texte}</span>
-			</li>
-		{/each}
+		{#each legende.toujours as e (e.texte)}{@render entree(e)}{/each}
+		{#if legende.sujet}
+			<li class="sujet">{legende.sujet}</li>
+			{#each legende.dessinee as e (e.texte)}{@render entree(e)}{/each}
+		{/if}
 	</ul>
 </section>
+
+{#snippet entree(e: EntreeLegende)}
+	<li>
+		<span class="signe {e.signe}" style:--c={e.couleur} aria-hidden="true"></span>
+		<span>{e.texte}</span>
+	</li>
+{/snippet}
 
 <style>
 	.legende {
@@ -63,6 +70,11 @@
 	}
 	ul[hidden] {
 		display: none;
+	}
+	.sujet {
+		margin-top: 2px;
+		font-weight: 600;
+		color: var(--color-ink);
 	}
 	li {
 		display: flex;

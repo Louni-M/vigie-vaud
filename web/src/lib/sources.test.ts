@@ -9,6 +9,7 @@ import {
 	conseilsCouverts,
 	grouperSources,
 	phraseSitesLus,
+	libelleDonneVisiteur,
 	listerConseils,
 	niveauDe,
 	nomDuConseil
@@ -279,5 +280,17 @@ describe('clé, commune et nom d’un conseil, comme le cron', () => {
 	it.each(casNiveaux.cas)('donne $donne → $niveau',({ donne, niveau }) => {
 		const lu = niveauDe({ donne: donne as DonneeConseil[] });
 		expect(lu ? { libelle: lu.libelle, objets: lu.objets } : null).toEqual(niveau);
+	});
+});
+
+describe('ce que donne un conseil, dans les mots du visiteur', () => {
+	it.each<[readonly ('objets' | 'preavis' | 'seances')[], string]>([
+		[['objets', 'seances'], 'textes déposés et séances'],
+		[['preavis', 'seances'], 'séances et propositions de la Municipalité'],
+		[['seances'], 'séances seulement'],
+		[['objets'], 'textes déposés seulement'],
+		[['preavis'], 'propositions de la Municipalité seulement']
+	])('%j : « %s »', (donne, attendu) => {
+		expect(libelleDonneVisiteur({ donne })).toBe(attendu);
 	});
 });

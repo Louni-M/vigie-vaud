@@ -53,7 +53,6 @@ export const codecRoutes: Codec<Filtres> = {
 export const coucheRoutes: Couche<Filtres> = {
 	id: 'routes',
 	nom: 'Routes',
-	nomOnglet: 'Routes',
 	sources: ['dgmr-restrictions'],
 	permanente: false,
 	// `?r=<OBJECTID>` : l'élément ouvert, à côté des puces du volet (`?sortes=`, `?etats=`).

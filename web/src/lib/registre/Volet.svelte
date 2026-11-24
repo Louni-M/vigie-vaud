@@ -2,7 +2,8 @@
 	/*
 	 * Une rubrique ouverte dans le panneau, assemblée par le registre : en tête le lien de retour au sommaire et le nom
 	 * de la rubrique, puis le `Volet` de sa couche (ses filtres et sa liste), et après la liste ses sources : badge de
-	 * fraîcheur de chaque source et lien vers la page Couverture, attribution de chaque source tirée de sources.json. Les
+	 * fraîcheur de chaque source et lien vers la page des sources par commune (Couverture), attribution de chaque source
+	 * tirée de sources.json. Les
 	 * sites des communes y sont regroupés par plateforme : un badge et une attribution pour toutes ses communes
 	 * couvertes, qui renvoie à sa fiche de la page Couverture ; une commune non couverte n'y figure pas.
 	 */
@@ -68,7 +69,7 @@
 		<p class="badges">
 			{#each sources as s (s.id)}<BadgeFraicheur source={s} />{/each}
 			{#each plateformes as p (p.id)}<BadgeSites plateforme={p.nom} sources={p.sites} />{/each}
-			<a class="couverture" href={resolve('/couverture')}>Couverture</a>
+			<a class="couverture" href={resolve('/couverture')}>Sources par commune</a>
 		</p>
 
 		<p class="attribution">
@@ -79,7 +80,7 @@
 			{#each plateformes as p, i (p.id)}
 				{#if attributions.length > 0 || i > 0}<span aria-hidden="true"> · </span>{/if}
 				<a href="{resolve('/couverture')}#plateforme-{p.id}"
-						>Sites de {p.sites.length}&nbsp;commune{p.sites.length > 1 ? 's' : ''} ({p.nom})</a
+						>Sites de {p.sites.length}&nbsp;commune{p.sites.length > 1 ? 's' : ''}</a
 					>
 			{/each}
 		</p>

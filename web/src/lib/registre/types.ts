@@ -110,7 +110,7 @@ export interface Contexte<P = unknown> {
 	fermer(): void;
 }
 
-/** Ce qui suit « Non couvert : » en tête de l'onglet : une phrase, puis un lien facultatif (son texte et son adresse). */
+/** L'explication en tête de l'onglet d'une commune non couverte : une phrase, puis un lien facultatif (son texte et son adresse). */
 export interface MessageNonCouvert {
 	texte: string;
 	lien?: { texte: string; url: string };
@@ -171,8 +171,6 @@ export interface Couche<P = unknown> {
 	id: string;
 	/** Nom de la couche, dans les messages qui la nomment (« Conseils »). */
 	nom: string;
-	/** Nom de son onglet dans une fiche et du fil d'Ariane de l'élément ouvert (« Conseil ») ; sinon `nom`. */
-	nomOnglet?: string;
 	/** Identifiants de `sources.json`. */
 	sources: string[];
 	/** Toujours dessinée sur la carte, quelle que soit la rubrique ouverte (Hôtels de ville). */

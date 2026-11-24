@@ -38,8 +38,10 @@ export const SENS_VOIES: Record<VoieAcces, string> = {
  */
 export interface Niveau {
 	donne: readonly DonneeConseil[];
-	/** « objets et séances » : la cellule de la Couverture, la carte du volet, la page Couverture. */
+	/** « objets et séances » : la cellule de la Couverture, la page Couverture. */
 	libelle: string;
+	/** « textes déposés et séances » : le même, dans les mots du visiteur, sur la ligne d'une commune suivie. */
+	libelleVisiteur: string;
 	/** Ce que la description d'une commune dit de son conseil : « les préavis et les séances ». */
 	resume: string;
 	/** Le conseil donne tout : ni note dans l'onglet, ni niveau dans la cellule, ni mention dans la fiche d'un Objet. */
@@ -55,6 +57,7 @@ export const NIVEAUX: readonly Niveau[] = [
 	{
 		donne: ['objets', 'seances'],
 		libelle: 'objets et séances',
+		libelleVisiteur: 'textes déposés et séances',
 		resume: 'les objets et les séances',
 		complet: true,
 		note: null,
@@ -63,6 +66,7 @@ export const NIVEAUX: readonly Niveau[] = [
 	{
 		donne: ['preavis', 'seances'],
 		libelle: 'séances et préavis',
+		libelleVisiteur: 'séances et propositions de la Municipalité',
 		resume: 'les préavis et les séances',
 		complet: false,
 		note: { niveau: 'Séances et préavis', suite: 'les autres objets sont sur le site de la commune ›' },
@@ -71,6 +75,7 @@ export const NIVEAUX: readonly Niveau[] = [
 	{
 		donne: ['seances'],
 		libelle: 'séances seulement',
+		libelleVisiteur: 'séances seulement',
 		resume: 'les séances',
 		complet: false,
 		note: { niveau: 'Séances seulement', suite: 'les objets sont sur le site de la commune ›' },
@@ -93,6 +98,15 @@ export function niveauDe(conseil: { donne: readonly DonneeConseil[] }): Niveau |
  */
 export const libelleDonne = (conseil: { donne: readonly DonneeConseil[] }): string =>
 	niveauDe(conseil)?.libelle ?? `${conseil.donne.includes('preavis') ? 'préavis' : 'objets'} seulement`;
+
+/**
+ * Ce que donne un conseil, dans les mots du visiteur : « textes déposés et séances », « séances et propositions de la
+ * Municipalité », « séances seulement » ; hors des trois niveaux, « textes déposés seulement » ou « propositions de la
+ * Municipalité seulement ».
+ */
+export const libelleDonneVisiteur = (conseil: { donne: readonly DonneeConseil[] }): string =>
+	niveauDe(conseil)?.libelleVisiteur ??
+	`${conseil.donne.includes('preavis') ? 'propositions de la Municipalité' : 'textes déposés'} seulement`;
 
 /** Le conseil donne-t-il des Objets, tous (`objets`) ou ses préavis seulement (`preavis`) ? */
 export const donneDesObjets = (conseil: { donne: readonly DonneeConseil[] }) =>

@@ -1,8 +1,8 @@
 <script lang="ts">
 	/*
-	 * Badge de fraîcheur des sites d'une plateforme (« importés il y a 45 min · 19 sites i-web »), dans le volet de la
-	 * couche Conseils : un seul badge pour toutes ses communes couvertes, au lieu d'un par site. Les dates viennent de
-	 * `conseils/import.json`, comme pour BadgeFraicheur.
+	 * Badge de fraîcheur des sites d'une plateforme (« mis à jour il y a 45 min · sites de 19 communes »), après la
+	 * liste de la rubrique Conseils communaux : un seul badge pour toutes ses communes couvertes, au lieu d'un par site.
+	 * Les dates viennent de `conseils/import.json`, comme pour BadgeFraicheur.
 	 */
 	import { libelleBadgeSites } from '#lib/fraicheur.js';
 	import { dernierImport } from '#lib/imports-conseils.js';
@@ -21,8 +21,8 @@
 	});
 </script>
 
-<span class="badge" title="Le plus ancien des derniers imports des sites {plateforme} couverts"
-	>{libelleBadgeSites(plateforme, imports, maintenant)}</span
+<span class="badge" title="La plus ancienne des dernières mises à jour des sites de la plateforme {plateforme}"
+	>{libelleBadgeSites(imports, maintenant)}</span
 >
 
 <style>

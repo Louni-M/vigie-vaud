@@ -49,7 +49,6 @@ export const codecConseils: Codec<ParametresConseils> = {
 export const coucheConseils: Couche<ParametresConseils> = {
 	id: 'conseils',
 	nom: 'Conseils',
-	nomOnglet: 'Conseil',
 	sources: sourcesDeLaCouche(),
 	permanente: false,
 	// La fiche du Grand Conseil, au Parlement : son marqueur et sa carte dans le volet l'ouvrent.

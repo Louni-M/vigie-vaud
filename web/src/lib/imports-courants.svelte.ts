@@ -1,6 +1,6 @@
 // Dernier import des conseils pour la visite en cours : `conseils/import.json` est chargé au premier besoin (badge
 // d'une source `import`, page Couverture), dans le navigateur, et relu après un échec (`creerEtatSource`). Avant (et
-// à la pré-génération), il vaut `null`, et le badge dit le dernier import inconnu.
+// à la pré-génération), il vaut `null`, et le badge dit la dernière mise à jour inconnue.
 import { creerEtatSource } from './etat-source.svelte.js';
 import { chargerImports } from './imports-conseils.js';
 import type { ImportConseils } from './schema.js';

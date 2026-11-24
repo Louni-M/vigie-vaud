@@ -165,8 +165,8 @@ describe('puces des Objets récents du Grand Conseil', () => {
 	const pully = ligneObjet({ cle: 'vd/26_POS_3', communes: [{ ofs: 5590, origine: 'document' }] });
 	const objets = [sans, lutry, pully];
 
-	it('s’appellent « Tous · Nomment une commune · Sans commune »', () => {
-		expect(PUCES_OBJETS.map((p) => p.nom)).toEqual(['Tous', 'Nomment une commune', 'Sans commune']);
+	it('s’appellent « Tous · Nomment une commune · Ne nomment aucune commune »', () => {
+		expect(PUCES_OBJETS.map((p) => p.nom)).toEqual(['Tous', 'Nomment une commune', 'Ne nomment aucune commune']);
 	});
 	it('filtrent les Objets par leurs communes rattachées, dans leur ordre', () => {
 		expect(filtrerObjets(objets, 'tous')).toEqual([sans, lutry, pully]);

@@ -41,11 +41,24 @@ export function ongletCourant(
 	return avecFiche ?? onglets.find((c) => c.id === choisi) ?? onglets[0];
 }
 
-/** Nom de l'onglet de la couche dans une fiche, et du fil d'Ariane de son élément ouvert (« Conseil › … »). */
-export const nomOnglet = (couche: Pick<CoucheInscrite, 'nom' | 'nomOnglet'>) => couche.nomOnglet ?? couche.nom;
+/**
+ * Nom de l'onglet de la couche dans une fiche, et du fil d'Ariane de son élément ouvert (« Routes › … ») : celui de sa
+ * rubrique, pour qu'un sujet porte le même nom partout. Dans une fiche propre (`fiche` : son identifiant), celui de la
+ * rubrique qui l'ouvre ; dans une fiche commune, celui de sa rubrique à volet ; à défaut, le nom de la couche.
+ */
+export function nomOnglet(couche: Pick<CoucheInscrite, 'nom' | 'rubriques'>, fiche: string | null = null): string {
+	const rubriques = couche.rubriques ?? [];
+	return (fiche ? rubriques.find((r) => r.fiche === fiche) : rubriques.find((r) => !r.fiche))?.nom ?? couche.nom;
+}
 
-/** Ce qui suit « Non couvert : » en tête de l'onglet d'une commune que la couche ne couvre pas, avec son lien s'il y en a un. */
+/**
+ * En tête de l'onglet d'une commune que la couche ne couvre pas : « Pas encore de données Routes pour cette
+ * commune. », suivi de l'explication de la couche quand elle en donne une, et de son lien s'il y en a un.
+ */
 export function messageNonCouvert(couche: CoucheInscrite, commune: Commune): MessageNonCouvert {
-	const message = couche.nonCouvert?.(commune) ?? `la couche ${couche.nom} n’a pas de source pour ${commune.nom}.`;
-	return typeof message === 'string' ? { texte: message } : message;
+	const pasEncore = `Pas encore de données ${nomOnglet(couche)} pour cette commune`;
+	const message = couche.nonCouvert?.(commune);
+	if (message === undefined) return { texte: `${pasEncore}.` };
+	const { texte, lien } = typeof message === 'string' ? { texte: message, lien: undefined } : message;
+	return { texte: `${pasEncore}\u00a0: ${texte}`, ...(lien && { lien }) };
 }

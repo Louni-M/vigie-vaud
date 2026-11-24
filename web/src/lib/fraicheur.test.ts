@@ -25,12 +25,14 @@ describe('libellé du badge de fraîcheur', () => {
 
 	it('donne l’âge du dernier import réussi d’un conseil', () => {
 		expect(libelleBadge(gc, { derniere: ilYa(6 * 60 + 10), erreur: null }, maintenant)).toBe(
-			'importé il y a 6 h · Grand Conseil'
+			'mis à jour il y a 6 h · Grand Conseil'
 		);
 	});
 
-	it('dit le dernier import inconnu tant que import.json manque ou ne cite pas le conseil', () => {
-		expect(libelleBadge(gc, { derniere: null, erreur: null }, maintenant)).toBe('dernier import inconnu · Grand Conseil');
+	it('dit la dernière mise à jour inconnue tant que import.json manque ou ne cite pas le conseil', () => {
+		expect(libelleBadge(gc, { derniere: null, erreur: null }, maintenant)).toBe(
+			'dernière mise à jour inconnue · Grand Conseil'
+		);
 	});
 
 	it('passe des minutes aux heures puis aux jours', () => {
@@ -58,23 +60,23 @@ describe('libellé du badge de fraîcheur', () => {
 
 describe('libellé du badge des sites d’une plateforme', () => {
 	it('donne le plus ancien des derniers imports quand tous les sites ont été importés', () => {
-		expect(libelleBadgeSites('i-web', [ilYa(45), ilYa(11 * 60), ilYa(5)], maintenant)).toBe(
-			'importés il y a 11 h · 3 sites i-web'
+		expect(libelleBadgeSites([ilYa(45), ilYa(11 * 60), ilYa(5)], maintenant)).toBe(
+			'mis à jour il y a 11 h · sites de 3\u00a0communes'
 		);
 	});
 
 	it('dit combien de sites ont été importés tant qu’il en manque', () => {
-		expect(libelleBadgeSites('i-web', [ilYa(45), null, null], maintenant)).toBe(
-			'importé il y a 45 min · 1 sur 3 sites i-web'
+		expect(libelleBadgeSites([ilYa(45), null, null], maintenant)).toBe(
+			'mis à jour il y a 45 min · 1\u00a0site de commune sur 3'
 		);
 	});
 
 	it('dit le dernier import inconnu tant qu’aucun site n’a été importé', () => {
-		expect(libelleBadgeSites('i-web', [null, null], maintenant)).toBe('dernier import inconnu · 2 sites i-web');
+		expect(libelleBadgeSites([null, null], maintenant)).toBe('dernière mise à jour inconnue · sites de 2\u00a0communes');
 	});
 
 	it('accorde un site seul', () => {
-		expect(libelleBadgeSites('Quicksite', [ilYa(2)], maintenant)).toBe('importé il y a 2 min · 1 site Quicksite');
+		expect(libelleBadgeSites([ilYa(2)], maintenant)).toBe('mis à jour il y a 2 min · site de 1\u00a0commune');
 	});
 });
 

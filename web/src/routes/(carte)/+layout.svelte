@@ -30,7 +30,7 @@
 	import { creerRegistre, fournirRegistre, SOMMAIRE, type VueCarte } from '#lib/registre/registre.svelte.js';
 	import { navigateurSvelteKit } from '#lib/registre/navigateur.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
-	import { entreesLegende } from '#lib/registre/dessin.js';
+	import { legendeDeLaCarte } from '#lib/registre/dessin.js';
 	import Legende from '#lib/socle/Legende.svelte';
 	import { clicSimple } from '#lib/registre/liens.js';
 	import { rubriquesDuSommaire } from '#lib/registre/rubriques.js';
@@ -121,7 +121,7 @@
 	const grisees = $derived(couverture.grisees(registre.dessinee));
 
 	/** La légende dit ce que la carte dessine ; ouverte sur bureau, repliée dès que l'écran est celui d'un téléphone. */
-	const legende = $derived(entreesLegende(COUCHES, registre.dessinee));
+	const legende = $derived(legendeDeLaCarte(COUCHES, registre.dessinee));
 	let legendeOuverte = $state(true);
 	$effect(() => {
 		if (telephone.current) untrack(() => (legendeOuverte = false));
@@ -378,7 +378,7 @@
 			{/if}
 
 			<div class="cote-legende">
-				<Legende entrees={legende} bind:ouverte={legendeOuverte} />
+				<Legende {legende} bind:ouverte={legendeOuverte} />
 			</div>
 
 			<p class="liens">
@@ -576,12 +576,13 @@
 	.volet > :global(*) {
 		flex: 1 0 auto;
 	}
-	/* En bas à droite, au-dessus du bouton des sources de la carte. */
+	/* En bas à droite, au-dessus du bouton des sources de la carte, sans passer sous le panneau (370 px à gauche). */
 	.cote-legende {
 		position: absolute;
 		z-index: 2;
 		right: 10px;
 		bottom: 40px;
+		max-width: max(160px, calc(100% - 390px));
 	}
 	.liens {
 		position: absolute;
