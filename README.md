@@ -150,8 +150,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 - `pipeline/cron.py` : un passage du cron (sondes, état des sources, issues, import, commit et push) ;
 - `pipeline/conseils.py` : import des conseils dans l'archive du dépôt de données, et sa reconstruction ;
 - `pipeline/bruts.py` : les enregistrements bruts d'un conseil, communs à OpenParlData et aux sites des communes ;
-- `pipeline/lecture_conseils.py` : fichiers de lecture que le site liste (`conseils/index.json`…), et `fil.json`, que le
-  site ne lit plus depuis l'ADR 0018 ;
+- `pipeline/lecture_conseils.py` : fichiers de lecture que le site liste (`conseils/index.json`…) ;
 - `pipeline/masquage.py` : masquage des noms de particuliers avant tout commit (ADR 0007) ;
 - `pipeline/rattachement.py` : rattachement par le nom des Objets du Grand Conseil (ADR 0016) ;
 - `pipeline/retraits.py` : retraits de `retraits.json`, réappliqués à chaque import, et empreinte du titre d'un
@@ -293,7 +292,7 @@ des communes (lus ensemble, un fil par réseau). Une phase qui n'a rien changé 
 quelques secondes et presque rien quand ses deux essais vont jusqu'à leur délai. Un passage qui dépasse son délai ne
 perd donc que la phase en cours : les phases déjà poussées restent dans le dépôt de données, et Pages les publie au passage suivant.
 
-Les fichiers de lecture (`conseils/index.json`, `fil.json`, les listes par conseil et par commune) se reconstruisent
+Les fichiers de lecture (`conseils/index.json`, les listes par conseil et par commune) se reconstruisent
 seuls depuis l'archive, sans aucune requête à OpenParlData, après un changement de leur forme ou une réécriture à la
 main de l'archive (ADR 0017) :
 

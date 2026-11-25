@@ -90,8 +90,6 @@ def test_les_fichiers_de_lecture_portent_les_communes_rattachees(tmp_path):
     assert sorted(p.name for p in (tmp_path / "conseils/communes").iterdir()) == sorted(
         f"{ofs}.json" for ofs in (BOURG_EN_LAVAUX, NYON, MORGES)
     )
-    (entree,) = [e for e in _lire(tmp_path, "conseils/fil.json")["entrees"] if e["cle"] == "vd/26_INT_150"]
-    assert entree["communes"] == [BOURG_EN_LAVAUX, NYON, MORGES]
     (ligne,) = [o for o in _lire(tmp_path, "conseils/vd/objets-2026.json")["objets"] if o["cle"] == "vd/26_INT_150"]
     assert ligne["communes"] == rattachees
     assert [o["communes"] for o in index["conseils"][0]["recents"] if o["cle"] == "vd/26_INT_150"] == [rattachees]
@@ -167,8 +165,8 @@ def test_les_conseils_communaux_et_les_seances_ne_sont_jamais_rattaches_par_le_n
     _passer(tmp_path, monde, horloge)
 
     assert _communes(tmp_path, "conseils/5586/objets/INT26-102.json") == []
-    fil = {e["cle"]: e["communes"] for e in _lire(tmp_path, "conseils/fil.json")["entrees"]}
-    assert (fil["5586/INT26-102"], fil["vd/2026-10-13"]) == ([LAUSANNE], [])
+    (ligne,) = [o for o in _lire(tmp_path, "conseils/5586/objets-2026.json")["objets"] if o["cle"] == "5586/INT26-102"]
+    assert ligne["communes"] == []
     assert _lire(tmp_path, "conseils/index.json")["communes"] == {}
     assert "communes" not in _lire(tmp_path, "conseils/vd/seances/2026-10-13.json")
 

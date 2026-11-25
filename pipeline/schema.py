@@ -720,39 +720,6 @@ class ListeSeances(Enveloppe):
     seances: list[LigneSeance]
 
 
-SorteElement = TypeAliasType("SorteElement", Literal["objet", "seance"])
-
-
-class EntreeFil(Modele):
-    """Un Objet ou une Séance, à la forme d'une entrée du fil cantonal."""
-
-    cle: CleElement
-    conseil: CleConseil
-    sorte: SorteElement
-    type: str | None = Field(description="Objet : son type brut. Séance : `null`.")
-    date: DateSeance = Field(
-        description="Objet : jour de dépôt, sinon de sa première étape datée. Séance : son jour, avec l'heure "
-        "quand la source la donne."
-    )
-    titre: str = Field(description="Objet : son titre masqué. Séance : son nom brut (le site compose le sien).")
-    communes: list[NumeroOfs] = Field(
-        description="Conseil communal : sa commune. Grand Conseil : les communes rattachées à l'Objet, dans l'ordre "
-        "du rattachement ; aucune pour une Séance."
-    )
-    points: Annotated[int, Field(ge=0)] | None = Field(
-        description="Séance : nombre de points de l'ordre du jour. Objet : `null`."
-    )
-
-
-class FilConseils(Enveloppe):
-    """`conseils/fil.json` : les Objets et les Séances de tous les conseils datés des 21 derniers jours (heure de
-    Suisse, marge pour des imports manqués) ou après, donc toutes les Séances à venir, du plus récent au plus ancien.
-    Le site filtre lui-même sur sa fenêtre."""
-
-    version: Literal[1] = Field(description="Version 1.")
-    entrees: list[EntreeFil]
-
-
 class RattachementsCommune(Enveloppe):
     """`conseils/communes/<ofs>.json` (« Au Grand Conseil ») : les Objets du Grand Conseil rattachés à la commune,
     par date de dernière étape décroissante. Écrit seulement s'il y en a au moins un."""
@@ -808,7 +775,6 @@ DOCUMENTS: dict[str, type[BaseModel]] = {
     "seance": Seance,
     "liste-objets": ListeObjets,
     "liste-seances": ListeSeances,
-    "fil-conseils": FilConseils,
     "index-conseils": IndexConseils,
     "rattachements-commune": RattachementsCommune,
     "corrections": Corrections,

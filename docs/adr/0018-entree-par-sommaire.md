@@ -50,4 +50,5 @@ pour chaque terme visible, le mot montré au visiteur.
   `affichage=fil` et `affichage=couches` sont lus comme le panneau.
 - Une couche nouvelle (trains, presse, incidents) s'ajoute comme une ligne du sommaire en déclarant sa rubrique, sans
   changer le reste de l'entrée.
-- Le cron écrit encore `conseils/fil.json`, que le site ne lit plus : l'arrêter est une suite, dans le pipeline.
+- Le cron n'écrit plus `conseils/fil.json`. Son motif reste dans `MOTIFS_LECTURE` pour que le prochain import des
+  conseils retire l'ancien fichier du dépôt de données ; il pourra partir ensuite.

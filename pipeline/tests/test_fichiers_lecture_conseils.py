@@ -218,7 +218,7 @@ def test_la_reconstruction_refait_les_fichiers_de_lecture_depuis_l_archive_sans_
         objet.read_text(encoding="utf-8").replace("six ans pour revenir", "[nom retiré]"), encoding="utf-8"
     )
     archive_avant = objet.read_text(encoding="utf-8")
-    (tmp_path / "conseils/fil.json").unlink()
+    (tmp_path / "conseils/index.json").unlink()
     perime = tmp_path / "conseils/communes/5586.json"
     perime.parent.mkdir(parents=True)
     perime.write_text("{}", encoding="utf-8")
@@ -229,54 +229,20 @@ def test_la_reconstruction_refait_les_fichiers_de_lecture_depuis_l_archive_sans_
     (ligne,) = [o for o in _lire(tmp_path, "conseils/vd/objets-2026.json")["objets"] if o["numero"] == "26_INT_140"]
     assert ligne["titre"] == "Covid 2020 [nom retiré] en arrière"
     assert _lire(tmp_path, "conseils/vd/objets-2026.json")["genere"] == "2026-10-19T07:05:00Z"
-    assert _lire(tmp_path, "conseils/fil.json")["genere"] == "2026-10-19T07:05:00Z"
+    assert _lire(tmp_path, "conseils/index.json")["genere"] == "2026-10-19T07:05:00Z"
     assert not perime.exists()
     assert objet.read_text(encoding="utf-8") == archive_avant
     assert (tmp_path / "conseils/import.json").read_text(encoding="utf-8") == import_avant
 
 
-def _entree(cle, sorte, date, titre, communes=(), type=None, points=None):
-    return {
-        "cle": cle,
-        "conseil": cle.split("/")[0],
-        "sorte": sorte,
-        "type": type,
-        "date": date,
-        "titre": titre,
-        "communes": list(communes),
-        "points": points,
-    }
-
-
-def test_le_fil_tient_21_jours_et_toutes_les_seances_a_venir_a_la_forme_du_fil(tmp_path):
+def test_l_import_supprime_le_fil_que_le_site_ne_lit_plus(tmp_path):
+    # `conseils/fil.json`, écrit par les imports d'avant l'ADR 0018, n'est plus produit : l'import suivant le retire.
     horloge = HorlogeFactice(T0)
-    monde = _monde(horloge)
-    monde.affaires += [
-        Affaire(id=341600, body_key="VD", number="26_QUE_50", title="Au bord de la fenêtre", begin_date="2026-09-25"),
-        Affaire(id=341601, body_key="VD", number="26_QUE_49", title="Juste avant", begin_date="2026-09-24"),
-        Affaire(id=340200, body_key="5586", number="INT26/101", title="Sur les quais", begin_date="2026-10-13"),
-    ]
-    monde.reunions += [
-        Reunion(id=1034500, body_key="VD", group_id=1965, name="Séance", begin_date="2026-12-01T09:30:00"),
-        Reunion(id=1029000, body_key="VD", group_id=1965, name="Séance", begin_date="2026-09-22T00:00:00"),
-    ]
+    fil = tmp_path / "conseils/fil.json"
+    fil.parent.mkdir(parents=True)
+    fil.write_text('{"version": 1, "entrees": []}', encoding="utf-8")
 
-    _passer(tmp_path, monde, horloge)
+    _passer(tmp_path, _monde(horloge), horloge)
 
-    fil = _lire(tmp_path, "conseils/fil.json")
-    assert fil["version"] == 1
-    lausanne = "Séance - Mardi 06 octobre 2026 2026 à 18:00 & 20:30"
-    assert fil["entrees"] == [
-        _entree("vd/2026-12-01", "seance", "2026-12-01T09:30", "Séance", points=0),
-        _entree("5586/INT26-101", "objet", "2026-10-13", "Sur les quais", [5586], type="Interpellation"),
-        _entree("5586/2026-10-06", "seance", "2026-10-06", lausanne, [5586], points=1),
-        _entree("vd/2026-10-06", "seance", "2026-10-06", "Séance du Grand Conseil du mardi 6 octobre 2026", points=2),
-        _entree(
-            "vd/26_INT_140", "objet", "2026-10-06", "Covid 2020 six ans pour revenir en arrière", type="Interpellation"
-        ),
-        _entree(
-            "5938/2026-10-01", "seance", "2026-10-01T20:00", "Séance du Conseil communal du 1er octobre 2026", [5938],
-            points=1,
-        ),
-        _entree("vd/26_QUE_50", "objet", "2026-09-25", "Au bord de la fenêtre", type="Interpellation"),
-    ]
+    assert not fil.exists()
+    assert (tmp_path / "conseils/index.json").exists()

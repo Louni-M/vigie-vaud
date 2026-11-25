@@ -3,7 +3,6 @@ l'archive à chaque import par `lecture`, fonction pure et déterministe.
 
 - `conseils/index.json` : par conseil, de quoi remplir le volet et les compteurs, et le nombre d'Objets du Grand
   Conseil rattachés à chaque commune ;
-- `conseils/fil.json` : les Objets et les Séances des 21 derniers jours et toutes les Séances à venir ;
 - `conseils/<conseil>/objets-<année>.json` : les Objets en lignes légères, par date de dépôt décroissante ;
 - `conseils/<conseil>/seances.json` : toutes les Séances du conseil en lignes légères ;
 - `conseils/communes/<ofs>.json` (« Au Grand Conseil ») : les Objets rattachés à la commune, par date de dernière
@@ -23,10 +22,8 @@ from schema import (
     FUSEAU,
     Auteur,
     ConseilIndexe,
-    EntreeFil,
     Enveloppe,
     FichierSources,
-    FilConseils,
     IndexConseils,
     LigneObjet,
     LigneSeance,
@@ -41,10 +38,10 @@ from schema import (
 
 Archive = Mapping[str, Objet | Seance]
 
-FENETRE_FIL = timedelta(days=21)  # le fil du site en montre 14 : la marge couvre des imports manqués
 FENETRE_RECENTS = timedelta(days=14)
 # Où sont les fichiers de lecture dans le dépôt (motifs de `Path.glob`) : `lecture` produit tout ce qui doit y être,
 # le reste est périmé. Les fichiers d'archive (`conseils/<conseil>/objets/`, `…/seances/`) n'y sont pas.
+# `conseils/fil.json` n'est plus produit (ADR 0018) : son motif reste pour que le prochain import le supprime du dépôt.
 MOTIFS_LECTURE = (
     "conseils/index.json",
     "conseils/fil.json",
@@ -58,9 +55,7 @@ def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict
     """Les fichiers de lecture des conseils déclarés dans `sources`, par chemin, au passage de l'heure `genere`, et ceux
     de l'archive d'une commune scrapée passée non couverte (`_conseils_lus`)."""
     aujourdhui = genere.astimezone(FUSEAU).date()
-    depuis = aujourdhui - FENETRE_FIL
     documents: dict[str, Enveloppe] = {}
-    fil: list[EntreeFil] = []
     index: list[ConseilIndexe] = []
     dates: list[tuple[str, Objet]] = []  # les Objets datés de tous les conseils
     for source, conseil, commune in _conseils_lus(sources, archive):
@@ -86,13 +81,7 @@ def lecture(archive: Archive, sources: FichierSources, genere: datetime) -> dict
             seances=[ligne_seance(c, s) for c, s in seances],
         )
 
-        fil += [_entree_objet(conseil, c, o, commune) for c, o in objets if date_de_reference(o) >= depuis]
-        fil += [_entree_seance(conseil, c, s, commune) for c, s in seances if _jour(s) >= depuis]
         index.append(_conseil_indexe(source, conseil, commune, par_annee, seances, aujourdhui))
-
-    fil.sort(key=lambda e: e.cle)
-    fil.sort(key=lambda e: e.date, reverse=True)
-    documents["conseils/fil.json"] = FilConseils(version=1, genere=genere, entrees=fil)
 
     rattaches = _rattaches(dates)
     for ofs, liste in rattaches.items():
@@ -216,30 +205,4 @@ def _conseil_indexe(
         seances=len(seances),
         prochaine_seance=a_venir[-1] if a_venir else None,
         derniere_seance=passees[0] if passees else None,
-    )
-
-
-def _entree_objet(conseil: str, cle: str, objet: Objet, commune: int | None) -> EntreeFil:
-    return EntreeFil(
-        cle=cle,
-        conseil=conseil,
-        sorte="objet",
-        type=objet.type,
-        date=date_de_reference(objet).isoformat(),
-        titre=objet.titre,
-        communes=[commune] if commune is not None else [c.ofs for c in objet.communes],
-        points=None,
-    )
-
-
-def _entree_seance(conseil: str, cle: str, seance: Seance, commune: int | None) -> EntreeFil:
-    return EntreeFil(
-        cle=cle,
-        conseil=conseil,
-        sorte="seance",
-        type=None,
-        date=seance.date,
-        titre=seance.nom,
-        communes=[commune] if commune is not None else [],
-        points=len(seance.ordre_du_jour),
     )
