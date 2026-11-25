@@ -21,7 +21,8 @@ propre PR.
 - Un clic sur ce marqueur ouvre la **fiche commune**, organisée en onglets, un par sujet : Permis de construire,
   Conseils communaux, Routes, puis Presse, Radio, Météo. Elle remplace et étend `/commune/[slug]`.
 - **Le Grand Conseil** a son propre marqueur, au Parlement vaudois (Cité, Lausanne).
-- **Une légende de la carte** explique chaque marqueur visible, hôtels de ville compris.
+- **Une légende de la carte** expliquait chaque marqueur visible, hôtels de ville compris ; elle est retirée
+  (novembre 2026, ADR 0018).
 - **État dans l'URL** : rubrique ouverte et commune ouverte. Le fil cantonal des premiers jalons est retiré
   (ADR 0018).
 - **Transparence** :

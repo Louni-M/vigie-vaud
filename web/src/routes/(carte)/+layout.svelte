@@ -77,16 +77,23 @@
 
 	/**
 	 * Sur bureau, le panneau couvre la gauche de la carte : elle centre ses vues dans le reste, jusqu'au bord de la
-	 * fiche ouverte. Sur téléphone, il n'est pas sur la carte.
+	 * fiche ouverte. Sur téléphone, il n'est pas sur la carte. Quand il reste trop peu de carte à côté de lui (tablette,
+	 * fiche ouverte), la marge est nulle : une commune cadrée dans une bande étroite dézoomerait jusqu'au canton.
 	 */
+	const LARGEUR_UTILE = 300;
 	let margeCarte = $state(0);
 	$effect(() => {
 		const v = volet;
 		if (!v) return void (margeCarte = 0);
-		const mesurer = () => (margeCarte = v.offsetLeft + v.offsetWidth);
+		const mesurer = () => {
+			const marge = v.offsetLeft + v.offsetWidth;
+			margeCarte = zoneCarte && zoneCarte.clientWidth - marge < LARGEUR_UTILE ? 0 : marge;
+		};
 		mesurer();
 		const observateur = new ResizeObserver(mesurer);
 		observateur.observe(v);
+		// La colonne de la fiche, ouverte ou fermée, change la largeur de la carte sans toucher au panneau.
+		if (zoneCarte) observateur.observe(zoneCarte);
 		return () => observateur.disconnect();
 	});
 	/** Place prise en bas de la carte par l'aperçu d'un dossier, tant qu'il n'est pas affiché. */

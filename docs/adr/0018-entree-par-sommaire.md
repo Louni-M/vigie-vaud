@@ -19,6 +19,9 @@ La carte dessine une seule couche à la fois, en plus des hôtels de ville et du
 là : celle de l'onglet de la fiche commune ouverte, sinon celle de la rubrique ouverte, sinon aucune. Le grisage
 et l'attribution de la carte suivent cette couche ; la légende de la carte, qui la suivait aussi, est retirée
 (novembre 2026) : les puces de statut ou de sorte des listes disent déjà ce que montrent les marqueurs.
+La rubrique Conseils communaux dit elle-même ce que voile le grisage, et la bulle d'un hôtel de ville survolé donne
+son nom. Que le clic sur un hôtel de ville ou sur le marqueur du Grand Conseil ouvre une fiche n'est plus écrit sur
+la carte : perte acceptée avec le retrait.
 L'interrupteur « Affichée » et la clé d'adresse `couches=` disparaissent ; une ancienne adresse qui la porte s'ouvre
 sur le sommaire.
 

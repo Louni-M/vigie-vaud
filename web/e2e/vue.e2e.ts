@@ -65,10 +65,12 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 			await arriver(page, '/?volet=permis&vue=46.50300,6.65000,13.00');
 			await page.getByRole('region', { name: 'Permis de construire' }).getByText('Pose de panneaux solaires').click();
 			await expect(page).toHaveURL(/\/commune\/pully\?.*d=260102/);
-			await page.waitForTimeout(3000);
-			const vue = new URL(page.url()).searchParams.get('vue')!.split(',').map(Number);
-			expect(vue[0], 'latitude du centre').toBeCloseTo(46.511, 4);
-			expect(vue[1], 'longitude du centre').toBeCloseTo(6.664, 4);
+			// Le vol fini, la vue entre dans l'adresse : on l'y attend, sans compter sur sa durée.
+			await expect(async () => {
+				const vue = (new URL(page.url()).searchParams.get('vue') ?? '').split(',').map(Number);
+				expect(vue[0], 'latitude du centre').toBeCloseTo(46.511, 4);
+				expect(vue[1], 'longitude du centre').toBeCloseTo(6.664, 4);
+			}).toPass({ timeout: 15_000 });
 		});
 	});
 

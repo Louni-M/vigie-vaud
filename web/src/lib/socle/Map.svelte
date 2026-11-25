@@ -140,6 +140,8 @@
 		preparer(m, parDefaut);
 		enCours = mouvement;
 		mouvement();
+		// Un cadrage impossible (emprise qui ne tient pas dans la carte) ne bouge pas et ne finit donc jamais.
+		if (!m.isMoving()) enCours = null;
 	}
 
 	/**
@@ -316,7 +318,14 @@
 	$effect(() => {
 		const gauche = marge;
 		if (!pret || !map || map.getPadding().left === gauche) return;
-		map.setPadding(marges(gauche));
+		const m = map;
+		// Poser la marge arrête le déplacement en cours : il est relancé, sans signaler la vue où il s'est arrêté.
+		const relance = enCours && m.isMoving() ? enCours : null;
+		if (!relance) return void m.setPadding(marges(gauche));
+		sansSignal(() => {
+			m.setPadding(marges(gauche));
+			relance();
+		});
 	});
 </script>
 
