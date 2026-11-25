@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { flushSync } from 'svelte';
+import { cadreAutourDe } from './cadrage.js';
 import { creerRegistre, type Registre, type VueCarte } from './registre.svelte.js';
 import type { CoucheInscrite, Lieu, Rubrique } from './types.js';
 import { SOMMAIRE } from './url.js';
@@ -206,7 +207,7 @@ describe('précédent et suivant du navigateur', () => {
 describe('de la carte à une fiche commune, et retour', () => {
 	const VUE = { lat: 46.5, lon: 6.65, zoom: 12 };
 
-	it('ouvre la fiche dans une nouvelle entrée, cadrée sur la commune ; le retour rend la vue de la carte', async () => {
+	it('ouvre la fiche dans une nouvelle entrée, cadrée sur la commune autour de son hôtel de ville ; le retour rend la vue de la carte', async () => {
 		const { nav, registre, mouvements } = await arriver('/');
 		registre.deplacement([6.5, 46.4, 6.8, 46.6], VUE, false);
 		await calme();
@@ -217,7 +218,7 @@ describe('de la carte à une fiche commune, et retour', () => {
 		expect(registre.fiche).toEqual({ commune: 'pully' });
 		expect(registre.commune).toBe(PULLY);
 		expect(registre.titre).not.toBeNull();
-		expect(mouvements).toEqual([{ cadrer: PULLY.cadre, anime: true }]);
+		expect(mouvements).toEqual([{ cadrer: cadreAutourDe(PULLY.cadre, PULLY.hotel), anime: true }]);
 
 		await nav.precedent();
 		await calme();
