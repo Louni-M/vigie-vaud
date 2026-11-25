@@ -18,6 +18,15 @@ async function cliquerAuCentre(page: Page) {
 	await page.mouse.click(...(await centreDeLaCarte(page)));
 }
 
+// Sur téléphone, la vue Carte : une légende cachée sous une autre vue ne compterait pas (`getByRole` ignore ce qui est caché).
+for (const adresse of ['/?affichage=carte', '/?volet=routes&affichage=carte', '/commune/pully?affichage=carte'])
+	test(`la carte n’a pas de légende, sur ${adresse}`, async ({ page }) => {
+		await arriver(page, adresse);
+		await expect(page.locator('#carte .maplibregl-canvas')).toBeVisible();
+		await expect(page.getByRole('region', { name: 'Légende de la carte' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Légende', exact: true })).toHaveCount(0);
+	});
+
 test.describe('sur bureau', { tag: '@bureau' }, () => {
 	test('l’arrivée montre le sommaire, ses quatre sujets et leurs nombres, et aucune liste', async ({ page }) => {
 		await arriver(page, '/?vue=46.50932,6.66161,14.00');

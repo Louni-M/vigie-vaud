@@ -46,6 +46,7 @@
 		type FinRecherche
 	} from '#lib/socle/telephone.js';
 	import { suivreSaisie } from '#lib/socle/saisie.js';
+	import { margeDuPanneau } from '#lib/socle/marge.js';
 	import { attributionHtml, source } from '#lib/sources.js';
 	import type { Resultat } from '#lib/types.js';
 	import type { LayoutProps } from './$types';
@@ -80,14 +81,13 @@
 	 * fiche ouverte. Sur téléphone, il n'est pas sur la carte. Quand il reste trop peu de carte à côté de lui (tablette,
 	 * fiche ouverte), la marge est nulle : une commune cadrée dans une bande étroite dézoomerait jusqu'au canton.
 	 */
-	const LARGEUR_UTILE = 300;
 	let margeCarte = $state(0);
 	$effect(() => {
 		const v = volet;
 		if (!v) return void (margeCarte = 0);
 		const mesurer = () => {
 			const marge = v.offsetLeft + v.offsetWidth;
-			margeCarte = zoneCarte && zoneCarte.clientWidth - marge < LARGEUR_UTILE ? 0 : marge;
+			margeCarte = zoneCarte ? margeDuPanneau(zoneCarte.clientWidth, marge) : marge;
 		};
 		mesurer();
 		const observateur = new ResizeObserver(mesurer);

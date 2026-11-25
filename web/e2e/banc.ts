@@ -3,6 +3,7 @@ import { test as base, expect, type BrowserContext, type Page, type Route } from
 import { entite, fauxCanton } from '../tests/faux-canton.js';
 import { DONNEES, GENERE, fauxDepotConseils, indexConseils, ligneObjet } from '../tests/faux-conseils.js';
 import { fauxDgmr } from '../tests/faux-dgmr.js';
+import { margeDuPanneau } from '../src/lib/socle/marge.js';
 
 /*
  * Banc d'essai de la suite Playwright : chaque page parle à des services factices, interceptés dans le navigateur
@@ -128,17 +129,21 @@ export async function arriver(page: Page, adresse: string) {
 }
 
 /**
- * Le centre de ce qu'on voit de la carte, en pixels de la page : sur bureau, le panneau posé à gauche en est exclu, et
- * c'est là que la carte place le centre de sa vue (`vue=` de l'adresse) et l'élément vers lequel elle vole.
+ * Le centre de ce qu'on voit de la carte, en pixels de la page : là que la carte place le centre de sa vue (`vue=` de
+ * l'adresse) et l'élément vers lequel elle vole. Sur bureau, le panneau posé à gauche en est exclu, sauf quand il
+ * reste trop peu de carte à côté de lui (`margeDuPanneau`) ; sur téléphone, il n'est pas sur la carte.
  */
-export function centreDeLaCarte(page: Page): Promise<[number, number]> {
-	return page.evaluate(() => {
-		const carte = document.getElementById('carte')!.getBoundingClientRect();
-		// Le panneau n'est sur la carte que sur bureau ; sur téléphone, il n'y est pas.
+export async function centreDeLaCarte(page: Page): Promise<[number, number]> {
+	const { carte, bord } = await page.evaluate(() => {
+		const r = document.getElementById('carte')!.getBoundingClientRect();
 		const panneau = document.querySelector('#carte > .volet')?.getBoundingClientRect();
-		const gauche = panneau?.width ? panneau.right : carte.left;
-		return [(gauche + carte.right) / 2, carte.top + carte.height / 2];
+		return {
+			carte: { left: r.left, top: r.top, width: r.width, height: r.height },
+			bord: panneau?.width ? panneau.right - r.left : 0
+		};
 	});
+	const gauche = carte.left + margeDuPanneau(carte.width, bord);
+	return [(gauche + carte.left + carte.width) / 2, carte.top + carte.height / 2];
 }
 
 export interface Reseau {
