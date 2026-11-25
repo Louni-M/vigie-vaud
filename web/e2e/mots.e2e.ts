@@ -29,7 +29,7 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 		);
 	});
 
-	test('Routes porte le même nom au sommaire, dans sa liste, dans la légende et dans la fiche d’une commune', async ({
+	test('Routes porte le même nom au sommaire, dans sa liste et dans la fiche d’une commune', async ({
 		page
 	}) => {
 		await arriver(page, '/');
@@ -37,7 +37,6 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 		await expect(sommaire.getByRole('link', { name: /^Routes/ })).toBeVisible();
 		await sommaire.getByRole('link', { name: /^Routes/ }).click();
 		await expect(page.getByRole('heading', { name: 'Routes', level: 2 })).toBeVisible();
-		await expect(page.getByRole('region', { name: 'Légende de la carte' }).getByText('Routes', { exact: true })).toBeVisible();
 
 		await page.goto('/commune/pully?volet=routes');
 		await expect(page.getByRole('tab', { name: /^Routes/ })).toBeVisible();
@@ -55,7 +54,7 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 	for (const adresse of ['/', '/?volet=permis', '/?volet=routes', '/?volet=conseils', '/commune/pully', '/grand-conseil'])
 		test(`aucun terme relevé comme non compris sur ${adresse}`, async ({ page }) => {
 			await arriver(page, adresse);
-			await expect(page.getByRole('region', { name: 'Légende de la carte' })).toBeVisible();
+			await expect(page.locator('#carte .maplibregl-canvas')).toBeVisible();
 			// Les nombres et les listes chargés, le texte de la page est complet.
 			await page.waitForTimeout(1000);
 			const texte = await page.locator('body').innerText();

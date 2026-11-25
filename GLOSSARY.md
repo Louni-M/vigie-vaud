@@ -58,7 +58,7 @@ _À éviter_ : commune fusionnée (ambigu : désigne aussi la nouvelle commune)
 **Hôtel de ville** :
 Le marqueur unique d'une commune sur la carte, qui ouvre sa fiche commune. Il est placé sur le siège de son
 administration communale ; à défaut, sur un point de la commune en terre ferme, et sa position est alors dite
-**approximative**. Les anciennes communes n'ont pas de marqueur. La légende de la carte l'explique.
+**approximative**. Les anciennes communes n'ont pas de marqueur.
 _Mot visiteur_ : « Hôtel de ville ».
 _À éviter_ : mairie, marqueur commune
 

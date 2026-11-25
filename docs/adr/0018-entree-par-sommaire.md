@@ -16,9 +16,11 @@ sa fiche. Une seule rubrique est ouverte à la fois. Le fil cantonal, qui mélan
 site ; « plus récents d'abord » devient un tri des listes.
 
 La carte dessine une seule couche à la fois, en plus des hôtels de ville et du marqueur du Grand Conseil, toujours
-là : celle de l'onglet de la fiche commune ouverte, sinon celle de la rubrique ouverte, sinon aucune. Le grisage,
-la légende et l'attribution de la carte suivent cette couche. L'interrupteur « Affichée » et la clé d'adresse
-`couches=` disparaissent ; une ancienne adresse qui la porte s'ouvre sur le sommaire.
+là : celle de l'onglet de la fiche commune ouverte, sinon celle de la rubrique ouverte, sinon aucune. Le grisage
+et l'attribution de la carte suivent cette couche ; la légende de la carte, qui la suivait aussi, est retirée
+(novembre 2026) : les puces de statut ou de sorte des listes disent déjà ce que montrent les marqueurs.
+L'interrupteur « Affichée » et la clé d'adresse `couches=` disparaissent ; une ancienne adresse qui la porte s'ouvre
+sur le sommaire.
 
 Les mots montrés au visiteur changent ; les termes du glossaire, du code et des adresses restent. `GLOSSARY.md` donne,
 pour chaque terme visible, le mot montré au visiteur.

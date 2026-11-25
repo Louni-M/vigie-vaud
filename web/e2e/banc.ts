@@ -127,6 +127,20 @@ export async function arriver(page: Page, adresse: string) {
 	await expect(page.locator('#carte canvas')).toBeAttached({ timeout: 30_000 });
 }
 
+/**
+ * Le centre de ce qu'on voit de la carte, en pixels de la page : sur bureau, le panneau posé à gauche en est exclu, et
+ * c'est là que la carte place le centre de sa vue (`vue=` de l'adresse) et l'élément vers lequel elle vole.
+ */
+export function centreDeLaCarte(page: Page): Promise<[number, number]> {
+	return page.evaluate(() => {
+		const carte = document.getElementById('carte')!.getBoundingClientRect();
+		// Le panneau n'est sur la carte que sur bureau ; sur téléphone, il n'y est pas.
+		const panneau = document.querySelector('#carte > .volet')?.getBoundingClientRect();
+		const gauche = panneau?.width ? panneau.right : carte.left;
+		return [(gauche + carte.right) / 2, carte.top + carte.height / 2];
+	});
+}
+
 export interface Reseau {
 	/** Requêtes vers une autre machine qu'aucun service factice n'a prises : refusées, elles font échouer le scénario. */
 	inattendues: string[];

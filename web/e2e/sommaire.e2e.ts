@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { arriver, expect, test } from './banc.js';
+import { arriver, centreDeLaCarte, expect, test } from './banc.js';
 
 /*
  * Le sommaire, écran d'arrivée : une ligne par sujet, avec son nombre, qui ouvre sa liste ; la carte ne dessine que
@@ -13,10 +13,9 @@ const SUR_LE_DOSSIER = '/?vue=46.51100,6.66400,17.00';
 const sommaire = (page: Page) => page.getByRole('region', { name: 'Ce que montre Vigie Vaud' });
 const ligne = (page: Page, nom: string) => sommaire(page).getByRole('link', { name: new RegExp(`^${nom}`) });
 
-/** Clique au centre de la carte. */
+/** Clique au centre de ce qu'on voit de la carte. */
 async function cliquerAuCentre(page: Page) {
-	const b = (await page.locator('#carte').boundingBox())!;
-	await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+	await page.mouse.click(...(await centreDeLaCarte(page)));
 }
 
 test.describe('sur bureau', { tag: '@bureau' }, () => {
@@ -118,24 +117,6 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 		await expect(ligne(page, 'Routes')).toBeFocused();
 	});
 
-	test('la légende de la carte dit ce que montre chaque marqueur, et suit ce que la carte dessine', async ({ page }) => {
-		await arriver(page, '/');
-		const legende = page.getByRole('region', { name: 'Légende de la carte' });
-		await expect(legende.getByRole('button', { name: 'Légende' })).toHaveAttribute('aria-expanded', 'true');
-		await expect(legende).toContainText('Hôtel de ville : un clic ouvre la fiche de la commune');
-		await expect(legende).toContainText('Grand Conseil, au Parlement');
-		await expect(legende).not.toContainText('Fermeture');
-
-		await ligne(page, 'Routes').click();
-		await expect(legende).toContainText('Fermeture');
-		await expect(legende).toContainText('Restriction particulière');
-
-		// La fiche de Pully, sur son premier onglet : la carte dessine les permis, et la légende leurs statuts.
-		await page.goto('/commune/pully?volet=routes');
-		await expect(legende).toContainText('À l’enquête');
-		await expect(legende).not.toContainText('Fermeture');
-	});
-
 	test('Routes se trie par début, le plus récent d’abord, et l’adresse le garde', async ({ page }) => {
 		await arriver(page, '/?volet=routes');
 		await page.getByRole('combobox', { name: 'Ordre de la liste' }).selectOption('recent');
@@ -154,15 +135,6 @@ test.describe('sur téléphone', { tag: '@telephone' }, () => {
 			expect(b.y + b.height, 'au-dessus de la barre du bas').toBeLessThanOrEqual(barre.y);
 		}
 		await expect(page.getByText(/Pose de panneaux solaires/)).toBeHidden();
-	});
-
-	test('la légende est repliée, et son bouton dit qu’elle se déplie', async ({ page }) => {
-		await arriver(page, '/?affichage=carte');
-		const bouton = page.getByRole('region', { name: 'Légende de la carte' }).getByRole('button', { name: 'Légende' });
-		await expect(bouton).toHaveAttribute('aria-expanded', 'false');
-		await bouton.click();
-		await expect(bouton).toHaveAttribute('aria-expanded', 'true');
-		await expect(page.getByText(/^Hôtel de ville/)).toBeVisible();
 	});
 
 	test('une rubrique ouverte passe à la carte et en revient, seule dans le panneau', async ({ page }) => {
