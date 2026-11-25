@@ -1,8 +1,43 @@
 # Vigie Vaud
 
-Tableau de bord du canton de Vaud, commune par commune, destiné d'abord aux habitants : il rassemble sur une carte
-ce qui se passe dans chaque commune et informe sans prendre position. Chantiers Vaud, l'ancien nom du site, désigne
-désormais sa couche Permis.
+**Ce qui se passe dans votre commune.**
+
+https://github.com/user-attachments/assets/734a6688-b7a7-4a8f-9d78-08d9177e520f
+
+**[→ Ouvrir Vigie Vaud](https://louni-m.github.io/vigie-vaud)**
+
+Un immeuble mis à l'enquête au bout de la rue, une route fermée la semaine prochaine, ce que le conseil communal a
+mis à l'ordre du jour : tout cela est public, mais éparpillé entre des dizaines de sites. Vigie Vaud le rassemble sur
+une seule carte du canton. On tape le nom de sa commune ou son adresse, et on voit ce qui s'y passe.
+
+**Ce qu'on y trouve**
+
+- **Permis de construire** : chaque enquête publique en cours avec sa date de fin, les dossiers en attente de
+  décision, et l'historique depuis 1999.
+- **Routes** : fermetures, déviations et feux, en cours et à venir.
+- **Conseils communaux** : les textes déposés et les séances de près de 70 communes à ce jour, dont Lausanne et
+  Yverdon-les-Bains.
+- **Grand Conseil** : les textes déposés au parlement cantonal, rattachés aux communes qu'ils nomment.
+
+Chacune des 300 communes vaudoises a sa fiche, qui regroupe tout ce qui la concerne.
+
+**Les principes**
+
+- Vigie Vaud informe sans prendre position.
+- Les permis et les routes sont lus en direct sur le service du canton, depuis votre navigateur : le site ne les
+  stocke ni ne les rediffuse.
+- Les noms de particuliers sont masqués ; les entreprises et les collectivités restent nommées.
+- Gratuit, sans compte, et le code est ouvert (AGPL-3.0).
+
+Une question, une erreur, une commune à ajouter ? Ouvrez une [issue](https://github.com/Louni-M/vigie-vaud/issues)
+ou écrivez à l'adresse indiquée sur la page [À propos](https://louni-m.github.io/vigie-vaud/a-propos).
+
+---
+
+## Aspects techniques
+
+La suite de ce fichier s'adresse à qui veut lire, lancer ou modifier le code. Chantiers Vaud, l'ancien nom du site,
+désigne désormais sa couche Permis.
 
 Le vocabulaire (couche, rubrique, sommaire, fiche commune, Objet, Séance, sonde, rattrapage…) est défini dans
 [`GLOSSARY.md`](GLOSSARY.md), les décisions dans [`docs/adr/`](docs/adr/) et les sources dans
