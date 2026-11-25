@@ -26,3 +26,7 @@ brouillon-sources-*.json
 # Configuration locale de Claude Code (skills, worktrees, launch.json) : jamais versionnée.
 /.claude/
 .context/compound-engineering/
+
+# Plans et idéations de Compound Engineering : des documents de travail locaux, jamais versionnés.
+/docs/plans/
+/docs/ideation/
