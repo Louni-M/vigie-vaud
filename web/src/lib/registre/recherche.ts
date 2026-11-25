@@ -1,6 +1,8 @@
 import { normaliser } from '#lib/labels.js';
 import type { Commune, Resultat } from '#lib/types.js';
 import { fichesPropres } from './fiches.js';
+import { nomOnglet } from './onglet.js';
+import { rubriqueDeLElement } from './rubriques.js';
 import type { CoucheInscrite } from './types.js';
 
 /** Ce que le registre apporte à la recherche du socle : fiches propres et éléments des couches. */
@@ -16,17 +18,27 @@ function correspond(nom: string, saisie: string): boolean {
 	return n.length <= 2 ? n === saisie : n.startsWith(saisie);
 }
 
-/** Les fiches propres que la saisie nomme, par leur nom ou un alias, dans l'ordre du registre. */
+/**
+ * Les fiches propres que la saisie nomme, par leur nom ou un alias, dans l'ordre du registre, sous le nom de la
+ * rubrique qui les ouvre.
+ */
 export function chercherFiches(couches: readonly CoucheInscrite[], texte: string): Extract<Resultat, { type: 'fiche' }>[] {
 	const saisie = normaliser(texte);
 	return fichesPropres(couches)
 		.filter(({ fiche }) => [fiche.nom, ...(fiche.alias ?? [])].some((nom) => correspond(nom, saisie)))
-		.map(({ couche, fiche }) => ({ type: 'fiche' as const, nomCouche: couche.nom, libelle: fiche.nom, fiche: fiche.id }));
+		.map(({ couche, fiche }) => ({
+			type: 'fiche' as const,
+			nomRubrique: nomOnglet(couche, fiche.id),
+			libelle: fiche.nom,
+			fiche: fiche.id
+		}));
 }
 
 /**
  * Résultats du registre pour une saisie, tels que les affiche la recherche du socle : les fiches propres, puis les
- * éléments des couches (`chercher`). Le registre trouve les fiches sans passer par `chercher`.
+ * éléments des couches (`chercher`), chacun sous le nom de sa rubrique (`rubriqueDeLElement`) : un Objet du Grand
+ * Conseil sous « Grand Conseil », celui d'un conseil communal sous « Conseils communaux ». Le registre trouve les
+ * fiches sans passer par `chercher`.
  */
 export const resultatsCouches = (
 	couches: readonly CoucheInscrite[],
@@ -37,7 +49,7 @@ export const resultatsCouches = (
 	...couches.flatMap((c) =>
 		(c.chercher?.(texte, communes) ?? []).map((r) => ({
 			type: 'element' as const,
-			nomCouche: c.nom,
+			nomRubrique: rubriqueDeLElement(couches, r)?.rubrique.nom ?? c.nom,
 			libelle: r.libelle,
 			couche: r.couche,
 			element: r.element

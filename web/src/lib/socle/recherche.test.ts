@@ -82,7 +82,7 @@ describe('ordre des résultats de la recherche', () => {
 	});
 
 	it('met un élément d’une couche après les communes et avant les adresses, qui ne répètent pas un libellé', () => {
-		const element: Resultat = { type: 'element', nomCouche: 'Permis', libelle: 'Dossier', couche: 'permis', element: '1' };
+		const element: Resultat = { type: 'element', nomRubrique: 'Permis de construire', libelle: 'Dossier', couche: 'permis', element: '1' };
 		const locaux = resultatsLocaux([PULLY], 'pully', () => [element]);
 		expect(avecAdresses(locaux, [adresse('Pully'), adresse('Pully')]).map((r) => r.type)).toEqual(['commune', 'element']);
 	});

@@ -298,7 +298,7 @@
 				{@const ancien = ancienEtActuelle(r)}
 				<li>
 					<button type="button" onclick={() => choisir(r)}>
-						<span class="type">{r.type === 'commune' ? 'Commune' : r.type === 'adresse' ? r.categorie : r.nomCouche}</span>
+						<span class="type">{r.type === 'commune' ? 'Commune' : r.type === 'adresse' ? r.categorie : r.nomRubrique}</span>
 						{#if ancien}
 							<span
 								>{ancien[0]}<span aria-hidden="true">&nbsp;→ </span><span class="lecteur-seul"
