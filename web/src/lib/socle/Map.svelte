@@ -39,9 +39,23 @@
 		 * qui n'est pas un choix du visiteur ; un déplacement du visiteur ne l'est jamais.
 		 */
 		onvue?: (zone: Zone, centre: Centre, parDefaut: boolean) => void;
+		/**
+		 * Largeur (px) couverte à gauche de la carte par le panneau posé dessus. Le centre de la carte est celui de la
+		 * partie qu'on voit : un point vers lequel elle vole, une emprise qu'elle cadre et le centre écrit dans l'adresse
+		 * s'y rapportent.
+		 */
+		marge?: number;
 	}
 
-	let { repere = null, attribution = [], bounds = CANTON, interactive = true, onpret, onvue }: Props = $props();
+	let {
+		repere = null,
+		attribution = [],
+		bounds = CANTON,
+		interactive = true,
+		onpret,
+		onvue,
+		marge = 0
+	}: Props = $props();
 
 	let container: HTMLDivElement;
 	let map: MlMap | undefined = $state();
@@ -61,8 +75,14 @@
 	 * carte (colonne de la fiche ouverte ou fermée, fenêtre tournée) la laisse telle qu'elle était.
 	 */
 	let actuelleParDefaut = false;
-	/** Pendant `preparer`, les fins de déplacement ne sont pas signalées. */
+	/** Pendant `preparer` et la relance d'un déplacement (`sansSignal`), les fins de déplacement ne sont pas signalées. */
 	let muette = false;
+	/**
+	 * Le déplacement demandé en cours. MapLibre fixe au départ le point de l'écran où il mène : si la carte change de
+	 * taille en route (la colonne de la fiche s'ouvre pendant le vol vers un élément), il est relancé vers le point qui
+	 * est maintenant le centre de ce qu'on voit.
+	 */
+	let enCours: (() => void) | null = null;
 	/** Instant du dernier tour de molette (`performance.now()`) : voir l'écoute de `movestart`. */
 	let molette = -Infinity;
 
@@ -75,6 +95,8 @@
 			features: p ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: p }, properties: {} }] : []
 		};
 	}
+
+	const marges = (gauche: number) => ({ top: 0, right: 0, bottom: 0, left: gauche });
 
 	function emitView(parLaPersonne = false) {
 		if (!map || !onvue || muette) return;
@@ -97,14 +119,29 @@
 	 */
 	function preparer(m: MlMap, parDefaut: boolean) {
 		molette = -Infinity;
-		muette = true;
-		try {
+		sansSignal(() => {
 			m.stop();
 			m.resize();
+		});
+		actuelleParDefaut = parDefaut;
+	}
+
+	function sansSignal(f: () => void) {
+		muette = true;
+		try {
+			f();
 		} finally {
 			muette = false;
 		}
-		actuelleParDefaut = parDefaut;
+	}
+
+	/** Lance un déplacement demandé, après `preparer`, et le garde pour le relancer si la carte change de taille. */
+	function deplacer(m: MlMap, parDefaut: boolean, mouvement: () => void) {
+		preparer(m, parDefaut);
+		enCours = mouvement;
+		mouvement();
+		// Un cadrage impossible (emprise qui ne tient pas dans la carte) ne bouge pas et ne finit donc jamais.
+		if (!m.isMoving()) enCours = null;
 	}
 
 	/**
@@ -119,17 +156,19 @@
 			vueParDefaut = parDefaut;
 			return;
 		}
-		preparer(map, parDefaut);
-		const cible = Math.max(map.getZoom(), zoom);
-		const loin = cible - map.getZoom() > 4;
-		map.flyTo({
-			center: [lon, lat],
-			zoom: cible,
-			offset: [0, -decalage],
-			curve: 1.6,
-			speed: loin ? 1.4 : 0.9,
-			easing: (t) => 1 - Math.pow(1 - t, 3)
-		});
+		const m = map;
+		const cible = Math.max(m.getZoom(), zoom);
+		const loin = cible - m.getZoom() > 4;
+		deplacer(m, parDefaut, () =>
+			m.flyTo({
+				center: [lon, lat],
+				zoom: cible,
+				offset: [0, -decalage],
+				curve: 1.6,
+				speed: loin ? 1.4 : 0.9,
+				easing: (t) => 1 - Math.pow(1 - t, 3)
+			})
+		);
 	}
 
 	/*
@@ -148,15 +187,17 @@
 			enAttente = null;
 			return;
 		}
-		preparer(map, parDefaut);
-		map.fitBounds(b, { padding: 40, duration: anime ? 600 : 0 });
+		const m = map;
+		deplacer(m, parDefaut, () => m.fitBounds(b, { padding: 40, duration: anime ? 600 : 0 }));
 	}
 
 	/** Revient à la vue d'ensemble du canton, en un vol souple. */
 	export function vueCanton() {
 		if (!map) return cadrer(CANTON, false, true);
-		preparer(map, true);
-		map.fitBounds(CANTON, { padding: 20, duration: 1200, easing: (t) => 1 - Math.pow(1 - t, 3) });
+		const m = map;
+		deplacer(m, true, () =>
+			m.fitBounds(CANTON, { padding: 20, duration: 1200, easing: (t) => 1 - Math.pow(1 - t, 3) })
+		);
 	}
 
 	/** Rétablit une vue précise (URL, retour arrière) ; gardée pour le chargement si la carte n'est pas prête. */
@@ -167,8 +208,8 @@
 			cadreEnAttente = null;
 			return;
 		}
-		preparer(map, false);
-		map.easeTo({ center: [c.lon, c.lat], zoom: c.zoom, duration: anime ? 500 : 0 });
+		const m = map;
+		deplacer(m, false, () => m.easeTo({ center: [c.lon, c.lat], zoom: c.zoom, duration: anime ? 500 : 0 }));
 	}
 
 	onMount(() => {
@@ -197,6 +238,12 @@
 				// la largeur des limites ne change pas, pour garder le même dézoom maximal.
 				maxBounds: [4.7, 45.5, 8.7, 47.6]
 			});
+			// La marge du panneau, avant la première image : la vue de départ se place dans la partie visible.
+			if (marge) {
+				m.setPadding(marges(marge));
+				if (enAttente) m.jumpTo({ center: [enAttente.lon, enAttente.lat], zoom: enAttente.zoom });
+				else m.fitBounds(cadreEnAttente ?? bounds, { padding: 20, duration: 0 });
+			}
 			if (interactive) m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
 
 			m.on('load', () => {
@@ -223,7 +270,14 @@
 				let geste = false;
 				container.addEventListener('wheel', () => (molette = performance.now()), { capture: true, passive: true });
 				m.on('movestart', (e) => (geste = !!e.originalEvent || performance.now() - molette < 500));
-				m.on('moveend', (e) => emitView(geste || !!e.originalEvent));
+				m.on('moveend', (e) => {
+					if (!muette) enCours = null;
+					emitView(geste || !!e.originalEvent);
+				});
+				// Relancé, le déplacement arrête celui qui court sans signaler la vue où il s'arrête.
+				m.on('resize', () => {
+					if (enCours && m.isMoving()) sansSignal(enCours);
+				});
 				map = m;
 				// Vue demandée pendant le chargement du style.
 				// Une vue demandée (lien partagé) est un choix du visiteur : elle reste dans l'adresse.
@@ -258,6 +312,20 @@
 	$effect(() => {
 		if (!pret || !map) return;
 		(map.getSource(CALQUE_REPERE) as GeoJSONSource).setData(unPoint(repere));
+	});
+
+	// Le panneau change de largeur (fenêtre, passage au téléphone) : le centre de la vue reste au milieu de ce qu'on voit.
+	$effect(() => {
+		const gauche = marge;
+		if (!pret || !map || map.getPadding().left === gauche) return;
+		const m = map;
+		// Poser la marge arrête le déplacement en cours : il est relancé, sans signaler la vue où il s'est arrêté.
+		const relance = enCours && m.isMoving() ? enCours : null;
+		if (!relance) return void m.setPadding(marges(gauche));
+		sansSignal(() => {
+			m.setPadding(marges(gauche));
+			relance();
+		});
 	});
 </script>
 

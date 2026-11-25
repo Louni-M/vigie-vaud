@@ -13,7 +13,7 @@ Le vocabulaire (couche, rubrique, sommaire, fiche commune, Objet, Séance, sonde
 Une carte du canton et, posé dessus, un **panneau** qui montre à l'arrivée le **sommaire** : une ligne par
 **rubrique** (Permis de construire, Routes, Conseils communaux, Grand Conseil), avec son nombre d'éléments dans la zone
 affichée. Une ligne ouvre la liste de sa rubrique, ou la fiche du Grand Conseil ; la carte ne dessine que ce sujet, en
-plus des hôtels de ville et du marqueur du Grand Conseil, et sa légende le dit (ADR 0018). Un clic sur l'hôtel de
+plus des hôtels de ville et du marqueur du Grand Conseil (ADR 0018). Un clic sur l'hôtel de
 ville d'une commune ouvre sa **fiche commune**, qui a un onglet par couche (sauf Hôtels de ville) ; la carte dessine
 alors l'onglet ouvert. Sur téléphone, une seule vue à la fois (Sujets, Carte, Détail), choisie dans la barre du bas.
 
@@ -53,7 +53,7 @@ les range au sommaire et les compte sans en nommer aucune
 ([`web/src/lib/registre/rubriques.ts`](web/src/lib/registre/rubriques.ts)). Le nombre d'une ligne est celui de la
 liste qu'elle ouvre, avec les réglages par défaut de la couche et la zone de la carte ; une source en échec la rend
 « indisponible ». La couche que dessine la carte se déduit du panneau et de l'onglet de la fiche commune ouverte
-([`web/src/lib/registre/dessin.ts`](web/src/lib/registre/dessin.ts)), comme la légende et l'attribution.
+([`web/src/lib/registre/dessin.ts`](web/src/lib/registre/dessin.ts)), comme l'attribution.
 
 ### Pages et adresses
 
@@ -125,7 +125,7 @@ Limites du serveur cantonal, constatées le 13 octobre 2026 :
 
 | Dossier | Rôle |
 |---|---|
-| `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) : pages dans `src/routes/`, couches dans `src/lib/couches/`, registre (adresse, sommaire, rubriques, fiches) dans `src/lib/registre/`, carte, légende et recherche dans `src/lib/socle/` |
+| `web/` | Site statique SvelteKit + MapLibre (fond swisstopo) : pages dans `src/routes/`, couches dans `src/lib/couches/`, registre (adresse, sommaire, rubriques, fiches) dans `src/lib/registre/`, carte et recherche dans `src/lib/socle/` |
 | `pipeline/` | Python (uv) : préparation des communes, cron, import des conseils, robot communal, schéma commun (voir ci-dessous) |
 | `schema/` | JSON Schema générés depuis `pipeline/schema.py` (ne pas modifier) |
 | `cas-partages/` | Cas de test des règles écrites en Python et en TypeScript (Masquage, nom du conseil, clé d'un Objet, niveaux), lus par les deux suites |

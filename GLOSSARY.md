@@ -28,7 +28,7 @@ _À éviter_ : accueil, menu, fil
 Un sujet tel que le visiteur le nomme, déclaré par une couche : son nom, sa phrase, son rang au sommaire, et ce qu'il
 ouvre, la liste de la couche dans le panneau ou une fiche propre. Une rubrique n'est pas une couche : la couche
 Conseils en déclare deux, Conseils communaux (sa liste) et Grand Conseil (sa fiche). Un sujet porte le nom de sa
-rubrique partout : sommaire, liste, légende, onglet de la fiche commune, résultats de la recherche.
+rubrique partout : sommaire, liste, onglet de la fiche commune, résultats de la recherche.
 _Mot visiteur_ : son nom (« Permis de construire », « Routes », « Conseils communaux », « Grand Conseil ») ;
 ensemble, les « sujets ».
 _À éviter_ : catégorie, thème, couche (pour la rubrique)
@@ -58,7 +58,7 @@ _À éviter_ : commune fusionnée (ambigu : désigne aussi la nouvelle commune)
 **Hôtel de ville** :
 Le marqueur unique d'une commune sur la carte, qui ouvre sa fiche commune. Il est placé sur le siège de son
 administration communale ; à défaut, sur un point de la commune en terre ferme, et sa position est alors dite
-**approximative**. Les anciennes communes n'ont pas de marqueur. La légende de la carte l'explique.
+**approximative**. Les anciennes communes n'ont pas de marqueur.
 _Mot visiteur_ : « Hôtel de ville ».
 _À éviter_ : mairie, marqueur commune
 

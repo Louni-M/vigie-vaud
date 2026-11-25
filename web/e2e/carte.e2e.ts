@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
-import { arriver, expect, test } from './banc.js';
+import { arriver, centreDeLaCarte, expect, test } from './banc.js';
 
 /*
  * Ouvrir une fiche commune par un clic sur la carte : le marqueur de son hôtel de ville. La carte part centrée sur
- * celui d'Aclens (communes.json), au zoom 14 : le marqueur est au centre de la carte.
+ * celui d'Aclens (communes.json), au zoom 14 : le marqueur est au centre de ce qu'on voit de la carte.
  */
 
 const VUE = '46.56801,6.50968,14.00';
@@ -13,11 +13,9 @@ const VUE = '46.56801,6.50968,14.00';
  * de dessiner ses marqueurs.
  */
 async function toucherAuCentre(page: Page, ouverte: ReturnType<Page['getByRole']>, auDoigt = false) {
-	const carte = page.locator('#carte');
 	await expect(async () => {
-		const b = (await carte.boundingBox())!;
 		// Au doigt sur téléphone, à la souris sur bureau.
-		const [x, y] = [b.x + b.width / 2, b.y + b.height / 2];
+		const [x, y] = await centreDeLaCarte(page);
 		await (auDoigt ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
 		await expect(ouverte).toBeVisible({ timeout: 1000 });
 	}).toPass();

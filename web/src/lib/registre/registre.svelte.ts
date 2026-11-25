@@ -27,6 +27,7 @@ import {
 	type Adresse
 } from './navigation.js';
 import { ficheDuChemin, fichePropre } from './fiches.js';
+import { cadreAutourDe } from './cadrage.js';
 import { cheminFiche } from './liens.js';
 import { titreFiche } from './tete.js';
 import { avisIntrouvable, avisNonCherche } from './avis.js';
@@ -260,13 +261,13 @@ export function creerRegistre(
 
 	/**
 	 * La carte montre une fiche : la commune entière, cadrée sur sa partie terrestre (`cadre`) et non sur son
-	 * emprise lac compris, ou la position d'une fiche propre, au zoom d'un élément. Ces vues n'entrent pas dans
-	 * l'adresse.
+	 * emprise lac compris, son hôtel de ville au centre de la vue ; ou la position d'une fiche propre, au zoom d'un
+	 * élément. Ces vues n'entrent pas dans l'adresse.
 	 */
 	function cadrerFiche(f: Fiche, anime: boolean) {
 		if ('commune' in f) {
 			const c = communes().find((c) => c.slug === f.commune);
-			if (c) carteSocle()?.cadrer(c.cadre, anime, true);
+			if (c) carteSocle()?.cadrer(cadreAutourDe(c.cadre, c.hotel), anime, true);
 			return;
 		}
 		const position = fichePropre(couches, f.fiche)?.fiche.position;

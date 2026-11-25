@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { arriver, expect, test } from './banc.js';
+import { arriver, centreDeLaCarte, expect, test } from './banc.js';
 
 /*
  * La vue de la carte dans l'adresse (`vue=lat,lon,zoom`) : seule celle que la personne a choisie y entre, jamais le
@@ -52,12 +52,33 @@ async function chercherCommune(page: Page, nom: string) {
 }
 
 test.describe('sur bureau', { tag: '@bureau' }, () => {
+	test.describe('avec animation', () => {
+		test.use({ reducedMotion: 'no-preference' });
+
+		test('un dossier ouvert depuis la liste finit au centre de la vue, même si la fiche s’ouvre pendant le vol', async ({
+			page
+		}) => {
+			// Le dossier 260102 (6,664 E ; 46,511 N, voir banc.ts), à distance du centre de départ : la carte vole vers lui, et
+			// la colonne de la fiche de Pully s'ouvre en route. MapLibre fixe au départ le point de l'écran où mène le vol :
+			// sans relance, le dossier finirait au centre de la carte d'avant la colonne, et la vue (centre de ce qu'on voit)
+			// à côté de lui.
+			await arriver(page, '/?volet=permis&vue=46.50300,6.65000,13.00');
+			await page.getByRole('region', { name: 'Permis de construire' }).getByText('Pose de panneaux solaires').click();
+			await expect(page).toHaveURL(/\/commune\/pully\?.*d=260102/);
+			// Le vol fini, la vue entre dans l'adresse : on l'y attend, sans compter sur sa durée.
+			await expect(async () => {
+				const vue = (new URL(page.url()).searchParams.get('vue') ?? '').split(',').map(Number);
+				expect(vue[0], 'latitude du centre').toBeCloseTo(46.511, 4);
+				expect(vue[1], 'longitude du centre').toBeCloseTo(6.664, 4);
+			}).toPass({ timeout: 15_000 });
+		});
+	});
+
 	test('un clic sur l’hôtel de ville juste après un tour de molette n’écrit pas le cadrage de la commune', async ({
 		page
 	}) => {
 		// La carte part centrée sur l'hôtel de ville d'Aclens : son marqueur est au centre (voir carte.e2e.ts).
 		await arriver(page, `/?vue=${VUE}`);
-		const carte = page.locator('#carte');
 		const titre = page.getByRole('heading', { name: 'Aclens', level: 2 });
 		// La carte compte comme geste de la personne un déplacement qui commence moins d'une demi-seconde après un tour
 		// de molette (MapLibre ne joint pas toujours l'évènement à son zoom). Le tour, ici, est de ceux que la carte ne
@@ -75,8 +96,7 @@ test.describe('sur bureau', { tag: '@bureau' }, () => {
 		});
 		// On recommence tant que les marqueurs ne sont pas dessinés.
 		await expect(async () => {
-			const b = (await carte.boundingBox())!;
-			await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+			await page.mouse.click(...(await centreDeLaCarte(page)));
 			await expect(titre).toBeVisible({ timeout: 1000 });
 		}).toPass();
 		await page.waitForTimeout(1500);

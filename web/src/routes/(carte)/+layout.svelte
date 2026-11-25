@@ -30,8 +30,6 @@
 	import { creerRegistre, fournirRegistre, SOMMAIRE, type VueCarte } from '#lib/registre/registre.svelte.js';
 	import { navigateurSvelteKit } from '#lib/registre/navigateur.js';
 	import { sourcesCarte } from '#lib/registre/attribution.js';
-	import { legendeDeLaCarte } from '#lib/registre/dessin.js';
-	import Legende from '#lib/socle/Legende.svelte';
 	import { clicSimple } from '#lib/registre/liens.js';
 	import { rubriqueAVolet } from '#lib/registre/rubriques.js';
 	import Sommaire from '#lib/registre/Sommaire.svelte';
@@ -75,6 +73,29 @@
 	let composantRecherche: ReturnType<typeof Recherche> | undefined = $state();
 	let apercu: HTMLElement | undefined = $state();
 	let colonne: HTMLElement | undefined = $state();
+	let volet: HTMLElement | undefined = $state();
+
+	/**
+	 * Sur bureau, le panneau couvre la gauche de la carte : elle centre ses vues dans le reste, jusqu'au bord de la
+	 * fiche ouverte. Sur téléphone, il n'est pas sur la carte. Quand il reste trop peu de carte à côté de lui (tablette,
+	 * fiche ouverte), la marge est nulle : une commune cadrée dans une bande étroite dézoomerait jusqu'au canton.
+	 */
+	const LARGEUR_UTILE = 300;
+	let margeCarte = $state(0);
+	$effect(() => {
+		const v = volet;
+		if (!v) return void (margeCarte = 0);
+		const mesurer = () => {
+			const marge = v.offsetLeft + v.offsetWidth;
+			margeCarte = zoneCarte && zoneCarte.clientWidth - marge < LARGEUR_UTILE ? 0 : marge;
+		};
+		mesurer();
+		const observateur = new ResizeObserver(mesurer);
+		observateur.observe(v);
+		// La colonne de la fiche, ouverte ou fermée, change la largeur de la carte sans toucher au panneau.
+		if (zoneCarte) observateur.observe(zoneCarte);
+		return () => observateur.disconnect();
+	});
 	/** Place prise en bas de la carte par l'aperçu d'un dossier, tant qu'il n'est pas affiché. */
 	const APERCU_DOSSIER = 170;
 
@@ -119,13 +140,6 @@
 	const couverture = $derived(couvertureCourante(data.communes));
 	/** Le grisage suit la couche dessinée : la rubrique ouverte, ou l'onglet de la fiche commune ouverte. */
 	const grisees = $derived(couverture.grisees(registre.dessinee));
-
-	/** La légende dit ce que la carte dessine ; ouverte sur bureau, repliée dès que l'écran est celui d'un téléphone. */
-	const legende = $derived(legendeDeLaCarte(COUCHES, registre.dessinee));
-	let legendeOuverte = $state(true);
-	$effect(() => {
-		if (telephone.current) untrack(() => (legendeOuverte = false));
-	});
 
 	// Un même texte (« © swisstopo », pour le fond, les adresses et les lacs) n'est cité qu'une fois.
 	const attribution = $derived(
@@ -325,6 +339,7 @@
 				bind:this={carte}
 				{repere}
 				{attribution}
+				marge={margeCarte}
 				onpret={(m) => registre.carte(m, CALQUE_REPERE)}
 				onvue={registre.deplacement}
 			/>
@@ -370,14 +385,10 @@
 			<!-- Le panneau, posé sur la carte : le sommaire, ou la rubrique qu'on y a ouverte. -->
 			{#if !telephone.current}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="volet" onkeydown={(e) => e.key === 'Escape' && ouverte && retourSommaire()}>
+				<div class="volet" bind:this={volet} onkeydown={(e) => e.key === 'Escape' && ouverte && retourSommaire()}>
 					{@render panneau()}
 				</div>
 			{/if}
-
-			<div class="cote-legende">
-				<Legende {legende} bind:ouverte={legendeOuverte} />
-			</div>
 
 			<p class="liens">
 				<a href={resolve('/a-propos')}>À propos</a> ·
@@ -574,14 +585,6 @@
 	.volet > :global(*) {
 		flex: 1 0 auto;
 	}
-	/* En bas à droite, au-dessus du bouton des sources de la carte, sans passer sous le panneau (370 px à gauche). */
-	.cote-legende {
-		position: absolute;
-		z-index: 2;
-		right: 10px;
-		bottom: 40px;
-		max-width: max(160px, calc(100% - 390px));
-	}
 	.liens {
 		position: absolute;
 		z-index: 2;
@@ -657,14 +660,6 @@
 		.app:not([data-affichage='fiche']) .colonne,
 		.app:not([data-affichage='panneau']) .vue-panneau {
 			visibility: hidden;
-		}
-		/* Sur téléphone, la légende passe en haut à gauche, sous la recherche : l'aperçu prend le bas de la carte, et les
-		   boutons de zoom la droite. */
-		.cote-legende {
-			top: 62px;
-			bottom: auto;
-			left: 10px;
-			right: auto;
 		}
 		/* La recherche, posée sur la carte, reste en tête du panneau. */
 		.app[data-affichage='panneau'] .recherche {
